@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Big Fam Festival",
+    "slug": "bigfam-festival",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./src/assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#FF3366"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bigfamfestival.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
+        "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
+        "NSCameraUsageDescription": "We need camera access to enable QR code scanning for tickets."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "backgroundColor": "#FF3366"
+      },
+      "package": "com.bigfamfestival.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Big Fam Festival to use your location to show you on the map and enable navigation at the festival."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Big Fam Festival to access your photos to set your profile picture."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "https://api.bigfamfestival.com/api/v1",
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}
