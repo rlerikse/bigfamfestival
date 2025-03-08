@@ -5,9 +5,9 @@ import { FirestoreModule } from './config/firestore/firestore.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
-import { TicketsModule } from './tickets/tickets.module';
-import { MapModule } from './map/map.module';
-import { FriendsModule } from './friends/friends.module';
+// import { TicketsModule } from './tickets/tickets.module';
+// import { MapModule } from './map/map.module';
+// import { FriendsModule } from './friends/friends.module';
 import { HealthModule } from './health/health.module';
 import * as Joi from 'joi';
 import { APP_GUARD } from '@nestjs/core';
@@ -56,9 +56,9 @@ import { RolesGuard } from './auth/guards/roles.guard';
     AuthModule,
     UsersModule,
     EventsModule,
-    TicketsModule,
-    MapModule,
-    FriendsModule,
+    // TicketsModule,
+    // MapModule,
+    // FriendsModule,
     HealthModule,
   ],
   controllers: [],
