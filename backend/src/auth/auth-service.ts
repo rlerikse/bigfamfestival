@@ -58,7 +58,7 @@ export class AuthService {
    */
   async validateUser(loginDto: LoginDto): Promise<User> {
     const { email, password } = loginDto;
-    
+
     // Find user by email
     const user = await this.usersService.findByEmail(email);
     if (!user) {
@@ -82,7 +82,7 @@ export class AuthService {
    */
   async login(user: User) {
     const token = this.generateToken(user);
-    
+
     return {
       user: this.sanitizeUser(user),
       token,
@@ -98,7 +98,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
     };
-    
+
     return this.jwtService.sign(payload);
   }
 

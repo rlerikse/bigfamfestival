@@ -74,7 +74,7 @@ function MainNavigator() {
           } else {
             iconName = 'help-circle';
           }
-
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#FF3366', // Festival pink

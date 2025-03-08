@@ -32,6 +32,7 @@ export const updateUserProfile = async (
     });
     
     return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Update profile error:', error.response?.data || error.message);
     throw new Error(
@@ -81,6 +82,7 @@ export const uploadProfilePicture = async (
     await updateUserProfile(userId, { profilePictureUrl: fileUrl });
     
     return fileUrl;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Upload profile picture error:', error.response?.data || error.message);
     throw new Error(
@@ -113,6 +115,7 @@ export const updateCampsiteLocation = async (
         Authorization: `Bearer ${token}`,
       },
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Update campsite error:', error.response?.data || error.message);
     throw new Error(
@@ -137,6 +140,7 @@ export const removeCampsiteLocation = async (): Promise<void> => {
         Authorization: `Bearer ${token}`,
       },
     });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Remove campsite error:', error.response?.data || error.message);
     throw new Error(

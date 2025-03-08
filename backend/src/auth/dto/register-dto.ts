@@ -41,7 +41,8 @@ export class RegisterDto {
   })
   @IsOptional()
   @Matches(/^[0-9\-+() ]+$/, {
-    message: 'Phone number should contain only numbers and these symbols: - + ( )',
+    message:
+      'Phone number should contain only numbers and these symbols: - + ( )',
   })
   phone?: string;
 }

@@ -30,7 +30,10 @@ export class FirestoreService implements OnModuleInit {
   }
 
   // Create a document with auto-generated ID
-  async create<T>(collection: string, data: T): Promise<{ id: string; data: T }> {
+  async create<T>(
+    collection: string,
+    data: T,
+  ): Promise<{ id: string; data: T }> {
     const docRef = this.firestore.collection(collection).doc();
     await docRef.set(data);
     return { id: docRef.id, data };

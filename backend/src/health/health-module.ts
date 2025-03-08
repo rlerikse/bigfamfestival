@@ -5,10 +5,7 @@ import { FirestoreHealthIndicator } from './firestore.health';
 import { FirestoreModule } from '../config/firestore/firestore.module';
 
 @Module({
-  imports: [
-    TerminusModule,
-    FirestoreModule,
-  ],
+  imports: [TerminusModule, FirestoreModule],
   controllers: [HealthController],
   providers: [FirestoreHealthIndicator],
 })

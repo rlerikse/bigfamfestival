@@ -1,5 +1,11 @@
 module.exports = {
     root: true,
+    env: {
+      browser: true,
+      es2021: true,
+      'react-native/react-native': true,
+      node: true
+    },
     extends: [
       'eslint:recommended',
       'plugin:react/recommended',
@@ -26,16 +32,13 @@ module.exports = {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      'no-console': ['warn', { allow: ['warn', 'error'] }]
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'react/jsx-uses-react': 'error',  // Add this line
+      'react/react-in-jsx-scope': 'off'  // Add this line
     },
     settings: {
       react: {
         version: 'detect',
       },
-    env: {
-      browser: true,
-      es2021: true,
-      'react-native/react-native': true
-    },
     },
   };

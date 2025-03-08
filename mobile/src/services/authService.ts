@@ -1,7 +1,7 @@
 import { api } from './api';
 import * as SecureStore from 'expo-secure-store';
 import { User } from '../contexts/AuthContext';
-import { UserRole } from '../types/user';
+// import { UserRole } from '../types/user';
 
 interface LoginResponse {
   token: string;
@@ -31,6 +31,7 @@ export const loginUser = async (email: string, password: string): Promise<LoginR
     });
     
     return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Login error:', error.response?.data || error.message);
     throw new Error(
@@ -46,6 +47,7 @@ export const registerUser = async (params: RegisterParams): Promise<RegisterResp
   try {
     const response = await api.post<RegisterResponse>('/auth/register', params);
     return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Registration error:', error.response?.data || error.message);
     throw new Error(
@@ -73,6 +75,7 @@ export const getUserProfile = async (token?: string): Promise<User> => {
     });
     
     return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Get profile error:', error.response?.data || error.message);
     throw new Error(

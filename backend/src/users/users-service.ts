@@ -18,7 +18,7 @@ export class UsersService {
       this.collection,
       createUserDto,
     );
-    
+
     return { id, ...data } as User;
   }
 
@@ -30,11 +30,11 @@ export class UsersService {
       this.collection,
       id,
     );
-    
+
     if (!userData) {
       throw new NotFoundException('User not found');
     }
-    
+
     return { id, ...userData } as User;
   }
 
@@ -48,7 +48,7 @@ export class UsersService {
       '==',
       email,
     );
-    
+
     return users.length ? users[0] : null;
   }
 
@@ -57,17 +57,17 @@ export class UsersService {
    */
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findById(id);
-    
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    
+
     await this.firestoreService.update<User>(
       this.collection,
       id,
       updateUserDto,
     );
-    
+
     // Return updated user
     return { ...user, ...updateUserDto };
   }
@@ -77,11 +77,11 @@ export class UsersService {
    */
   async remove(id: string): Promise<void> {
     const user = await this.findById(id);
-    
+
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    
+
     await this.firestoreService.delete(this.collection, id);
   }
 
