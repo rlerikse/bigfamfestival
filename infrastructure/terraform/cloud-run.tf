@@ -7,8 +7,9 @@ resource "google_cloud_run_service" "bigfam-api" {
     spec {
       service_account_name = google_service_account.cloud_run_sa.email
       containers {
-        image = var.backend_image
-        
+        # image = var.backend_image
+        image = "gcr.io/cloudrun/hello"  # Public sample image from Google
+
         resources {
           limits = {
             cpu    = "1000m"
@@ -19,11 +20,6 @@ resource "google_cloud_run_service" "bigfam-api" {
         env {
           name  = "NODE_ENV"
           value = var.environment
-        }
-        
-        env {
-          name  = "PORT"
-          value = "8080"
         }
         
         env {

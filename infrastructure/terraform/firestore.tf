@@ -15,6 +15,12 @@ resource "google_firestore_index" "users_by_email" {
     field_path = "email"
     order      = "ASCENDING"
   }
+  
+  # Add a second field - for example:
+  fields {
+    field_path = "createdAt"
+    order      = "DESCENDING"
+  }
 }
 
 resource "google_firestore_index" "events_by_stage" {

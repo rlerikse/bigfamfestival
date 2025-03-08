@@ -29,7 +29,6 @@ provider "google-beta" {
   zone    = var.zone
 }
 
-# Enable required APIs
 resource "google_project_service" "services" {
   for_each = toset([
     "cloudresourcemanager.googleapis.com",
@@ -39,7 +38,7 @@ resource "google_project_service" "services" {
     "firestore.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudbuild.googleapis.com",
-    "cloudmonitoring.googleapis.com",
+    // "cloudmonitoring.googleapis.com", // Remove or comment out this line
     "cloudtrace.googleapis.com",
     "cloudprofiler.googleapis.com",
     "storage.googleapis.com",
@@ -71,6 +70,16 @@ resource "google_service_account" "cloud_run_sa" {
 resource "google_project_iam_binding" "firestore_access" {
   project = var.project_id
   role    = "roles/datastore.user"
+  members = [
+    "serviceAccount:${google_service_account.cloud_run_sa.email}",
+  ]
+  depends_on = [google_service_account.cloud_run_sa]
+}
+
+# IAM binding for service account to access Secret Manager
+resource "google_secret_manager_secret_iam_binding" "jwt_secret_access" {
+  secret_id = "jwt-secret"
+  role      = "roles/secretmanager.secretAccessor"
   members = [
     "serviceAccount:${google_service_account.cloud_run_sa.email}",
   ]

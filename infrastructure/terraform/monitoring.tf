@@ -1,11 +1,12 @@
 # Custom alerting policy for high error rate
 resource "google_monitoring_alert_policy" "high_error_rate" {
+  depends_on = [google_project_service.monitoring, time_sleep.wait_for_metrics]
   display_name = "BigFam API High Error Rate Alert"
   combiner     = "OR"
   conditions {
     display_name = "Error rate > 5%"
     condition_threshold {
-      filter     = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${google_cloud_run_service.bigfam-api.name}\" AND metric.type = \"run.googleapis.com/request_count\" AND metric.labels.response_code_class = \"4xx\" OR metric.labels.response_code_class = \"5xx\""
+      filter     = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"bigfam-api-development\" AND metric.type = \"run.googleapis.com/request_count\" AND metric.labels.response_code_class = \"4xx\" OR metric.labels.response_code_class = \"5xx\""
       aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_RATE"
@@ -16,7 +17,7 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
         count = 1
       }
       threshold_value = 0.05
-      denominator_filter = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${google_cloud_run_service.bigfam-api.name}\" AND metric.type = \"run.googleapis.com/request_count\""
+      denominator_filter = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"bigfam-api-development\" AND metric.type = \"run.googleapis.com/request_count\""
       denominator_aggregations {
         alignment_period   = "60s"
         per_series_aligner = "ALIGN_RATE"
@@ -31,63 +32,10 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
     mime_type = "text/markdown"
   }
 
-  depends_on = [google_cloud_run_service.bigfam-api]
 }
 
-# CPU utilization alerting policy
-resource "google_monitoring_alert_policy" "high_cpu_utilization" {
-  display_name = "BigFam API High CPU Utilization"
-  combiner     = "OR"
-  conditions {
-    display_name = "CPU utilization > 80%"
-    condition_threshold {
-      filter     = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${google_cloud_run_service.bigfam-api.name}\" AND metric.type = \"run.googleapis.com/container/cpu/utilization\""
-      aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_PERCENTILE_99"
-      }
-      comparison      = "COMPARISON_GT"
-      duration        = "60s"
-      threshold_value = 0.8
-    }
-  }
-
-  notification_channels = [] # Add notification channels here if needed
-
-  documentation {
-    content   = "CPU utilization for the BigFam API has exceeded 80% over the last minute. Consider scaling up the service."
-    mime_type = "text/markdown"
-  }
-
-  depends_on = [google_cloud_run_service.bigfam-api]
-}
-
-# Memory utilization alerting policy
-resource "google_monitoring_alert_policy" "high_memory_utilization" {
-  display_name = "BigFam API High Memory Utilization"
-  combiner     = "OR"
-  conditions {
-    display_name = "Memory utilization > 80%"
-    condition_threshold {
-      filter     = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"${google_cloud_run_service.bigfam-api.name}\" AND metric.type = \"run.googleapis.com/container/memory/utilization\""
-      aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_PERCENTILE_99"
-      }
-      comparison      = "COMPARISON_GT"
-      duration        = "60s"
-      threshold_value = 0.8
-    }
-  }
-
-  notification_channels = [] # Add notification channels here if needed
-
-  documentation {
-    content   = "Memory utilization for the BigFam API has exceeded 80% over the last minute. Consider scaling up the service."
-    mime_type = "text/markdown"
-  }
-
-  depends_on = [google_cloud_run_service.bigfam-api]
+resource "time_sleep" "wait_for_metrics" {
+  create_duration = "5m"
 }
 
 # Cloud Monitoring Dashboard
@@ -104,7 +52,7 @@ resource "google_monitoring_dashboard" "bigfam_dashboard" {
             {
               "timeSeriesQuery": {
                 "timeSeriesFilter": {
-                  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${google_cloud_run_service.bigfam-api.name}\" AND metric.type=\"run.googleapis.com/request_count\"",
+                  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"bigfam-api-development\" AND metric.type=\"run.googleapis.com/request_count\"",
                   "aggregation": {
                     "alignmentPeriod": "60s",
                     "perSeriesAligner": "ALIGN_RATE"
@@ -123,48 +71,10 @@ resource "google_monitoring_dashboard" "bigfam_dashboard" {
             {
               "timeSeriesQuery": {
                 "timeSeriesFilter": {
-                  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${google_cloud_run_service.bigfam-api.name}\" AND metric.type=\"run.googleapis.com/request_count\" AND (metric.labels.response_code_class=\"4xx\" OR metric.labels.response_code_class=\"5xx\")",
+                  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"bigfam-api-development\" AND metric.type=\"run.googleapis.com/request_count\" AND (metric.labels.response_code_class=\"4xx\" OR metric.labels.response_code_class=\"5xx\")",
                   "aggregation": {
                     "alignmentPeriod": "60s",
                     "perSeriesAligner": "ALIGN_RATE"
-                  }
-                }
-              },
-              "plotType": "LINE"
-            }
-          ]
-        }
-      },
-      {
-        "title": "CPU Utilization",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${google_cloud_run_service.bigfam-api.name}\" AND metric.type=\"run.googleapis.com/container/cpu/utilization\"",
-                  "aggregation": {
-                    "alignmentPeriod": "60s",
-                    "perSeriesAligner": "ALIGN_PERCENTILE_99"
-                  }
-                }
-              },
-              "plotType": "LINE"
-            }
-          ]
-        }
-      },
-      {
-        "title": "Memory Utilization",
-        "xyChart": {
-          "dataSets": [
-            {
-              "timeSeriesQuery": {
-                "timeSeriesFilter": {
-                  "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"${google_cloud_run_service.bigfam-api.name}\" AND metric.type=\"run.googleapis.com/container/memory/utilization\"",
-                  "aggregation": {
-                    "alignmentPeriod": "60s",
-                    "perSeriesAligner": "ALIGN_PERCENTILE_99"
                   }
                 }
               },
@@ -178,5 +88,5 @@ resource "google_monitoring_dashboard" "bigfam_dashboard" {
 }
 EOF
 
-  depends_on = [google_cloud_run_service.bigfam-api]
+  depends_on = [google_project_service.monitoring, time_sleep.wait_for_metrics]
 }
