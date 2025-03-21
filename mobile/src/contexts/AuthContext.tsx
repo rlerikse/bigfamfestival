@@ -9,6 +9,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  phone?: string;
   shareMyCampsite?: boolean;
   shareMyLocation?: boolean;
   ticketType?: string;

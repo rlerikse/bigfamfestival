@@ -201,7 +201,7 @@ const ProfileScreen = () => {
             <View style={styles.field}>
               <Text style={[styles.fieldLabel, { color: theme.muted }]}>Role</Text>
               <Text style={[styles.fieldValue, { color: theme.text }]}>
-                {user?.role.charAt(0).toUpperCase() + user?.role.slice(1) || 'Attendee'}
+                {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Attendee'}
               </Text>
             </View>
           </View>

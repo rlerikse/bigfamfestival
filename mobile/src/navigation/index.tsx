@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
-// import MyScheduleScreen from '../screens/MyScheduleScreen';
+import MyScheduleScreen from '../screens/MyScheduleScreen';
 // import MapScreen from '../screens/MapScreen';
 // import NotificationsScreen from '../screens/NotificationsScreen';
 // import MoreScreen from '../screens/MoreScreen';
@@ -94,17 +94,17 @@ function MainNavigator() {
       />
       <Tab.Screen 
         name="Map" 
-        component={MapScreen} 
+        component={HomeScreen} // Temporarily using HomeScreen
         options={{ title: 'Map' }}
       />
       <Tab.Screen 
         name="Notifications" 
-        component={NotificationsScreen} 
+        component={HomeScreen} // Temporarily using HomeScreen
         options={{ title: 'Notifications' }}
       />
       <Tab.Screen 
         name="More" 
-        component={MoreScreen} 
+        component={HomeScreen} // Temporarily using HomeScreen
         options={{ title: 'More' }}
       />
     </Tab.Navigator>
