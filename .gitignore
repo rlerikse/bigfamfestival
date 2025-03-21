@@ -1,2 +1,5 @@
 /mobile/node_modules
 /backend/node_modules
+infrastructure/terraform/.terraform
+/mobile/package-lock.json
+/backend/package-lock.json
