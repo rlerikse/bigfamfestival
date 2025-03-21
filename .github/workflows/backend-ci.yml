@@ -99,6 +99,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v1
       
       - name: Deploy to Cloud Run
+        id: deploy
         uses: google-github-actions/deploy-cloudrun@v1
         with:
           service: bigfam-api-production

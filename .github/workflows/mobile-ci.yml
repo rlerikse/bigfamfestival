@@ -87,8 +87,10 @@ jobs:
             echo "PROFILE=preview" >> $GITHUB_ENV
           fi
       
-      - name: Build app
-        run: eas build --platform android --profile ${{ env.PROFILE }} --non-interactive
-      
+      - name: Build Android App
+        run: eas build --platform android --profile production --non-interactive
+        env:
+            EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
       - name: Build iOS app
-        run: eas build --platform ios --profile ${{ env.PROFILE }} --non-interactive
+        run: eas build --platform ios --profile production --non-interactive
