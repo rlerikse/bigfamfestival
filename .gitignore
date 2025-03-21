@@ -5,3 +5,4 @@ infrastructure/terraform/.terraform
 /backend/package-lock.json
 mobile/package-lock.json
 /mobile/keystores
+mobile/package-lock.json
