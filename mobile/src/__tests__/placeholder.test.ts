@@ -3,3 +3,5 @@ describe('Placeholder Test', () => {
     expect(true).toBe(true);
   });
 });
+
+export {};
