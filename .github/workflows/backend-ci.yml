@@ -101,7 +101,7 @@ jobs:
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v1
         with:
-          service: bigfam-api-development
+          service: bigfam-api-production
           image: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/bigfam-repository/bigfam-backend:${{ github.sha }}
           region: us-central1
           env_vars: |
