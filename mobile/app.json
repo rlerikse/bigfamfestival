@@ -59,7 +59,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "https://api.bigfamfestival.com/api/v1",
+      "apiUrl": "https://bigfam-api-production-tedn6fcdxq-uc.a.run.app",
       "eas": {
         "projectId": "0c013fd4-da29-4e1c-9c8d-b69783e98066"
       }
