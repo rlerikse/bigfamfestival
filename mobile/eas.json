@@ -15,9 +15,6 @@
       "autoIncrement": true,
       "env": {
         "APP_ENV": "production"
-      },
-      "hooks": {
-        "pre-build": "echo $GOOGLE_SERVICES_JSON | base64 --decode > google-services.json"
       }
     }
   },
