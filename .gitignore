@@ -13,3 +13,4 @@ mobile/google-services.json.base64
 backend/.env
 backend/bigfamfestival-d50c655eb421.json
 /backend/dist
+/mobile/android
