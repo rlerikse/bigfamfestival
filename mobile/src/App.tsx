@@ -5,6 +5,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 // import * as SecureStore from 'expo-secure-store';
+import { 
+  requestNotificationPermission, 
+  getPushToken,
+  setupNotificationListeners 
+} from '../src/services/firebaseMessaging';
 
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
@@ -27,6 +32,26 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const isLoadingComplete = useCachedResources();
+  useEffect(() => {
+    async function setupNotifications() {
+      // Request notification permissions
+      const permissionGranted = await requestNotificationPermission();
+      
+      if (permissionGranted) {
+        // Get the push token
+        await getPushToken();
+        
+        // Setup notification listeners
+        const cleanup = setupNotificationListeners();
+
+        // Return cleanup function
+        return () => {
+          cleanup();
+        };
+      }
+    }
+    setupNotifications();
+  }, []);
 
   useEffect(() => {
     // Hide splash screen once resources are loaded

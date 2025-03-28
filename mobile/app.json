@@ -16,12 +16,19 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bigfamfestival.app",
+      "bundleIdentifier": "com.eriksensolutions.bigfam",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
         "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
         "NSCameraUsageDescription": "We need camera access to enable QR code scanning for tickets.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["remote-notification"],
+        "NSUserNotificationUsageDescription": "Big Fam Festival would like to send you notifications about events, schedules, and important updates.",
+        "NSUserNotificationTypesAllowed": [
+          "alert",
+          "badge",
+          "sound"
+        ]
       }
     },
     "android": {
@@ -29,7 +36,7 @@
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#FF3366"
       },
-      "package": "com.bigfamfestival.app",
+      "package": "com.eriksensolutions.bigfam",
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -39,8 +46,17 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.RECORD_AUDIO"
-      ]
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "notification": {
+        "androidMode": "default",
+        "androidCollapsedTitle": "Big Fam Festival Updates",
+        "color": "#FF3366",
+        "icon": "./src/assets/images/notification-icon.png"
+      }
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"
@@ -57,6 +73,32 @@
         {
           "photosPermission": "Allow Big Fam Festival to access your photos to set your profile picture."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/images/notification-icon.png",
+          "color": "#FF3366",
+          "sounds": ["./src/assets/sounds/notification.wav"],
+          "androidSettings": {
+            "priority": "high",
+            "sound": true,
+            "vibrate": true,
+            "enableLights": true,
+            "lightColor": "#FF3366",
+            "mode": "default"
+          },
+          "iosSettings": {
+            "sound": true,
+            "critical": false,
+            "badge": true,
+            "interruptionLevel": "active"
+          }
+        }
+      ],
+      [
+        "expo-google-services",
+        "./google-services.json"
       ]
     ],
     "extra": {

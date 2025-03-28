@@ -6,3 +6,4 @@ infrastructure/terraform/.terraform
 mobile/package-lock.json
 /mobile/keystores
 mobile/package-lock.json
+mobile/google-services.json
