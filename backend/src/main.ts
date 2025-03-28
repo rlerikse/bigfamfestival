@@ -14,7 +14,7 @@ async function bootstrap() {
 
   // Get configuration service
   const configService = app.get(ConfigService);
-  const port = configService.get<number>('PORT', 3000);
+  const port = configService.get<number>('PORT', 8080);
   const environment = configService.get<string>('NODE_ENV', 'development');
 
   // Set up logger

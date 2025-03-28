@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 
 // Configure how notifications are handled
 Notifications.setNotificationHandler({
@@ -36,9 +37,12 @@ export async function requestNotificationPermission() {
 // Get the push token for the device
 export async function getPushToken() {
   try {
-    const token = await Notifications.getExpoPushTokenAsync({
-      projectId: 'your-project-id-from-app.json' // Replace with your Expo project ID
-    });
+    const projectId = Constants?.expoConfig?.extra?.eas?.projectId; // Fetch projectId dynamically
+    if (!projectId) {
+      throw new Error('Expo projectId is missing. Please check your app configuration.');
+    }
+
+    const token = await Notifications.getExpoPushTokenAsync({ projectId });
     // eslint-disable-next-line no-console
     console.log('Expo Push Token:', token.data);
     return token.data;

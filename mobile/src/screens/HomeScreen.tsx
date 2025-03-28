@@ -252,6 +252,7 @@ const HomeScreen = () => {
     onSelect: (value: string) => void
   ) => (
     <TouchableOpacity
+      key={id} // Add unique key here
       style={[
         styles.filterButton,
         selectedValue === id ? 

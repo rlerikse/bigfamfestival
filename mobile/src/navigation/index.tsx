@@ -8,7 +8,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MyScheduleScreen from '../screens/MyScheduleScreen';
-// import MapScreen from '../screens/MapScreen';
+import MapScreen from '../screens/MapScreen';
 // import NotificationsScreen from '../screens/NotificationsScreen';
 // import MoreScreen from '../screens/MoreScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -94,7 +94,7 @@ function MainNavigator() {
       />
       <Tab.Screen 
         name="Map" 
-        component={HomeScreen} // Temporarily using HomeScreen
+        component={MapScreen}
         options={{ title: 'Map' }}
       />
       <Tab.Screen 
