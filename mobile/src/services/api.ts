@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 
 // Determine API base URL from environment variables or use default
-const API_URL = Constants?.expoConfig?.extra?.apiUrl || 'https://api.bigfamfestival.com/api/v1';
+const API_URL = Constants?.expoConfig?.extra?.apiUrl || 'https://bigfam-api-production-292369452544.us-central1.run.app';
 
 // Create axios instance with default config
 export const api = axios.create({
