@@ -92,5 +92,5 @@ jobs:
         env:
             EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build iOS app
-        run: eas build --platform ios --profile production --non-interactive
+      # - name: Build iOS app
+      #   run: eas build --platform ios --profile production --non-interactive
