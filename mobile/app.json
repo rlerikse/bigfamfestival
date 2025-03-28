@@ -95,10 +95,6 @@
             "interruptionLevel": "active"
           }
         }
-      ],
-      [
-        "expo-google-services",
-        "./google-services.json"
       ]
     ],
     "extra": {

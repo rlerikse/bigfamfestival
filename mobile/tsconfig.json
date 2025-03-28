@@ -2,7 +2,10 @@
   "compilerOptions": {
     "target": "esnext",
     "module": "esnext",
-    "lib": ["esnext", "dom"],
+    "lib": [
+      "esnext",
+      "dom"
+    ],
     "jsx": "react-native",
     "strict": true,
     "esModuleInterop": true,
@@ -15,9 +18,18 @@
     "isolatedModules": true,
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "babel.config.js", "jest.setup.js"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "jest.setup.js"
+  ],
+  "extends": "expo/tsconfig.base"
 }
