@@ -2,33 +2,33 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-// Colors based on festival branding
+// Colors based on festival branding (bf.jpg)
 const lightTheme = {
-  primary: '#FF3366', // Festival pink
-  secondary: '#8A2BE2', // Festival purple
-  background: '#FFFFFF',
-  card: '#F9F9F9',
-  text: '#333333',
-  border: '#DDDDDD',
-  notification: '#FF3366',
-  success: '#4BB543',
-  warning: '#FFD700',
-  error: '#FF0000',
-  muted: '#888888',
+  primary: '#2E4031',    // Dark Green (from trees/logo background)
+  secondary: '#6BBF59',  // Bright Green (accent from logo/grass)
+  background: '#F5F5DC',  // Cream/Off-White (for background)
+  card: '#FFFFFF',        // White for cards to stand out on cream
+  text: '#4A3B31',        // Dark Brown (for text)
+  border: '#D2B48C',      // Light Brown/Tan (for borders)
+  notification: '#6BBF59',// Bright Green for notifications
+  success: '#6BBF59',    // Bright Green for success
+  warning: '#FFA500',     // Orange for warning (standard)
+  error: '#D22B2B',       // Dark Red for error (standard)
+  muted: '#8A7967',       // Muted Brown/Gray
 };
 
 const darkTheme = {
-  primary: '#FF3366', // Keep the festival pink for brand consistency
-  secondary: '#8A2BE2', // Festival purple
-  background: '#121212',
-  card: '#1E1E1E',
-  text: '#FFFFFF',
-  border: '#444444',
-  notification: '#FF3366',
-  success: '#4BB543',
-  warning: '#FFD700',
-  error: '#FF0000',
-  muted: '#BBBBBB',
+  primary: '#6BBF59',    // Bright Green (as primary on dark background)
+  secondary: '#2E4031',  // Dark Green (as secondary)
+  background: '#1C2B20',  // Very Dark Green/Brown (for background)
+  card: '#2E4031',        // Dark Green (for cards)
+  text: '#F5F5DC',        // Cream/Off-White (for text)
+  border: '#4A3B31',      // Dark Brown (for borders)
+  notification: '#6BBF59',// Bright Green for notifications
+  success: '#6BBF59',    // Bright Green for success
+  warning: '#FFA500',     // Orange for warning (standard)
+  error: '#FF6B6B',       // Lighter Red for error on dark background
+  muted: '#A89C8C',       // Muted Cream/Gray
 };
 
 export type Theme = typeof lightTheme;

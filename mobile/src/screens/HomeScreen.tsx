@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -14,15 +14,9 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 // Import from our contexts
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
-
-// Import from our services
-import api from '../services/api';
 
 // Define event interface
 interface Event {
@@ -39,8 +33,6 @@ interface Event {
 
 const HomeScreen = () => {
   const { theme, isDark } = useTheme();
-  const { user } = useAuth();
-  const navigation = useNavigation();
   
   // State for events and loading states
   const [events, setEvents] = useState<Event[]>([]);
@@ -53,105 +45,24 @@ const HomeScreen = () => {
   const [selectedDay, setSelectedDay] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
 
-  // Mock festival days for the filter
+  // Festival days for the filter
   const festivalDays = [
     { id: 'all', label: 'All Days' },
-    { id: '2025-06-20', label: 'Day 1' },
-    { id: '2025-06-21', label: 'Day 2' },
-    { id: '2025-06-22', label: 'Day 3' },
+    { id: '2025-09-26', label: 'Sept 26th' },
+    { id: '2025-09-27', label: 'Sept 27th' },
+    { id: '2025-09-28', label: 'Sept 28th' },
   ];
 
-  // Mock stages for the filter
+  // Stages for the filter
   const stages = [
     { id: 'all', label: 'All Stages' },
-    { id: 'Main Stage', label: 'Main Stage' },
-    { id: 'Stage A', label: 'Stage A' },
-    { id: 'Stage B', label: 'Stage B' },
-    { id: 'Stage C', label: 'Stage C' },
+    { id: 'Apogee', label: 'Apogee' },
+    { id: 'The Bayou', label: 'The Bayou' },
+    { id: 'The Art Tent', label: 'The Art Tent' },
   ];
 
-  // This function would be connected to a real API in production
-  const fetchEvents = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // In a real app, we would call the API endpoint
-      // const response = await api.get('/events');
-      // const data = response.data;
-      
-      // For now, using mock data
-      const mockEvents: Event[] = [
-        {
-          id: '1',
-          name: 'DJ Nightwave',
-          stage: 'Main Stage',
-          date: '2025-06-20',
-          startTime: '19:30',
-          endTime: '21:00',
-          artists: ['DJ Nightwave'],
-          description: 'Experience the electrifying beats of DJ Nightwave',
-          imageUrl: 'https://images.unsplash.com/photo-1571751239073-38b8fcd74595?ixlib=rb-4.0.3&auto=format&fit=crop&w=1050&q=80',
-        },
-        {
-          id: '2',
-          name: 'Indie Sparks',
-          stage: 'Stage A',
-          date: '2025-06-20',
-          startTime: '18:00',
-          endTime: '19:30',
-          artists: ['Indie Sparks'],
-          description: 'Soulful indie melodies to start your evening',
-          imageUrl: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1050&q=80',
-        },
-        {
-          id: '3',
-          name: 'Rock Revolution',
-          stage: 'Stage B',
-          date: '2025-06-21',
-          startTime: '20:00',
-          endTime: '22:00',
-          artists: ['Rock Revolution'],
-          description: 'Get ready to rock with the most energetic band',
-          imageUrl: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?ixlib=rb-4.0.3&auto=format&fit=crop&w=1050&q=80',
-        },
-        {
-          id: '4',
-          name: 'Drum Circle',
-          stage: 'Stage C',
-          date: '2025-06-22',
-          startTime: '16:00',
-          endTime: '17:30',
-          artists: ['Drum Circle Collective'],
-          description: 'Join the community drum circle experience',
-          imageUrl: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?ixlib=rb-4.0.3&auto=format&fit=crop&w=1050&q=80',
-        },
-        {
-          id: '5',
-          name: 'Pop Sensation',
-          stage: 'Main Stage',
-          date: '2025-06-22',
-          startTime: '21:00',
-          endTime: '23:00',
-          artists: ['Pop Sensation'],
-          description: 'Chart-topping hits and amazing choreography',
-          imageUrl: 'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1050&q=80',
-        },
-      ];
-      
-      setEvents(mockEvents);
-      applyFilters(mockEvents, selectedDay, selectedStage);
-    } catch (err) {
-      console.error('Error fetching events:', err);
-      setError('Could not load events. Please try again later.');
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  };
-
   // Apply day and stage filters
-  const applyFilters = (allEvents: Event[], day: string, stage: string) => {
+  const applyFilters = useCallback((allEvents: Event[], day: string, stage: string) => {
     let filtered = [...allEvents];
     
     // Apply date filter if not 'all'
@@ -175,12 +86,168 @@ const HomeScreen = () => {
     });
     
     setFilteredEvents(filtered);
-  };
+  }, [setFilteredEvents]); // setFilteredEvents is stable, but good practice to include
+
+  // This function would be connected to a real API in production
+  const fetchEvents = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // In a real app, we would call the API endpoint
+      // const response = await api.get('/events');
+      // const data = response.data;
+      
+      // For now, using mock data
+      const mockEvents: Event[] = [
+        {
+          id: '1',
+          name: 'CASPA',
+          stage: 'Apogee',
+          date: '2025-09-26',
+          startTime: '22:00',
+          endTime: '23:30',
+          artists: ['CASPA'],
+          description: 'Heavyweight dubstep sounds from the legend CASPA.',
+          imageUrl: require('../assets/artists/caspa.jpg'),
+        },
+        {
+          id: '2',
+          name: 'SAKA',
+          stage: 'The Bayou',
+          date: '2025-09-26',
+          startTime: '20:30',
+          endTime: '21:45',
+          artists: ['SAKA'],
+          description: 'Innovative bass music explorations.',
+          imageUrl: require('../assets/artists/saka.jpg'),
+        },
+        {
+          id: '3',
+          name: 'LYNY',
+          stage: 'Apogee',
+          date: '2025-09-27',
+          startTime: '22:30',
+          endTime: '00:00',
+          artists: ['LYNY'],
+          description: 'Genre-bending bass and experimental beats.',
+          imageUrl: require('../assets/artists/lyny.jpg'),
+        },
+        {
+          id: '4',
+          name: 'TERNION SOUND (Farewell Tour)',
+          stage: 'The Bayou',
+          date: '2025-09-27',
+          startTime: '21:00',
+          endTime: '22:15',
+          artists: ['TERNION SOUND'],
+          description: "Don't miss the legendary Ternion Sound on their farewell tour.",
+          imageUrl: require('../assets/artists/ternion_sound.jpg'),
+        },
+        {
+          id: '5',
+          name: 'THE WIDDLER',
+          stage: 'Apogee',
+          date: '2025-09-28',
+          startTime: '21:30',
+          endTime: '23:00',
+          artists: ['THE WIDDLER'],
+          description: 'Deep dubstep vibrations.',
+          imageUrl: require('../assets/artists/the_widdler.jpg'),
+        },
+        {
+          id: '6',
+          name: 'KHIVA',
+          stage: 'The Bayou',
+          date: '2025-09-28',
+          startTime: '20:00',
+          endTime: '21:15',
+          artists: ['KHIVA'],
+          description: 'Dark and powerful bass music.',
+          imageUrl: require('../assets/artists/khiva.jpg'),
+        },
+        {
+          id: '7',
+          name: 'PROBCAUSE (DJ SET)',
+          stage: 'The Art Tent',
+          date: '2025-09-26',
+          startTime: '19:00',
+          endTime: '20:15',
+          artists: ['PROBCAUSE'],
+          description: 'Eclectic DJ set from ProbCause.',
+          imageUrl: require('../assets/artists/probcause.jpg'),
+        },
+        {
+          id: '8',
+          name: 'SUPER FUTURE X2',
+          stage: 'The Art Tent',
+          date: '2025-09-27',
+          startTime: '19:30',
+          endTime: '20:45',
+          artists: ['SUPER FUTURE'],
+          description: "Double dose of Super Future's unique sound.",
+          imageUrl: require('../assets/artists/super_future.jpg'),
+        },
+         {
+          id: '9',
+          name: 'JASON LEECH',
+          stage: 'The Art Tent',
+          date: '2025-09-28',
+          startTime: '18:30',
+          endTime: '19:45',
+          artists: ['JASON LEECH'],
+          description: 'Live electronic performance.',
+          imageUrl: require('../assets/artists/jason_leech.jpg'),
+        },
+        {
+          id: '10',
+          name: 'CANVAS',
+          stage: 'The Bayou',
+          date: '2025-09-26',
+          startTime: '17:00',
+          endTime: '18:00',
+          artists: ['CANVAS'],
+          description: 'Artistic bass music.',
+          imageUrl: require('../assets/artists/canvas.jpg'),
+        },
+        {
+          id: '11',
+          name: 'OZZTIN',
+          stage: 'Apogee',
+          date: '2025-09-27',
+          startTime: '18:00',
+          endTime: '19:00',
+          artists: ['OZZTIN'],
+          description: 'Energetic bass performance.',
+          imageUrl: require('../assets/artists/ozztin.jpg'),
+        },
+        {
+          id: '12',
+          name: 'YOKO',
+          stage: 'The Art Tent',
+          date: '2025-09-28',
+          startTime: '17:00',
+          endTime: '18:00',
+          artists: ['YOKO'],
+          description: 'Unique soundscapes.',
+          imageUrl: require('../assets/artists/yoko.jpg'),
+        }
+      ];
+      setEvents(mockEvents);
+      applyFilters(mockEvents, selectedDay, selectedStage);
+    } catch (err) {
+      console.error('Error fetching events:', err);
+      setError('Could not load events. Please try again later.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [applyFilters, selectedDay, selectedStage, setEvents, setError, setIsLoading, setIsRefreshing]); // Added dependencies
 
   // Toggle favorite/schedule
   const toggleFavorite = (eventId: string) => {
     // In a real app, this would call an API to add/remove from user's schedule
-    console.log(`Toggle favorite for event ${eventId}`);
+    // console.log(`Toggle favorite for event ${eventId}`); // Removed console.log
     
     // For now, just log the action
     alert(`Event ${eventId} added to your schedule!`);
@@ -207,7 +274,7 @@ const HomeScreen = () => {
   // Fetch events on component mount
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [fetchEvents]); // Added fetchEvents to dependency array
 
   // Render each event card
   const renderEventCard = ({ item }: { item: Event }) => {
@@ -223,7 +290,7 @@ const HomeScreen = () => {
     return (
       <View style={[styles.eventCard, { backgroundColor: theme.card }]}>
         <Image
-          source={{ uri: item.imageUrl || 'https://via.placeholder.com/300x200' }}
+          source={typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl}
           style={styles.eventImage}
           resizeMode="cover"
         />
@@ -257,14 +324,14 @@ const HomeScreen = () => {
         styles.filterButton,
         selectedValue === id ? 
           { backgroundColor: theme.primary } : 
-          { backgroundColor: 'transparent', borderColor: theme.border, borderWidth: 1 }
+          { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }
       ]}
       onPress={() => onSelect(id)}
     >
       <Text
         style={[
           styles.filterButtonText,
-          { color: selectedValue === id ? '#FFFFFF' : theme.text }
+          { color: selectedValue === id ? (isDark ? theme.text : '#FFFFFF') : theme.text }
         ]}
       >
         {label}
@@ -416,20 +483,24 @@ const styles = StyleSheet.create({
   },
   filterScroll: {
     flexGrow: 0,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   filterScrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 16, 
+    alignItems: 'center',
   },
   filterButton: {
-    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 16,
-    marginRight: 8,
-    marginTop: 8,
+    paddingHorizontal: 18, // Increased from 16
+    borderRadius: 20,
+    marginHorizontal: 6, // Increased from 4
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 38, // Slightly increased height for better vertical padding balance
   },
   filterButtonText: {
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
   eventsList: {
     padding: 16,

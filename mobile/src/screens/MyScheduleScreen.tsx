@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react'; // Removed useMemo
 import {
   StyleSheet,
   View,
@@ -16,6 +16,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, removeFromSchedule } from '../services/scheduleService';
 import { ScheduleEvent } from '../types/event';
 
+// Define festival days outside the component or memoize if it needs to be dynamic based on props/state
+const FESTIVAL_DAYS = [
+  '2025-09-26',
+  '2025-09-27',
+  '2025-09-28',
+];
+
 const MyScheduleScreen = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
@@ -26,14 +33,9 @@ const MyScheduleScreen = () => {
   
   // Day filter state
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [days, setDays] = useState<string[]>([]);
 
-  // Fetch user's schedule
-  useEffect(() => {
-    fetchSchedule();
-  }, []);
-
-  const fetchSchedule = async () => {
+  // fetchSchedule is now defined before useEffect
+  const fetchSchedule = useCallback(async () => {
     if (!user) return;
     
     setIsLoading(true);
@@ -41,15 +43,14 @@ const MyScheduleScreen = () => {
       const scheduleData = await getUserSchedule(user.id);
       setEvents(scheduleData);
       
-      // Extract unique days from events for the day filter
-      const uniqueDays = Array.from(new Set(scheduleData.map(event => event.date)))
-        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
-      
-      setDays(uniqueDays);
-      
-      // Default to the first day if available
-      if (uniqueDays.length > 0 && !selectedDay) {
-        setSelectedDay(uniqueDays[0]);
+      // Default to the first festival day if available and no day is selected
+      // or if the current selectedDay is not in the new FESTIVAL_DAYS
+      if (FESTIVAL_DAYS.length > 0) {
+        if (!selectedDay || !FESTIVAL_DAYS.includes(selectedDay)) {
+          setSelectedDay(FESTIVAL_DAYS[0]);
+        }
+      } else {
+        setSelectedDay(null); // No festival days, so no selected day
       }
     } catch (error) {
       console.error('Error fetching schedule:', error);
@@ -57,9 +58,13 @@ const MyScheduleScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, selectedDay]); // Dependencies for fetchSchedule
 
-  // Handle removing an event from the schedule
+  // Fetch user's schedule
+  useEffect(() => {
+    fetchSchedule();
+  }, [fetchSchedule]); // fetchSchedule is now a stable dependency
+
   const handleRemoveEvent = async (eventId: string) => {
     if (!user) return;
     
@@ -123,7 +128,14 @@ const MyScheduleScreen = () => {
           isSelected && { color: '#FFFFFF' },
           !isSelected && { color: theme.text }
         ]}>
-          {formatDate(day)}
+          {formatDate(day).split(', ')[0]} {/* Display only Weekday */}
+        </Text>
+        <Text style={[
+            styles.dayButtonDateText,
+            isSelected && { color: '#FFFFFF' },
+            !isSelected && { color: theme.muted }
+        ]}>
+            {formatDate(day).split(', ')[1]} {/* Display Month and Day */}
         </Text>
       </TouchableOpacity>
     );
@@ -177,14 +189,14 @@ const MyScheduleScreen = () => {
       <Text style={[styles.title, { color: theme.text }]}>My Schedule</Text>
       
       {/* Day filter */}
-      {days.length > 0 && (
+      {FESTIVAL_DAYS.length > 0 && (
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false} 
           style={styles.dayFilterContainer}
           contentContainerStyle={styles.dayFilterContent}
         >
-          {days.map(renderDayButton)}
+          {FESTIVAL_DAYS.map(renderDayButton)}
         </ScrollView>
       )}
       
@@ -240,20 +252,32 @@ const styles = StyleSheet.create({
   },
   dayFilterContainer: {
     marginBottom: 16,
+    paddingLeft: 8, 
   },
   dayFilterContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 8, 
+    alignItems: 'center', // Align items vertically
   },
   dayButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12, 
+    paddingVertical: 10, // Increased vertical padding
+    borderRadius: 10, // Slightly less rounded
     borderWidth: 1,
-    marginRight: 8,
+    marginRight: 10, 
+    minWidth: 110, // Adjusted min width
+    alignItems: 'center', 
+    justifyContent: 'center', // Center content vertically
+    height: 60, // Fixed height for buttons
   },
   dayButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 14, // Adjusted font size
+    fontWeight: 'bold', // Make weekday bold
+    textAlign: 'center',
+  },
+  dayButtonDateText: { // New style for the date part
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 2, // Add a little space between weekday and date
   },
   browseButton: {
     alignSelf: 'center',

@@ -10,7 +10,7 @@
     "splash": {
       "image": "./src/assets/images/splash.png",
       "resizeMode": "cover",
-      "backgroundColor": "#FF3366"
+      "backgroundColor": "#F5F5DC"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -35,7 +35,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
-        "backgroundColor": "#FF3366"
+        "backgroundColor": "#F5F5DC"
       },
       "package": "com.eriksensolutions.bigfam",
       "permissions": [
@@ -55,7 +55,7 @@
       "notification": {
         "androidMode": "default",
         "androidCollapsedTitle": "Big Fam Festival Updates",
-        "color": "#FF3366",
+        "color": "#2E4031",
         "icon": "./src/assets/images/notification-icon.png"
       }
     },
@@ -79,7 +79,7 @@
         "expo-notifications",
         {
           "icon": "./src/assets/images/notification-icon.png",
-          "color": "#FF3366",
+          "color": "#2E4031",
           "sounds": ["./src/assets/sounds/notification.wav"],
           "androidSettings": {
             "priority": "high",

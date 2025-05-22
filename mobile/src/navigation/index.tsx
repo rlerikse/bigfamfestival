@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -55,6 +56,8 @@ function AuthNavigator() {
 
 // Main tab navigation
 function MainNavigator() {
+  const { theme } = useTheme(); // Get the theme from context
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -77,9 +80,20 @@ function MainNavigator() {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#FF3366', // Festival pink
-        tabBarInactiveTintColor: '#888888',
-        headerShown: true,
+        tabBarActiveTintColor: theme.primary, // Use theme color
+        tabBarInactiveTintColor: theme.muted, // Use theme color
+        tabBarStyle: {
+          backgroundColor: theme.card, // Use theme color for tab bar background
+          borderTopColor: theme.border, // Use theme color for tab bar border
+        },
+        headerStyle: {
+          backgroundColor: theme.card, // Use theme color for header background
+        },
+        headerTintColor: theme.text, // Use theme color for header text
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
+        // headerShown: true, // This was already here, ensure it's set as needed
       })}
     >
       <Tab.Screen 
