@@ -21,6 +21,7 @@ interface AuthContextProps {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
+  loginAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
 }
@@ -107,6 +108,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Login as guest function
+  const loginAsGuest = async () => {
+    try {
+      setIsLoading(true);
+      // Create a guest user without storing any token
+      setUser({
+        id: 'guest-user',
+        name: 'Guest',
+        email: 'guest@example.com',
+        role: UserRole.ATTENDEE,
+        ticketType: 'guest'
+      });
+    } catch (error) {
+      console.error('Guest login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Update user data
   const updateUser = (userData: Partial<User>) => {
     if (user) {
@@ -115,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, loginAsGuest, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

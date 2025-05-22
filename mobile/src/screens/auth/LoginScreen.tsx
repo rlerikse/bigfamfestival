@@ -24,7 +24,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login } = useAuth();
+  const { login, loginAsGuest } = useAuth();
   const { theme, isDark } = useTheme();
   
   const [email, setEmail] = useState('');
@@ -43,6 +43,18 @@ const LoginScreen = () => {
       setIsLoading(true);
       setError(null);
       await login(email, password);
+    } catch (error) {
+      // Error is handled in AuthContext
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleGuestLogin = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await loginAsGuest();
     } catch (error) {
       // Error is handled in AuthContext
     } finally {
@@ -131,6 +143,20 @@ const LoginScreen = () => {
               Don&apos;t have an account? Sign up
             </Text>
           </TouchableOpacity>
+          
+          <View style={styles.dividerContainer}>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+            <Text style={[styles.dividerText, { color: theme.muted }]}>OR</Text>
+            <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          </View>
+          
+          <TouchableOpacity
+            style={[styles.guestButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={() => loginAsGuest()}
+            disabled={isLoading}
+          >
+            <Text style={[styles.guestButtonText, { color: theme.text }]}>Continue as Guest</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -155,6 +181,31 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     marginBottom: 16,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  guestButton: {
+    backgroundColor: '#F2F2F2',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  guestButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   titleText: {
     fontSize: 28,
