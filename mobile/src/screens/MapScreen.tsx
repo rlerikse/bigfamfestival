@@ -382,12 +382,12 @@ const MapScreen = () => {
         }
       >
         {/* Render POI markers */}
-        {pois.map(renderMarker)}
-        <Marker
+        {/* {pois.map(renderMarker)} */}
+        {/* <Marker
           coordinate={{ latitude: 37.78825, longitude: -122.4324 }}
           title="My Marker"
           description="Some description"
-        />
+        /> */}
       </MapView>
       
       {/* Map Legend */}
