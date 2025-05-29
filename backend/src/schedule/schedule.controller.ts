@@ -20,35 +20,33 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
 
+  // Add event to user's schedule
   @Post()
   async addToSchedule(
     @Request() req,
     @Body() createScheduleItemDto: CreateScheduleItemDto,
   ) {
-    // Use userId from JWT token, not from request body
     return this.scheduleService.addToSchedule(
       req.user.id,
       createScheduleItemDto,
     );
   }
 
-  @Delete()
-  async removeFromSchedule(
-    @Request() req,
-    @Body() removeScheduleItemDto: RemoveScheduleItemDto,
-  ) {
-    await this.scheduleService.removeFromSchedule(
-      req.user.id,
-      removeScheduleItemDto,
-    );
+  // Remove an event by eventId path param
+  @Delete(':eventId')
+  async removeFromSchedule(@Request() req, @Param('eventId') eventId: string) {
+    const removeDto: RemoveScheduleItemDto = { event_id: eventId };
+    await this.scheduleService.removeFromSchedule(req.user.id, removeDto);
     return { message: 'Event removed from schedule successfully' };
   }
 
+  // Get current user's schedule
   @Get()
   async getCurrentUserSchedule(@Request() req) {
     return this.scheduleService.getSchedule(req.user.id);
   }
 
+  // Get another user's schedule by userId param
   @Get(':userId')
   async getUserSchedule(@Param('userId') userId: string) {
     return this.scheduleService.getSchedule(userId);

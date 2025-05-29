@@ -154,13 +154,10 @@ export const removeFromSchedule = async (userId: string, eventId: string): Promi
     }
       try {
       // Send the request to remove from schedule
-      await api.delete('/schedule', {
+      // Call the new DELETE endpoint for subcollection strategy
+      await api.delete(`/schedule/${eventId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
-        },
-        data: {
-          // userId, // Removed: userId is now taken from JWT token on backend
-          event_id: eventId,
         },
       });
       

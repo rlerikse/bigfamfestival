@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -76,6 +77,24 @@ const MyScheduleScreen = () => {
       console.error('Error removing event:', error);
       setError('Failed to remove event from your schedule.');
     }
+  };
+
+  /**
+   * Show a confirmation before removing an event
+   */
+  const confirmRemoveEvent = (event: ScheduleEvent) => {
+    Alert.alert(
+      'Remove from Schedule',
+      `Are you sure you want to remove "${event.name}" from your schedule?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => handleRemoveEvent(event.id),
+        },
+      ],
+    );
   };
 
   // Filter events by selected day
@@ -161,7 +180,7 @@ const MyScheduleScreen = () => {
         
         <TouchableOpacity
           style={styles.heartButton}
-          onPress={() => handleRemoveEvent(item.id)}
+          onPress={() => confirmRemoveEvent(item)}
         >
           <Ionicons name="heart" size={24} color={theme.primary} />
         </TouchableOpacity>

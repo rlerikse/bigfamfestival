@@ -25,44 +25,45 @@ export class ScheduleService {
     if (!userId) {
       throw new Error('UserId is required');
     }
-    try {
-      await this.eventsService.findById(createScheduleItemDto.event_id);
-    } catch (error) {
-      throw new NotFoundException(
-        `Event with ID "${createScheduleItemDto.event_id}" not found`,
-      );
+    // Ensure event exists
+    await this.eventsService.findById(createScheduleItemDto.event_id);
+
+    // Reference the user's schedule document and items subcollection
+    const userScheduleDoc = this.firestoreService.db
+      .collection(this.collectionName)
+      .doc(userId);
+    const itemsCollection = userScheduleDoc.collection('items');
+    const itemDocRef = itemsCollection.doc(createScheduleItemDto.event_id);
+    const docSnapshot = await itemDocRef.get();
+
+    if (docSnapshot.exists) {
+      const data = docSnapshot.data();
+      if (!data) {
+        throw new NotFoundException(
+          `Scheduled item for event ID "${createScheduleItemDto.event_id}" not found`,
+        );
+      }
+      return {
+        id: docSnapshot.id,
+        userId,
+        eventId: data.eventId,
+        createdAt: data.createdAt.toDate(),
+      };
     }
 
-    const existingItems = await this.firestoreService.query<ScheduleItem>(
-      this.collectionName,
-      'userId',
-      '==',
-      userId,
-    );
-
-    const existingItem = existingItems.find(
-      (item) => item.eventId === createScheduleItemDto.event_id,
-    );
-
-    if (existingItem) {
-      return existingItem;
-    }
-
+    const now = new Date();
     const scheduleItem: Omit<ScheduleItem, 'id'> = {
       userId,
       eventId: createScheduleItemDto.event_id,
-      createdAt: new Date(),
+      createdAt: now,
     };
 
-    const result = await this.firestoreService.create(
-      this.collectionName,
-      scheduleItem,
-    );
+    // Ensure parent document exists (optional merge)
+    await userScheduleDoc.set({ userId }, { merge: true });
+    // Add to subcollection
+    await itemDocRef.set({ ...scheduleItem });
 
-    return {
-      id: result.id,
-      ...result.data,
-    };
+    return { id: itemDocRef.id, ...scheduleItem };
   }
 
   async removeFromSchedule(
@@ -73,24 +74,20 @@ export class ScheduleService {
     if (!userId) {
       throw new Error('UserId is required');
     }
-    const scheduleItems = await this.firestoreService.query<ScheduleItem>(
-      this.collectionName,
-      'userId',
-      '==',
-      userId,
-    );
+    // Reference the user's schedule items
+    const itemDocRef = this.firestoreService.db
+      .collection(this.collectionName)
+      .doc(userId)
+      .collection('items')
+      .doc(removeScheduleItemDto.event_id);
 
-    const itemToRemove = scheduleItems.find(
-      (item) => item.eventId === removeScheduleItemDto.event_id,
-    );
-
-    if (!itemToRemove) {
+    const docSnapshot = await itemDocRef.get();
+    if (!docSnapshot.exists) {
       throw new NotFoundException(
         `Event with ID "${removeScheduleItemDto.event_id}" not found in schedule`,
       );
     }
-
-    await this.firestoreService.delete(this.collectionName, itemToRemove.id);
+    await itemDocRef.delete();
   }
 
   async getSchedule(userId: string): Promise<Event[]> {
@@ -98,25 +95,24 @@ export class ScheduleService {
     if (!userId) {
       throw new Error('UserId is required');
     }
-    const scheduleItems = await this.firestoreService.query<ScheduleItem>(
-      this.collectionName,
-      'userId',
-      '==',
-      userId,
-    );
+    // Reference items subcollection
+    const itemsCollection = this.firestoreService.db
+      .collection(this.collectionName)
+      .doc(userId)
+      .collection('items');
 
-    if (scheduleItems.length === 0) {
+    const snapshot = await itemsCollection.get();
+    if (snapshot.empty) {
       return [];
     }
 
-    const eventIds = scheduleItems.map((item) => item.eventId);
-
+    const eventIds = snapshot.docs.map((doc) => doc.id);
     const eventPromises = eventIds.map((id) => this.eventsService.findById(id));
     const eventsWithNulls = await Promise.all(eventPromises);
-    const events = eventsWithNulls.filter((event) => event !== null) as Event[];
+    const events = eventsWithNulls.filter((e): e is Event => e !== null);
 
     // Sort events by date and start time
-    return events.sort((a: Event, b: Event) => {
+    return events.sort((a, b) => {
       const dateTimeA = new Date(`${a.date}T${a.startTime}`);
       const dateTimeB = new Date(`${b.date}T${b.startTime}`);
       return dateTimeA.getTime() - dateTimeB.getTime();

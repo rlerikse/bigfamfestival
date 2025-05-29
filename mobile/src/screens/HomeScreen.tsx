@@ -141,17 +141,32 @@ const HomeScreen = () => {
       const isInSchedule = userSchedule[event.id];
       
       if (isInSchedule) {
-        // Remove from schedule if already there
-        await removeFromSchedule(user.id, event.id);
-        
-        // Update local state
-        setUserSchedule(prev => {
-          const updated = {...prev};
-          delete updated[event.id];
-          return updated;
-        });
-        
-        Alert.alert("Removed", `"${event.name}" has been removed from your schedule.`);
+        Alert.alert(
+          "Remove from Schedule",
+          `Are you sure you want to remove "${event.name}" from your schedule?`,
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Remove",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await removeFromSchedule(user.id, event.id);
+                  setUserSchedule(prev => {
+                    const updated = { ...prev };
+                    delete updated[event.id];
+                    return updated;
+                  });
+                  Alert.alert("Removed", `"${event.name}" has been removed from your schedule.`);
+                } catch (error) {
+                  console.error("Error removing from schedule:", error);
+                  Alert.alert("Error", "Could not remove event from your schedule. Please try again.");
+                }
+              }
+            }
+          ]
+        );
+        return;
       } else {
         // Add to schedule
         await addToSchedule(user.id, event.id);
