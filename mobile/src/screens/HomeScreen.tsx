@@ -48,18 +48,18 @@ const HomeScreen = () => {
 
   // Festival days for the filter
   const festivalDays = [
-    { id: 'all', label: 'All Days' },
-    { id: '2025-09-26', label: 'Sept 26th' },
-    { id: '2025-09-27', label: 'Sept 27th' },
-    { id: '2025-09-28', label: 'Sept 28th' },
+    { id: 'all', label: 'ALL', date: 'all' }, // Changed label and added date
+    { id: '2025-09-26', label: 'FRI 26', date: '2025-09-26' }, // Changed label
+    { id: '2025-09-27', label: 'SAT 27', date: '2025-09-27' }, // Changed label
+    { id: '2025-09-28', label: 'SUN 28', date: '2025-09-28' }, // Changed label
   ];
 
   // Stages for the filter
   const stages = [
-    { id: 'all', label: 'All Stages' },
-    { id: 'Apogee', label: 'Apogee' },
-    { id: 'The Bayou', label: 'The Bayou' },
-    { id: 'The Art Tent', label: 'The Art Tent' },
+    { id: 'all', label: 'ALL', value: 'all' }, // Changed label and added value
+    { id: 'Apogee', label: 'APOGEE', value: 'Apogee' }, // Changed label
+    { id: 'The Bayou', label: 'THE BAYOU', value: 'The Bayou' }, // Changed label
+    { id: 'The Art Tent', label: 'ART TENT', value: 'The Art Tent' }, // Changed label
     // Add other stages as needed
   ];
 
@@ -273,62 +273,70 @@ const HomeScreen = () => {
     );
   };
 
-  // Render a filter button
-  const renderFilterButton = (
-    id: string,
-    label: string,
-    selectedValue: string,
-    onSelect: (value: string) => void
-  ) => (
-    <TouchableOpacity
-      key={id} // Add unique key here
-      style={[
-        styles.filterButton,
-        selectedValue === id ? 
-          { backgroundColor: theme.primary } : 
-          { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }
-      ]}
-      onPress={() => onSelect(id)}
-    >
-      <Text
-        style={[
-          styles.filterButtonText,
-          { color: selectedValue === id ? (isDark ? theme.text : '#FFFFFF') : theme.text }
-        ]}
-      >
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <View style={styles.content}>
         {/* Day Filters */}
-        <ScrollView 
-          horizontal
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.filterScrollContent}
-          style={styles.filterScroll}
-        >
-          {festivalDays.map(day => (
-            renderFilterButton(day.id, day.label, selectedDay, handleDayFilter)
-          ))}
-        </ScrollView>
+        <View style={styles.filterContainer}>
+          <ScrollView 
+            horizontal
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.filterContent}
+          >
+            {festivalDays.map((day, index) => (
+              <TouchableOpacity
+                key={day.id}
+                style={[
+                  styles.filterButton,
+                  day.date === selectedDay && { backgroundColor: theme.primary },
+                  { borderColor: theme.border },
+                  index === festivalDays.length - 1 && { marginRight: 0 }
+                ]}
+                onPress={() => handleDayFilter(day.date)}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  day.date === selectedDay && { color: '#FFFFFF' },
+                  day.date !== selectedDay && { color: theme.text }
+                ]}>
+                  {day.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
         
         {/* Stage Filters */}
-        <ScrollView 
-          horizontal
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.filterScrollContent}
-          style={styles.filterScroll}
-        >
-          {stages.map(stage => (
-            renderFilterButton(stage.id, stage.label, selectedStage, handleStageFilter)
-          ))}
-        </ScrollView>
+        <View style={styles.filterContainer}>
+          <ScrollView 
+            horizontal
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.filterContent}
+          >
+            {stages.map((stage, index) => (
+              <TouchableOpacity
+                key={stage.id}
+                style={[
+                  styles.filterButton,
+                  stage.value === selectedStage && { backgroundColor: theme.primary },
+                  { borderColor: theme.border },
+                  index === stages.length - 1 && { marginRight: 0 }
+                ]}
+                onPress={() => handleStageFilter(stage.value)}
+              >
+                <Text style={[
+                  styles.filterButtonText,
+                  stage.value === selectedStage && { color: '#FFFFFF' },
+                  stage.value !== selectedStage && { color: theme.text }
+                ]}>
+                  {stage.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
         
         {/* Events List */}
         {isLoading && !isRefreshing ? (
@@ -443,26 +451,30 @@ const styles = StyleSheet.create({
   resetButtonText: {
     fontWeight: '600',
   },
-  filterScroll: {
-    flexGrow: 0,
-    marginBottom: 12,
+  filterContainer: { // Renamed from filterScroll / dayFilterContainer
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    width: '100%',
   },
-  filterScrollContent: {
-    paddingHorizontal: 16, 
-    alignItems: 'center',
+  filterContent: { // Renamed from filterScrollContent / dayFilterContent
+    flexDirection: 'row',
+    justifyContent: 'space-between', // To space out buttons
+    width: '100%', // Ensure it takes full width for justifyContent to work
   },
-  filterButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 18, // Increased from 16
-    borderRadius: 20,
-    marginHorizontal: 6, // Increased from 4
+  filterButton: { // Renamed from filterButton / dayButton
+    paddingVertical: 14, // Matched from MyScheduleScreen
+    borderRadius: 10, // Matched from MyScheduleScreen
+    borderWidth: 1,
+    marginRight: 8, // Matched from MyScheduleScreen
+    flex: 1, // Added to make buttons take equal space
+    alignItems: 'center', 
     justifyContent: 'center',
-    alignItems: 'center',
-    height: 38, // Slightly increased height for better vertical padding balance
+    height: 48, // Matched from MyScheduleScreen
   },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
+  filterButtonText: { // Renamed from filterButtonText / dayButtonText
+    fontSize: 14, // Matched from MyScheduleScreen
+    fontWeight: '600', // Matched from MyScheduleScreen
+    textAlign: 'center',
   },
   eventsList: {
     padding: 16,
