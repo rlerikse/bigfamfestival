@@ -27,7 +27,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
         JWT_SECRET: Joi.string().required(),
         JWT_EXPIRATION: Joi.string().default('1d'),
         CORS_ORIGIN: Joi.string().default('*'),
-        GOOGLE_APPLICATION_CREDENTIALS: Joi.string().required(),
+        GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(), // Changed from .required()
         GOOGLE_PROJECT_ID: Joi.string().required(),
         STORAGE_BUCKET: Joi.string().required(),
       }),

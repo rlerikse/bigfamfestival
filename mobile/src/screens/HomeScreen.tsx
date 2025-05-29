@@ -11,32 +11,31 @@ import {
   FlatList,
   SafeAreaView,
   Platform,
+  Alert, // Added Alert
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native'; // Added useNavigation
+import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // For typing navigation
+import { RootStackParamList } from '../navigation'; // Import RootStackParamList
 
 // Import from our contexts
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext'; // Added useAuth
+import { addToSchedule } from '../services/scheduleService'; // Added addToSchedule
+import { ScheduleEvent } from '../types/event'; // Import ScheduleEvent
 
-// Define event interface
-interface Event {
-  id: string;
-  name: string;
-  stage: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  artists: string[];
-  description?: string;
-  imageUrl?: string;
-}
+// Define navigation prop type for HomeScreen
+type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 const HomeScreen = () => {
   const { theme, isDark } = useTheme();
+  const { user } = useAuth(); // Get user from AuthContext
+  const navigation = useNavigation<HomeScreenNavigationProp>(); // Get and type navigation object
   
   // State for events and loading states
-  const [events, setEvents] = useState<Event[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<ScheduleEvent[]>([]); // Use ScheduleEvent
+  const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([]); // Use ScheduleEvent
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,10 +58,11 @@ const HomeScreen = () => {
     { id: 'Apogee', label: 'Apogee' },
     { id: 'The Bayou', label: 'The Bayou' },
     { id: 'The Art Tent', label: 'The Art Tent' },
+    // Add other stages as needed
   ];
 
   // Apply day and stage filters
-  const applyFilters = useCallback((allEvents: Event[], day: string, stage: string) => {
+  const applyFilters = useCallback((allEvents: ScheduleEvent[], day: string, stage: string) => { // Use ScheduleEvent
     let filtered = [...allEvents];
     
     // Apply date filter if not 'all'
@@ -94,12 +94,18 @@ const HomeScreen = () => {
     setError(null);
     
     try {
-      // In a real app, we would call the API endpoint
-      // const response = await api.get('/events');
-      // const data = response.data;
-      
+      // TODO: Replace mock data with API call
+      // Example:
+      // const response = await fetch(`${API_BASE_URL}/events`); // Add query params for day/stage if API supports
+      // if (!response.ok) {
+      //   throw new Error(`API Error: ${response.status}`);
+      // }
+      // const data: ScheduleEvent[] = await response.json();
+      // setEvents(data);
+      // applyFilters(data, selectedDay, selectedStage);
+
       // For now, using mock data
-      const mockEvents: Event[] = [
+      const mockEvents: ScheduleEvent[] = [ // Use ScheduleEvent
         {
           id: '1',
           name: 'CASPA',
@@ -242,16 +248,35 @@ const HomeScreen = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [applyFilters, selectedDay, selectedStage, setEvents, setError, setIsLoading, setIsRefreshing]); // Added dependencies
+  }, [applyFilters, selectedDay, selectedStage]);
 
   // Toggle favorite/schedule
-  const toggleFavorite = (eventId: string) => {
-    // In a real app, this would call an API to add/remove from user's schedule
-    // console.log(`Toggle favorite for event ${eventId}`); // Removed console.log
-    
-    // For now, just log the action
-    alert(`Event ${eventId} added to your schedule!`);
-  };
+  const handleAddToSchedule = useCallback(async (event: ScheduleEvent) => { // Use ScheduleEvent
+    if (!user) {
+      Alert.alert(
+        "Login Required",
+        "You need to be logged in to add events to your schedule.",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Login",
+            onPress: () => navigation.navigate('Auth'), // Navigate to Auth stack
+          },
+        ]      );
+      return;
+    }
+      try {
+      // Add event to schedule using event ID
+      await addToSchedule(user.id, event.id);
+      Alert.alert("Success", `"${event.name}" has been added to your schedule.`);
+    } catch (error) {
+      console.error("Error adding to schedule:", error);
+      Alert.alert("Error", "Could not add event to your schedule. Please try again.");
+    }
+  }, [user, navigation]);
 
   // Handle refresh
   const onRefresh = () => {
@@ -277,7 +302,7 @@ const HomeScreen = () => {
   }, [fetchEvents]); // Added fetchEvents to dependency array
 
   // Render each event card
-  const renderEventCard = ({ item }: { item: Event }) => {
+  const renderEventCard = ({ item }: { item: ScheduleEvent }) => { // Use ScheduleEvent
     // Format the time for display
     const formatTime = (time: string) => {
       const [hours, minutes] = time.split(':');
@@ -301,7 +326,7 @@ const HomeScreen = () => {
           </Text>
           <TouchableOpacity 
             style={styles.favoriteButton}
-            onPress={() => toggleFavorite(item.id)}
+            onPress={() => handleAddToSchedule(item)} // Changed to handleAddToSchedule
           >
             <Ionicons name="heart-outline" size={24} color={theme.primary} />
             <Text style={[styles.favoriteText, { color: theme.primary }]}>Add to Schedule</Text>
