@@ -33,6 +33,7 @@ const MyScheduleScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   // Day filter state
   const [selectedDay, setSelectedDay] = useState<string>('all');
 
@@ -117,7 +118,9 @@ const MyScheduleScreen = () => {
   };
   // Render a single event card
   const renderEventCard = ({ item }: { item: ScheduleEvent }) => {
+    const isExpanded = item.id === expandedEventId;
     let displayImageUrl: string | null = null;
+    
     if (item.imageUrl) {
       if (item.imageUrl.startsWith('gs://')) {
         const gsPath = item.imageUrl.substring(5); 
@@ -139,23 +142,50 @@ const MyScheduleScreen = () => {
     }
 
     return (
-      <View style={[styles.eventCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
+      <TouchableOpacity 
+        style={[
+          styles.eventCard, 
+          { borderColor: theme.border, backgroundColor: theme.card },          isExpanded && {
+            borderWidth: 2,
+            marginVertical: 4,
+          }
+        ]}
+        onPress={() => setExpandedEventId(isExpanded ? null : item.id)}
+      >
         {displayImageUrl && (
           <Image
             source={{ uri: displayImageUrl }}
-            style={styles.eventImage}
+            style={[
+              styles.eventImage,
+              isExpanded && { height: 120, width: 120 }
+            ]}
             resizeMode="cover"
           />
         )}
-        <View style={[styles.eventInfo, !displayImageUrl && { paddingLeft: 12 /* Add padding if no image */ } ]}>
+        <View style={[
+          styles.eventInfo, 
+          !displayImageUrl && { paddingLeft: 12 },
+          isExpanded && { padding: 16 }
+        ]}>
           <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
           <Text style={[styles.eventDetails, { color: theme.muted }]}>
             {item.stage} - {formatTime(item.startTime)}
           </Text>
           
-          {/* Optional description */}
+          {/* Optional description - show full description when expanded */}
           {item.description && (
-            <Text style={[styles.eventDescription, { color: theme.text }]} numberOfLines={2}>
+            <Text 
+              style={[
+                styles.eventDescription, 
+                { color: theme.text },
+                isExpanded && { 
+                  fontSize: 14,
+                  marginTop: 8,
+                  lineHeight: 20,
+                }
+              ]} 
+              numberOfLines={isExpanded ? undefined : 2}
+            >
               {item.description}
             </Text>
           )}
@@ -163,15 +193,18 @@ const MyScheduleScreen = () => {
         
         <TouchableOpacity
           style={styles.heartButton}
-          onPress={() => confirmRemoveEvent(item)}
+          onPress={(e) => {
+            e.stopPropagation();
+            confirmRemoveEvent(item);
+          }}
         >
           <Ionicons name="heart" size={24} color={theme.primary} />
           <Text style={[styles.favoriteText, { color: theme.primary }]}>
             Added
           </Text>
         </TouchableOpacity>
-      </View>
-  );
+      </TouchableOpacity>
+    );
   };
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -353,6 +386,26 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  expandedCard: {
+    marginHorizontal: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  expandedImage: {
+    height: 150,
+    width: '100%',
+  },
+  expandedInfo: {
+    padding: 16,
+  },
+  expandedDescription: {
+    fontSize: 14,
+    marginTop: 8,
+    lineHeight: 20,
   },
 });
 
