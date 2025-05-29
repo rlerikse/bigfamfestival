@@ -1,36 +1,107 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { Firestore, Settings } from '@google-cloud/firestore';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 @Injectable()
-export class FirestoreService implements OnModuleInit {
+export class FirestoreService implements OnModuleInit, OnModuleDestroy {
   private readonly firestore: Firestore;
   private readonly logger = new Logger(FirestoreService.name);
+  private tempCredentialsFile?: string;
 
   constructor(projectId: string) {
+    // Handle Google Application Credentials BEFORE creating Firestore instance
+    this.handleCredentials();
+
     const settings: Settings = {
       projectId,
       ignoreUndefinedProperties: true, // Ignore undefined properties instead of throwing errors
     };
 
-    // Log authentication method for debugging
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      this.logger.log(`Using service account from: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
-    } else {
-      this.logger.log('Using default credentials (Cloud Run service identity)');
-    }
-
     this.firestore = new Firestore(settings);
   }
 
+  private handleCredentials() {
+    const credentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (!credentials) {
+      this.logger.log(
+        'No GOOGLE_APPLICATION_CREDENTIALS found, using default credentials (Cloud Run service identity)',
+      );
+      return;
+    }
+
+    this.logger.log('GOOGLE_APPLICATION_CREDENTIALS found, processing...');
+
+    // Check if credentials is a JSON string (starts with '{')
+    if (credentials.trim().startsWith('{')) {
+      try {
+        // Parse to validate JSON
+        const credentialsObj = JSON.parse(credentials);
+        this.logger.log(
+          `Parsed credentials for project: ${credentialsObj.project_id}`,
+        );
+        // Create a temporary file with the credentials
+        const tempDir = os.tmpdir();
+        this.tempCredentialsFile = path.join(
+          tempDir,
+          `gcp-credentials-${Date.now()}.json`,
+        );
+        fs.writeFileSync(this.tempCredentialsFile, credentials);
+        // Update the environment variable to point to the file
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = this.tempCredentialsFile;
+        this.logger.log(
+          `Created temporary credentials file: ${this.tempCredentialsFile}`,
+        );
+      } catch (error) {
+        this.logger.error(
+          'Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS:',
+          error.message,
+        );
+        this.logger.error(
+          'Credentials preview:',
+          credentials.substring(0, 100) + '...',
+        );
+        // Continue without credentials, will use default
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      }
+    } else if (credentials.length > 0) {
+      // Assume it's a file path, but check if it exists
+      this.logger.log(`Using service account from file path: ${credentials}`);
+      if (!fs.existsSync(credentials)) {
+        this.logger.error(`Credentials file not found: ${credentials}`);
+        delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      }
+    } else {
+      this.logger.warn(
+        'Empty GOOGLE_APPLICATION_CREDENTIALS, using default credentials',
+      );
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    }
+  }
+
   async onModuleInit() {
-    // Test Firestore connection during startup
+    // Test Firestore connection during startup but don't fail if it doesn't work
     try {
       this.logger.log('Testing Firestore connection...');
-      await this.firestore.listCollections();
-      this.logger.log('Firestore connection successful');
+      const collections = await this.firestore.listCollections();
+      this.logger.log(
+        `Firestore connection successful. Found ${collections.length} collections.`,
+      );
     } catch (error) {
-      this.logger.error('Firestore connection failed:', error.message);
-      // Don't throw error - let the app start and fail health checks instead
+      this.logger.error(
+        'Firestore connection failed during startup:',
+        error.message,
+      );
+      this.logger.warn(
+        'Application will continue to start, but Firestore operations may not work',
+      );
+      // Don't throw error - let the app start and handle Firestore errors per operation
     }
   }
 
@@ -104,5 +175,20 @@ export class FirestoreService implements OnModuleInit {
       id: doc.id,
       ...doc.data(),
     })) as T[];
+  }
+
+  async onModuleDestroy() {
+    // Clean up temporary credentials file
+    if (this.tempCredentialsFile && fs.existsSync(this.tempCredentialsFile)) {
+      try {
+        fs.unlinkSync(this.tempCredentialsFile);
+        this.logger.log('Cleaned up temporary credentials file');
+      } catch (error) {
+        this.logger.warn(
+          'Failed to clean up temporary credentials file:',
+          error.message,
+        );
+      }
+    }
   }
 }
