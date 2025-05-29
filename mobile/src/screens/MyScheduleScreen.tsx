@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Image, // Import Image component
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -116,9 +117,37 @@ const MyScheduleScreen = () => {
   };
   // Render a single event card
   const renderEventCard = ({ item }: { item: ScheduleEvent }) => {
+    let displayImageUrl: string | null = null;
+    if (item.imageUrl) {
+      if (item.imageUrl.startsWith('gs://')) {
+        const gsPath = item.imageUrl.substring(5); 
+        const firstSlashIndex = gsPath.indexOf('/');
+        if (firstSlashIndex > 0) {
+          const bucket = gsPath.substring(0, firstSlashIndex);
+          const objectPath = gsPath.substring(firstSlashIndex + 1);
+          const encodedPath = encodeURIComponent(objectPath);
+          displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+        }
+      } else if (item.imageUrl.startsWith('http')) {
+        displayImageUrl = item.imageUrl;
+      } else {
+        const bucket = 'bigfamfestival.firebasestorage.app'; 
+        const objectPath = item.imageUrl.startsWith('/') ? item.imageUrl.substring(1) : item.imageUrl;
+        const encodedPath = encodeURIComponent(objectPath);
+        displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+      }
+    }
+
     return (
       <View style={[styles.eventCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
-        <View style={styles.eventInfo}>
+        {displayImageUrl && (
+          <Image
+            source={{ uri: displayImageUrl }}
+            style={styles.eventImage}
+            resizeMode="cover"
+          />
+        )}
+        <View style={[styles.eventInfo, !displayImageUrl && { paddingLeft: 12 /* Add padding if no image */ } ]}>
           <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
           <Text style={[styles.eventDetails, { color: theme.muted }]}>
             {item.stage} - {formatTime(item.startTime)}
@@ -137,6 +166,9 @@ const MyScheduleScreen = () => {
           onPress={() => confirmRemoveEvent(item)}
         >
           <Ionicons name="heart" size={24} color={theme.primary} />
+          <Text style={[styles.favoriteText, { color: theme.primary }]}>
+            Added
+          </Text>
         </TouchableOpacity>
       </View>
   );
@@ -254,30 +286,50 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     flexDirection: 'row',
-    padding: 16,
+    alignItems: 'center', // Vertically center items in the card
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 12,
+    overflow: 'hidden', // Add overflow hidden to clip image corners
+    // backgroundColor will be set by theme.card
+  },
+  eventImage: { // Added style for the image
+    width: 100, // Make image wider, similar to HomeScreen
+    height: 100, // Make image take full height of card
+    // borderRadius: 8, // Remove specific borderRadius, rely on card's overflow:hidden
+    // marginRight: 12, // Remove margin, text will have its own padding
   },
   eventInfo: {
-    flex: 1,
+    flex: 1, // Takes remaining space
+    justifyContent: 'center', // Center content vertically if it's shorter
+    paddingVertical: 12, // Add vertical padding
+    paddingHorizontal: 12, // Add horizontal padding
   },
   eventName: {
-    fontSize: 16,
+    fontSize: 16, // Slightly smaller
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 2, // Reduced margin
   },
   eventDetails: {
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: 13, // Slightly smaller
+    marginBottom: 2, // Reduced margin
   },
   eventDescription: {
-    fontSize: 14,
-    marginTop: 4,
-  },
-  heartButton: {
+    fontSize: 12, // Slightly smaller
+    marginTop: 2, // Reduced margin
+    fontStyle: 'italic',
+  },  heartButton: {
+    flexDirection: 'column', // Stack icon and text vertically
+    alignItems: 'center',   // Center icon and text
     justifyContent: 'center',
-    padding: 4,
+    paddingHorizontal: 12, // Increased right padding to match Home page
+    marginRight: 4, // Added small margin to ensure spacing from edge
+  },
+  favoriteText: {
+    marginLeft: 0, // Removed as text is below icon
+    marginTop: 2,  // Add a small margin between icon and text
+    fontSize: 10, // Made text smaller
+    fontWeight: '600',
   },
   centeredContent: {
     alignItems: 'center',

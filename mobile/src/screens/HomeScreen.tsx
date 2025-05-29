@@ -242,20 +242,51 @@ const HomeScreen = () => {
     
     // Check if this event is in the user's schedule
     const isInSchedule = userSchedule[item.id];
+
+    let displayImageUrl: string | null = null;
+    if (item.imageUrl) {
+      if (item.imageUrl.startsWith('gs://')) {
+        // Handle gs:// URI
+        const gsPath = item.imageUrl.substring(5); // Remove 'gs://'
+        const firstSlashIndex = gsPath.indexOf('/');
+        if (firstSlashIndex > 0) {
+          const bucket = gsPath.substring(0, firstSlashIndex);
+          const objectPath = gsPath.substring(firstSlashIndex + 1);
+          const encodedPath = encodeURIComponent(objectPath);
+          displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+        }
+      } else if (item.imageUrl.startsWith('http')) {
+        // Handle direct HTTPS URL
+        displayImageUrl = item.imageUrl;
+      } else {
+        // Assume it's a relative path, use default bucket
+        const bucket = 'bigfamfestival.firebasestorage.app'; // Default bucket
+        const objectPath = item.imageUrl.startsWith('/') ? item.imageUrl.substring(1) : item.imageUrl;
+        const encodedPath = encodeURIComponent(objectPath);
+        displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+      }
+    }
     
     return (
       <View style={[styles.eventCard, { backgroundColor: theme.card }]}>
         <Image
-          source={item.imageUrl ? { uri: item.imageUrl } : require('../assets/images/event-placeholder.png')}
+          source={displayImageUrl ? { uri: displayImageUrl } : require('../assets/images/event-placeholder.png')}
           style={styles.eventImage}
           resizeMode="cover"
         />
         <View style={styles.eventContent}>
-          <Text style={[styles.eventTitle, { color: theme.text }]}>{item.name}</Text>
-          <Text style={[styles.eventDetails, { color: theme.muted }]}>
-            {item.stage} - {formatTime(item.startTime)}
-          </Text>
-          <TouchableOpacity 
+          <View style={styles.eventTextContainer}>
+            <Text style={[styles.eventTitle, { color: theme.text }]}>{item.name}</Text>
+            <Text style={[styles.eventDetails, { color: theme.muted }]}>
+              {item.stage} - {formatTime(item.startTime)}
+            </Text>
+            {item.description && (
+              <Text style={[styles.eventDescription, { color: theme.text }]} numberOfLines={2}>
+                {item.description}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
             style={styles.favoriteButton}
             onPress={() => handleAddToSchedule(item)}
           >
@@ -265,7 +296,7 @@ const HomeScreen = () => {
               color={theme.primary} 
             />
             <Text style={[styles.favoriteText, { color: theme.primary }]}>
-              {isInSchedule ? "Added to Schedule" : "Add to Schedule"}
+              {isInSchedule ? "Added" : "Add"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -477,10 +508,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventsList: {
-    padding: 16,
-    paddingBottom: 30, // Extra padding at bottom for notches and navigation
+    paddingHorizontal: 16, // Keep horizontal padding
+    paddingBottom: 30, 
   },
   eventCard: {
+    flexDirection: 'row', // Changed
+    alignItems: 'center', // Added
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 16,
@@ -492,29 +525,49 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+    // backgroundColor will be set dynamically by theme.card
   },
   eventImage: {
-    width: '100%',
-    height: 180,
+    width: '33%', // Changed from 100%
+    height: 100, // Changed from 180 to make card shorter
+    // resizeMode: 'cover' is still good
   },
   eventContent: {
-    padding: 16,
+    flex: 1, // Added
+    flexDirection: 'row', // Added
+    justifyContent: 'space-between', // Added
+    alignItems: 'center', // Added
+    paddingVertical: 8, // Adjusted padding
+    paddingHorizontal: 12, // Adjusted padding
+  },
+  eventTextContainer: { // New style for the text block
+    flex: 1, 
+    marginRight: 8, 
   },
   eventTitle: {
-    fontSize: 18,
+    fontSize: 16, 
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 2, // Reduced margin
   },
   eventDetails: {
-    fontSize: 14,
-    marginBottom: 12,
+    fontSize: 13, 
+    marginBottom: 0, // Removed margin
+  },
+  eventDescription: { // New style for the description
+    fontSize: 12,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   favoriteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column', // Stack icon and text vertically
+    alignItems: 'center',   // Center icon and text
+    justifyContent: 'center',
+    paddingHorizontal: 4, // Add some horizontal padding if needed
   },
   favoriteText: {
-    marginLeft: 4,
+    marginLeft: 0, // Removed as text is below icon
+    marginTop: 2,  // Add a small margin between icon and text
+    fontSize: 10, // Made text smaller
     fontWeight: '600',
   },
 });
