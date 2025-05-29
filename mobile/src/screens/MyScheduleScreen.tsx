@@ -19,9 +19,10 @@ import { ScheduleEvent } from '../types/event';
 
 // Define festival days outside the component or memoize if it needs to be dynamic based on props/state
 const FESTIVAL_DAYS = [
-  '2025-09-26',
-  '2025-09-27',
-  '2025-09-28',
+  { id: 'all', label: 'ALL', date: 'all' },
+  { id: '2025-09-26', label: 'FRI 26', date: '2025-09-26' },
+  { id: '2025-09-27', label: 'SAT 27', date: '2025-09-27' },
+  { id: '2025-09-28', label: 'SUN 28', date: '2025-09-28' },
 ];
 
 const MyScheduleScreen = () => {
@@ -31,9 +32,8 @@ const MyScheduleScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  
   // Day filter state
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string>('all');
 
   // fetchSchedule is now defined before useEffect
   const fetchSchedule = useCallback(async () => {
@@ -43,15 +43,13 @@ const MyScheduleScreen = () => {
     try {
       const scheduleData = await getUserSchedule(user.id);
       setEvents(scheduleData);
-      
-      // Default to the first festival day if available and no day is selected
-      // or if the current selectedDay is not in the new FESTIVAL_DAYS
+        // Default to 'all' if available
       if (FESTIVAL_DAYS.length > 0) {
-        if (!selectedDay || !FESTIVAL_DAYS.includes(selectedDay)) {
-          setSelectedDay(FESTIVAL_DAYS[0]);
+        if (!selectedDay || !FESTIVAL_DAYS.some(day => day.date === selectedDay)) {
+          setSelectedDay('all');
         }
       } else {
-        setSelectedDay(null); // No festival days, so no selected day
+        setSelectedDay('all');
       }
     } catch (error) {
       console.error('Error fetching schedule:', error);
@@ -95,12 +93,10 @@ const MyScheduleScreen = () => {
         },
       ],
     );
-  };
-
-  // Filter events by selected day
-  const filteredEvents = selectedDay
-    ? events.filter(event => event.date === selectedDay)
-    : events;
+  };  // Filter events by selected day
+  const filteredEvents = selectedDay === 'all'
+    ? events
+    : events.filter(event => event.date === selectedDay);
 
   // Sort events by start time
   const sortedEvents = [...filteredEvents].sort((a, b) => {
@@ -110,16 +106,6 @@ const MyScheduleScreen = () => {
     return a.startTime.localeCompare(b.startTime);
   });
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric' 
-    };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
   // Format time for display (convert 24h to 12h)
   const formatTime = (timeString: string) => {
     const [hours, minutes] = timeString.split(':');
@@ -128,38 +114,6 @@ const MyScheduleScreen = () => {
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
   };
-
-  // Render a day filter button
-  const renderDayButton = (day: string) => {
-    const isSelected = day === selectedDay;
-    return (
-      <TouchableOpacity
-        key={day}
-        style={[
-          styles.dayButton,
-          isSelected && { backgroundColor: theme.primary },
-          { borderColor: theme.border }
-        ]}
-        onPress={() => setSelectedDay(day)}
-      >
-        <Text style={[
-          styles.dayButtonText,
-          isSelected && { color: '#FFFFFF' },
-          !isSelected && { color: theme.text }
-        ]}>
-          {formatDate(day).split(', ')[0]} {/* Display only Weekday */}
-        </Text>
-        <Text style={[
-            styles.dayButtonDateText,
-            isSelected && { color: '#FFFFFF' },
-            !isSelected && { color: theme.muted }
-        ]}>
-            {formatDate(day).split(', ')[1]} {/* Display Month and Day */}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
   // Render a single event card
   const renderEventCard = ({ item }: { item: ScheduleEvent }) => {
     return (
@@ -185,75 +139,77 @@ const MyScheduleScreen = () => {
           <Ionicons name="heart" size={24} color={theme.primary} />
         </TouchableOpacity>
       </View>
-    );
-  };
-
-  // Render browse events link
-  const renderBrowseLink = () => (
-    <TouchableOpacity 
-      style={[styles.browseButton, { borderColor: theme.border }]}
-      onPress={() => {
-        // Navigate to Events screen (will need to be implemented)
-        // navigation.navigate('Events');
-      }}
-    >
-      <Text style={{ color: theme.primary }}>Browse All Events</Text>
-    </TouchableOpacity>
   );
-
+  };
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      <Text style={[styles.title, { color: theme.text }]}>My Schedule</Text>
-      
-      {/* Day filter */}
+      {/* Day filter at the top with proper alignment */}
       {FESTIVAL_DAYS.length > 0 && (
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.dayFilterContainer}
-          contentContainerStyle={styles.dayFilterContent}
-        >
-          {FESTIVAL_DAYS.map(renderDayButton)}
-        </ScrollView>
-      )}
-      
-      {/* Browse Events Button */}
-      {renderBrowseLink()}
-      
-      {/* Loading state */}
-      {isLoading ? (
-        <View style={styles.centeredContent}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : error ? (
-        <View style={styles.centeredContent}>
-          <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
-          <TouchableOpacity 
-            style={[styles.retryButton, { backgroundColor: theme.primary }]} 
-            onPress={fetchSchedule}
+        <View style={styles.dayFilterContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.dayFilterContent}
           >
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
+            {FESTIVAL_DAYS.map((day, index) => (
+              <TouchableOpacity
+                key={day.id}
+                style={[
+                  styles.dayButton,
+                  day.date === selectedDay && { backgroundColor: theme.primary },
+                  { borderColor: theme.border },
+                  index === FESTIVAL_DAYS.length - 1 && { marginRight: 0 }
+                ]}
+                onPress={() => setSelectedDay(day.date)}
+              >
+                <Text style={[
+                  styles.dayButtonText,
+                  day.date === selectedDay && { color: '#FFFFFF' },
+                  day.date !== selectedDay && { color: theme.text }
+                ]}>
+                  {day.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-      ) : sortedEvents.length === 0 ? (
-        <View style={styles.centeredContent}>
-          <Text style={[styles.emptyText, { color: theme.muted }]}>
-            {selectedDay 
-              ? 'No events in your schedule for this day.' 
-              : 'No events in your schedule yet.'}
-          </Text>
-          {renderBrowseLink()}
-        </View>
-      ) : (
-        <FlatList
-          data={sortedEvents}
-          renderItem={renderEventCard}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.eventsList}
-        />
       )}
+      
+      <View style={styles.contentContainer}>
+        {/* Loading state */}
+        {isLoading ? (
+          <View style={styles.centeredContent}>
+            <ActivityIndicator size="large" color={theme.primary} />
+          </View>
+        ) : error ? (
+          <View style={styles.centeredContent}>
+            <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
+            <TouchableOpacity 
+              style={[styles.retryButton, { backgroundColor: theme.primary }]} 
+              onPress={fetchSchedule}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : sortedEvents.length === 0 ? (
+          <View style={styles.centeredContent}>
+            <Text style={[styles.emptyText, { color: theme.muted }]}>
+              {selectedDay === 'all'
+                ? 'No events in your schedule yet.'
+                : 'No events in your schedule for this day.'}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={sortedEvents}
+            renderItem={renderEventCard}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.eventsList}
+          />
+        )}
+      </View>
     </View>
   );
 };
@@ -263,48 +219,34 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 16,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 16,
-    marginBottom: 16,
+  contentContainer: {
+    flex: 1,
+    width: '100%',
   },
   dayFilterContainer: {
     marginBottom: 16,
-    paddingLeft: 8, 
+    paddingHorizontal: 16,
+    width: '100%',
   },
   dayFilterContent: {
-    paddingHorizontal: 8, 
-    alignItems: 'center', // Align items vertically
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
   },
   dayButton: {
-    paddingHorizontal: 12, 
-    paddingVertical: 10, // Increased vertical padding
-    borderRadius: 10, // Slightly less rounded
+    paddingVertical: 14,
+    borderRadius: 10,
     borderWidth: 1,
-    marginRight: 10, 
-    minWidth: 110, // Adjusted min width
-    alignItems: 'center', 
-    justifyContent: 'center', // Center content vertically
-    height: 60, // Fixed height for buttons
+    marginRight: 8,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 48,
   },
   dayButtonText: {
-    fontSize: 14, // Adjusted font size
-    fontWeight: 'bold', // Make weekday bold
+    fontSize: 14,
+    fontWeight: '600',
     textAlign: 'center',
-  },
-  dayButtonDateText: { // New style for the date part
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 2, // Add a little space between weekday and date
-  },
-  browseButton: {
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 16,
   },
   eventsList: {
     paddingHorizontal: 16,
@@ -338,10 +280,9 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   centeredContent: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   emptyText: {
     fontSize: 16,
