@@ -1,6 +1,7 @@
 import { api } from './api';
 import { AxiosError } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
 // POI interface (Point Of Interest)
@@ -130,8 +131,8 @@ export const getNavigation = async (destination: { lat: number; long: number }):
  */
 const cachePOIs = async (pois: POI[]): Promise<void> => {
   try {
-    await SecureStore.setItemAsync('cached_pois', JSON.stringify(pois));
-    await SecureStore.setItemAsync('pois_cache_timestamp', Date.now().toString());
+    await AsyncStorage.setItem('cached_pois', JSON.stringify(pois));
+    await AsyncStorage.setItem('pois_cache_timestamp', Date.now().toString());
   } catch (error) {
     console.error('Error caching POIs:', error);
   }
@@ -142,8 +143,8 @@ const cachePOIs = async (pois: POI[]): Promise<void> => {
  */
 const getCachedPOIs = async (): Promise<POI[] | null> => {
   try {
-    const cachedData = await SecureStore.getItemAsync('cached_pois');
-    const timestampStr = await SecureStore.getItemAsync('pois_cache_timestamp');
+    const cachedData = await AsyncStorage.getItem('cached_pois');
+    const timestampStr = await AsyncStorage.getItem('pois_cache_timestamp');
     
     if (!cachedData || !timestampStr) {
       return null;
@@ -173,10 +174,9 @@ const getMockPOIs = async (): Promise<POI[]> => {
   // Try to use the user's current location as base if available, otherwise use default
   let baseLat = 42.3314;
   let baseLong = -83.0458;
-  
-  // Try to get last known user location if available
+    // Try to get last known user location if available
   try {
-    const lastLocationStr = await SecureStore.getItemAsync('last_known_location');
+    const lastLocationStr = await AsyncStorage.getItem('last_known_location');
     if (lastLocationStr) {
       const lastLocation = JSON.parse(lastLocationStr);
       baseLat = lastLocation.latitude;

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -78,9 +79,8 @@ const MapScreen = () => {
         };
         
         setUserLocation(newLocation);
-        
-        // Save last known location for future use
-        await SecureStore.setItemAsync('last_known_location', JSON.stringify(newLocation));
+          // Save last known location for future use
+        await AsyncStorage.setItem('last_known_location', JSON.stringify(newLocation));
         
         // Center map on user location
         if (mapRef.current) {
@@ -90,13 +90,12 @@ const MapScreen = () => {
             latitudeDelta: 0.005,
             longitudeDelta: 0.005,
           });
-        }
-      } catch (err) {
+        }      } catch (err) {
         console.error('Error getting location:', err);
         
         // Try to recover with last known location
         try {
-          const lastLocationStr = await SecureStore.getItemAsync('last_known_location');
+          const lastLocationStr = await AsyncStorage.getItem('last_known_location');
           if (lastLocationStr) {
             const lastLocation = JSON.parse(lastLocationStr);
             setUserLocation(lastLocation);

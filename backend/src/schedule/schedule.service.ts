@@ -21,6 +21,10 @@ export class ScheduleService {
     userId: string,
     createScheduleItemDto: CreateScheduleItemDto,
   ): Promise<ScheduleItem> {
+    // Validate userId
+    if (!userId) {
+      throw new Error('UserId is required');
+    }
     try {
       await this.eventsService.findById(createScheduleItemDto.event_id);
     } catch (error) {
@@ -65,6 +69,10 @@ export class ScheduleService {
     userId: string,
     removeScheduleItemDto: RemoveScheduleItemDto,
   ): Promise<void> {
+    // Validate userId
+    if (!userId) {
+      throw new Error('UserId is required');
+    }
     const scheduleItems = await this.firestoreService.query<ScheduleItem>(
       this.collectionName,
       'userId',
@@ -86,6 +94,10 @@ export class ScheduleService {
   }
 
   async getSchedule(userId: string): Promise<Event[]> {
+    // Validate userId
+    if (!userId) {
+      throw new Error('UserId is required');
+    }
     const scheduleItems = await this.firestoreService.query<ScheduleItem>(
       this.collectionName,
       'userId',

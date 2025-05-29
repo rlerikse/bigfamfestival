@@ -1,5 +1,6 @@
 import { api } from './api';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { ScheduleEvent } from '../types/event';
 
@@ -16,8 +17,9 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
     
     if (!token) {
       // eslint-disable-next-line no-console
-      console.log('No auth token found, returning mock schedule');
-      return getMockSchedule();
+      console.log('No auth token found, cannot fetch schedule.');
+      // Decide appropriate action: throw error or return empty array
+      throw new Error('Authentication token not found'); 
     }
     
     // Check network connectivity
@@ -30,13 +32,13 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
         return cachedData;
       }
       // eslint-disable-next-line no-console
-      console.log('Offline without cache, returning mock schedule');
-      return getMockSchedule();
+      console.log('Offline without cache, cannot fetch schedule.');
+      // Decide appropriate action: throw error or return empty array
+      throw new Error('Offline and no cached schedule available');
     }
-    
-    try {
-      // Fetch from API if online
-      const response = await api.get<ScheduleEvent[]>(`/schedule/${userId}`, {
+      try {
+      // Fetch from API if online - backend uses JWT token to identify the user
+      const response = await api.get<ScheduleEvent[]>('/schedule', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -47,32 +49,18 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
       
       return response.data;
     } catch (apiError: unknown) {
-      // If the endpoint isn't implemented yet (404)
-      const error = apiError as Error & { response?: { status: number } };
-      if (error.response?.status === 404) {
-        // eslint-disable-next-line no-console
-        console.log('API endpoint not implemented, using mock schedule');
-        const mockData = getMockSchedule();
-        await cacheSchedule(userId, mockData);
-        return mockData;
-      }
-      
-      // For other API errors, try cache or throw
-      throw apiError;
+      // REMOVED: 404 fallback to mock data. A 404 should be a real error.
+      // The backend should return [] for an empty schedule, not 404.
+      console.error('API error fetching schedule:', apiError);
+      throw apiError; // Re-throw the original API error
     }
   } catch (error: unknown) {
     console.error('Error fetching schedule:', error);
     
-    // Attempt to use cached data as fallback
-    const cachedData = await getCachedSchedule(userId);
-    if (cachedData) {
-      return cachedData;
-    }
-    
-    // Return mock data as last resort
-    // eslint-disable-next-line no-console
-    console.log('Returning mock schedule as fallback');
-    return getMockSchedule();
+    // Attempt to use cached data as a last resort if specifically intended,
+    // otherwise, re-throw or handle as a critical failure.
+    // For now, let's re-throw to make issues visible.
+    throw error;
   }
 };
 
@@ -104,30 +92,18 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
       return;
     }
     
-    try {
-      // Send the request to add to schedule
-      await api.post('/schedule', {
-        userId,
-        event_id: eventId,
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      // Update local cache for consistency
-      await updateLocalScheduleCache(userId, eventId, 'add');
-    } catch (apiError: unknown) {
-      // If the endpoint isn't implemented yet (404), just update local cache
-      if ((apiError as Error & {response?: {status: number}}).response?.status === 404) {
-        // eslint-disable-next-line no-console
-        console.log('API endpoint not implemented, updating local cache only');
-        await updateLocalScheduleCache(userId, eventId, 'add');
-        return;
-      }
-      
-      throw apiError;
-    }
+    // Send the request to add to schedule
+    await api.post('/schedule', {
+      // userId, // Removed: userId is now taken from JWT token on backend
+      event_id: eventId,
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    // Update local cache for consistency
+    await updateLocalScheduleCache(userId, eventId, 'add');
   } catch (error: unknown) {
     console.error('Add to schedule error:', 
       error instanceof Error ? error.message : 'Unknown error');
@@ -176,33 +152,22 @@ export const removeFromSchedule = async (userId: string, eventId: string): Promi
       
       return;
     }
-    
-    try {
+      try {
       // Send the request to remove from schedule
       await api.delete('/schedule', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
         data: {
-          userId,
+          // userId, // Removed: userId is now taken from JWT token on backend
           event_id: eventId,
         },
       });
       
       // Update local cache for consistency
-      await updateLocalScheduleCache(userId, eventId, 'remove');
-    } catch (apiError: unknown) {
-      // Cast to expected error type
-      const typedError = apiError as Error & { response?: { status: number, data?: { message?: string } } };
-      
-      // If the endpoint isn't implemented yet (404), just update local cache
-      if (typedError.response?.status === 404) {
-        // eslint-disable-next-line no-console
-        console.log('API endpoint not implemented, updating local cache only');
-        await updateLocalScheduleCache(userId, eventId, 'remove');
-        return;
-      }
-      
+      await updateLocalScheduleCache(userId, eventId, 'remove');    } catch (apiError: unknown) {
+      // No special handling for 404 anymore since the endpoint is implemented
+      console.error('API error removing from schedule:', apiError);
       throw apiError;
     }
   } catch (error: unknown) {
@@ -236,7 +201,7 @@ const updateLocalScheduleCache = async (
 ): Promise<void> => {
   try {
     // Get current cached schedule
-    const cachedScheduleStr = await SecureStore.getItemAsync(`schedule_${userId}`);
+    const cachedScheduleStr = await AsyncStorage.getItem(`schedule_${userId}`);
     let cachedSchedule: ScheduleEvent[] = [];
     
     if (cachedScheduleStr) {
@@ -248,14 +213,28 @@ const updateLocalScheduleCache = async (
       const eventExists = cachedSchedule.some(event => event.id === eventId);
       
       if (!eventExists) {
-        // Get the event details from the mock events (in a real app, this would come from the events API)
-        const mockEvents = getMockEvents();
-        const eventToAdd = mockEvents.find(event => event.id === eventId);
+        // Fetch the event details from the API
+        const token = await SecureStore.getItemAsync('userToken');
+        if (!token) {
+          console.error('No token found, cannot fetch event details for cache');
+          return;
+        }
+        try {
+          const response = await api.get<ScheduleEvent>(`/events/${eventId}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+          const eventToAdd = response.data;
         
-        if (eventToAdd) {
-          // Add the event to the cached schedule
-          cachedSchedule.push(eventToAdd);
-          await cacheSchedule(userId, cachedSchedule);
+          if (eventToAdd) {
+            // Add the event to the cached schedule
+            cachedSchedule.push(eventToAdd);
+            await cacheSchedule(userId, cachedSchedule);
+          }
+        } catch (fetchError) {
+          console.error(`Error fetching event ${eventId} for cache:`, fetchError);
+          // Optionally, decide if you still want to add a placeholder or skip caching
         }
       }
     } else if (action === 'remove') {
@@ -282,7 +261,7 @@ const queueOfflineAction = async (
 ): Promise<void> => {
   try {
     // Get existing queue
-    const queueStr = await SecureStore.getItemAsync('schedule_offline_queue');
+    const queueStr = await AsyncStorage.getItem('schedule_offline_queue');
     const queue = queueStr ? JSON.parse(queueStr) : [];
     
     // Add new action to queue
@@ -293,7 +272,7 @@ const queueOfflineAction = async (
     });
     
     // Save updated queue
-    await SecureStore.setItemAsync('schedule_offline_queue', JSON.stringify(queue));
+    await AsyncStorage.setItem('schedule_offline_queue', JSON.stringify(queue));
     // eslint-disable-next-line no-console
     console.log(`Queued ${actionType} action for later synchronization`);
   } catch (error) {
@@ -316,7 +295,7 @@ export const processScheduleOfflineQueue = async (): Promise<void> => {
     }
     
     // Get the queue
-    const queueStr = await SecureStore.getItemAsync('schedule_offline_queue');
+    const queueStr = await AsyncStorage.getItem('schedule_offline_queue');
     if (!queueStr) {
       return; // No queued actions
     }
@@ -348,9 +327,9 @@ export const processScheduleOfflineQueue = async (): Promise<void> => {
     
     // Update the queue with only failed actions
     if (failedActions.length > 0) {
-      await SecureStore.setItemAsync('schedule_offline_queue', JSON.stringify(failedActions));
+      await AsyncStorage.setItem('schedule_offline_queue', JSON.stringify(failedActions));
     } else {
-      await SecureStore.deleteItemAsync('schedule_offline_queue');
+      await AsyncStorage.removeItem('schedule_offline_queue');
     }
     // eslint-disable-next-line no-console
     console.log(`Processed offline queue. ${failedActions.length} actions remaining.`);
@@ -364,8 +343,8 @@ export const processScheduleOfflineQueue = async (): Promise<void> => {
  */
 const cacheSchedule = async (userId: string, schedule: ScheduleEvent[]): Promise<void> => {
   try {
-    await SecureStore.setItemAsync(`schedule_${userId}`, JSON.stringify(schedule));
-    await SecureStore.setItemAsync(`schedule_cache_timestamp_${userId}`, Date.now().toString());
+    await AsyncStorage.setItem(`schedule_${userId}`, JSON.stringify(schedule));
+    await AsyncStorage.setItem(`schedule_cache_timestamp_${userId}`, Date.now().toString());
   } catch (error) {
     console.error('Error caching schedule:', error);
   }
@@ -376,8 +355,8 @@ const cacheSchedule = async (userId: string, schedule: ScheduleEvent[]): Promise
  */
 const getCachedSchedule = async (userId: string): Promise<ScheduleEvent[] | null> => {
   try {
-    const cachedData = await SecureStore.getItemAsync(`schedule_${userId}`);
-    const timestampStr = await SecureStore.getItemAsync(`schedule_cache_timestamp_${userId}`);
+    const cachedData = await AsyncStorage.getItem(`schedule_${userId}`);
+    const timestampStr = await AsyncStorage.getItem(`schedule_cache_timestamp_${userId}`);
     
     if (!cachedData || !timestampStr) {
       return null;
@@ -401,68 +380,33 @@ const getCachedSchedule = async (userId: string): Promise<ScheduleEvent[] | null
 };
 
 /**
- * Get mock events (for development/testing)
+ * Check if an event is in the user's schedule
+ * 
+ * @param userId The user ID
+ * @param eventId The event ID to check
+ * @returns Promise that resolves to true if the event is in the user's schedule, false otherwise
  */
-const getMockEvents = (): ScheduleEvent[] => {
-  return [
-    {
-      id: 'event-1',
-      name: 'DJ Nightwave',
-      stage: 'Main Stage',
-      date: '2025-06-20',
-      startTime: '19:30',
-      endTime: '21:00',
-      artists: ['DJ Nightwave'],
-      description: 'Experience the electrifying beats of DJ Nightwave',
-    },
-    {
-      id: 'event-2',
-      name: 'Indie Sparks',
-      stage: 'Stage A',
-      date: '2025-06-20',
-      startTime: '18:00',
-      endTime: '19:30',
-      artists: ['Indie Sparks'],
-      description: 'Soulful indie melodies to start your evening',
-    },
-    {
-      id: 'event-3',
-      name: 'Rock Revolution',
-      stage: 'Stage B',
-      date: '2025-06-21',
-      startTime: '20:00',
-      endTime: '22:00',
-      artists: ['Rock Revolution'],
-      description: 'Get ready to rock with the most energetic band',
-    },
-    {
-      id: 'event-4',
-      name: 'Drum Circle',
-      stage: 'Stage C',
-      date: '2025-06-22',
-      startTime: '16:00',
-      endTime: '17:30',
-      artists: ['Drum Circle Collective'],
-      description: 'Join the community drum circle experience',
-    },
-    {
-      id: 'event-5',
-      name: 'Pop Sensation',
-      stage: 'Main Stage',
-      date: '2025-06-22',
-      startTime: '21:00',
-      endTime: '23:00',
-      artists: ['Pop Sensation'],
-      description: 'Chart-topping hits and amazing choreography',
-    },
-  ];
-};
-
-/**
- * Generate mock schedule data for development/testing purposes
- */
-const getMockSchedule = (): ScheduleEvent[] => {
-  // Return a subset of mock events as the user's schedule
-  const allEvents = getMockEvents();
-  return [allEvents[0], allEvents[2]]; // DJ Nightwave and Rock Revolution
+export const isEventInSchedule = async (userId: string, eventId: string): Promise<boolean> => {
+  try {
+    // Try to get the user's schedule (this will use cached data if offline)
+    const schedule = await getUserSchedule(userId);
+    
+    // Check if the event is in the schedule
+    return schedule.some(event => event.id === eventId);
+  } catch (error) {
+    console.error('Error checking if event is in schedule:', error);
+    
+    // As a fallback, try to check the cached schedule directly
+    try {
+      const cachedSchedule = await getCachedSchedule(userId);
+      if (cachedSchedule) {
+        return cachedSchedule.some(event => event.id === eventId);
+      }
+    } catch (cacheError) {
+      console.error('Error checking cached schedule:', cacheError);
+    }
+    
+    // If all fails, assume the event is not in the schedule
+    return false;
+  }
 };

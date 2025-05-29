@@ -27,7 +27,7 @@ export class ScheduleController {
   ) {
     // Use userId from JWT token, not from request body
     return this.scheduleService.addToSchedule(
-      req.user.userId,
+      req.user.id,
       createScheduleItemDto,
     );
   }
@@ -38,7 +38,7 @@ export class ScheduleController {
     @Body() removeScheduleItemDto: RemoveScheduleItemDto,
   ) {
     await this.scheduleService.removeFromSchedule(
-      req.user.userId,
+      req.user.id,
       removeScheduleItemDto,
     );
     return { message: 'Event removed from schedule successfully' };
@@ -46,7 +46,7 @@ export class ScheduleController {
 
   @Get()
   async getCurrentUserSchedule(@Request() req) {
-    return this.scheduleService.getSchedule(req.user.userId);
+    return this.scheduleService.getSchedule(req.user.id);
   }
 
   @Get(':userId')

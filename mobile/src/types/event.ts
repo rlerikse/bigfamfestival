@@ -11,6 +11,9 @@ export interface Event {
     artists: string[];  // Array of artist IDs
     description?: string;
     imageUrl?: string;
+    createdBy?: string;  // Admin user ID
+    createdAt?: string;  // Firestore timestamp
+    updatedAt?: string;  // Firestore timestamp
   }
   
   /**

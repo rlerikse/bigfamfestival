@@ -1,5 +1,6 @@
 import { api } from './api';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
@@ -236,7 +237,7 @@ const queueOfflineAction = async (
 ): Promise<void> => {
   try {
     // Get existing queue
-    const queueStr = await SecureStore.getItemAsync('offline_action_queue');
+    const queueStr = await AsyncStorage.getItem('offline_action_queue');
     const queue = queueStr ? JSON.parse(queueStr) : [];
     
     // Add new action to queue
@@ -247,7 +248,7 @@ const queueOfflineAction = async (
     });
     
     // Save updated queue
-    await SecureStore.setItemAsync('offline_action_queue', JSON.stringify(queue));
+    await AsyncStorage.setItem('offline_action_queue', JSON.stringify(queue));
     
     console.log(`Queued ${actionType} action for later synchronization`);
   } catch (error) {
@@ -269,7 +270,7 @@ export const processCampsiteOfflineQueue = async (): Promise<void> => {
     }
     
     // Get the queue
-    const queueStr = await SecureStore.getItemAsync('offline_action_queue');
+    const queueStr = await AsyncStorage.getItem('offline_action_queue');
     if (!queueStr) {
       return; // No queued actions
     }
@@ -301,9 +302,9 @@ export const processCampsiteOfflineQueue = async (): Promise<void> => {
     
     // Update the queue with only failed actions
     if (failedActions.length > 0) {
-      await SecureStore.setItemAsync('offline_action_queue', JSON.stringify(failedActions));
+      await AsyncStorage.setItem('offline_action_queue', JSON.stringify(failedActions));
     } else {
-      await SecureStore.deleteItemAsync('offline_action_queue');
+      await AsyncStorage.removeItem('offline_action_queue');
     }
     
     console.log(`Processed offline queue. ${failedActions.length} actions remaining.`);

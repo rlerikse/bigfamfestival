@@ -15,15 +15,17 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native'; // Added useNavigation
-import { NativeStackNavigationProp } from '@react-navigation/native-stack'; // For typing navigation
-import { RootStackParamList } from '../navigation'; // Import RootStackParamList
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation';
+import * as SecureStore from 'expo-secure-store';
 
 // Import from our contexts
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext'; // Added useAuth
-import { addToSchedule } from '../services/scheduleService'; // Added addToSchedule
-import { ScheduleEvent } from '../types/event'; // Import ScheduleEvent
+import { useAuth } from '../contexts/AuthContext';
+import { addToSchedule, isEventInSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
+import { api } from '../services/api';
+import { ScheduleEvent } from '../types/event';
 
 // Define navigation prop type for HomeScreen
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -32,13 +34,13 @@ const HomeScreen = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth(); // Get user from AuthContext
   const navigation = useNavigation<HomeScreenNavigationProp>(); // Get and type navigation object
-  
-  // State for events and loading states
+    // State for events and loading states
   const [events, setEvents] = useState<ScheduleEvent[]>([]); // Use ScheduleEvent
   const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([]); // Use ScheduleEvent
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
   
   // State for filters
   const [selectedDay, setSelectedDay] = useState<string>('all');
@@ -86,170 +88,36 @@ const HomeScreen = () => {
     });
     
     setFilteredEvents(filtered);
-  }, [setFilteredEvents]); // setFilteredEvents is stable, but good practice to include
-
-  // This function would be connected to a real API in production
+  }, [setFilteredEvents]); // setFilteredEvents is stable, but good practice to include  // Fetch events from the backend API
   const fetchEvents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // TODO: Replace mock data with API call
-      // Example:
-      // const response = await fetch(`${API_BASE_URL}/events`); // Add query params for day/stage if API supports
-      // if (!response.ok) {
-      //   throw new Error(`API Error: ${response.status}`);
-      // }
-      // const data: ScheduleEvent[] = await response.json();
-      // setEvents(data);
-      // applyFilters(data, selectedDay, selectedStage);
-
-      // For now, using mock data
-      const mockEvents: ScheduleEvent[] = [ // Use ScheduleEvent
-        {
-          id: '1',
-          name: 'CASPA',
-          stage: 'Apogee',
-          date: '2025-09-26',
-          startTime: '22:00',
-          endTime: '23:30',
-          artists: ['CASPA'],
-          description: 'Heavyweight dubstep sounds from the legend CASPA.',
-          imageUrl: require('../assets/artists/caspa.jpg'),
-        },
-        {
-          id: '2',
-          name: 'SAKA',
-          stage: 'The Bayou',
-          date: '2025-09-26',
-          startTime: '20:30',
-          endTime: '21:45',
-          artists: ['SAKA'],
-          description: 'Innovative bass music explorations.',
-          imageUrl: require('../assets/artists/saka.jpg'),
-        },
-        {
-          id: '3',
-          name: 'LYNY',
-          stage: 'Apogee',
-          date: '2025-09-27',
-          startTime: '22:30',
-          endTime: '00:00',
-          artists: ['LYNY'],
-          description: 'Genre-bending bass and experimental beats.',
-          imageUrl: require('../assets/artists/lyny.jpg'),
-        },
-        {
-          id: '4',
-          name: 'TERNION SOUND (Farewell Tour)',
-          stage: 'The Bayou',
-          date: '2025-09-27',
-          startTime: '21:00',
-          endTime: '22:15',
-          artists: ['TERNION SOUND'],
-          description: "Don't miss the legendary Ternion Sound on their farewell tour.",
-          imageUrl: require('../assets/artists/ternion_sound.jpg'),
-        },
-        {
-          id: '5',
-          name: 'THE WIDDLER',
-          stage: 'Apogee',
-          date: '2025-09-28',
-          startTime: '21:30',
-          endTime: '23:00',
-          artists: ['THE WIDDLER'],
-          description: 'Deep dubstep vibrations.',
-          imageUrl: require('../assets/artists/the_widdler.jpg'),
-        },
-        {
-          id: '6',
-          name: 'KHIVA',
-          stage: 'The Bayou',
-          date: '2025-09-28',
-          startTime: '20:00',
-          endTime: '21:15',
-          artists: ['KHIVA'],
-          description: 'Dark and powerful bass music.',
-          imageUrl: require('../assets/artists/khiva.jpg'),
-        },
-        {
-          id: '7',
-          name: 'PROBCAUSE (DJ SET)',
-          stage: 'The Art Tent',
-          date: '2025-09-26',
-          startTime: '19:00',
-          endTime: '20:15',
-          artists: ['PROBCAUSE'],
-          description: 'Eclectic DJ set from ProbCause.',
-          imageUrl: require('../assets/artists/probcause.jpg'),
-        },
-        {
-          id: '8',
-          name: 'SUPER FUTURE X2',
-          stage: 'The Art Tent',
-          date: '2025-09-27',
-          startTime: '19:30',
-          endTime: '20:45',
-          artists: ['SUPER FUTURE'],
-          description: "Double dose of Super Future's unique sound.",
-          imageUrl: require('../assets/artists/super_future.jpg'),
-        },
-         {
-          id: '9',
-          name: 'JASON LEECH',
-          stage: 'The Art Tent',
-          date: '2025-09-28',
-          startTime: '18:30',
-          endTime: '19:45',
-          artists: ['JASON LEECH'],
-          description: 'Live electronic performance.',
-          imageUrl: require('../assets/artists/jason_leech.jpg'),
-        },
-        {
-          id: '10',
-          name: 'CANVAS',
-          stage: 'The Bayou',
-          date: '2025-09-26',
-          startTime: '17:00',
-          endTime: '18:00',
-          artists: ['CANVAS'],
-          description: 'Artistic bass music.',
-          imageUrl: require('../assets/artists/canvas.jpg'),
-        },
-        {
-          id: '11',
-          name: 'OZZTIN',
-          stage: 'Apogee',
-          date: '2025-09-27',
-          startTime: '18:00',
-          endTime: '19:00',
-          artists: ['OZZTIN'],
-          description: 'Energetic bass performance.',
-          imageUrl: require('../assets/artists/ozztin.jpg'),
-        },
-        {
-          id: '12',
-          name: 'YOKO',
-          stage: 'The Art Tent',
-          date: '2025-09-28',
-          startTime: '17:00',
-          endTime: '18:00',
-          artists: ['YOKO'],
-          description: 'Unique soundscapes.',
-          imageUrl: require('../assets/artists/yoko.jpg'),
-        }
-      ];
-      setEvents(mockEvents);
-      applyFilters(mockEvents, selectedDay, selectedStage);
+      // Get auth token for API request
+      const token = await SecureStore.getItemAsync('userToken');
+      
+      // Make the API request to get events from Firestore
+      const response = await api.get<ScheduleEvent[]>('/events', {
+        headers: token ? {
+          Authorization: `Bearer ${token}`
+        } : undefined
+      });
+      
+      // Process the events from the API
+      const fetchedEvents = response.data;
+      
+      // Set the events and apply any filters
+      setEvents(fetchedEvents);
+      applyFilters(fetchedEvents, selectedDay, selectedStage);
     } catch (err) {
       console.error('Error fetching events:', err);
-      setError('Could not load events. Please try again later.');
+      setError('Could not load events from the server. Please try again later.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [applyFilters, selectedDay, selectedStage]);
-
   // Toggle favorite/schedule
   const handleAddToSchedule = useCallback(async (event: ScheduleEvent) => { // Use ScheduleEvent
     if (!user) {
@@ -270,14 +138,37 @@ const HomeScreen = () => {
     }
     
     try {
-      // Add event to schedule using event ID
-      await addToSchedule(user.id, event.id);
-      Alert.alert("Success", `"${event.name}" has been added to your schedule.`);
+      const isInSchedule = userSchedule[event.id];
+      
+      if (isInSchedule) {
+        // Remove from schedule if already there
+        await removeFromSchedule(user.id, event.id);
+        
+        // Update local state
+        setUserSchedule(prev => {
+          const updated = {...prev};
+          delete updated[event.id];
+          return updated;
+        });
+        
+        Alert.alert("Removed", `"${event.name}" has been removed from your schedule.`);
+      } else {
+        // Add to schedule
+        await addToSchedule(user.id, event.id);
+        
+        // Update local state
+        setUserSchedule(prev => ({
+          ...prev,
+          [event.id]: true
+        }));
+        
+        Alert.alert("Success", `"${event.name}" has been added to your schedule.`);
+      }
     } catch (error) {
-      console.error("Error adding to schedule:", error);
-      Alert.alert("Error", "Could not add event to your schedule. Please try again.");
+      console.error("Error updating schedule:", error);
+      Alert.alert("Error", "Could not update your schedule. Please try again.");
     }
-  }, [user, navigation]);
+  }, [user, navigation, userSchedule]);
 
   // Handle refresh
   const onRefresh = () => {
@@ -295,13 +186,34 @@ const HomeScreen = () => {
   const handleStageFilter = (stage: string) => {
     setSelectedStage(stage);
     applyFilters(events, selectedDay, stage);
-  };
+  };  // Load user's schedule to track which events are in it
+  const loadUserSchedule = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const { id } = user;
+      const schedule = await getUserSchedule(id);
+      
+      // Create a mapping of event IDs to true for quick lookup
+      const scheduleMap = schedule.reduce<Record<string, boolean>>((acc, event) => {
+        acc[event.id] = true;
+        return acc;
+      }, {});
+      
+      setUserSchedule(scheduleMap);
+    } catch (err) {
+      console.error('Error loading user schedule:', err);
+      // Don't set error state here as it would replace the main error message
+    }
+  }, [user]);
 
   // Fetch events on component mount
   useEffect(() => {
     fetchEvents();
-  }, [fetchEvents]); // Added fetchEvents to dependency array
-
+    if (user) {
+      loadUserSchedule();
+    }
+  }, [fetchEvents, loadUserSchedule, user]); // Added loadUserSchedule and user to dependency array
   // Render each event card
   const renderEventCard = ({ item }: { item: ScheduleEvent }) => { // Use ScheduleEvent
     // Format the time for display
@@ -312,11 +224,14 @@ const HomeScreen = () => {
       const formattedHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
       return `${formattedHour}:${minutes} ${period}`;
     };
-
+    
+    // Check if this event is in the user's schedule
+    const isInSchedule = userSchedule[item.id];
+    
     return (
       <View style={[styles.eventCard, { backgroundColor: theme.card }]}>
         <Image
-          source={typeof item.imageUrl === 'string' ? { uri: item.imageUrl } : item.imageUrl}
+          source={item.imageUrl ? { uri: item.imageUrl } : require('../assets/images/event-placeholder.png')}
           style={styles.eventImage}
           resizeMode="cover"
         />
@@ -327,10 +242,16 @@ const HomeScreen = () => {
           </Text>
           <TouchableOpacity 
             style={styles.favoriteButton}
-            onPress={() => handleAddToSchedule(item)} // Changed to handleAddToSchedule
+            onPress={() => handleAddToSchedule(item)}
           >
-            <Ionicons name="heart-outline" size={24} color={theme.primary} />
-            <Text style={[styles.favoriteText, { color: theme.primary }]}>Add to Schedule</Text>
+            <Ionicons 
+              name={isInSchedule ? "heart" : "heart-outline"} 
+              size={24} 
+              color={theme.primary} 
+            />
+            <Text style={[styles.favoriteText, { color: theme.primary }]}>
+              {isInSchedule ? "Added to Schedule" : "Add to Schedule"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
