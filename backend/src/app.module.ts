@@ -5,6 +5,7 @@ import { FirestoreModule } from './config/firestore/firestore.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
+import { ScheduleModule } from './schedule/schedule.module';
 // import { TicketsModule } from './tickets/tickets.module';
 // import { MapModule } from './map/map.module';
 // import { FriendsModule } from './friends/friends.module';
@@ -58,6 +59,7 @@ import { ArtistsModule } from './artists/artists.module';
     AuthModule,
     UsersModule,
     EventsModule,
+    ScheduleModule,
     // TicketsModule,
     // MapModule,
     // FriendsModule,

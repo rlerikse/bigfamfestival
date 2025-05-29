@@ -62,14 +62,17 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
+    // Convert DTO to plain object for Firestore
+    const updateData = { ...updateUserDto };
+
     await this.firestoreService.update<User>(
       this.collection,
       id,
-      updateUserDto,
+      updateData, // Use the plain object here
     );
 
     // Return updated user
-    return { ...user, ...updateUserDto };
+    return { ...user, ...updateData };
   }
 
   /**
