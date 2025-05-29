@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -13,6 +14,7 @@ import MapScreen from '../screens/MapScreen';
 // import NotificationsScreen from '../screens/NotificationsScreen';
 // import MoreScreen from '../screens/MoreScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import GrassBottomTabBar from '../components/GrassBottomTabBar';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -60,31 +62,56 @@ function MainNavigator() {
 
   return (
     <Tab.Navigator
+      tabBar={props => <GrassBottomTabBar {...props} />}
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: string;
+        tabBarIcon: ({ focused, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap;
+          let label: string;
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
+            label = 'Home';
           } else if (route.name === 'MySchedule') {
             iconName = focused ? 'heart' : 'heart-outline';
+            label = 'Schedule';
           } else if (route.name === 'Map') {
             iconName = focused ? 'map' : 'map-outline';
+            label = 'Map';
           } else if (route.name === 'Notifications') {
             iconName = focused ? 'notifications' : 'notifications-outline';
+            label = 'Notifications';
           } else if (route.name === 'More') {
             iconName = focused ? 'menu' : 'menu-outline';
+            label = 'More';
           } else {
             iconName = 'help-circle';
+            label = 'Help';
           }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return <Ionicons name={iconName as any} size={size} color={color} />;
+
+          return (
+            <View style={{ alignItems: 'center' }}>
+              <Ionicons 
+                name={iconName} 
+                size={size} 
+                color={focused ? 'white' : '#B8860B'} // White for active, muted gold (#B8860B) for inactive
+              />
+              <Text style={{
+                color: focused ? 'white' : '#B8860B',
+                fontSize: 12,
+                marginTop: 4,
+              }}>
+                {label}
+              </Text>
+            </View>
+          );
         },
         tabBarActiveTintColor: theme.primary, // Use theme color
         tabBarInactiveTintColor: theme.muted, // Use theme color
         tabBarStyle: {
-          backgroundColor: theme.card, // Use theme color for tab bar background
-          borderTopColor: theme.border, // Use theme color for tab bar border
+          backgroundColor: 'transparent', // Transparent background to let our custom tab bar show through
+          borderTopColor: 'transparent', // Make default border invisible
+          elevation: 0, // Remove shadow on Android
+          shadowOpacity: 0, // Remove shadow on iOS
         },
         headerStyle: {
           backgroundColor: theme.card, // Use theme color for header background

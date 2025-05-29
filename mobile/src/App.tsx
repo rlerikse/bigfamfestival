@@ -68,7 +68,7 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ backgroundColor: 'transparent' }}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>

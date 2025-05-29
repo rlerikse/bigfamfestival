@@ -238,7 +238,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.content}>
         {/* Filters */}
