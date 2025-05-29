@@ -260,15 +260,16 @@ const HomeScreen = () => {
           {
             text: "Cancel",
             style: "cancel",
-          },
-          {
+          },          {
             text: "Login",
             onPress: () => navigation.navigate('Auth'), // Navigate to Auth stack
           },
-        ]      );
+        ]
+      );
       return;
     }
-      try {
+    
+    try {
       // Add event to schedule using event ID
       await addToSchedule(user.id, event.id);
       Alert.alert("Success", `"${event.name}" has been added to your schedule.`);

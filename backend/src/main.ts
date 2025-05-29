@@ -57,7 +57,7 @@ async function bootstrap() {
 
   // Start the server
   await app.listen(port);
-  console.log(`Application is running on port ${port}`);
+  console.log(`Application is running on port ${port} in ${environment} mode`);
 }
 
 bootstrap();

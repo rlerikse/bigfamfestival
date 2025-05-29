@@ -1,9 +1,10 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Firestore, Settings } from '@google-cloud/firestore';
 
 @Injectable()
 export class FirestoreService implements OnModuleInit {
   private readonly firestore: Firestore;
+  private readonly logger = new Logger(FirestoreService.name);
 
   constructor(projectId: string) {
     const settings: Settings = {
@@ -11,12 +12,26 @@ export class FirestoreService implements OnModuleInit {
       ignoreUndefinedProperties: true, // Ignore undefined properties instead of throwing errors
     };
 
+    // Log authentication method for debugging
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      this.logger.log(`Using service account from: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+    } else {
+      this.logger.log('Using default credentials (Cloud Run service identity)');
+    }
+
     this.firestore = new Firestore(settings);
   }
 
-  onModuleInit() {
-    // Optional: perform any initialization tasks when the module is loaded
-    console.log('Firestore service initialized');
+  async onModuleInit() {
+    // Test Firestore connection during startup
+    try {
+      this.logger.log('Testing Firestore connection...');
+      await this.firestore.listCollections();
+      this.logger.log('Firestore connection successful');
+    } catch (error) {
+      this.logger.error('Firestore connection failed:', error.message);
+      // Don't throw error - let the app start and fail health checks instead
+    }
   }
 
   // Get Firestore instance
