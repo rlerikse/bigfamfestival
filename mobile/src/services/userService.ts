@@ -131,7 +131,6 @@ export const markCampsite = async (
     
     // Send the campsite data to the backend
     await api.post('/campsites', {
-      userId,
       location_lat: latitude,
       location_long: longitude,
       shared_with_friends: sharedWithFriends

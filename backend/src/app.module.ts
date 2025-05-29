@@ -9,10 +9,12 @@ import { EventsModule } from './events/events.module';
 // import { MapModule } from './map/map.module';
 // import { FriendsModule } from './friends/friends.module';
 import { HealthModule } from './health/health.module';
+import { CampsitesModule } from './campsites/campsites.module'; // Added import
 import * as Joi from 'joi';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { ArtistsModule } from './artists/artists.module';
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { RolesGuard } from './auth/guards/roles.guard';
     // MapModule,
     // FriendsModule,
     HealthModule,
+    CampsitesModule,
+    ArtistsModule, // Added module
   ],
   controllers: [],
   providers: [
