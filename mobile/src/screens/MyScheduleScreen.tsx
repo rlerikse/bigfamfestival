@@ -313,8 +313,7 @@ const styles = StyleSheet.create({
   eventDetails: {
     fontSize: 13, // Slightly smaller
     marginBottom: 2, // Reduced margin
-  },
-  eventDescription: {
+  },  eventDescription: {
     fontSize: 12, // Slightly smaller
     marginTop: 2, // Reduced margin
     fontStyle: 'italic',
@@ -322,8 +321,8 @@ const styles = StyleSheet.create({
     flexDirection: 'column', // Stack icon and text vertically
     alignItems: 'center',   // Center icon and text
     justifyContent: 'center',
-    paddingHorizontal: 12, // Increased right padding to match Home page
-    marginRight: 4, // Added small margin to ensure spacing from edge
+    paddingHorizontal: 12, // Reduced padding back
+    marginRight: 4, // Reduced margin back
   },
   favoriteText: {
     marginLeft: 0, // Removed as text is below icon
