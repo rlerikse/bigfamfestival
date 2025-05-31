@@ -15,6 +15,7 @@ import MapScreen from '../screens/MapScreen';
 // import MoreScreen from '../screens/MoreScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import GrassBottomTabBar from '../components/GrassBottomTabBar';
+import DayNightCycle from '../components/DayNightCycle';
 
 const { width } = Dimensions.get('window');
 
@@ -121,27 +122,41 @@ function MainNavigator() {
         headerTintColor: theme.text, // Use theme color for header text
         headerTitleStyle: {
           fontWeight: 'bold',
-        },
-        header: ({ options, route }) => (
+        },        header: ({ options, route }) => (
           <View style={{ // Main header container
             paddingTop: 25, // Status bar height
             height: 55 + 25, // Content height (55) + status bar height
-            backgroundColor: theme.card,
             position: 'relative', // For absolute positioning of logo
             overflow: 'visible', // Important for hanging logo
           }}>
+            {/* Day/Night Cycle Background */}
+            <View style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 0, // Changed from -1 to 0
+            }}>
+              <DayNightCycle height={55 + 25} />
+            </View>
+
             {/* Header title text - left aligned in the 55px content area */}
             <View style={{
               height: 55, // Explicit height for the title's content area
               justifyContent: 'center', // Vertically centers text in this View
               paddingLeft: 16, // Added padding for left alignment
+              zIndex: 2, // Ensure title container is above background
               // alignItems: 'center', // Removed to allow text to default to start (left)
             }}>
               <Text style={{
                 fontSize: 17,
                 fontWeight: 'bold',
-                color: theme.text,
-                zIndex: 1, // Ensure title is above the logo
+                color: 'white', // Changed to white for better visibility over dynamic background
+                textShadowColor: 'rgba(0, 0, 0, 0.5)', // Added text shadow for readability
+                textShadowOffset: { width: 1, height: 1 },
+                textShadowRadius: 2,
+                zIndex: 3, // Ensure title is above everything
               }}>
                 {options.title || route.name}
               </Text>
@@ -158,7 +173,7 @@ function MainNavigator() {
               left: 0,
               right: 0,
               alignItems: 'center', // Horizontally centers the Image within this View
-              zIndex: 0, // Behind title text
+              zIndex: 1, // Above background but behind title text
             }}>
               <Image
                 source={require('../assets/images/bf-logo-trans.png')} 
