@@ -48,6 +48,13 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
         />
+        
+        {/* Tree image partially visible */}
+        <Image
+          source={require('../assets/images/tree-3.png')}
+          style={styles.treeImage}
+          resizeMode="contain"
+        />
       </View>
       <View style={styles.navbar}>
         {state.routes.map((route, index) => {
@@ -92,11 +99,11 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT -7 , 
+    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 20 , 
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: 0, // Stick to the bottom of the screen
+    bottom: 20, // Stick to the bottom of the screen
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -106,14 +113,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     // height will be applied dynamically
-    overflow: 'hidden', 
+    overflow: 'visible', // Changed from 'hidden' to allow tree to extend outside
     zIndex: 0, 
-  },
-  actualImage: { 
+  },  actualImage: { 
     position: 'absolute', 
     left: 0,            
     width: width, 
     // height and bottom will be applied dynamically
+  },
+  treeImage: {
+    position: 'absolute',
+    left: -105, // Keep left aligned position (adjusted for smaller size)
+    bottom: NAVBAR_HEIGHT + 30, // Maintain bottom position
+    width: 200, // Half of 400 - scaled down
+    height: 150, // Half of 300 - scaled down
+    opacity: 1, // Full opacity
+    zIndex: 5, // Higher z-index to ensure visibility
   },
   navbar: {
     flexDirection: 'row',

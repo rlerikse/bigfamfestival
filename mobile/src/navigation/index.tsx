@@ -2,7 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text } from 'react-native';
+import { View, Text, Image, Dimensions } from 'react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -15,6 +15,8 @@ import MapScreen from '../screens/MapScreen';
 // import MoreScreen from '../screens/MoreScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import GrassBottomTabBar from '../components/GrassBottomTabBar';
+
+const { width } = Dimensions.get('window');
 
 // Define navigation types
 export type RootStackParamList = {
@@ -120,13 +122,90 @@ function MainNavigator() {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        // headerShown: true, // This was already here, ensure it's set as needed
+        header: ({ options, route }) => (
+          <View style={{ // Main header container
+            paddingTop: 25, // Status bar height
+            height: 55 + 25, // Content height (55) + status bar height
+            backgroundColor: theme.card,
+            position: 'relative', // For absolute positioning of logo
+            overflow: 'visible', // Important for hanging logo
+          }}>
+            {/* Header title text - left aligned in the 55px content area */}
+            <View style={{
+              height: 55, // Explicit height for the title's content area
+              justifyContent: 'center', // Vertically centers text in this View
+              paddingLeft: 16, // Added padding for left alignment
+              // alignItems: 'center', // Removed to allow text to default to start (left)
+            }}>
+              <Text style={{
+                fontSize: 17,
+                fontWeight: 'bold',
+                color: theme.text,
+                zIndex: 1, // Ensure title is above the logo
+              }}>
+                {options.title || route.name}
+              </Text>
+            </View>
+
+            {/* Centered Logo - Overlapping and hanging, behind title */}
+            <View style={{
+              position: 'absolute',
+              // Position the top of the logo to align with the approximate top of the title text.
+              // Title text top is approx: paddingTop (25) + (titleAreaHeight (55) / 2) - (fontSize (17) / 2) = 44px from screen top.
+              // Logo container's top style = 44 (desired logo top) - 25 (paddingTop) = 19.
+              // Adjusted to move it up slightly
+              top: -77,
+              left: 0,
+              right: 0,
+              alignItems: 'center', // Horizontally centers the Image within this View
+              zIndex: 0, // Behind title text
+            }}>
+              <Image
+                source={require('../assets/images/bf-logo-trans.png')} 
+                style={{
+                  width: 250, // Increased size
+                  height: 250, // Increased size
+                }}
+                resizeMode="contain"
+              />
+            </View>
+          </View>
+        ),
       })}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
-        options={{ title: 'Home' }}
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Home',
+          // Remove the custom headerTitle for Home screen if the main header now handles the logo
+          // headerTitle: () => (
+          //   <View style={{ position: 'relative', alignItems: 'center', justifyContent: 'center' }}>
+          //     <Image
+          //       source={require('../assets/images/tree-3.png')}
+          //       style={{
+          //         position: 'absolute',
+          //         right: -0, 
+          //         top: -25, 
+          //         width: 80,
+          //         height: 60,
+          //         opacity: 0.3, 
+          //         zIndex: 0,
+          //       }}
+          //       resizeMode="cover"
+          //     />
+          //     <Text style={{
+          //       fontSize: 17,
+          //       fontWeight: 'bold',
+          //       color: theme.text,
+          //       zIndex: 1,
+          //       position: 'relative',
+          //     }}>
+          //       Home
+          //     </Text>
+          //   </View>
+          // ),
+        }}
       />
       <Tab.Screen 
         name="MySchedule" 
