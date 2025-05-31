@@ -484,8 +484,8 @@ const MapScreen = () => {
         animationType="slide"
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>Mark My Campsite</Text>            <Text style={[styles.modalText, { color: theme.text }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>            <Text style={[styles.modalTitle, { color: theme.text }]}>Mark My Campsite</Text>
+            <Text style={[styles.modalText, { color: theme.text }]}>
               Your current location:
             </Text>
             <Text style={[styles.w3wAddress, { color: theme.primary }]}>

@@ -9,9 +9,8 @@ import {
   Modal,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -162,11 +161,10 @@ const MapScreen = () => {
     const w1 = words[Math.floor(Math.random() * words.length)];
     const w2 = words[Math.floor(Math.random() * words.length)];
     const w3 = words[Math.floor(Math.random() * words.length)];
-    
-    return `${w1}.${w2}.${w3}`;
+      return `${w1}.${w2}.${w3}`;
   };
-  
-  // Handle map marker for different POI types
+    
+  /* Handle map marker for different POI types - currently disabled
   const renderMarker = (poi: POI) => {
     // Choose icon based on POI type
     let icon: keyof typeof Ionicons.glyphMap;
@@ -228,12 +226,11 @@ const MapScreen = () => {
               <Text style={styles.navigateButtonText}>Take Me Here</Text>
             </TouchableOpacity>
           </View>
-        </Callout>
-      </Marker>
+        </Callout>      </Marker>
     );
-  };
+  };  */
   
-  // Handle navigation to POI
+  /* Handle navigation to POI - currently disabled
   const handleNavigate = (poi: POI) => {
     // In a real app, this would launch the embedded navigation
     Alert.alert(
@@ -243,6 +240,7 @@ const MapScreen = () => {
       [{ text: 'OK', onPress: () => console.log('Navigate to', poi.name) }]
     );
   };
+  */
   
   // Handle marking the user's campsite
   const handleMarkCampsite = () => {
@@ -413,20 +411,21 @@ const MapScreen = () => {
           <Text style={[styles.legendText, { color: theme.text }]}>Friend</Text>
         </View>
       </View>
-      
-      {/* Offline Mode Indicator */}
+        {/* Offline Mode Indicator */}
       <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
-        <Text style={[styles.offlineText, { color: theme.text }]}>
-          <Ionicons name="cloud-offline" size={16} color={theme.text} /> Offline Maps Available
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Ionicons name="cloud-offline" size={16} color={theme.text} />
+          <Text style={[styles.offlineText, { color: theme.text, marginLeft: 4 }]}>
+            Offline Maps Available
+          </Text>
+        </View>
       </View>
-      
-      {/* Campsite Actions */}
+        {/* Campsite Actions */}
       {hasCampsite ? (
         <>
           {/* Take Me Home Button */}
           <TouchableOpacity
-            style={[styles.floatingButton, { backgroundColor: theme.primary }]}
+            style={[styles.floatingButton, { backgroundColor: isDark ? '#2E7D32' : '#4BB543' }]}
             onPress={handleTakeMeHome}
           >
             <Ionicons name="home" size={24} color="#FFFFFF" />
@@ -446,7 +445,7 @@ const MapScreen = () => {
       ) : (
         /* Mark My Campsite Button */
         <TouchableOpacity
-          style={[styles.floatingButton, { backgroundColor: theme.primary }]}
+          style={[styles.floatingButton, { backgroundColor: isDark ? '#2E7D32' : '#4BB543' }]}
           onPress={handleMarkCampsite}
         >
           <Ionicons name="flag" size={24} color="#FFFFFF" />
