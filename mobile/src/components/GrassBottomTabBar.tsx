@@ -92,7 +92,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT , 
+    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT -7 , 
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content

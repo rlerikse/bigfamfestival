@@ -3,14 +3,13 @@ import {
   StyleSheet,
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  Image,
   FlatList,
+  ActivityIndicator,
+  Image,
   SafeAreaView,
   Platform,
+  RefreshControl,
   Alert,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -55,7 +54,7 @@ const HomeScreen = () => {
   const stages = [
     { id: 'all', label: 'ALL', value: 'all' },
     { id: 'Apogee', label: 'APOGEE', value: 'Apogee' },
-    { id: 'The Bayou', label: 'THE BAYOU', value: 'The Bayou' },
+    { id: 'The Bayou', label: 'BAYOU', value: 'The Bayou' }, // Changed label to BAYOU
     { id: 'The Art Tent', label: 'ART TENT', value: 'The Art Tent' },
   ];
 
@@ -235,60 +234,58 @@ const HomeScreen = () => {
         </View>
       </TouchableOpacity>
     );
-  };
-
-  return (
+  };  return (
     <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <View style={styles.content}>
-        {/* Filters */}
-        <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
-            {festivalDays.map((day, index) => (
-              <TouchableOpacity
-                key={day.id}
+        {/* Day Filters */}
+        <View style={styles.filterRowContainer}>
+          {festivalDays.map((day) => (
+            <TouchableOpacity
+              key={day.id}
+              style={[
+                styles.filterButton,
+                { borderColor: theme.border },
+                day.date === selectedDay && { backgroundColor: theme.primary },
+              ]}
+              onPress={() => handleDayFilter(day.date)}
+            >
+              <Text 
                 style={[
-                  styles.filterButton,
-                  day.date === selectedDay && { backgroundColor: theme.primary },
-                  { borderColor: theme.border },
-                  index === festivalDays.length - 1 && { marginRight: 0 }
-                ]}
-                onPress={() => handleDayFilter(day.date)}
-              >
-                <Text style={[
                   styles.filterButtonText,
-                  day.date === selectedDay && { color: '#FFFFFF' },
-                  day.date !== selectedDay && { color: theme.text }
-                ]}>
-                  {day.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  day.date === selectedDay ? { color: theme.background } : { color: theme.text },
+                ]}
+                numberOfLines={1} // Ensure single line
+              >
+                {day.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
-        <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterContent}>
-            {stages.map((stage, index) => (
-              <TouchableOpacity
-                key={stage.id}
+        
+        {/* Stage Filters */}
+        <View style={styles.filterRowContainer}>
+          {stages.map((stage) => (
+            <TouchableOpacity
+              key={stage.id}
+              style={[
+                styles.filterButton,
+                { borderColor: theme.border },
+                stage.value === selectedStage && { backgroundColor: theme.primary },
+              ]}
+              onPress={() => handleStageFilter(stage.value)}
+            >
+              <Text 
                 style={[
-                  styles.filterButton,
-                  stage.value === selectedStage && { backgroundColor: theme.primary },
-                  { borderColor: theme.border },
-                  index === stages.length - 1 && { marginRight: 0 }
-                ]}
-                onPress={() => handleStageFilter(stage.value)}
-              >
-                <Text style={[
                   styles.filterButtonText,
-                  stage.value === selectedStage && { color: '#FFFFFF' },
-                  stage.value !== selectedStage && { color: theme.text }
-                ]}>
-                  {stage.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+                  stage.value === selectedStage ? { color: theme.background } : { color: theme.text },
+                ]}
+                numberOfLines={1} // Ensure single line
+              >
+                {stage.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         {/* Events List */}
@@ -344,6 +341,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: Platform.OS === 'android' ? 16 : 0,
+    paddingHorizontal: 16, // Main horizontal padding
   },
   loadingContainer: {
     flex: 1,
@@ -394,28 +392,28 @@ const styles = StyleSheet.create({
   resetButtonText: {
     fontWeight: '600',
   },
-  filterContainer: {
-    marginBottom: 16,
-    paddingHorizontal: 16,
-    width: '100%',
-  },
-  filterContent: {
+  filterRowContainer: {
     flexDirection: 'row',
+    marginBottom: 16,
+    gap: 8,
   },
   filterButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderRadius: 10,
     borderWidth: 1,
-    marginRight: 8,
     alignItems: 'center',
+    justifyContent: 'center',
+    height: 44, // Set fixed height
   },
   filterButtonText: {
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   eventsList: {
-    paddingHorizontal: 16,
+    // Removed paddingHorizontal: 16 (correctly done previously)
     paddingBottom: 16,
   },
   eventCard: {
