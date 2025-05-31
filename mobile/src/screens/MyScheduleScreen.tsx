@@ -17,6 +17,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, removeFromSchedule } from '../services/scheduleService';
 import { ScheduleEvent } from '../types/event';
+import TopNavBar from '../components/TopNavBar';
 
 // Define festival days outside the component or memoize if it needs to be dynamic based on props/state
 const FESTIVAL_DAYS = [
@@ -32,8 +33,10 @@ const MyScheduleScreen = () => {
   
   const [isLoading, setIsLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   // Day filter state
   const [selectedDay, setSelectedDay] = useState<string>('all');
 
@@ -76,7 +79,46 @@ const MyScheduleScreen = () => {
     } catch (error) {
       console.error('Error removing event:', error);
       setError('Failed to remove event from your schedule.');
+    }  };
+
+  // Apply filters (search and day)
+  const applyFilters = useCallback(() => {
+    let filtered = [...events];
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const searchLower = searchQuery.toLowerCase();
+      filtered = filtered.filter(event => 
+        event.name.toLowerCase().includes(searchLower) ||
+        event.artists.some(artistId => artistId.toLowerCase().includes(searchLower)) ||
+        event.stage.toLowerCase().includes(searchLower) ||
+        (event.description && event.description.toLowerCase().includes(searchLower))
+      );
     }
+    
+    // Apply day filter
+    if (selectedDay !== 'all') {
+      filtered = filtered.filter(event => event.date === selectedDay);
+    }
+    
+    // Sort events by date and start time
+    filtered.sort((a, b) => {
+      if (a.date !== b.date) {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      }
+      return a.startTime.localeCompare(b.startTime);
+    });
+    
+    setFilteredEvents(filtered);
+  }, [events, searchQuery, selectedDay]);
+
+  // Update filters when dependencies change
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
   };
 
   /**
@@ -94,19 +136,11 @@ const MyScheduleScreen = () => {
           onPress: () => handleRemoveEvent(event.id),
         },
       ],
-    );
-  };  // Filter events by selected day
-  const filteredEvents = selectedDay === 'all'
-    ? events
-    : events.filter(event => event.date === selectedDay);
+    );  };  // Filter events by selected day
+  // Note: Filtering logic moved to applyFilters function above
 
-  // Sort events by start time
-  const sortedEvents = [...filteredEvents].sort((a, b) => {
-    if (a.date !== b.date) {
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
-    }
-    return a.startTime.localeCompare(b.startTime);
-  });
+  // Sort events by start time (now using filteredEvents instead of local variable)
+  const sortedEvents = [...filteredEvents];
 
   // Format time for display (convert 24h to 12h)
   const formatTime = (timeString: string) => {
@@ -204,9 +238,11 @@ const MyScheduleScreen = () => {
           </Text>
         </TouchableOpacity>
       </TouchableOpacity>
-    );
-  };  return (    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    );  };  return (    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
+      
+      {/* Top Navigation Bar */}
+      <TopNavBar onSearch={handleSearch} placeholder="Search your schedule..." />
       
       {/* Day filter at the top with proper alignment */}
       {FESTIVAL_DAYS.length > 0 && (
@@ -277,10 +313,9 @@ const MyScheduleScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
+const styles = StyleSheet.create({  container: {
     flex: 1,
-    paddingTop: 16,
+    paddingTop: 76, // Add padding to account for TopNavBar height (60) + some spacing
   },
   contentContainer: {
     flex: 1,

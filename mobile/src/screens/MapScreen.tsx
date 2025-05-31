@@ -21,6 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 // Import services for API calls
 import { markCampsite, removeCampsite } from '../services/userService';
 import { getPOIs } from '../services/mapService';
+import TopNavBar from '../components/TopNavBar';
 
 // Types for POIs and location
 interface POI {
@@ -40,9 +41,9 @@ const MapScreen = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const mapRef = useRef<MapView>(null);
-  
   // State variables
   const [pois, setPois] = useState<POI[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(true);
   const [isLoadingPOIs, setIsLoadingPOIs] = useState(true);
@@ -51,6 +52,13 @@ const MapScreen = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [what3WordsAddress, setWhat3WordsAddress] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+
+  // Handle search functionality
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // Note: For map, search is mainly for UI consistency
+    // In a real app, you might filter visible POIs or search for specific locations
+  };
   
   // Get user location on component mount
   useEffect(() => {
@@ -118,8 +126,7 @@ const MapScreen = () => {
   useEffect(() => {
     const fetchPOIs = async () => {
       try {
-        setIsLoadingPOIs(true);
-        // In a real app, this would fetch POIs from your backend API
+        setIsLoadingPOIs(true);        // In a real app, this would fetch POIs from your backend API
         const response = await getPOIs();
         setPois(response);
         
@@ -142,11 +149,10 @@ const MapScreen = () => {
         setIsLoadingPOIs(false);
       }
     };
-    
-    if (user) {
+      if (user) {
       fetchPOIs();
     }
-  }, [user]);
+  }, [user, searchQuery]);
   
   // Mock What3Words API integration
   const mockGenerateWhat3Words = () => {
@@ -355,29 +361,33 @@ const MapScreen = () => {
       </View>
     );
   }
-  
-  return (
+    return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
-      {/* Map View */}
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        showsUserLocation
-        followsUserLocation
-        initialRegion={
-          userLocation
-            ? {
-                latitude: userLocation.latitude,
-                longitude: userLocation.longitude,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }
-            : undefined
-        }
-      >
+      {/* Top Navigation Bar */}
+      <TopNavBar onSearch={handleSearch} placeholder="Search map locations..." />
+      
+      {/* Map Content */}
+      <View style={styles.mapContainer}>
+        {/* Map View */}
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          provider={PROVIDER_GOOGLE}
+          showsUserLocation
+          followsUserLocation
+          initialRegion={
+            userLocation
+              ? {
+                  latitude: userLocation.latitude,
+                  longitude: userLocation.longitude,
+                  latitudeDelta: 0.005,
+                  longitudeDelta: 0.005,
+                }
+              : undefined
+          }
+        >
         {/* Render POI markers */}
         {/* {pois.map(renderMarker)} */}
         {/* <Marker
@@ -386,72 +396,74 @@ const MapScreen = () => {
           description="Some description"
         /> */}
       </MapView>
-      
-      {/* Map Legend */}
-      <View style={[styles.legendContainer, { backgroundColor: theme.card }]}>
-        <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
-        <View style={styles.legendItem}>
-          <Ionicons name="musical-notes" size={18} color={theme.primary} />
-          <Text style={[styles.legendText, { color: theme.text }]}>Stage</Text>
+          {/* Map Legend */}
+        <View style={[styles.legendContainer, { backgroundColor: theme.card }]}>
+          <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
+          <View style={styles.legendItem}>
+            <Ionicons name="musical-notes" size={18} color={theme.primary} />
+            <Text style={[styles.legendText, { color: theme.text }]}>Stage</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="restaurant" size={18} color="#4BB543" />
+            <Text style={[styles.legendText, { color: theme.text }]}>Vendor</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="medkit" size={18} color="#FF0000" />
+            <Text style={[styles.legendText, { color: theme.text }]}>Facility</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="home" size={18} color="#FFD700" />
+            <Text style={[styles.legendText, { color: theme.text }]}>Campsite</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <Ionicons name="person" size={18} color="#8A2BE2" />
+            <Text style={[styles.legendText, { color: theme.text }]}>Friend</Text>
+          </View>
         </View>
-        <View style={styles.legendItem}>
-          <Ionicons name="restaurant" size={18} color="#4BB543" />
-          <Text style={[styles.legendText, { color: theme.text }]}>Vendor</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <Ionicons name="medkit" size={18} color="#FF0000" />
-          <Text style={[styles.legendText, { color: theme.text }]}>Facility</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <Ionicons name="home" size={18} color="#FFD700" />
-          <Text style={[styles.legendText, { color: theme.text }]}>Campsite</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <Ionicons name="person" size={18} color="#8A2BE2" />
-          <Text style={[styles.legendText, { color: theme.text }]}>Friend</Text>
-        </View>
-      </View>
+        
         {/* Offline Mode Indicator */}
-      <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Ionicons name="cloud-offline" size={16} color={theme.text} />
-          <Text style={[styles.offlineText, { color: theme.text, marginLeft: 4 }]}>
-            Offline Maps Available
-          </Text>
+        <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="cloud-offline" size={16} color={theme.text} />
+            <Text style={[styles.offlineText, { color: theme.text, marginLeft: 4 }]}>
+              Offline Maps Available
+            </Text>
+          </View>
         </View>
-      </View>
+        
         {/* Campsite Actions */}
-      {hasCampsite ? (
-        <>
-          {/* Take Me Home Button */}
+        {hasCampsite ? (
+          <>
+            {/* Take Me Home Button */}
+            <TouchableOpacity
+              style={[styles.floatingButton, { backgroundColor: isDark ? '#2E7D32' : '#4BB543' }]}
+              onPress={handleTakeMeHome}
+            >
+              <Ionicons name="home" size={24} color="#FFFFFF" />
+              <Text style={styles.floatingButtonText}>Take Me Home</Text>
+            </TouchableOpacity>
+            
+            {/* Remove Campsite Button */}
+            <TouchableOpacity
+              style={[styles.removeCampsiteButton, { borderColor: theme.border }]}
+              onPress={handleRemoveCampsite}
+            >
+              <Text style={[styles.removeCampsiteText, { color: theme.text }]}>
+                Remove My Campsite
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          /* Mark My Campsite Button */
           <TouchableOpacity
             style={[styles.floatingButton, { backgroundColor: isDark ? '#2E7D32' : '#4BB543' }]}
-            onPress={handleTakeMeHome}
+            onPress={handleMarkCampsite}
           >
-            <Ionicons name="home" size={24} color="#FFFFFF" />
-            <Text style={styles.floatingButtonText}>Take Me Home</Text>
+            <Ionicons name="flag" size={24} color="#FFFFFF" />
+            <Text style={styles.floatingButtonText}>Mark My Campsite</Text>
           </TouchableOpacity>
-          
-          {/* Remove Campsite Button */}
-          <TouchableOpacity
-            style={[styles.removeCampsiteButton, { borderColor: theme.border }]}
-            onPress={handleRemoveCampsite}
-          >
-            <Text style={[styles.removeCampsiteText, { color: theme.text }]}>
-              Remove My Campsite
-            </Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        /* Mark My Campsite Button */
-        <TouchableOpacity
-          style={[styles.floatingButton, { backgroundColor: isDark ? '#2E7D32' : '#4BB543' }]}
-          onPress={handleMarkCampsite}
-        >
-          <Ionicons name="flag" size={24} color="#FFFFFF" />
-          <Text style={styles.floatingButtonText}>Mark My Campsite</Text>
-        </TouchableOpacity>
-      )}
+        )}
+      </View>
       
       {/* Confirmation Modal */}
       <Modal
@@ -495,6 +507,10 @@ const MapScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  mapContainer: {
+    flex: 1,
+    marginTop: 60, // Account for TopNavBar height
   },
   map: {
     width: '100%',
@@ -587,10 +603,9 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: 'white',
     fontWeight: 'bold',
-  },
-  legendContainer: {
+  },  legendContainer: {
     position: 'absolute',
-    top: 20,
+    top: 80, // Account for TopNavBar + padding
     left: 20,
     padding: 10,
     borderRadius: 10,
@@ -607,10 +622,9 @@ const styles = StyleSheet.create({
   },
   legendText: {
     marginLeft: 5,
-  },
-  offlineContainer: {
+  },  offlineContainer: {
     position: 'absolute',
-    top: 20,
+    top: 80, // Account for TopNavBar + padding
     right: 20,
     padding: 8,
     borderRadius: 20,

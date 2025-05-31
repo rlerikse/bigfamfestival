@@ -27,6 +27,7 @@ import { api } from '../services/api';
 import { ScheduleEvent } from '../types/event';
 import EventDetailsModal from '../components/EventDetailsModal'; // Corrected import
 import DayNightCycle from '../components/DayNightCycle';
+import TopNavBar from '../components/TopNavBar';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -39,9 +40,9 @@ const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
-  const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+  const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});  const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const [selectedDay, setSelectedDay] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
@@ -57,10 +58,20 @@ const HomeScreen = () => {
     { id: 'Apogee', label: 'APOGEE', value: 'Apogee' },
     { id: 'The Bayou', label: 'BAYOU', value: 'The Bayou' }, // Changed label to BAYOU
     { id: 'The Art Tent', label: 'ART TENT', value: 'The Art Tent' },
-  ];
-
-  const applyFilters = useCallback((allEvents: ScheduleEvent[], day: string, stage: string) => {
+  ];  const applyFilters = useCallback((allEvents: ScheduleEvent[], day: string, stage: string, search = '') => {
     let filtered = [...allEvents];
+    
+    // Apply search filter
+    if (search.trim()) {
+      const searchLower = search.toLowerCase();
+      filtered = filtered.filter(event => 
+        event.name.toLowerCase().includes(searchLower) ||
+        event.artists.some(artistId => artistId.toLowerCase().includes(searchLower)) ||
+        event.stage.toLowerCase().includes(searchLower) ||
+        (event.description && event.description.toLowerCase().includes(searchLower))
+      );
+    }
+    
     if (day !== 'all') {
       filtered = filtered.filter(event => event.date === day);
     }
@@ -85,7 +96,7 @@ const HomeScreen = () => {
       });
       const fetchedEvents = response.data;
       setEvents(fetchedEvents);
-      applyFilters(fetchedEvents, selectedDay, selectedStage);
+      applyFilters(fetchedEvents, selectedDay, selectedStage, searchQuery);
     } catch (err) {
       console.error('Error fetching events:', err);
       setError('Could not load events. Please try again later.');
@@ -93,7 +104,7 @@ const HomeScreen = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [applyFilters, selectedDay, selectedStage]);
+  }, [applyFilters, selectedDay, selectedStage, searchQuery]);
 
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
     if (!user) {
@@ -142,11 +153,16 @@ const HomeScreen = () => {
     fetchEvents();
   };  const handleDayFilter = (day: string) => {
     setSelectedDay(day);
-    applyFilters(events, day, selectedStage);
+    applyFilters(events, day, selectedStage, searchQuery);
   };
   const handleStageFilter = (stage: string) => {
     setSelectedStage(stage);
-    applyFilters(events, selectedDay, stage);
+    applyFilters(events, selectedDay, stage, searchQuery);
+  };
+  
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    applyFilters(events, selectedDay, selectedStage, query);
   };
 
   const loadUserSchedule = useCallback(async () => {
@@ -233,11 +249,13 @@ const HomeScreen = () => {
           </View>
         </View>
       </TouchableOpacity>
-    );
-  };  return (    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    );  };  return (    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Add DayNightCycle background */}
       <DayNightCycle height={Dimensions.get('window').height} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
+        {/* Top Navigation Bar */}
+      <TopNavBar onSearch={handleSearch} />
+      
       <View style={[styles.content, { backgroundColor: theme.background }]}>
         {/* Day Filters */}
         <View style={styles.filterRowContainer}>
@@ -314,7 +332,7 @@ const HomeScreen = () => {
             <Text style={[styles.emptyText, { color: theme.text }]}>
               No events found for the selected filters.
             </Text>
-            <TouchableOpacity style={styles.resetButton} onPress={() => { setSelectedDay('all'); setSelectedStage('all'); applyFilters(events, 'all', 'all'); }}>
+            <TouchableOpacity style={styles.resetButton} onPress={() => { setSelectedDay('all'); setSelectedStage('all'); setSearchQuery(''); applyFilters(events, 'all', 'all', ''); }}>
               <Text style={[styles.resetButtonText, { color: theme.primary }]}>Reset Filters</Text>
             </TouchableOpacity>
           </View>
@@ -343,11 +361,11 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  content: {
+  },  content: {
     flex: 1,
     paddingTop: Platform.OS === 'android' ? 16 : 0,
     paddingHorizontal: 16, // Main horizontal padding
+    marginTop: 60, // Add margin to account for TopNavBar height
   },
   loadingContainer: {
     flex: 1,
