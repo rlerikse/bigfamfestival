@@ -250,7 +250,7 @@ const queueOfflineAction = async (
     // Save updated queue
     await AsyncStorage.setItem('offline_action_queue', JSON.stringify(queue));
     
-    console.log(`Queued ${actionType} action for later synchronization`);
+    // Queued action for later synchronization when online
   } catch (error) {
     console.error('Error queueing offline action:', error);
   }
@@ -265,8 +265,7 @@ export const processCampsiteOfflineQueue = async (): Promise<void> => {
     // Check if we're online
     const netInfo = await NetInfo.fetch();
     if (!netInfo.isConnected) {
-      console.log('Still offline, cannot process queue');
-      return;
+      return; // Still offline, cannot process queue
     }
     
     // Get the queue
@@ -279,10 +278,8 @@ export const processCampsiteOfflineQueue = async (): Promise<void> => {
     if (queue.length === 0) {
       return; // Empty queue
     }
-    
-    console.log(`Processing ${queue.length} queued offline actions`);
-    
-    // Process each action
+
+    // Process each queued offline action
     const failedActions = [];
     
     for (const action of queue) {
@@ -306,8 +303,8 @@ export const processCampsiteOfflineQueue = async (): Promise<void> => {
     } else {
       await AsyncStorage.removeItem('offline_action_queue');
     }
-    
-    console.log(`Processed offline queue. ${failedActions.length} actions remaining.`);
+
+    // Completed processing offline queue
   } catch (error) {
     console.error('Error processing offline queue:', error);
   }

@@ -25,10 +25,9 @@ export const getPOIs = async (): Promise<POI[]> => {
   try {
     // Check for token
     const token = await SecureStore.getItemAsync('userToken');
-    
-    if (!token) {
+      if (!token) {
       // eslint-disable-next-line
-      console.log('No auth token found, returning mock data');
+      console.warn('No auth token found, returning mock data');
       return await getMockPOIs();
     }
     
@@ -39,10 +38,9 @@ export const getPOIs = async (): Promise<POI[]> => {
     if (!netInfo.isConnected) {
       const cachedData = await getCachedPOIs();
       if (cachedData) {
-        return cachedData;
-      }
+        return cachedData;      }
       // eslint-disable-next-line
-      console.log('Offline without cache, returning mock data');
+      console.warn('Offline without cache, returning mock data');
       return await getMockPOIs();
     }
     
@@ -62,9 +60,8 @@ export const getPOIs = async (): Promise<POI[]> => {
     } catch (apiError: unknown) {
       const axiosError = apiError as AxiosError;
       // If the endpoint isn't implemented yet (404)
-      if (axiosError.response?.status === 404) {
-        // eslint-disable-next-line
-        console.log('API endpoint not implemented, using mock data');
+      if (axiosError.response?.status === 404) {        // eslint-disable-next-line
+        console.warn('API endpoint not implemented, using mock data');
         const mockData = await getMockPOIs();
         await cachePOIs(mockData); // Cache mock data for offline use
         return mockData;
@@ -82,10 +79,9 @@ export const getPOIs = async (): Promise<POI[]> => {
     if (cachedData) {
       return cachedData;
     }
-    
-    // Return mock data as last resort
+      // Return mock data as last resort
     // eslint-disable-next-line
-    console.log('Returning mock data as fallback');
+    console.warn('Returning mock data as fallback');
     return await getMockPOIs();
   }
 };
@@ -181,10 +177,9 @@ const getMockPOIs = async (): Promise<POI[]> => {
       const lastLocation = JSON.parse(lastLocationStr);
       baseLat = lastLocation.latitude;
       baseLong = lastLocation.longitude;
-    }
-  } catch (error) {
+    }  } catch (error) {
     // eslint-disable-next-line
-    console.log('Could not get last location, using defaults');
+    console.warn('Could not get last location, using defaults');
   }
 
   // Mock POI data

@@ -87,7 +87,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             >
               {options.tabBarIcon && options.tabBarIcon({
                 focused: isFocused,
-                color: isFocused ? '#D4946B' : '#F5F5DC', // Bright copper when focused, muted white when not
+                color: isFocused ? '#FFD700' : '#F5F5DC', // Gold when focused, muted white when not
                 size: 32, // Increased icon size
               })}
             </TouchableOpacity>

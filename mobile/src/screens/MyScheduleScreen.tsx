@@ -198,16 +198,14 @@ const MyScheduleScreen = () => {
             confirmRemoveEvent(item);
           }}
         >
-          <Ionicons name="heart" size={24} color={theme.primary} />
-          <Text style={[styles.favoriteText, { color: theme.primary }]}>
+          <Ionicons name="heart" size={24} color={isDark ? '#B87333' : theme.secondary} />
+          <Text style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary }]}>
             Added
           </Text>
         </TouchableOpacity>
       </TouchableOpacity>
     );
-  };
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+  };  return (    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Day filter at the top with proper alignment */}

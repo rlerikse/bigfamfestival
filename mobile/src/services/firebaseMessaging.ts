@@ -20,10 +20,9 @@ export async function requestNotificationPermission() {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-    
-    if (finalStatus !== 'granted') {
+      if (finalStatus !== 'granted') {
         // eslint-disable-next-line no-console
-      console.log('Permission not granted');
+      console.warn('Permission not granted for notifications');
       return false;
     }
     
@@ -40,11 +39,8 @@ export async function getPushToken() {
     const projectId = Constants?.expoConfig?.extra?.eas?.projectId; // Fetch projectId dynamically
     if (!projectId) {
       throw new Error('Expo projectId is missing. Please check your app configuration.');
-    }
-
-    const token = await Notifications.getExpoPushTokenAsync({ projectId });
-    // eslint-disable-next-line no-console
-    console.log('Expo Push Token:', token.data);
+    }    const token = await Notifications.getExpoPushTokenAsync({ projectId });
+    // Token obtained successfully
     return token.data;
   } catch (error) {
     console.error('Error getting push token:', error);

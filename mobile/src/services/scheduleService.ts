@@ -14,25 +14,23 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
   try {
     // Check for token
     const token = await SecureStore.getItemAsync('userToken');
-    
-    if (!token) {
+      if (!token) {
       // eslint-disable-next-line no-console
-      console.log('No auth token found, cannot fetch schedule.');
+      console.warn('No auth token found, cannot fetch schedule.');
       // Decide appropriate action: throw error or return empty array
-      throw new Error('Authentication token not found'); 
+      throw new Error('Authentication token not found');
     }
     
     // Check network connectivity
     const netInfo = await NetInfo.fetch();
-    
-    // Use cached data if offline
+      // Use cached data if offline
     if (!netInfo.isConnected) {
       const cachedData = await getCachedSchedule(userId);
       if (cachedData) {
         return cachedData;
       }
       // eslint-disable-next-line no-console
-      console.log('Offline without cache, cannot fetch schedule.');
+      console.warn('Offline without cache, cannot fetch schedule.');
       // Decide appropriate action: throw error or return empty array
       throw new Error('Offline and no cached schedule available');
     }
@@ -267,11 +265,9 @@ const queueOfflineAction = async (
       data: actionData,
       timestamp: Date.now()
     });
-    
-    // Save updated queue
+      // Save updated queue
     await AsyncStorage.setItem('schedule_offline_queue', JSON.stringify(queue));
-    // eslint-disable-next-line no-console
-    console.log(`Queued ${actionType} action for later synchronization`);
+    // Queued action for later synchronization when online
   } catch (error) {
     console.error('Error queueing offline action:', error);
   }
@@ -282,13 +278,10 @@ const queueOfflineAction = async (
  * This would typically be called when the app detects it's back online
  */
 export const processScheduleOfflineQueue = async (): Promise<void> => {
-  try {
-    // Check if we're online
+  try {    // Check if we're online
     const netInfo = await NetInfo.fetch();
     if (!netInfo.isConnected) {
-      // eslint-disable-next-line no-console
-      console.log('Still offline, cannot process queue');
-      return;
+      return; // Still offline, cannot process queue
     }
     
     // Get the queue
@@ -297,14 +290,11 @@ export const processScheduleOfflineQueue = async (): Promise<void> => {
       return; // No queued actions
     }
     
-    const queue = JSON.parse(queueStr);
-    if (queue.length === 0) {
+    const queue = JSON.parse(queueStr);    if (queue.length === 0) {
       return; // Empty queue
     }
-    // eslint-disable-next-line no-console
-    console.log(`Processing ${queue.length} queued schedule actions`);
     
-    // Process each action
+    // Process each queued schedule action
     const failedActions = [];
     
     for (const action of queue) {
@@ -324,12 +314,10 @@ export const processScheduleOfflineQueue = async (): Promise<void> => {
     
     // Update the queue with only failed actions
     if (failedActions.length > 0) {
-      await AsyncStorage.setItem('schedule_offline_queue', JSON.stringify(failedActions));
-    } else {
+      await AsyncStorage.setItem('schedule_offline_queue', JSON.stringify(failedActions));    } else {
       await AsyncStorage.removeItem('schedule_offline_queue');
     }
-    // eslint-disable-next-line no-console
-    console.log(`Processed offline queue. ${failedActions.length} actions remaining.`);
+    // Completed processing offline queue
   } catch (error) {
     console.error('Error processing offline queue:', error);
   }

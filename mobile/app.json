@@ -1,8 +1,7 @@
-{
-  "expo": {
+{  "expo": {
     "name": "Big Fam Festival",
     "slug": "bigfam-festival",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",

@@ -11,6 +11,7 @@ import {
   Platform,
   RefreshControl,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,7 @@ import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/
 import { api } from '../services/api';
 import { ScheduleEvent } from '../types/event';
 import EventDetailsModal from '../components/EventDetailsModal'; // Corrected import
+import DayNightCycle from '../components/DayNightCycle';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -45,8 +47,7 @@ const HomeScreen = () => {
   const [selectedStage, setSelectedStage] = useState<string>('all');
 
   const festivalDays = [
-    { id: 'all', label: 'ALL', date: 'all' },
-    { id: '2025-09-26', label: 'FRI 26', date: '2025-09-26' },
+    { id: 'all', label: 'FRI 26', date: '2025-09-26' },
     { id: '2025-09-27', label: 'SAT 27', date: '2025-09-27' },
     { id: '2025-09-28', label: 'SUN 28', date: '2025-09-28' },
   ];
@@ -72,7 +73,7 @@ const HomeScreen = () => {
       return a.startTime.localeCompare(b.startTime); // Corrected to startTime
     });
     setFilteredEvents(filtered);
-  }, [setFilteredEvents]); // setFilteredEvents is stable
+  }, []); // No dependencies needed as it doesn't use any external variables that would change
 
   const fetchEvents = useCallback(async () => {
     setIsLoading(true);
@@ -139,13 +140,10 @@ const HomeScreen = () => {
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchEvents();
-  };
-
-  const handleDayFilter = (day: string) => {
+  };  const handleDayFilter = (day: string) => {
     setSelectedDay(day);
     applyFilters(events, day, selectedStage);
   };
-
   const handleStageFilter = (stage: string) => {
     setSelectedStage(stage);
     applyFilters(events, selectedDay, stage);
@@ -211,9 +209,8 @@ const HomeScreen = () => {
           <View style={styles.eventContent}>
             <View style={styles.eventTextContainer}>
               <Text style={[styles.eventTitle, { color: theme.text }]}>{item.name}</Text>
-              <Text style={[styles.eventDetails, { color: theme.muted }]}
-              >
-                {item.stage} - {formatTimeDisplay(item.startTime)} {/* Corrected to startTime*/}
+              <Text style={[styles.eventDetails, { color: theme.muted }]}>
+                {item.stage} - {formatTimeDisplay(item.startTime)}
               </Text>
               {item.description && (
                 <Text style={[styles.eventDescription, { color: theme.text }]} numberOfLines={2}>
@@ -224,9 +221,12 @@ const HomeScreen = () => {
             <TouchableOpacity
               style={styles.favoriteButton}
               onPress={(e) => { e.stopPropagation(); handleToggleSchedule(item); }}
-            >
-              <Ionicons name={isInUserSchedule ? "heart" : "heart-outline"} size={24} color={theme.primary} />
-              <Text style={[styles.favoriteText, { color: theme.primary }]}>
+            >              <Ionicons 
+                name={isInUserSchedule ? "heart" : "heart-outline"} 
+                size={24} 
+                color={isDark ? '#B87333' : theme.secondary}
+              />
+              <Text style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary }]}>    
                 {isInUserSchedule ? "Added" : "Add"}
               </Text>
             </TouchableOpacity>
@@ -234,10 +234,11 @@ const HomeScreen = () => {
         </View>
       </TouchableOpacity>
     );
-  };  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
+  };  return (    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Add DayNightCycle background */}
+      <DayNightCycle height={Dimensions.get('window').height} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <View style={styles.content}>
+      <View style={[styles.content, { backgroundColor: theme.background }]}>
         {/* Day Filters */}
         <View style={styles.filterRowContainer}>
           {festivalDays.map((day) => (
@@ -246,14 +247,20 @@ const HomeScreen = () => {
               style={[
                 styles.filterButton,
                 { borderColor: theme.border },
-                day.date === selectedDay && { backgroundColor: theme.primary },
+                // Corrected condition: selectedDay should be compared with day.date for specific days
+                // and with 'all' for the "ALL" (or "FRI 26" which acts as 'all' initially) button.
+                (day.id === 'all' ? selectedDay === 'all' : selectedDay === day.date) && { backgroundColor: theme.primary },
               ]}
-              onPress={() => handleDayFilter(day.date)}
+              onPress={() => {
+                // Ensure 'all' is passed for the first button, and day.date for others.
+                handleDayFilter(day.id === 'all' ? 'all' : day.date);
+              }}
             >
               <Text 
                 style={[
                   styles.filterButtonText,
-                  day.date === selectedDay ? { color: theme.background } : { color: theme.text },
+                  // Corrected condition for text color
+                  (day.id === 'all' ? selectedDay === 'all' : selectedDay === day.date) ? { color: theme.background } : { color: theme.text },
                 ]}
                 numberOfLines={1} // Ensure single line
               >
@@ -284,18 +291,17 @@ const HomeScreen = () => {
               >
                 {stage.label}
               </Text>
-            </TouchableOpacity>
-          ))}
+            </TouchableOpacity>          ))}
         </View>
-
+        
         {/* Events List */}
         {isLoading && !isRefreshing ? (
-          <View style={styles.loadingContainer}>
+          <View style={[styles.loadingContainer, { backgroundColor: 'transparent' }]}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={[styles.loadingText, { color: theme.text }]}>Loading events...</Text>
           </View>
         ) : error ? (
-          <View style={styles.errorContainer}>
+          <View style={[styles.errorContainer, { backgroundColor: 'transparent' }]}>
             <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
             <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
             <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchEvents}>
@@ -303,7 +309,7 @@ const HomeScreen = () => {
             </TouchableOpacity>
           </View>
         ) : filteredEvents.length === 0 ? (
-          <View style={styles.emptyContainer}>
+          <View style={[styles.emptyContainer, { backgroundColor: 'transparent' }]}>
             <Ionicons name="calendar-outline" size={48} color={theme.muted} />
             <Text style={[styles.emptyText, { color: theme.text }]}>
               No events found for the selected filters.
