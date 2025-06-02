@@ -6,9 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Image,
-  SafeAreaView,
-  Platform,
+  Image,  SafeAreaView,
   RefreshControl,
   Alert,
   Dimensions,
@@ -253,16 +251,16 @@ const HomeScreen = () => {
     );
   };
 
-  return ( <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Add DayNightCycle background */}
-      <DayNightCycle height={Dimensions.get('window').height} />
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Add DayNightCycle background */}      <DayNightCycle height={Dimensions.get('window').height} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
-        {/* Top Navigation Bar */}
-      <TopNavBar onSearch={handleSearch} />
+      {/* Top Navigation Bar */}
+        <TopNavBar onSearch={handleSearch} />
       
-      <View style={[styles.content, { backgroundColor: theme.background }]}>
+      <View style={[styles.content, { backgroundColor: theme.background, marginTop: -8 }]}>
         {/* Day Filters */}
-        <View style={styles.filterRowContainer}>
+        <View style={[styles.filterRowContainer, { marginTop: 4 }]}>
           {festivalDays.map((day) => (
             <TouchableOpacity
               key={day.id}
@@ -296,8 +294,7 @@ const HomeScreen = () => {
         <View style={styles.filterRowContainer}>
           {stages.map((stage) => (
             <TouchableOpacity
-              key={stage.id}
-              style={[
+              key={stage.id}              style={[
                 styles.filterButton,
                 { borderColor: theme.border },
                 stage.value === selectedStage && { backgroundColor: theme.primary },
@@ -313,7 +310,8 @@ const HomeScreen = () => {
               >
                 {stage.label}
               </Text>
-            </TouchableOpacity>          ))}
+            </TouchableOpacity>
+          ))}
         </View>
         
         {/* Events List */}
@@ -365,9 +363,10 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },  content: {
+  },
+  content: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? 16 : 0,
+    paddingTop: 0, // Removed top padding to make filters flush with navbar
     paddingHorizontal: 16, // Main horizontal padding
   },
   loadingContainer: {
@@ -415,29 +414,29 @@ const styles = StyleSheet.create({
   resetButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-  },
-  resetButtonText: {
+  },  resetButtonText: {
     fontWeight: '600',
   },
   filterRowContainer: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 8, // Reduced gap between rows
     gap: 8,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 6, // Reduced vertical padding
     paddingHorizontal: 8,
-    borderRadius: 10,
+    borderRadius: 20, // More pill-like shape like YouTube
     borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 44, // Set fixed height
+    alignItems: 'center',    justifyContent: 'center',
+    height: 32, // Reduced height
   },
   filterButtonText: {
-    fontSize: 14,
+    fontSize: 11, // Even smaller font size to prevent clipping
     fontWeight: '600',
     textAlign: 'center',
+    includeFontPadding: false, // Reduce font padding to prevent clipping
+    textAlignVertical: 'center', // Ensure vertical center alignment
   },
   eventsList: {
     // Removed paddingHorizontal: 16 (correctly done previously)

@@ -119,19 +119,18 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
+const styles = StyleSheet.create({  container: {
     backgroundColor: 'transparent',
     width: '100%',
-    marginBottom: 0
-  },
-  content: {
+    marginBottom: 0,
+    paddingBottom: 0 // Ensure no bottom padding
+  },content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center', 
     width: '100%',
     paddingHorizontal: 16,
-    height: 65
+    height: 55 // Reduced height to make filters flush with navbar
   },
   logoContainer: {
     width: 160,
