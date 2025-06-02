@@ -315,7 +315,7 @@ const MyScheduleScreen = () => {
 
 const styles = StyleSheet.create({  container: {
     flex: 1,
-    paddingTop: 76, // Add padding to account for TopNavBar height (60) + some spacing
+    paddingTop: 0, // Remove this so NavBar aligns to top
   },
   contentContainer: {
     flex: 1,

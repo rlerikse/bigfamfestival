@@ -237,19 +237,23 @@ const HomeScreen = () => {
             <TouchableOpacity
               style={styles.favoriteButton}
               onPress={(e) => { e.stopPropagation(); handleToggleSchedule(item); }}
-            >              <Ionicons 
-                name={isInUserSchedule ? "heart" : "heart-outline"} 
-                size={24} 
+            >
+              <Ionicons
+                name={isInUserSchedule ? "heart" : "heart-outline"}
+                size={24}
                 color={isDark ? '#B87333' : theme.secondary}
               />
-              <Text style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary }]}>    
+              <Text style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary }]}>
                 {isInUserSchedule ? "Added" : "Add"}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
-    );  };  return (    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    );
+  };
+
+  return ( <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Add DayNightCycle background */}
       <DayNightCycle height={Dimensions.get('window').height} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -365,7 +369,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'android' ? 16 : 0,
     paddingHorizontal: 16, // Main horizontal padding
-    marginTop: 60, // Add margin to account for TopNavBar height
   },
   loadingContainer: {
     flex: 1,

@@ -420,13 +420,12 @@ const MapScreen = () => {
             <Text style={[styles.legendText, { color: theme.text }]}>Friend</Text>
           </View>
         </View>
-        
-        {/* Offline Mode Indicator */}
+          {/* Offline Mode Indicator */}
         <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name="cloud-offline" size={16} color={theme.text} />
             <Text style={[styles.offlineText, { color: theme.text, marginLeft: 4 }]}>
-              Offline Maps Available
+              Offline
             </Text>
           </View>
         </View>
@@ -510,7 +509,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     flex: 1,
-    marginTop: 60, // Account for TopNavBar height
+    marginTop: 70, // Increased from 60 to account for taller TopNavBar
   },
   map: {
     width: '100%',
@@ -605,7 +604,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },  legendContainer: {
     position: 'absolute',
-    top: 80, // Account for TopNavBar + padding
+    top: 100, // Increased from 80 to account for taller TopNavBar
     left: 20,
     padding: 10,
     borderRadius: 10,
@@ -624,7 +623,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },  offlineContainer: {
     position: 'absolute',
-    top: 80, // Account for TopNavBar + padding
+    top: 100, // Increased from 80 to account for taller TopNavBar
     right: 20,
     padding: 8,
     borderRadius: 20,
