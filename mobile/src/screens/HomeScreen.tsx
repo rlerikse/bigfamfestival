@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  StyleSheet,
   View,
   Text,
   TouchableOpacity,
@@ -11,7 +10,6 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
-  TextProps,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,28 +36,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
 import { api } from '../services/api';
-import EventDetailsModal from '../components/EventDetailsModal'; // Corrected import
+import EventDetailsModal from '../components/EventDetailsModal';
 import DayNightCycle from '../components/DayNightCycle';
 import TopNavBar from '../components/TopNavBar';
-
-// Define SafeText component
-interface SafeTextProps extends TextProps {
-  children: React.ReactNode;
-}
-
-const SafeText: React.FC<SafeTextProps> = ({ children, ...props }) => {
-  const renderableChildren = React.Children.map(children, child => {
-    if (typeof child === 'string' || typeof child === 'number') {
-      return child;
-    }
-    if (React.isValidElement(child) && child.props.children && (typeof child.props.children === 'string' || typeof child.props.children === 'number')) {
-        return child.props.children;
-    }
-    return child != null ? String(child) : ''; // Fallback to string conversion
-  });
-
-  return <Text {...props}>{renderableChildren}</Text>;
-};
+import SafeText from '../components/SafeText';
+import { homeScreenStyles } from './HomeScreen.styles';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -267,30 +248,29 @@ const HomeScreen = () => {
       const eventTime = typeof item.startTime === 'string' ? formatTimeDisplay(item.startTime) : 'Invalid Time';
       const eventDescription = typeof item.description === 'string' ? item.description : ''; // Empty if not string
 
-      return (
-        <TouchableOpacity onPress={() => { debugLog('Event card pressed', { name: item.name }); setSelectedEvent(item); setIsModalVisible(true); }}>
-          <View style={[styles.eventCard, { backgroundColor: theme.card || '#FFFFFF' }]}>
+      return (        <TouchableOpacity onPress={() => { debugLog('Event card pressed', { name: item.name }); setSelectedEvent(item); setIsModalVisible(true); }}>
+          <View style={[homeScreenStyles.eventCard, { backgroundColor: theme.card || '#FFFFFF' }]}>
             <Image
               source={displayImageUrl ? { uri: displayImageUrl } : require('../assets/images/event-placeholder.png')}
-              style={styles.eventImage}
+              style={homeScreenStyles.eventImage}
               resizeMode="cover"
             />
-            <View style={styles.eventContent}>
-              <View style={styles.eventTextContainer}>
-                <SafeText style={[styles.eventTitle, { color: theme.text || '#000000' }]} numberOfLines={1}>
+            <View style={homeScreenStyles.eventContent}>
+              <View style={homeScreenStyles.eventTextContainer}>
+                <SafeText style={[homeScreenStyles.eventTitle, { color: theme.text || '#000000' }]} numberOfLines={1}>
                   {eventName}
                 </SafeText>
-                <SafeText style={[styles.eventDetails, { color: theme.muted || '#666666' }]} numberOfLines={1}>
+                <SafeText style={[homeScreenStyles.eventDetails, { color: theme.muted || '#666666' }]} numberOfLines={1}>
                   {`${eventStage} - ${eventTime}`}
                 </SafeText>
                 {eventDescription ? ( // Only render if description is not an empty string
-                  <SafeText style={[styles.eventDescription, { color: theme.text || '#000000' }]} numberOfLines={2}>
+                  <SafeText style={[homeScreenStyles.eventDescription, { color: theme.text || '#000000' }]} numberOfLines={2}>
                     {eventDescription}
                   </SafeText>
                 ) : null}
               </View>
               <TouchableOpacity
-                style={styles.favoriteButton}
+                style={homeScreenStyles.favoriteButton}
                 onPress={(e) => { e.stopPropagation(); handleToggleSchedule(item); }}
               >
                 <Ionicons
@@ -298,7 +278,7 @@ const HomeScreen = () => {
                   size={24}
                   color={isDark ? '#B87333' : theme.secondary || '#FF5722'}
                 />
-                <SafeText style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary || '#FF5722' }]}>
+                <SafeText style={[homeScreenStyles.favoriteText, { color: isDark ? '#B87333' : theme.secondary || '#FF5722' }]}>
                   {isInUserSchedule ? "Added" : "Add"}
                 </SafeText>
               </TouchableOpacity>
@@ -307,9 +287,8 @@ const HomeScreen = () => {
         </TouchableOpacity>
       );
     } catch (e: any) {
-      debugLog('Error rendering event card:', { error: e.message, itemID: item.id });
-      return (
-        <View style={[styles.eventCard, { backgroundColor: '#FFFFFF', padding: 10 }]}>
+      debugLog('Error rendering event card:', { error: e.message, itemID: item.id });      return (
+        <View style={[homeScreenStyles.eventCard, { backgroundColor: '#FFFFFF', padding: 10 }]}>
           <SafeText style={{ color: 'red' }}>Error displaying event: {String(item.name || item.id)}</SafeText>
         </View>
       );
@@ -327,11 +306,10 @@ const HomeScreen = () => {
         // Ensure label is a string
         const label = (typeof item.label === 'string' || typeof item.label === 'number') ? String(item.label) : 'N/A';
 
-        return (
-          <TouchableOpacity
+        return (          <TouchableOpacity
             key={item.id}
             style={[
-              styles.filterButton,
+              homeScreenStyles.filterButton,
               { borderColor: theme.border || '#DDDDDD' },
               isButtonSelected && { backgroundColor: theme.primary || '#4A90E2' },
             ]}
@@ -339,7 +317,7 @@ const HomeScreen = () => {
           >
             <SafeText 
               style={[
-                styles.filterButtonText,
+                homeScreenStyles.filterButtonText,
                 isButtonSelected ? { color: theme.background || '#FFFFFF' } : { color: theme.text || '#000000' },
               ]}
               numberOfLines={1}
@@ -397,55 +375,53 @@ const HomeScreen = () => {
     );
 
     let contentPart;
-    debugLog('HomeScreen: Determining content part (loading/error/empty/list)');
-    if (isLoading && !isRefreshing) {
+    debugLog('HomeScreen: Determining content part (loading/error/empty/list)');    if (isLoading && !isRefreshing) {
       contentPart = (
-        <View style={[styles.loadingContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[homeScreenStyles.loadingContainer, { backgroundColor: 'transparent' }]}>
           <ActivityIndicator size="large" color={theme.primary || '#4A90E2'} />
-          <SafeText style={[styles.loadingText, { color: theme.text || '#000000' }]}>Loading events...</SafeText>
+          <SafeText style={[homeScreenStyles.loadingText, { color: theme.text || '#000000' }]}>Loading events...</SafeText>
         </View>
       );
     } else if (error) {
       contentPart = (
-        <View style={[styles.errorContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[homeScreenStyles.errorContainer, { backgroundColor: 'transparent' }]}>
           <Ionicons name="alert-circle-outline" size={48} color={theme.error || '#FF0000'} />
-          <SafeText style={[styles.errorText, { color: theme.text || '#000000' }]}>{String(error)}</SafeText>
-          <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary || '#4A90E2' }]} onPress={fetchEvents}>
-            <SafeText style={styles.retryButtonText}>Try Again</SafeText>
+          <SafeText style={[homeScreenStyles.errorText, { color: theme.text || '#000000' }]}>{String(error)}</SafeText>
+          <TouchableOpacity style={[homeScreenStyles.retryButton, { backgroundColor: theme.primary || '#4A90E2' }]} onPress={fetchEvents}>
+            <SafeText style={homeScreenStyles.retryButtonText}>Try Again</SafeText>
           </TouchableOpacity>
         </View>
       );
     } else if (filteredEvents.length === 0) {
       contentPart = (
-        <View style={[styles.emptyContainer, { backgroundColor: 'transparent' }]}>
+        <View style={[homeScreenStyles.emptyContainer, { backgroundColor: 'transparent' }]}>
           <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
-          <SafeText style={[styles.emptyText, { color: theme.text || '#000000' }]}>
+          <SafeText style={[homeScreenStyles.emptyText, { color: theme.text || '#000000' }]}>
             No events found for the selected filters.
           </SafeText>
-          <TouchableOpacity style={styles.resetButton} onPress={() => { 
+          <TouchableOpacity style={homeScreenStyles.resetButton} onPress={() => { 
             debugLog('Reset Filters pressed');
             setSelectedDay('all'); 
             setSelectedStage('all'); 
             setSearchQuery(''); 
             applyFilters(events, 'all', 'all', ''); 
           }}>
-            <SafeText style={[styles.resetButtonText, { color: theme.primary || '#4A90E2' }]}>Reset Filters</SafeText>
+            <SafeText style={[homeScreenStyles.resetButtonText, { color: theme.primary || '#4A90E2' }]}>Reset Filters</SafeText>
           </TouchableOpacity>
         </View>
       );
     } else {
       debugLog('HomeScreen: Rendering FlatList');
-      contentPart = (
-        <FlatList
+      contentPart = (        <FlatList
           data={filteredEvents}
           renderItem={renderEventCard}
           keyExtractor={item => item.id}
-          contentContainerStyle={styles.eventsList}
+          contentContainerStyle={homeScreenStyles.eventsList}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => {
             debugLog('FlatList: Rendering ListEmptyComponent');
             return (
-              <View style={styles.emptyContainer}>
+              <View style={homeScreenStyles.emptyContainer}>
                 <SafeText style={{ color: theme.text || '#000000' }}>No events found (FlatList empty)</SafeText>
               </View>
             );
@@ -462,18 +438,16 @@ const HomeScreen = () => {
       );
     }
     
-    debugLog('HomeScreen: Rendering main layout');
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background || '#FFFFFF' }]}>
+    debugLog('HomeScreen: Rendering main layout');    return (
+      <SafeAreaView style={[homeScreenStyles.container, { backgroundColor: theme.background || '#FFFFFF' }]}>
         {dayNightCycleElement}
         {statusBarElement}
-        {topNavBarElement}
-        
-        <View style={[styles.content, { backgroundColor: theme.background || '#FFFFFF', marginTop: -8 }]}>
-          <View style={[styles.filterRowContainer, { marginTop: 4 }]}>
+        {topNavBarElement}        
+        <View style={[homeScreenStyles.content, { backgroundColor: theme.background || '#FFFFFF', marginTop: -8 }]}>
+          <View style={[homeScreenStyles.filterRowContainer, { marginTop: 4 }]}>
             {renderFilterButtons(festivalDays, selectedDay, handleDayFilter, 'day')}
           </View>
-          <View style={styles.filterRowContainer}>
+          <View style={homeScreenStyles.filterRowContainer}>
             {renderFilterButtons(stages, selectedStage, handleStageFilter, 'stage')}
           </View>
           {contentPart}
@@ -503,140 +477,8 @@ const HomeScreen = () => {
   }
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingTop: 0, // Removed top padding to make filters flush with navbar
-    paddingHorizontal: 16, // Main horizontal padding
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorText: {
-    marginTop: 16,
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  retryButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyText: {
-    marginTop: 16,
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 16,
-  },  resetButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  resetButtonText: {
-    fontWeight: '600',
-  },
-  filterRowContainer: {
-    flexDirection: 'row',
-    marginBottom: 8, // Reduced gap between rows
-    gap: 8,
-  },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 6, // Reduced vertical padding
-    paddingHorizontal: 8,
-    borderRadius: 20, // More pill-like shape like YouTube
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 32, // Reduced height
-  },
-  filterButtonText: {
-    fontSize: 11, // Even smaller font size to prevent clipping
-    fontWeight: '600',
-    textAlign: 'center',
-    includeFontPadding: false, // Reduce font padding to prevent clipping
-    textAlignVertical: 'center', // Ensure vertical center alignment
-  },
-  eventsList: {
-    // Removed paddingHorizontal: 16 (correctly done previously)
-    paddingBottom: 16,
-  },
-  eventCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: 'hidden',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  eventImage: {
-    width: '100%',
-    height: 180,
-  },
-  eventContent: {
-    padding: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  eventTextContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  eventTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  eventDetails: {
-    fontSize: 14,
-    marginBottom: 6,
-  },
-  eventDescription: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  favoriteButton: {
-    padding: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 60,
-  },
-  favoriteText: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-});
-
 // Debug logging utility for HomeScreen component
-function debugLog(message: string, data?: Record<string, any>): void {
+function debugLog(message: string, data?: Record<string, unknown>): void {
   // Only log in development environment
   if (__DEV__) {
     if (data) {
@@ -646,4 +488,5 @@ function debugLog(message: string, data?: Record<string, any>): void {
     }
   }
 }
+
 export default HomeScreen;
