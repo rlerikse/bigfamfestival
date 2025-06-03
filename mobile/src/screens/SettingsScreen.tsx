@@ -138,7 +138,7 @@ const SettingsScreen = () => {
             <Text style={[styles.settingsItemLabel, { color: theme.text }]}>
               {item.label}
             </Text>
-            {item.description && (
+            {item.description && typeof item.description === 'string' && (
               <Text style={[styles.settingsItemDescription, { color: theme.muted }]}>
                 {item.description}
               </Text>

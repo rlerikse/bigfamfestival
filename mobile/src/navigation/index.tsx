@@ -63,17 +63,17 @@ function MainNavigator() {
   const { height } = Dimensions.get('window');
   const { debugMode, debugHour } = useDebug();
   const { isPerformanceMode } = useTheme(); // Added isPerformanceMode from ThemeContext
-
   return (
     <View style={{ flex: 1 }}>
-      {/* Full-Screen Day/Night Cycle Background - Conditionally render based on performance mode*/}
+      {/* Full-Screen Day/Night Cycle Background - Conditionally render based on performance mode */}
       {!isPerformanceMode && (
         <DayNightCycle
           height={height}
           debugMode={debugMode}
           debugHour={debugHour}
         />
-      )}      <Tab.Navigator
+      )}
+      <Tab.Navigator
         tabBar={(props) => <GrassBottomTabBar {...props} />}
         screenOptions={{
           headerShown: false,

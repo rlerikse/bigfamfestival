@@ -369,10 +369,54 @@ const MapScreen = () => {
       </View>
     );  }
   
+  // Add this function to safely render the offline indicator
+  const renderOfflineIndicator = () => {
+    try {
+      console.log('Rendering offline indicator');
+      console.log('Theme:', {
+        text: theme.text,
+        card: theme.card
+      });
+      
+      return (
+        <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="cloud-offline" size={16} color={theme.text || '#000000'} />
+            <Text 
+              style={[
+                styles.offlineText, 
+                { 
+                  color: theme.text || '#000000', 
+                  marginLeft: 4 
+                }
+              ]}
+            >
+              Offline
+            </Text>
+          </View>
+        </View>
+      );
+    } catch (error) {
+      console.error('Error rendering offline indicator:', error);
+      // Fallback rendering with hard-coded styles in case of error
+      return (
+        <View style={[styles.offlineContainer, { backgroundColor: '#FFFFFF' }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Ionicons name="cloud-offline" size={16} color="#000000" />
+            <Text style={{ fontSize: 12, marginLeft: 4, color: '#000000' }}>
+              Offline
+            </Text>
+          </View>
+        </View>
+      );
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-        {/* Top Navigation Bar */}      <TopNavBar 
+        {/* Top Navigation Bar */}      
+      <TopNavBar 
         onSearch={handleSearch} 
         placeholder="Search map locations..." 
         onSettingsPress={() => navigation.navigate('Settings')}
@@ -431,15 +475,9 @@ const MapScreen = () => {
             <Text style={[styles.legendText, { color: theme.text }]}>Friend</Text>
           </View>
         </View>
-          {/* Offline Mode Indicator */}
-        <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Ionicons name="cloud-offline" size={16} color={theme.text} />
-            <Text style={[styles.offlineText, { color: theme.text, marginLeft: 4 }]}>
-              Offline
-            </Text>
-          </View>
-        </View>
+          
+        {/* Replace the original offline indicator with the safe rendering function */}
+        {renderOfflineIndicator()}
         
         {/* Campsite Actions */}
         {hasCampsite ? (

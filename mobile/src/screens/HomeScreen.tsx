@@ -11,6 +11,7 @@ import {
   RefreshControl,
   Alert,
   Dimensions,
+  TextProps,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,14 +20,46 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import * as SecureStore from 'expo-secure-store';
 
+// Define ScheduleEvent interface
+interface ScheduleEvent {
+  id: string;
+  name: string;
+  date: string;
+  startTime: string;
+  endTime?: string; // Optional
+  stage: string;
+  artists: string[]; // Assuming artists are an array of strings (IDs or names)
+  description?: string; // Optional
+  imageUrl?: string; // Optional
+  // Add any other properties that ScheduleEvent might have
+}
+
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
 import { api } from '../services/api';
-import { ScheduleEvent } from '../types/event';
 import EventDetailsModal from '../components/EventDetailsModal'; // Corrected import
 import DayNightCycle from '../components/DayNightCycle';
 import TopNavBar from '../components/TopNavBar';
+
+// Define SafeText component
+interface SafeTextProps extends TextProps {
+  children: React.ReactNode;
+}
+
+const SafeText: React.FC<SafeTextProps> = ({ children, ...props }) => {
+  const renderableChildren = React.Children.map(children, child => {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return child;
+    }
+    if (React.isValidElement(child) && child.props.children && (typeof child.props.children === 'string' || typeof child.props.children === 'number')) {
+        return child.props.children;
+    }
+    return child != null ? String(child) : ''; // Fallback to string conversion
+  });
+
+  return <Text {...props}>{renderableChildren}</Text>;
+};
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -87,6 +120,7 @@ const HomeScreen = () => {
   }, []); // No dependencies needed as it doesn't use any external variables that would change
 
   const fetchEvents = useCallback(async () => {
+    debugLog('fetchEvents called');
     setIsLoading(true);
     setError(null);
     try {
@@ -107,6 +141,7 @@ const HomeScreen = () => {
   }, [applyFilters, selectedDay, selectedStage, searchQuery]);
 
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
+    debugLog('handleToggleSchedule called', { eventName: eventToToggle.name });
     if (!user) {
       Alert.alert("Login Required", "Please login to manage your schedule.", [
         { text: "Cancel", style: "cancel" },
@@ -148,25 +183,30 @@ const HomeScreen = () => {
     }
   }, [user, navigation, userSchedule]);
   const onRefresh = () => {
+    debugLog('onRefresh called');
     setIsRefreshing(true);
     fetchEvents();
   };
   
   const handleDayFilter = (day: string) => {
+    debugLog('handleDayFilter called', { day });
     setSelectedDay(day);
     applyFilters(events, day, selectedStage, searchQuery);
   };
   const handleStageFilter = (stage: string) => {
+    debugLog('handleStageFilter called', { stage });
     setSelectedStage(stage);
     applyFilters(events, selectedDay, stage, searchQuery);
   };
   
   const handleSearch = (query: string) => {
+    debugLog('handleSearch called', { query });
     setSearchQuery(query);
     applyFilters(events, selectedDay, selectedStage, query);
   };
 
   const loadUserSchedule = useCallback(async () => {
+    debugLog('loadUserSchedule called');
     if (!user) return;
     try {
       const schedule = await getUserSchedule(user.id);
@@ -181,13 +221,17 @@ const HomeScreen = () => {
   }, [user]);
 
   useEffect(() => {
+    debugLog('Main useEffect triggered');
     fetchEvents();
     if (user) {
       loadUserSchedule();
     }
   }, [fetchEvents, loadUserSchedule, user]);
 
+  // SafeText component is now defined at the top level
+
   const renderEventCard = ({ item }: { item: ScheduleEvent }) => {
+    // ... (formatTimeDisplay, isInUserSchedule, displayImageUrl logic is the same) ...
     const formatTimeDisplay = (time: string) => {
       const [hours, minutes] = time.split(':');
       const hour = parseInt(hours, 10);
@@ -215,156 +259,248 @@ const HomeScreen = () => {
       }
     }
 
-    return (
-      <TouchableOpacity onPress={() => { setSelectedEvent(item); setIsModalVisible(true); }}>
-        <View style={[styles.eventCard, { backgroundColor: theme.card }]}>
-          <Image
-            source={displayImageUrl ? { uri: displayImageUrl } : require('../assets/images/event-placeholder.png')}
-            style={styles.eventImage}
-            resizeMode="cover"
-          />
-          <View style={styles.eventContent}>
-            <View style={styles.eventTextContainer}>
-              <Text style={[styles.eventTitle, { color: theme.text }]}>{item.name}</Text>
-              <Text style={[styles.eventDetails, { color: theme.muted }]}>
-                {item.stage} - {formatTimeDisplay(item.startTime)}
-              </Text>
-              {item.description && (
-                <Text style={[styles.eventDescription, { color: theme.text }]} numberOfLines={2}>
-                  {item.description}
-                </Text>
-              )}
+    try {
+      debugLog('Rendering Event Card for:', { name: item.name, id: item.id });
+      // Ensure all dynamic text content is definitely a string or number before passing to SafeText
+      const eventName = typeof item.name === 'string' ? item.name : 'Invalid Name';
+      const eventStage = typeof item.stage === 'string' ? item.stage : 'Invalid Stage';
+      const eventTime = typeof item.startTime === 'string' ? formatTimeDisplay(item.startTime) : 'Invalid Time';
+      const eventDescription = typeof item.description === 'string' ? item.description : ''; // Empty if not string
+
+      return (
+        <TouchableOpacity onPress={() => { debugLog('Event card pressed', { name: item.name }); setSelectedEvent(item); setIsModalVisible(true); }}>
+          <View style={[styles.eventCard, { backgroundColor: theme.card || '#FFFFFF' }]}>
+            <Image
+              source={displayImageUrl ? { uri: displayImageUrl } : require('../assets/images/event-placeholder.png')}
+              style={styles.eventImage}
+              resizeMode="cover"
+            />
+            <View style={styles.eventContent}>
+              <View style={styles.eventTextContainer}>
+                <SafeText style={[styles.eventTitle, { color: theme.text || '#000000' }]} numberOfLines={1}>
+                  {eventName}
+                </SafeText>
+                <SafeText style={[styles.eventDetails, { color: theme.muted || '#666666' }]} numberOfLines={1}>
+                  {`${eventStage} - ${eventTime}`}
+                </SafeText>
+                {eventDescription ? ( // Only render if description is not an empty string
+                  <SafeText style={[styles.eventDescription, { color: theme.text || '#000000' }]} numberOfLines={2}>
+                    {eventDescription}
+                  </SafeText>
+                ) : null}
+              </View>
+              <TouchableOpacity
+                style={styles.favoriteButton}
+                onPress={(e) => { e.stopPropagation(); handleToggleSchedule(item); }}
+              >
+                <Ionicons
+                  name={isInUserSchedule ? "heart" : "heart-outline"}
+                  size={24}
+                  color={isDark ? '#B87333' : theme.secondary || '#FF5722'}
+                />
+                <SafeText style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary || '#FF5722' }]}>
+                  {isInUserSchedule ? "Added" : "Add"}
+                </SafeText>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.favoriteButton}
-              onPress={(e) => { e.stopPropagation(); handleToggleSchedule(item); }}
-            >
-              <Ionicons
-                name={isInUserSchedule ? "heart" : "heart-outline"}
-                size={24}
-                color={isDark ? '#B87333' : theme.secondary}
-              />
-              <Text style={[styles.favoriteText, { color: isDark ? '#B87333' : theme.secondary }]}>
-                {isInUserSchedule ? "Added" : "Add"}
-              </Text>
-            </TouchableOpacity>
           </View>
+        </TouchableOpacity>
+      );
+    } catch (e: any) {
+      debugLog('Error rendering event card:', { error: e.message, itemID: item.id });
+      return (
+        <View style={[styles.eventCard, { backgroundColor: '#FFFFFF', padding: 10 }]}>
+          <SafeText style={{ color: 'red' }}>Error displaying event: {String(item.name || item.id)}</SafeText>
         </View>
-      </TouchableOpacity>
-    );
+      );
+    }
   };
 
-  return (    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Add DayNightCycle background */}
-      <DayNightCycle height={Dimensions.get('window').height} />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      {/* Top Navigation Bar */}
+  const renderFilterButtons = (items: any[], selectedItemValue: string, onPressHandler: (itemValue: string) => void, filterType: 'day' | 'stage') => {
+    // ... (try/catch and mapping logic is the same) ...
+    try {
+      debugLog(`Rendering ${filterType} filter buttons`);
+      return items.map((item) => {
+        const itemValue = filterType === 'day' ? (item.id === 'all' ? 'all' : item.date) : item.value;
+        const isButtonSelected = itemValue === selectedItemValue;
+        
+        // Ensure label is a string
+        const label = (typeof item.label === 'string' || typeof item.label === 'number') ? String(item.label) : 'N/A';
+
+        return (
+          <TouchableOpacity
+            key={item.id}
+            style={[
+              styles.filterButton,
+              { borderColor: theme.border || '#DDDDDD' },
+              isButtonSelected && { backgroundColor: theme.primary || '#4A90E2' },
+            ]}
+            onPress={() => onPressHandler(itemValue)}
+          >
+            <SafeText 
+              style={[
+                styles.filterButtonText,
+                isButtonSelected ? { color: theme.background || '#FFFFFF' } : { color: theme.text || '#000000' },
+              ]}
+              numberOfLines={1}
+            >
+              {label}
+            </SafeText>
+          </TouchableOpacity>
+        );
+      });
+    } catch (e: any) {
+      debugLog(`Error rendering ${filterType} filter buttons:`, { error: e.message });
+      return null;
+    }
+  };
+
+  const renderEventDetailsModal = () => {
+    try {
+      if (!selectedEvent) {
+        // debugLog('renderEventDetailsModal: No selected event.');
+        return null;
+      }
+      debugLog('renderEventDetailsModal: Rendering EventDetailsModal for', { eventName: selectedEvent.name });
+      return (
+        <EventDetailsModal
+          isVisible={isModalVisible}
+          onClose={() => setIsModalVisible(false)}
+          event={selectedEvent ? { ...selectedEvent, endTime: selectedEvent.endTime ?? '' } : null}
+          isInSchedule={!!userSchedule[selectedEvent.id]}
+          onToggleSchedule={handleToggleSchedule}
+        />
+      );
+    } catch (e: any) {
+      debugLog('Error rendering EventDetailsModal wrapper:', { error: e.message });
+      return null;
+    }
+  };
+
+  // Main render try/catch
+  try {
+    debugLog('HomeScreen: Starting main render');
+
+    debugLog('HomeScreen: Rendering DayNightCycle');
+    const dayNightCycleElement = <DayNightCycle height={Dimensions.get('window').height} />;
+
+    debugLog('HomeScreen: Rendering StatusBar');
+    const statusBarElement = <StatusBar style={isDark ? 'light' : 'dark'} />;
+
+    debugLog('HomeScreen: Rendering TopNavBar');
+    const topNavBarElement = (
       <TopNavBar 
         onSearch={handleSearch} 
         onSettingsPress={() => navigation.navigate('Settings')} 
         onNotificationsPress={() => alert('Notifications coming soon!')}  
       />
-      
-      <View style={[styles.content, { backgroundColor: theme.background, marginTop: -8 }]}>
-        {/* Day Filters */}
-        <View style={[styles.filterRowContainer, { marginTop: 4 }]}>
-          {festivalDays.map((day) => (
-            <TouchableOpacity
-              key={day.id}
-              style={[
-                styles.filterButton,
-                { borderColor: theme.border },
-                // Corrected condition: selectedDay should be compared with day.date for specific days
-                // and with 'all' for the "ALL" (or "FRI 26" which acts as 'all' initially) button.
-                (day.id === 'all' ? selectedDay === 'all' : selectedDay === day.date) && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => {
-                // Ensure 'all' is passed for the first button, and day.date for others.
-                handleDayFilter(day.id === 'all' ? 'all' : day.date);
-              }}
-            >
-              <Text 
-                style={[
-                  styles.filterButtonText,
-                  // Corrected condition for text color
-                  (day.id === 'all' ? selectedDay === 'all' : selectedDay === day.date) ? { color: theme.background } : { color: theme.text },
-                ]}
-                numberOfLines={1} // Ensure single line
-              >
-                {day.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    );
+
+    let contentPart;
+    debugLog('HomeScreen: Determining content part (loading/error/empty/list)');
+    if (isLoading && !isRefreshing) {
+      contentPart = (
+        <View style={[styles.loadingContainer, { backgroundColor: 'transparent' }]}>
+          <ActivityIndicator size="large" color={theme.primary || '#4A90E2'} />
+          <SafeText style={[styles.loadingText, { color: theme.text || '#000000' }]}>Loading events...</SafeText>
         </View>
-          {/* Stage Filters */}
-        <View style={styles.filterRowContainer}>
-          {stages.map((stage) => (
-            <TouchableOpacity
-              key={stage.id}
-              style={[
-                styles.filterButton,
-                { borderColor: theme.border },
-                stage.value === selectedStage && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => handleStageFilter(stage.value)}
-            >
-              <Text 
-                style={[
-                  styles.filterButtonText,
-                  stage.value === selectedStage ? { color: theme.background } : { color: theme.text },
-                ]}
-                numberOfLines={1} // Ensure single line
-              >
-                {stage.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      );
+    } else if (error) {
+      contentPart = (
+        <View style={[styles.errorContainer, { backgroundColor: 'transparent' }]}>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.error || '#FF0000'} />
+          <SafeText style={[styles.errorText, { color: theme.text || '#000000' }]}>{String(error)}</SafeText>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary || '#4A90E2' }]} onPress={fetchEvents}>
+            <SafeText style={styles.retryButtonText}>Try Again</SafeText>
+          </TouchableOpacity>
         </View>
+      );
+    } else if (filteredEvents.length === 0) {
+      contentPart = (
+        <View style={[styles.emptyContainer, { backgroundColor: 'transparent' }]}>
+          <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
+          <SafeText style={[styles.emptyText, { color: theme.text || '#000000' }]}>
+            No events found for the selected filters.
+          </SafeText>
+          <TouchableOpacity style={styles.resetButton} onPress={() => { 
+            debugLog('Reset Filters pressed');
+            setSelectedDay('all'); 
+            setSelectedStage('all'); 
+            setSearchQuery(''); 
+            applyFilters(events, 'all', 'all', ''); 
+          }}>
+            <SafeText style={[styles.resetButtonText, { color: theme.primary || '#4A90E2' }]}>Reset Filters</SafeText>
+          </TouchableOpacity>
+        </View>
+      );
+    } else {
+      debugLog('HomeScreen: Rendering FlatList');
+      contentPart = (
+        <FlatList
+          data={filteredEvents}
+          renderItem={renderEventCard}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.eventsList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => {
+            debugLog('FlatList: Rendering ListEmptyComponent');
+            return (
+              <View style={styles.emptyContainer}>
+                <SafeText style={{ color: theme.text || '#000000' }}>No events found (FlatList empty)</SafeText>
+              </View>
+            );
+          }}
+          refreshControl={
+            <RefreshControl 
+              refreshing={isRefreshing} 
+              onRefresh={onRefresh} 
+              colors={[theme.primary || '#4A90E2']} 
+              tintColor={theme.primary || '#4A90E2'} 
+            />
+          }
+        />
+      );
+    }
+    
+    debugLog('HomeScreen: Rendering main layout');
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background || '#FFFFFF' }]}>
+        {dayNightCycleElement}
+        {statusBarElement}
+        {topNavBarElement}
         
-        {/* Events List */}
-        {isLoading && !isRefreshing ? (
-          <View style={[styles.loadingContainer, { backgroundColor: 'transparent' }]}>
-            <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={[styles.loadingText, { color: theme.text }]}>Loading events...</Text>
+        <View style={[styles.content, { backgroundColor: theme.background || '#FFFFFF', marginTop: -8 }]}>
+          <View style={[styles.filterRowContainer, { marginTop: 4 }]}>
+            {renderFilterButtons(festivalDays, selectedDay, handleDayFilter, 'day')}
           </View>
-        ) : error ? (
-          <View style={[styles.errorContainer, { backgroundColor: 'transparent' }]}>
-            <Ionicons name="alert-circle-outline" size={48} color={theme.error} />
-            <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
-            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchEvents}>
-              <Text style={styles.retryButtonText}>Try Again</Text>
-            </TouchableOpacity>
+          <View style={styles.filterRowContainer}>
+            {renderFilterButtons(stages, selectedStage, handleStageFilter, 'stage')}
           </View>
-        ) : filteredEvents.length === 0 ? (
-          <View style={[styles.emptyContainer, { backgroundColor: 'transparent' }]}>
-            <Ionicons name="calendar-outline" size={48} color={theme.muted} />
-            <Text style={[styles.emptyText, { color: theme.text }]}>
-              No events found for the selected filters.
-            </Text>
-            <TouchableOpacity style={styles.resetButton} onPress={() => { setSelectedDay('all'); setSelectedStage('all'); setSearchQuery(''); applyFilters(events, 'all', 'all', ''); }}>
-              <Text style={[styles.resetButtonText, { color: theme.primary }]}>Reset Filters</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredEvents}
-            renderItem={renderEventCard}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.eventsList}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} colors={[theme.primary]} tintColor={theme.primary} />}
-          />
-        )}
-      </View>
-      <EventDetailsModal
-        isVisible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
-        event={selectedEvent}
-        isInSchedule={selectedEvent ? !!userSchedule[selectedEvent.id] : false}
-        onToggleSchedule={handleToggleSchedule}
-      />
-    </SafeAreaView>
-  );
+          {contentPart}
+        </View>
+        {renderEventDetailsModal()}
+      </SafeAreaView>
+    );
+  } catch (e: any) {
+    debugLog('HomeScreen: CATASTROPHIC RENDER ERROR!', { error: e.message, stack: e.stack });
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <Text style={{ color: '#FF0000', fontSize: 16, marginBottom: 20, paddingHorizontal: 20, textAlign: 'center' }}>
+          HomeScreen Critical Error: {e.message}
+        </Text>
+        <TouchableOpacity
+          style={{ padding: 12, backgroundColor: '#4A90E2', borderRadius: 8 }}
+          onPress={() => {
+            setSelectedEvent(null);
+            setIsModalVisible(false);
+            fetchEvents();
+          }}
+        >
+          <Text style={{ color: '#FFFFFF' }}>Restart</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
@@ -499,4 +635,15 @@ const styles = StyleSheet.create({
   },
 });
 
+// Debug logging utility for HomeScreen component
+function debugLog(message: string, data?: Record<string, any>): void {
+  // Only log in development environment
+  if (__DEV__) {
+    if (data) {
+      console.log(`[HomeScreen] ${message}`, data);
+    } else {
+      console.log(`[HomeScreen] ${message}`);
+    }
+  }
+}
 export default HomeScreen;
