@@ -2,10 +2,11 @@ import React from 'react';
 import { View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import the hook
+import SafeText from './SafeText';
 
 const { width } = Dimensions.get('window');
 
-const NAVBAR_HEIGHT = 60;
+const NAVBAR_HEIGHT = 80; // Increased to accommodate text labels
 
 // Proportions from grass-seamless.png (based on 1920x1080, relevant part 935px high)
 // Grass height in image: ~495px
@@ -16,11 +17,15 @@ const IMG_DIRT_PROPORTION = 440 / IMG_TOTAL_RELEVANT_HEIGHT;  // ~0.471
 
 // Calculate scaled image dimensions to fit UI requirements
 // We want the dirt part of the scaled image to perfectly fill NAVBAR_HEIGHT
-const SCALED_TOTAL_IMAGE_HEIGHT = NAVBAR_HEIGHT / IMG_DIRT_PROPORTION; // ~127.4px
-const SCALED_GRASS_HEIGHT = SCALED_TOTAL_IMAGE_HEIGHT * IMG_GRASS_PROPORTION; // ~67.4px
+const SCALED_TOTAL_IMAGE_HEIGHT = NAVBAR_HEIGHT / IMG_DIRT_PROPORTION; // Updated calculation
+const SCALED_GRASS_HEIGHT = SCALED_TOTAL_IMAGE_HEIGHT * IMG_GRASS_PROPORTION; // Updated calculation
 
 // The amount of grass visible will be the entire scaled grass height
 const EFFECTIVE_GRASS_VISIBLE_HEIGHT = SCALED_GRASS_HEIGHT;
+
+// Constants for positioning decorative elements (keep original values for consistency)
+const ORIGINAL_NAVBAR_HEIGHT = 60;
+const ORIGINAL_EFFECTIVE_GRASS_HEIGHT = 67.4;
 
 const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({ 
   state, 
@@ -65,7 +70,8 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
-          const onPress = () => {            const event = navigation.emit({
+          const onPress = () => {
+            const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
@@ -74,23 +80,36 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
-          };
-
-          return (
+          };return (
             <TouchableOpacity
-              key={route.key} // Use route.key for a more stable key
+              key={route.key}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel}
-              testID={options.tabBarTestID}
               onPress={onPress}
               style={styles.tabItem}
-            >
-              {options.tabBarIcon && options.tabBarIcon({
-                focused: isFocused,
-                color: isFocused ? '#D4946B' : '#F5F5DC', // Bright copper when focused, muted white when not
-                size: 32, // Increased icon size
-              })}
+            ><View style={styles.tabContent}>
+                {options.tabBarIcon && options.tabBarIcon({
+                  focused: isFocused,
+                  color: isFocused ? '#D4946B' : '#F5F5DC',
+                  size: 32,
+                })}
+                <SafeText 
+                  style={[
+                    styles.tabLabel,
+                    { color: isFocused ? '#D4946B' : '#F5F5DC' }
+                  ]}
+                >
+                  {typeof options.tabBarLabel === 'function' 
+                    ? options.tabBarLabel({
+                        focused: isFocused,
+                        color: isFocused ? '#D4946B' : '#F5F5DC',
+                        position: 'below-icon',
+                        children: options.title || route.name
+                      })
+                    : options.tabBarLabel || options.title || route.name
+                  }
+                </SafeText>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -99,14 +118,13 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
+const styles = StyleSheet.create({  container: {
     width: '100%',
     paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 20 , 
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: 20, // Stick to the bottom of the screen
+    bottom: -50, // Move down by 50px to align properly with screen bottom
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -124,28 +142,25 @@ const styles = StyleSheet.create({
     left: 0,            
     width: width, 
     // height and bottom will be applied dynamically
-  },
-  treeImage: {
+  },  treeImage: {
     position: 'absolute',
     left: -105, // Keep left aligned position (adjusted for smaller size)
-    bottom: NAVBAR_HEIGHT + 30, // Maintain bottom position
+    bottom: ORIGINAL_NAVBAR_HEIGHT + 60, // Moved up by 30px (was +30, now +60)
     width: 200, // Half of 400 - scaled down
     height: 150, // Half of 300 - scaled down
     opacity: 1, // Full opacity
     zIndex: 5, // Higher z-index to ensure visibility
-  },
-  tentImage: {
+  },  tentImage: {
     position: 'absolute',
     right: -45, // Moved 5px to the right (was -40)
-    top: -EFFECTIVE_GRASS_VISIBLE_HEIGHT + 40, // Keeping previous top adjustment
+    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 40, // Back to original position
     width: 100, // Scaled width
     height: 80, // Scaled height
     transform: [{ scaleX: -1 }], // Flipped on X-axis
     zIndex: 6, // Ensure it's above the grass and tree
-  },
-  navbar: {
+  },  navbar: {
     flexDirection: 'row',
-    height: NAVBAR_HEIGHT / 2,
+    height: NAVBAR_HEIGHT,
     backgroundColor: 'transparent', // Crucial for the dirt part of image to show
     zIndex: 1, // Above backgroundImageStyle
   },
@@ -154,6 +169,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative', // For potential future absolute positioned elements within tabItem
+  },  tabContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    marginTop: -80, // Moved icons up by 10px
+  },tabLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 4,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
 

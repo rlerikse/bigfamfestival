@@ -2,7 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Dimensions } from 'react-native';
+import { View, Dimensions, Image } from 'react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useDebug } from '../contexts/DebugContext';
@@ -12,6 +12,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import MyScheduleScreen from '../screens/MyScheduleScreen';
 import MapScreen from '../screens/MapScreen';
+import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -36,6 +37,8 @@ export type MainTabParamList = {
   Home: undefined;
   MySchedule: undefined;
   Map: undefined;
+  Messages: undefined;
+  Profile: undefined;
 };
 
 // Create navigators
@@ -63,6 +66,8 @@ function MainNavigator() {
   const { height } = Dimensions.get('window');
   const { debugMode, debugHour } = useDebug();
   const { isPerformanceMode } = useTheme(); // Added isPerformanceMode from ThemeContext
+  const { user } = useAuth(); // Get user data for profile picture
+  
   return (
     <View style={{ flex: 1 }}>
       {/* Full-Screen Day/Night Cycle Background - Conditionally render based on performance mode */}
@@ -116,6 +121,75 @@ function MainNavigator() {
                 color={color}
               />
             ),
+          }}
+        />
+        <Tab.Screen
+          name="Messages"
+          component={MessagesScreen}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons
+                name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
+                size={size}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => {              // Use profile picture if available, otherwise use default person icon
+              if (user?.profilePictureUrl) {
+                return (
+                  <View style={{
+                    width: size,
+                    height: size,
+                    borderRadius: size / 2,
+                    borderWidth: focused ? 2 : 1,
+                    borderColor: focused ? '#D4946B' : '#8B7355',
+                    overflow: 'hidden',
+                    backgroundColor: '#F5F5DC',
+                    shadowColor: '#000',
+                    shadowOffset: {
+                      width: 0,
+                      height: 1,
+                    },
+                    shadowOpacity: focused ? 0.3 : 0.1,
+                    shadowRadius: 2,
+                    elevation: 2,
+                  }}>
+                    <Image
+                      source={{ uri: user.profilePictureUrl }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                      }}
+                      resizeMode="cover"
+                    />
+                  </View>
+                );
+              }
+              return (
+                <View style={{
+                  width: size,
+                  height: size,
+                  borderRadius: size / 2,
+                  borderWidth: focused ? 2 : 1,
+                  borderColor: focused ? '#D4946B' : color,
+                  backgroundColor: focused ? '#D4946B20' : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Ionicons
+                    name={focused ? 'person' : 'person-outline'}
+                    size={size - 8}
+                    color={color}
+                  />
+                </View>
+              );
+            },
           }}
         />
       </Tab.Navigator>
