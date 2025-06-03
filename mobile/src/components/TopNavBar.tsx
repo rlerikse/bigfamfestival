@@ -16,11 +16,18 @@ interface TopNavBarProps {
   onSearch?: (query: string) => void;
   placeholder?: string;
   showSearchBar?: boolean;
+  onNotificationsPress?: () => void;
+  onSettingsPress?: () => void;
 }
 
 const TopNavBar: React.FC<TopNavBarProps> = (props) => {
-  const { onSearch, placeholder = 'Search events, artists...' } = props;
-  const { isDark } = useTheme();
+  const { 
+    onSearch, 
+    placeholder = 'Search events, artists...', 
+    onNotificationsPress, 
+    onSettingsPress 
+  } = props;
+  const { isDark, theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -37,7 +44,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   function expandSearch(): void {
     setIsSearchExpanded(true);
     Animated.timing(searchAnimatedWidth, {
-      toValue: searchContainerWidth,
+      toValue: searchContainerWidth - 50, // Leave room for settings icon
       duration: 300,
       useNativeDriver: false
     }).start();
@@ -63,6 +70,18 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     setSearchContainerWidth(event.nativeEvent.layout.width);
   }
 
+  const handleNotificationsPress = () => {
+    if (onNotificationsPress) {
+      onNotificationsPress();
+    }
+  };
+
+  const handleSettingsPress = () => {
+    if (onSettingsPress) {
+      onSettingsPress();
+    }
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
@@ -75,56 +94,84 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
         </View>
         
         <View 
-          style={styles.searchArea}
+          style={styles.actionsContainer}
           onLayout={getSearchContainerWidth}
         >
-          {isSearchExpanded ? (
-            <Animated.View style={[styles.expandedSearch, { width: searchAnimatedWidth }]}
+          {!isSearchExpanded && (
+            <TouchableOpacity 
+              onPress={handleNotificationsPress} 
+              style={styles.iconButton}
             >
               <Ionicons
-                name="search"
+                name="notifications-outline"
                 size={24}
-                color={isDark ? '#F5F5DC' : '#000'}
-                style={styles.searchIcon}
-              />
-              <TextInput
-                style={[styles.searchInput, { color: isDark ? '#F5F5DC' : '#000' }]}
-                placeholder={placeholder}
-                placeholderTextColor={isDark ? 'rgba(245,245,220,0.7)' : 'rgba(0,0,0,0.7)'}
-                value={searchQuery}
-                onChangeText={handleSearchChange}
-                returnKeyType="search"
-                autoFocus={true}
-              />
-              <TouchableOpacity onPress={collapseSearch} style={styles.clearButton}>
-                <Ionicons
-                  name="close-circle"
-                  size={24}
-                  color={isDark ? '#F5F5DC' : '#000'}
-                />
-              </TouchableOpacity>
-            </Animated.View>
-          ) : (
-            <TouchableOpacity onPress={expandSearch} style={styles.searchIconButton}>
-              <Ionicons
-                name="search"
-                size={22}
                 color={isDark ? '#F5F5DC' : '#000'}
               />
             </TouchableOpacity>
           )}
+
+          <View style={styles.searchArea}>
+            {isSearchExpanded ? (
+              <Animated.View style={[styles.expandedSearch, { width: searchAnimatedWidth }]}
+              >
+                <Ionicons
+                  name="search"
+                  size={24}
+                  color={isDark ? '#F5F5DC' : '#000'}
+                  style={styles.searchIcon}
+                />
+                <TextInput
+                  style={[styles.searchInput, { color: isDark ? '#F5F5DC' : '#000' }]}
+                  placeholder={placeholder}
+                  placeholderTextColor={isDark ? 'rgba(245,245,220,0.7)' : 'rgba(0,0,0,0.7)'}
+                  value={searchQuery}
+                  onChangeText={handleSearchChange}
+                  returnKeyType="search"
+                  autoFocus={true}
+                />
+                <TouchableOpacity onPress={collapseSearch} style={styles.clearButton}>
+                  <Ionicons
+                    name="close-circle"
+                    size={24}
+                    color={isDark ? '#F5F5DC' : '#000'}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+            ) : (
+              <TouchableOpacity onPress={expandSearch} style={styles.iconButton}>
+                <Ionicons
+                  name="search"
+                  size={24}
+                  color={isDark ? '#F5F5DC' : '#000'}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          <TouchableOpacity 
+            onPress={handleSettingsPress} 
+            style={[styles.iconButton, { marginLeft: 8 }]}
+          >
+            <Ionicons
+              name="settings-outline"
+              size={24}
+              color={isDark ? '#F5F5DC' : '#000'}
+            />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({  container: {
+const styles = StyleSheet.create({
+  container: {
     backgroundColor: 'transparent',
     width: '100%',
     marginBottom: 0,
     paddingBottom: 0 // Ensure no bottom padding
-  },content: {
+  },
+  content: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center', 
@@ -138,7 +185,8 @@ const styles = StyleSheet.create({  container: {
     overflow: 'visible',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: -20
+    marginLeft: -20,
+    zIndex: 1
   },
   logo: {
     width: 160,
@@ -146,19 +194,23 @@ const styles = StyleSheet.create({  container: {
     top: -58,
     height: 175
   },
-  searchArea: {
+  actionsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    height: 40,
-    flex: 1,
-    marginLeft: 16,
-    marginRight: 0
+    flex: 1
   },
-  searchIconButton: {
-    padding: 6,
+  searchArea: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center'
+    height: 40,
+    marginLeft: 8
+  },
+  iconButton: {
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20
   },
   expandedSearch: {
     flexDirection: 'row',
@@ -167,8 +219,9 @@ const styles = StyleSheet.create({  container: {
     borderRadius: 25,
     paddingHorizontal: 12,
     height: 40,
-    width: '100%',
-    marginLeft: 'auto'
+    position: 'absolute',
+    right: 0,
+    zIndex: 10
   },
   searchIcon: {
     marginRight: 8

@@ -12,12 +12,17 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { RootStackParamList } from '../navigation';
 import { getUserSchedule, removeFromSchedule } from '../services/scheduleService';
 import { ScheduleEvent } from '../types/event';
 import TopNavBar from '../components/TopNavBar';
+
+type MyScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 // Define festival days outside the component or memoize if it needs to be dynamic based on props/state
 const FESTIVAL_DAYS = [
@@ -30,6 +35,7 @@ const FESTIVAL_DAYS = [
 const MyScheduleScreen = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+  const navigation = useNavigation<MyScheduleScreenNavigationProp>();
   
   const [isLoading, setIsLoading] = useState(true);
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -238,11 +244,20 @@ const MyScheduleScreen = () => {
           </Text>
         </TouchableOpacity>
       </TouchableOpacity>
-    );  };  return (    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    );
+  };
+  
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       {/* Top Navigation Bar */}
-      <TopNavBar onSearch={handleSearch} placeholder="Search your schedule..." />
+      <TopNavBar 
+        onSearch={handleSearch} 
+        placeholder="Search your schedule..." 
+        onSettingsPress={() => navigation.navigate('Settings')}
+        onNotificationsPress={() => Alert.alert('Notifications', 'Notifications coming soon!')}
+      />
       
       {/* Day filter at the top with proper alignment */}
       {FESTIVAL_DAYS.length > 0 && (

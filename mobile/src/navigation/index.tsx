@@ -36,7 +36,6 @@ export type MainTabParamList = {
   Home: undefined;
   MySchedule: undefined;
   Map: undefined;
-  Settings: undefined;
 };
 
 // Create navigators
@@ -74,8 +73,7 @@ function MainNavigator() {
           debugMode={debugMode}
           debugHour={debugHour}
         />
-      )}
-      <Tab.Navigator
+      )}      <Tab.Navigator
         tabBar={(props) => <GrassBottomTabBar {...props} />}
         screenOptions={{
           headerShown: false,
@@ -114,19 +112,6 @@ function MainNavigator() {
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
                 name={focused ? 'map' : 'map-outline'}
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons
-                name={focused ? 'settings' : 'settings-outline'}
                 size={size}
                 color={color}
               />

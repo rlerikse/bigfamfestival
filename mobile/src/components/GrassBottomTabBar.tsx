@@ -65,12 +65,13 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
 
-          const onPress = () => {
-            const event = navigation.emit({
+          const onPress = () => {            const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
-            });            if (!isFocused && !event.defaultPrevented) {
+            });
+            
+            if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
           };

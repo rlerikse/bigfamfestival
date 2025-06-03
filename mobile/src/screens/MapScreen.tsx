@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Modal,
 } from 'react-native';
@@ -13,10 +12,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { showAlert, showSimpleAlert, showConfirmationAlert } from '../utils/alertUtils';
 
 // Import contexts and hooks
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { RootStackParamList } from '../navigation';
+
+type MapScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 // Import services for API calls
 import { markCampsite, removeCampsite } from '../services/userService';
@@ -40,6 +45,7 @@ interface POI {
 const MapScreen = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
+  const navigation = useNavigation<MapScreenNavigationProp>();
   const mapRef = useRef<MapView>(null);
   // State variables
   const [pois, setPois] = useState<POI[]>([]);
@@ -59,74 +65,74 @@ const MapScreen = () => {
     // Note: For map, search is mainly for UI consistency
     // In a real app, you might filter visible POIs or search for specific locations
   };
+    // Get user location function
+  const getUserLocation = async () => {
+    try {
+      setIsLoadingLocation(true);
+      
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        setError('Permission to access location was denied');
+        setIsLoadingLocation(false);
+        return;
+      }
+      
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+      });
+      
+      const newLocation = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      };
+      
+      setUserLocation(newLocation);
+        // Save last known location for future use
+      await AsyncStorage.setItem('last_known_location', JSON.stringify(newLocation));
+      
+      // Center map on user location
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        });
+      }    } catch (err) {
+      console.error('Error getting location:', err);
+      
+      // Try to recover with last known location
+      try {
+        const lastLocationStr = await AsyncStorage.getItem('last_known_location');
+        if (lastLocationStr) {
+          const lastLocation = JSON.parse(lastLocationStr);
+          setUserLocation(lastLocation);
+          setError(null); // Clear error since we have a fallback
+        } else {
+          setError('Could not get your location. Please check your settings.');
+        }
+      } catch (storageErr) {
+        console.error('Error getting stored location:', storageErr);
+        setError('Could not get your location. Please check your settings.');
+      }
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
   
   // Get user location on component mount
   useEffect(() => {
-    const getUserLocation = async () => {
-      try {
-        setIsLoadingLocation(true);
-        
-        // Request location permissions
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        
-        if (status !== 'granted') {
-          setError('Permission to access location was denied');
-          setIsLoadingLocation(false);
-          return;
-        }
-        
-        // Get current location
-        const location = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Highest,
-        });
-        
-        const newLocation = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
-        
-        setUserLocation(newLocation);
-          // Save last known location for future use
-        await AsyncStorage.setItem('last_known_location', JSON.stringify(newLocation));
-        
-        // Center map on user location
-        if (mapRef.current) {
-          mapRef.current.animateToRegion({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          });
-        }      } catch (err) {
-        console.error('Error getting location:', err);
-        
-        // Try to recover with last known location
-        try {
-          const lastLocationStr = await AsyncStorage.getItem('last_known_location');
-          if (lastLocationStr) {
-            const lastLocation = JSON.parse(lastLocationStr);
-            setUserLocation(lastLocation);
-            setError(null); // Clear error since we have a fallback
-          } else {
-            setError('Could not get your location. Please check your settings.');
-          }
-        } catch (storageErr) {
-          console.error('Error getting stored location:', storageErr);
-          setError('Could not get your location. Please check your settings.');
-        }
-      } finally {
-        setIsLoadingLocation(false);
-      }
-    };
-    
     getUserLocation();
   }, []);
   
   // Get POIs from API
   useEffect(() => {
-    const fetchPOIs = async () => {
-      try {
-        setIsLoadingPOIs(true);        // In a real app, this would fetch POIs from your backend API
+    const fetchPOIs = async () => {      try {
+        setIsLoadingPOIs(true);
+        // In a real app, this would fetch POIs from your backend API
         const response = await getPOIs();
         setPois(response);
         
@@ -147,9 +153,9 @@ const MapScreen = () => {
         setError('Could not load map points of interest.');
       } finally {
         setIsLoadingPOIs(false);
-      }
-    };
-      if (user) {
+      }    };
+    
+    if (user) {
       fetchPOIs();
     }
   }, [user, searchQuery]);
@@ -163,11 +169,12 @@ const MapScreen = () => {
       'apple', 'banana', 'cherry', 'orange', 'grape', 'lemon', 'peach', 'plum'
     ];
     
-    // Generate random 3-word address
+    // Generate random 3-word address    
     const w1 = words[Math.floor(Math.random() * words.length)];
     const w2 = words[Math.floor(Math.random() * words.length)];
     const w3 = words[Math.floor(Math.random() * words.length)];
-      return `${w1}.${w2}.${w3}`;
+    
+    return `${w1}.${w2}.${w3}`;
   };
     
   /* Handle map marker for different POI types - currently disabled
@@ -239,10 +246,9 @@ const MapScreen = () => {
   /* Handle navigation to POI - currently disabled
   const handleNavigate = (poi: POI) => {
     // In a real app, this would launch the embedded navigation
-    Alert.alert(
+    showAlert(
       'Navigation',
       `Navigating to ${poi.name}`,
-      // eslint-disable-next-line
       [{ text: 'OK', onPress: () => console.log('Navigate to', poi.name) }]
     );
   };
@@ -251,21 +257,21 @@ const MapScreen = () => {
   // Handle marking the user's campsite
   const handleMarkCampsite = () => {
     if (!userLocation) {
-      Alert.alert('Error', 'Cannot determine your location. Please try again.');
+      showSimpleAlert('Error', 'Cannot determine your location. Please try again.');
       return;
     }
     
-    // Generate What3Words address
-    const w3wAddress = mockGenerateWhat3Words();
-    setWhat3WordsAddress(w3wAddress);
+    // Generate what3words address (in a real app, this would call their API)
+    const what3WordsAddress = mockGenerateWhat3Words();
+    setWhat3WordsAddress(what3WordsAddress);
     
     // Show confirmation modal
     setShowConfirmModal(true);
   };
   
-  // Confirm campsite marking
+  // Confirm marking campsite
   const confirmMarkCampsite = async () => {
-    if (!userLocation || !user) return;
+    if (!user || !userLocation) return;
     
     try {
       // Call API to mark campsite
@@ -294,10 +300,10 @@ const MapScreen = () => {
       setShowConfirmModal(false);
       
       // Show success message
-      Alert.alert('Success', 'Your campsite has been marked successfully!');
+      showSimpleAlert('Success', 'Your campsite has been marked successfully!');
     } catch (err) {
       console.error('Error marking campsite:', err);
-      Alert.alert('Error', 'Failed to mark your campsite. Please try again.');
+      showSimpleAlert('Error', 'Failed to mark your campsite. Please try again.');
     }
   };
   
@@ -306,10 +312,9 @@ const MapScreen = () => {
     if (!campsiteLocation) return;
     
     // In a real app, this would launch the embedded navigation
-    Alert.alert(
+    showAlert(
       'Navigation',
       'Navigating to your campsite',
-      // eslint-disable-next-line
       [{ text: 'OK', onPress: () => console.log('Navigate to campsite') }]
     );
   };
@@ -330,10 +335,10 @@ const MapScreen = () => {
       setPois(pois.filter(poi => !(poi.type === 'campsite' && poi.userId === user.id)));
       
       // Show success message
-      Alert.alert('Success', 'Your campsite has been removed.');
+      showSimpleAlert('Success', 'Your campsite has been removed.');
     } catch (err) {
       console.error('Error removing campsite:', err);
-      Alert.alert('Error', 'Failed to remove your campsite. Please try again.');
+      showSimpleAlert('Error', 'Failed to remove your campsite. Please try again.');
     }
   };
   
@@ -349,24 +354,30 @@ const MapScreen = () => {
   
   if (error) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>
-        <Ionicons name="alert-circle" size={48} color={theme.error} />
+      <View style={[styles.errorContainer, { backgroundColor: theme.background }]}>        <Ionicons name="alert-circle" size={48} color={theme.error} />
         <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
         <TouchableOpacity
           style={[styles.retryButton, { backgroundColor: theme.primary }]}
-          onPress={() => window.location.reload()}
+          onPress={() => {
+            setIsLoadingLocation(true);
+            setError(null);
+            getUserLocation();
+          }}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
-    );
-  }
-    return (
+    );  }
+  
+  return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
-      {/* Top Navigation Bar */}
-      <TopNavBar onSearch={handleSearch} placeholder="Search map locations..." />
+        {/* Top Navigation Bar */}      <TopNavBar 
+        onSearch={handleSearch} 
+        placeholder="Search map locations..." 
+        onSettingsPress={() => navigation.navigate('Settings')}
+        onNotificationsPress={() => showSimpleAlert('Notifications', 'Notifications coming soon!')}
+      />
       
       {/* Map Content */}
       <View style={styles.mapContainer}>

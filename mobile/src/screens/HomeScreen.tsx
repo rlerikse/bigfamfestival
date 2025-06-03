@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Image,  SafeAreaView,
+  Image,
+  SafeAreaView,
   RefreshControl,
   Alert,
   Dimensions,
@@ -34,11 +35,11 @@ const HomeScreen = () => {
   const { user } = useAuth();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([]);  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});  const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+  const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
+  const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -50,13 +51,14 @@ const HomeScreen = () => {
     { id: '2025-09-27', label: 'SAT 27', date: '2025-09-27' },
     { id: '2025-09-28', label: 'SUN 28', date: '2025-09-28' },
   ];
-
   const stages = [
     { id: 'all', label: 'ALL', value: 'all' },
     { id: 'Apogee', label: 'APOGEE', value: 'Apogee' },
     { id: 'The Bayou', label: 'BAYOU', value: 'The Bayou' }, // Changed label to BAYOU
     { id: 'The Art Tent', label: 'ART TENT', value: 'The Art Tent' },
-  ];  const applyFilters = useCallback((allEvents: ScheduleEvent[], day: string, stage: string, search = '') => {
+  ];
+  
+  const applyFilters = useCallback((allEvents: ScheduleEvent[], day: string, stage: string, search = '') => {
     let filtered = [...allEvents];
     
     // Apply search filter
@@ -145,11 +147,12 @@ const HomeScreen = () => {
       }
     }
   }, [user, navigation, userSchedule]);
-
   const onRefresh = () => {
     setIsRefreshing(true);
     fetchEvents();
-  };  const handleDayFilter = (day: string) => {
+  };
+  
+  const handleDayFilter = (day: string) => {
     setSelectedDay(day);
     applyFilters(events, day, selectedStage, searchQuery);
   };
@@ -250,13 +253,17 @@ const HomeScreen = () => {
       </TouchableOpacity>
     );
   };
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+
+  return (    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Add DayNightCycle background */}
       <DayNightCycle height={Dimensions.get('window').height} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       {/* Top Navigation Bar */}
-      <TopNavBar onSearch={handleSearch} />
+      <TopNavBar 
+        onSearch={handleSearch} 
+        onSettingsPress={() => navigation.navigate('Settings')} 
+        onNotificationsPress={() => alert('Notifications coming soon!')}  
+      />
       
       <View style={[styles.content, { backgroundColor: theme.background, marginTop: -8 }]}>
         {/* Day Filters */}
@@ -289,10 +296,10 @@ const HomeScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
-        
-        {/* Stage Filters */}
+          {/* Stage Filters */}
         <View style={styles.filterRowContainer}>
-          {stages.map((stage) => (            <TouchableOpacity
+          {stages.map((stage) => (
+            <TouchableOpacity
               key={stage.id}
               style={[
                 styles.filterButton,
@@ -410,11 +417,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
-  },
-  resetButton: {
+  },  resetButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-  },  resetButtonText: {
+  },
+  resetButtonText: {
     fontWeight: '600',
   },
   filterRowContainer: {
@@ -428,7 +435,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 20, // More pill-like shape like YouTube
     borderWidth: 1,
-    alignItems: 'center',    justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
     height: 32, // Reduced height
   },
   filterButtonText: {
