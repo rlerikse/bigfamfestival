@@ -246,8 +246,7 @@ const MyScheduleScreen = () => {
       </TouchableOpacity>
     );
   };
-  
-  return (
+    return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
@@ -261,7 +260,7 @@ const MyScheduleScreen = () => {
       
       {/* Day filter at the top with proper alignment */}
       {FESTIVAL_DAYS.length > 0 && (
-        <View style={styles.dayFilterContainer}>
+        <View style={[styles.dayFilterContainer, { marginTop: 78 }]}>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}

@@ -23,11 +23,11 @@ interface TopNavBarProps {
 const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   const { 
     onSearch, 
-    placeholder = 'Search events, artists...', 
+    placeholder = 'Search artist, vendor...', 
     onNotificationsPress, 
     onSettingsPress 
   } = props;
-  const { isDark, theme } = useTheme();
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -44,26 +44,24 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   function expandSearch(): void {
     setIsSearchExpanded(true);
     Animated.timing(searchAnimatedWidth, {
-      toValue: searchContainerWidth - 50, // Leave room for settings icon
+      toValue: searchContainerWidth + 20, // Expand to full width of actionsContainer + 20px
       duration: 300,
       useNativeDriver: false
     }).start();
   }
 
   function collapseSearch(): void {
-    Animated.timing(searchAnimatedWidth, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: false
-    }).start(function() {
-      setIsSearchExpanded(false);
-      if (searchQuery) {
-        setSearchQuery('');
-        if (onSearch) {
-          onSearch('');
-        }
+    // Instantly hide the expanded search and show the original search icon
+    setIsSearchExpanded(false);
+    // Reset the animated width to 0, so the next expansion animates correctly
+    searchAnimatedWidth.setValue(0);
+
+    if (searchQuery) {
+      setSearchQuery('');
+      if (onSearch) {
+        onSearch('');
       }
-    });
+    }
   }
 
   function getSearchContainerWidth(event: LayoutChangeEvent): void {
@@ -80,9 +78,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     if (onSettingsPress) {
       onSettingsPress();
     }
-  };
-
-  return (
+  };  return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
@@ -110,7 +106,10 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
             </TouchableOpacity>
           )}
 
-          <View style={styles.searchArea}>
+          <View style={[
+            styles.searchArea,
+            isSearchExpanded && styles.searchAreaExpanded
+          ]}>
             {isSearchExpanded ? (
               <Animated.View style={[styles.expandedSearch, { width: searchAnimatedWidth }]}
               >
@@ -148,28 +147,34 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
             )}
           </View>
           
-          <TouchableOpacity 
-            onPress={handleSettingsPress} 
-            style={[styles.iconButton, { marginLeft: 8 }]}
-          >
-            <Ionicons
-              name="settings-outline"
-              size={24}
-              color={isDark ? '#F5F5DC' : '#000'}
-            />
-          </TouchableOpacity>
+          {!isSearchExpanded && (
+            <TouchableOpacity 
+              onPress={handleSettingsPress} 
+              style={[styles.iconButton, { marginLeft: 8 }]}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={24}
+                color={isDark ? '#F5F5DC' : '#000'}
+              />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
+const styles = StyleSheet.create({  container: {
     backgroundColor: 'transparent',
     width: '100%',
     marginBottom: 0,
-    paddingBottom: 0 // Ensure no bottom padding
+    paddingBottom: 0,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
   },
   content: {
     flexDirection: 'row',
@@ -177,7 +182,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     width: '100%',
     paddingHorizontal: 16,
-    height: 55 // Reduced height to make filters flush with navbar
+    height: 55,
   },
   logoContainer: {
     width: 160,
@@ -204,7 +209,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     height: 40,
-    marginLeft: 8
+    marginLeft: 8 // This margin is for when it's between notification and settings icons
+  },
+  searchAreaExpanded: {
+    flex: 1, // Take up all available space in actionsContainer
+    marginLeft: 0, // No margin when expanded
   },
   iconButton: {
     padding: 8,
@@ -225,22 +234,19 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     marginRight: 8
-  },
-  searchInput: {
+  },  searchInput: {
     flex: 1,
     fontSize: 14,
     paddingVertical: 0,
     paddingHorizontal: 8,
     height: 40,
-    textAlignVertical: 'center',
     color: '#F5F5DC'
-  },
-  clearButton: {
+  },  clearButton: {
     height: 40,
     width: 40,
     alignItems: 'center',
-    justifyContent: 'center'
-  }
+    justifyContent: 'center',
+  },
 });
 
 export default TopNavBar;

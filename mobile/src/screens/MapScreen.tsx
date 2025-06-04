@@ -14,7 +14,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { showAlert, showSimpleAlert, showConfirmationAlert } from '../utils/alertUtils';
+import { showAlert, showSimpleAlert } from '../utils/alertUtils';
 
 // Import contexts and hooks
 import { useTheme } from '../contexts/ThemeContext';
@@ -315,7 +315,7 @@ const MapScreen = () => {
     showAlert(
       'Navigation',
       'Navigating to your campsite',
-      [{ text: 'OK', onPress: () => console.log('Navigate to campsite') }]
+      [{ text: 'OK', onPress: () => { /* Navigate to campsite */ } }]
     );
   };
   
@@ -366,18 +366,12 @@ const MapScreen = () => {
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
-      </View>
-    );  }
+      </View>    );  
+  }
   
   // Add this function to safely render the offline indicator
   const renderOfflineIndicator = () => {
     try {
-      console.log('Rendering offline indicator');
-      console.log('Theme:', {
-        text: theme.text,
-        card: theme.card
-      });
-      
       return (
         <View style={[styles.offlineContainer, { backgroundColor: theme.card }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -397,7 +391,6 @@ const MapScreen = () => {
         </View>
       );
     } catch (error) {
-      console.error('Error rendering offline indicator:', error);
       // Fallback rendering with hard-coded styles in case of error
       return (
         <View style={[styles.offlineContainer, { backgroundColor: '#FFFFFF' }]}>
@@ -411,19 +404,11 @@ const MapScreen = () => {
       );
     }
   };
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-        {/* Top Navigation Bar */}      
-      <TopNavBar 
-        onSearch={handleSearch} 
-        placeholder="Search map locations..." 
-        onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => showSimpleAlert('Notifications', 'Notifications coming soon!')}
-      />
       
-      {/* Map Content */}
+      {/* Map Content - Full Screen */}
       <View style={styles.mapContainer}>
         {/* Map View */}
         <MapView
@@ -509,9 +494,16 @@ const MapScreen = () => {
           >
             <Ionicons name="flag" size={24} color="#FFFFFF" />
             <Text style={styles.floatingButtonText}>Mark My Campsite</Text>
-          </TouchableOpacity>
-        )}
+          </TouchableOpacity>        )}
       </View>
+
+      {/* Top Navigation Bar Overlay */}      
+      <TopNavBar 
+        onSearch={handleSearch} 
+        placeholder="Search map locations..." 
+        onSettingsPress={() => navigation.navigate('Settings')}
+        onNotificationsPress={() => showSimpleAlert('Notifications', 'Notifications coming soon!')}
+      />
       
       {/* Confirmation Modal */}
       <Modal
@@ -555,10 +547,9 @@ const MapScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mapContainer: {
+  },  mapContainer: {
     flex: 1,
-    marginTop: 70, // Increased from 60 to account for taller TopNavBar
+    // Full screen map - no margin top
   },
   map: {
     width: '100%',
@@ -653,7 +644,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },  legendContainer: {
     position: 'absolute',
-    top: 100, // Increased from 80 to account for taller TopNavBar
+    top: 80, // Positioned just below the navbar with some breathing room
     left: 20,
     padding: 10,
     borderRadius: 10,
@@ -672,7 +663,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },  offlineContainer: {
     position: 'absolute',
-    top: 100, // Increased from 80 to account for taller TopNavBar
+    top: 80, // Positioned just below the navbar with some breathing room
     right: 20,
     padding: 8,
     borderRadius: 20,

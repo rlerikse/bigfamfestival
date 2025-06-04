@@ -437,14 +437,13 @@ const HomeScreen = () => {
         />
       );
     }
-    
-    debugLog('HomeScreen: Rendering main layout');    return (
+      debugLog('HomeScreen: Rendering main layout');    return (
       <SafeAreaView style={[homeScreenStyles.container, { backgroundColor: theme.background || '#FFFFFF' }]}>
         {dayNightCycleElement}
         {statusBarElement}
         {topNavBarElement}        
-        <View style={[homeScreenStyles.content, { backgroundColor: theme.background || '#FFFFFF', marginTop: -8 }]}>
-          <View style={[homeScreenStyles.filterRowContainer, { marginTop: 4 }]}>
+        <View style={[homeScreenStyles.content, { backgroundColor: theme.background || '#FFFFFF' }]}>
+          <View style={[homeScreenStyles.filterRowContainer, { marginTop: 78 }]}>
             {renderFilterButtons(festivalDays, selectedDay, handleDayFilter, 'day')}
           </View>
           <View style={homeScreenStyles.filterRowContainer}>
