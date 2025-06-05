@@ -45,7 +45,7 @@ import { homeScreenStyles } from './HomeScreen.styles';
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 const HomeScreen = () => {
-  const { theme, isDark } = useTheme();
+  const { theme, isDark, isPerformanceMode } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -57,11 +57,10 @@ const HomeScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  const [selectedDay, setSelectedDay] = useState<string>('all');
+  const [selectedDay, setSelectedDay] = useState<string>('2025-09-26');
   const [selectedStage, setSelectedStage] = useState<string>('all');
-
   const festivalDays = [
-    { id: 'all', label: 'FRI 26', date: '2025-09-26' },
+    { id: '2025-09-26', label: 'FRI 26', date: '2025-09-26' },
     { id: '2025-09-27', label: 'SAT 27', date: '2025-09-27' },
     { id: '2025-09-28', label: 'SUN 28', date: '2025-09-28' },
   ];
@@ -85,10 +84,8 @@ const HomeScreen = () => {
         (event.description && event.description.toLowerCase().includes(searchLower))
       );
     }
-    
-    if (day !== 'all') {
-      filtered = filtered.filter(event => event.date === day);
-    }
+      // Always filter by day since there's no "all" option anymore
+    filtered = filtered.filter(event => event.date === day);
     if (stage !== 'all') {
       filtered = filtered.filter(event => event.stage === stage);
     }
@@ -246,67 +243,99 @@ const HomeScreen = () => {
       const eventName = typeof item.name === 'string' ? item.name : 'Invalid Name';
       const eventStage = typeof item.stage === 'string' ? item.stage : 'Invalid Stage';
       const eventTime = typeof item.startTime === 'string' ? formatTimeDisplay(item.startTime) : 'Invalid Time';
-      const eventDescription = typeof item.description === 'string' ? item.description : ''; // Empty if not string
+      const eventDescription = typeof item.description === 'string' ? item.description : '';
 
-      return (        <TouchableOpacity onPress={() => { debugLog('Event card pressed', { name: item.name }); setSelectedEvent(item); setIsModalVisible(true); }}>
-          <View style={[homeScreenStyles.eventCard, { backgroundColor: theme.card || '#FFFFFF' }]}>
-            <Image
-              source={displayImageUrl ? { uri: displayImageUrl } : require('../assets/images/event-placeholder.png')}
-              style={homeScreenStyles.eventImage}
-              resizeMode="cover"
-            />
-            <View style={homeScreenStyles.eventContent}>
-              <View style={homeScreenStyles.eventTextContainer}>
-                <SafeText style={[homeScreenStyles.eventTitle, { color: theme.text || '#000000' }]} numberOfLines={1}>
-                  {eventName}
+      return (
+        <View style={[homeScreenStyles.eventCard, { backgroundColor: theme.card || '#FFFFFF' }]}>
+          {/* Image is now directly in the View component */}
+          <Image
+            source={displayImageUrl ? { uri: displayImageUrl } : require('../assets/images/event-placeholder.png')}
+            style={homeScreenStyles.eventImage}
+            resizeMode="cover"
+          />
+          <View style={homeScreenStyles.eventContent}>
+            {/* TouchableOpacity wraps ONLY the text content now */}
+            <TouchableOpacity 
+              activeOpacity={0.9}
+              delayPressIn={150}
+              style={homeScreenStyles.eventTextContainer}
+              onPress={() => { 
+                debugLog('Event card pressed', { name: item.name }); 
+                setSelectedEvent(item); 
+                setIsModalVisible(true); 
+              }}
+            >
+              <SafeText style={[homeScreenStyles.eventTitle, { color: theme.text || '#000000' }]} numberOfLines={1}>
+                {eventName}
+              </SafeText>
+              <SafeText style={[homeScreenStyles.eventDetails, { color: theme.muted || '#666666' }]} numberOfLines={1}>
+                {`${eventStage} - ${eventTime}`}
+              </SafeText>
+              {eventDescription ? (
+                <SafeText style={[homeScreenStyles.eventDescription, { color: theme.text || '#000000' }]} numberOfLines={2}>
+                  {eventDescription}
                 </SafeText>
-                <SafeText style={[homeScreenStyles.eventDetails, { color: theme.muted || '#666666' }]} numberOfLines={1}>
-                  {`${eventStage} - ${eventTime}`}
-                </SafeText>
-                {eventDescription ? ( // Only render if description is not an empty string
-                  <SafeText style={[homeScreenStyles.eventDescription, { color: theme.text || '#000000' }]} numberOfLines={2}>
-                    {eventDescription}
-                  </SafeText>
-                ) : null}
-              </View>
-              <TouchableOpacity
-                style={homeScreenStyles.favoriteButton}
-                onPress={(e) => { e.stopPropagation(); handleToggleSchedule(item); }}
-              >
-                <Ionicons
-                  name={isInUserSchedule ? "heart" : "heart-outline"}
-                  size={24}
-                  color={isDark ? '#B87333' : theme.secondary || '#FF5722'}
-                />
-                <SafeText style={[homeScreenStyles.favoriteText, { color: isDark ? '#B87333' : theme.secondary || '#FF5722' }]}>
-                  {isInUserSchedule ? "Added" : "Add"}
-                </SafeText>
-              </TouchableOpacity>
-            </View>
+              ) : null}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={homeScreenStyles.favoriteButton}
+              onPress={(e) => { 
+                e.stopPropagation(); 
+                handleToggleSchedule(item); 
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons
+                name={isInUserSchedule ? "heart" : "heart-outline"}
+                size={24}
+                color={isDark ? '#B87333' : theme.secondary || '#FF5722'}
+              />
+              <SafeText style={[homeScreenStyles.favoriteText, { color: isDark ? '#B87333' : theme.secondary || '#FF5722' }]}>
+                {isInUserSchedule ? "Added" : "Add"}
+              </SafeText>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
       );
-    } catch (e: any) {
-      debugLog('Error rendering event card:', { error: e.message, itemID: item.id });      return (
+    } catch (e: unknown) {
+      // Using unknown type for better type safety
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      debugLog('Error rendering event card:', { error: errorMessage, itemID: item.id });      
+      return (
         <View style={[homeScreenStyles.eventCard, { backgroundColor: '#FFFFFF', padding: 10 }]}>
           <SafeText style={{ color: 'red' }}>Error displaying event: {String(item.name || item.id)}</SafeText>
         </View>
       );
     }
-  };
-
-  const renderFilterButtons = (items: any[], selectedItemValue: string, onPressHandler: (itemValue: string) => void, filterType: 'day' | 'stage') => {
-    // ... (try/catch and mapping logic is the same) ...
+  };  // Define interfaces for filter buttons
+  interface DayFilterItem {
+    id: string;
+    label: string;
+    date: string;
+  }
+  
+  interface StageFilterItem {
+    id: string;
+    label: string;
+    value: string;
+  }
+  
+  type FilterItem = DayFilterItem | StageFilterItem;
+  
+  const renderFilterButtons = (items: FilterItem[], selectedItemValue: string, onPressHandler: (itemValue: string) => void, filterType: 'day' | 'stage') => {
     try {
       debugLog(`Rendering ${filterType} filter buttons`);
       return items.map((item) => {
-        const itemValue = filterType === 'day' ? (item.id === 'all' ? 'all' : item.date) : item.value;
+        // Use type guard to ensure we access the right property
+        const itemValue = filterType === 'day' ? 
+          ('date' in item ? item.date : item.id) : 
+          ('value' in item ? item.value : item.id);
         const isButtonSelected = itemValue === selectedItemValue;
         
         // Ensure label is a string
         const label = (typeof item.label === 'string' || typeof item.label === 'number') ? String(item.label) : 'N/A';
 
-        return (          <TouchableOpacity
+        return (<TouchableOpacity
             key={item.id}
             style={[
               homeScreenStyles.filterButton,
@@ -326,9 +355,9 @@ const HomeScreen = () => {
             </SafeText>
           </TouchableOpacity>
         );
-      });
-    } catch (e: any) {
-      debugLog(`Error rendering ${filterType} filter buttons:`, { error: e.message });
+      });    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      debugLog(`Error rendering ${filterType} filter buttons:`, { error: errorMessage });
       return null;
     }
   };
@@ -348,19 +377,29 @@ const HomeScreen = () => {
           isInSchedule={!!userSchedule[selectedEvent.id]}
           onToggleSchedule={handleToggleSchedule}
         />
-      );
-    } catch (e: any) {
-      debugLog('Error rendering EventDetailsModal wrapper:', { error: e.message });
+      );    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      debugLog('Error rendering EventDetailsModal wrapper:', { error: errorMessage });
       return null;
     }
   };
-
   // Main render try/catch
   try {
     debugLog('HomeScreen: Starting main render');
 
-    debugLog('HomeScreen: Rendering DayNightCycle');
-    const dayNightCycleElement = <DayNightCycle height={Dimensions.get('window').height} />;
+    debugLog('HomeScreen: Rendering DayNightCycle');    // isPerformanceMode is now gotten from the root useTheme() call    // Only render DayNightCycle if performance mode is off
+    const dayNightCycleElement = !isPerformanceMode ? (
+      <View style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0,
+        zIndex: 0 // Changed from -1 to 0 to ensure it's visible
+      }}>
+        <DayNightCycle height={Dimensions.get('window').height} />
+      </View>
+    ) : null;
 
     debugLog('HomeScreen: Rendering StatusBar');
     const statusBarElement = <StatusBar style={isDark ? 'light' : 'dark'} />;
@@ -398,13 +437,12 @@ const HomeScreen = () => {
           <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
           <SafeText style={[homeScreenStyles.emptyText, { color: theme.text || '#000000' }]}>
             No events found for the selected filters.
-          </SafeText>
-          <TouchableOpacity style={homeScreenStyles.resetButton} onPress={() => { 
+          </SafeText>          <TouchableOpacity style={homeScreenStyles.resetButton} onPress={() => { 
             debugLog('Reset Filters pressed');
-            setSelectedDay('all'); 
+            setSelectedDay('2025-09-26'); 
             setSelectedStage('all'); 
             setSearchQuery(''); 
-            applyFilters(events, 'all', 'all', ''); 
+            applyFilters(events, '2025-09-26', 'all', ''); 
           }}>
             <SafeText style={[homeScreenStyles.resetButtonText, { color: theme.primary || '#4A90E2' }]}>Reset Filters</SafeText>
           </TouchableOpacity>
@@ -412,7 +450,7 @@ const HomeScreen = () => {
       );
     } else {
       debugLog('HomeScreen: Rendering FlatList');
-      contentPart = (        <FlatList
+      contentPart = (<FlatList
           data={filteredEvents}
           renderItem={renderEventCard}
           keyExtractor={item => item.id}
@@ -436,30 +474,31 @@ const HomeScreen = () => {
           }
         />
       );
-    }
-      debugLog('HomeScreen: Rendering main layout');    return (
-      <SafeAreaView style={[homeScreenStyles.container, { backgroundColor: theme.background || '#FFFFFF' }]}>
+    }      debugLog('HomeScreen: Rendering main layout');    return (
+      <SafeAreaView style={[homeScreenStyles.container, { 
+        backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' 
+      }]}>
         {dayNightCycleElement}
         {statusBarElement}
-        {topNavBarElement}        
-        <View style={[homeScreenStyles.content, { backgroundColor: theme.background || '#FFFFFF' }]}>
+        {topNavBarElement}<View style={[homeScreenStyles.content, { 
+          backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent'
+        }]}>
           <View style={[homeScreenStyles.filterRowContainer, { marginTop: 78 }]}>
             {renderFilterButtons(festivalDays, selectedDay, handleDayFilter, 'day')}
           </View>
           <View style={homeScreenStyles.filterRowContainer}>
             {renderFilterButtons(stages, selectedStage, handleStageFilter, 'stage')}
           </View>
-          {contentPart}
-        </View>
+          {contentPart}</View>
         {renderEventDetailsModal()}
       </SafeAreaView>
     );
-  } catch (e: any) {
-    debugLog('HomeScreen: CATASTROPHIC RENDER ERROR!', { error: e.message, stack: e.stack });
-    return (
-      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+  } catch (e: unknown) {
+    const errorInfo = e instanceof Error ? { message: e.message, stack: e.stack } : { message: String(e) };
+    debugLog('HomeScreen: CATASTROPHIC RENDER ERROR!', errorInfo);
+    return (      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
         <Text style={{ color: '#FF0000', fontSize: 16, marginBottom: 20, paddingHorizontal: 20, textAlign: 'center' }}>
-          HomeScreen Critical Error: {e.message}
+          HomeScreen Critical Error: {e instanceof Error ? e.message : String(e)}
         </Text>
         <TouchableOpacity
           style={{ padding: 12, backgroundColor: '#4A90E2', borderRadius: 8 }}
@@ -481,8 +520,10 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
   // Only log in development environment
   if (__DEV__) {
     if (data) {
+      // eslint-disable-next-line no-console
       console.log(`[HomeScreen] ${message}`, data);
     } else {
+      // eslint-disable-next-line no-console
       console.log(`[HomeScreen] ${message}`);
     }
   }
