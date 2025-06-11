@@ -4,8 +4,13 @@ import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 
 // Determine API base URL from environment variables or use default
-// const API_URL = Constants?.expoConfig?.extra?.apiUrl || 'https://bigfam-api-production-292369452544.us-central1.run.app';
-const API_URL = 'http://192.168.106.135:8080/api/v1'; // <-- Changed to local backend
+// For development, use local machine's IP address
+// For production, use cloud API URL
+const isProduction = !__DEV__;
+const PROD_API_URL = 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1';
+const DEV_API_URL = 'http://192.168.50.244:8080/api/v1'; // Replace with your machine's IP
+
+const API_URL = isProduction ? PROD_API_URL : DEV_API_URL;
 
 // Create axios instance with default config
 export const api = axios.create({
@@ -50,8 +55,17 @@ api.interceptors.response.use(
   async (error) => {
     // Handle network errors
     if (!error.response) {
-      console.error('Network error:', error);
-      throw new Error('Network error. Please check your internet connection.');
+      // Log more detailed connection error information for debugging
+      if (__DEV__) {
+        console.error('Network error details:', {
+          message: error.message,
+          baseURL: api.defaults.baseURL,
+          config: error.config,
+        });
+      } else {
+        console.error('Network error:', error);
+      }
+      throw new Error(`Network error. Please check your internet connection. API: ${API_URL}`);
     }
     
     // Handle authentication errors
@@ -66,13 +80,30 @@ api.interceptors.response.use(
 );
 
 // Function to check API health
-export const checkApiHealth = async (): Promise<boolean> => {
+export const checkApiHealth = async (): Promise<{isHealthy: boolean, message?: string}> => {
   try {
     const response = await api.get('/health');
-    return response.status === 200;
+    return { 
+      isHealthy: response.status === 200,
+      message: `API connected successfully to ${API_URL}`
+    };
   } catch (error) {
-    console.error('API health check failed:', error);
-    return false;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('API health check failed:', errorMessage);
+    
+    // Log additional connection details in development
+    if (__DEV__) {
+      console.info('API connection details:', {
+        url: API_URL,
+        isProduction: !__DEV__,
+        timeoutMs: api.defaults.timeout
+      });
+    }
+    
+    return { 
+      isHealthy: false, 
+      message: `Connection failed: ${errorMessage}` 
+    };
   }
 };
 
