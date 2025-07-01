@@ -10,7 +10,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
-import MyScheduleScreen from '../screens/MyScheduleScreen';
+import ScheduleScreen from '../screens/ScheduleScreen';
 import MapScreen from '../screens/MapScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -35,7 +35,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  MySchedule: undefined;
+  Schedule: undefined;
   Map: undefined;
   Messages: undefined;
   Profile: undefined;
@@ -98,12 +98,12 @@ function MainNavigator() {
           }}
         />
         <Tab.Screen
-          name="MySchedule"
-          component={MyScheduleScreen}
+          name="Schedule"
+          component={ScheduleScreen}
           options={{
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
-                name={focused ? 'heart' : 'heart-outline'}
+                name={focused ? 'calendar' : 'calendar-outline'}
                 size={size}
                 color={color}
               />
@@ -192,6 +192,19 @@ function MainNavigator() {
             },
           }}
         />
+        {/* <Tab.Screen
+          name="MySchedule"
+          component={MyScheduleScreen}
+          options={{
+            tabBarIcon: ({ color, size, focused }) => (
+              <Ionicons
+                name={focused ? 'heart' : 'heart-outline'}
+                size={size}
+                color={color}
+              />
+            ),
+          }}
+        /> */}
       </Tab.Navigator>
     </View>
   );
