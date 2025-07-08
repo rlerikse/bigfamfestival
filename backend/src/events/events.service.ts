@@ -145,4 +145,15 @@ export class EventsService {
 
     return events;
   }
+
+  /**
+   * Get unique stages from all events
+   */
+  async getUniqueStages(): Promise<string[]> {
+    const events = await this.firestoreService.getAll<Event>(this.collection);
+    const uniqueStages = Array.from(new Set(events.map((event) => event.stage)))
+      .filter((stage) => stage && stage.trim() !== '') // Filter out empty/null stages
+      .sort(); // Sort alphabetically
+    return uniqueStages;
+  }
 }

@@ -54,6 +54,14 @@ export class EventsController {
     return this.eventsService.findAll(stage, date);
   }
 
+  @Get('stages')
+  @Public()
+  @ApiOperation({ summary: 'Get all unique stages' })
+  @ApiResponse({ status: 200, description: 'Returns a list of unique stages' })
+  async getStages() {
+    return this.eventsService.getUniqueStages();
+  }
+
   @Get(':id')
   @Public()
   @ApiOperation({ summary: 'Get event by ID' })
