@@ -7,7 +7,7 @@
  * UI matches new design: date row, then grid icon + My Schedule filter, then stage dropdown.
  * Replaces HomeScreen and MyScheduleScreen logic.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -53,10 +53,10 @@ type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 const festivalDays = [
   { id: '2025-09-23', date: '2025-09-23', dayLabel: 'Sep 23', dayAbbrev: 'TUE', staffOnly: true },
   { id: '2025-09-24', date: '2025-09-24', dayLabel: 'Sep 24', dayAbbrev: 'WED', staffOnly: false },
-  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'THU', staffOnly: false },
-  { id: '2025-09-29', date: '2025-09-29', dayLabel: 'Sep 29', dayAbbrev: 'FRI', staffOnly: false },
-  { id: '2025-09-30', date: '2025-09-30', dayLabel: 'Sep 30', dayAbbrev: 'SAT', staffOnly: false },
-  { id: '2025-10-01', date: '2025-10-01', dayLabel: 'Oct 1', dayAbbrev: 'SUN', staffOnly: true },
+  { id: '2025-09-25', date: '2025-09-25', dayLabel: 'Sep 25', dayAbbrev: 'THU', staffOnly: false },
+  { id: '2025-09-26', date: '2025-09-26', dayLabel: 'Sep 26', dayAbbrev: 'FRI', staffOnly: false },
+  { id: '2025-09-27', date: '2025-09-27', dayLabel: 'Sep 27', dayAbbrev: 'SAT', staffOnly: false },
+  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: true },
 ];
 const stages = [
   { id: 'all', label: 'All Stages', value: 'all' },
@@ -71,28 +71,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dateFilterButton: {
-    height: 60,
-    minHeight: 60,
-    paddingVertical: 8,
-    paddingHorizontal: 16, // Increased from 8 to make wider
-    borderRadius: 12,
+    height: 50,
+    minHeight: 50,
+    paddingVertical: 6,
+    paddingHorizontal: 12, // Adjusted for new height
+    borderRadius: 10, // Adjusted for new height
     borderWidth: 1,
-    minWidth: 80, // Added minimum width for consistency
+    minWidth: 75, // Adjusted for new height
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 3, // Reduced margin for tighter spacing
   },
   dateFilterButtonText: {
-    fontSize: 16, // Larger font size for day abbreviation (bottom row)
+    fontSize: 14, // Adjusted for new height
     fontWeight: '700', // Thicker weight for day abbreviation
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18, // Adjusted for new height
   },
   dateFilterButtonDateText: {
-    fontSize: 12, // Smaller font size for the date (top row)
+    fontSize: 11, // Adjusted for new height
     fontWeight: '600', // Lighter weight for the date
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 14, // Adjusted for new height
+  },
+  listContentContainer: {
+    flexGrow: 1,
   },
   eventsList: {
     paddingHorizontal: 16,
@@ -174,6 +177,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingBottom: 100,
   },
   emptyText: {
     fontSize: 16,
@@ -196,7 +200,6 @@ const ScheduleScreen = () => {
   const { user } = useAuth();
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [filteredEvents, setFilteredEvents] = useState<ScheduleEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,42 +217,60 @@ const ScheduleScreen = () => {
     return user.role && staffRoles.includes(user.role.toLowerCase());
   }, [user]);
 
-  // Get filtered festival days based on user role
-  const getVisibleFestivalDays = useCallback(() => {
+  // Get filtered festival days based on user role - memoized to prevent unnecessary recalculations
+  const visibleFestivalDays = useMemo(() => {
     if (isStaffUser()) {
       return festivalDays; // Show all days including staff-only ones
     }
     return festivalDays.filter(day => !day.staffOnly); // Show only public days
   }, [isStaffUser]);
 
-  // Initialize selectedDay based on visible days
+  // Initialize selectedDay based on visible days - simplified to avoid hook ordering issues
   useEffect(() => {
-    const visibleDays = getVisibleFestivalDays();
-    if (!selectedDay && visibleDays.length > 0) {
-      setSelectedDay(visibleDays[0].date);
+    if (!selectedDay && visibleFestivalDays.length > 0) {
+      setSelectedDay(visibleFestivalDays[0].date);
     }
-  }, [getVisibleFestivalDays, selectedDay]);
+  }, [selectedDay, visibleFestivalDays]);
 
   // --- Fetch events and user schedule ---
-  const fetchEvents = useCallback(async () => {
+  const fetchEvents = async () => {
+    const startTime = performance.now();
+    // eslint-disable-next-line no-console
+    console.log('🚀 Starting to fetch events...');
+    
     setIsLoading(true);
     setError(null);
     try {
+      const tokenStartTime = performance.now();
       const token = await SecureStore.getItemAsync('userToken');
+      // eslint-disable-next-line no-console
+      console.log(`🔑 Token retrieval took: ${(performance.now() - tokenStartTime).toFixed(2)}ms`);
+      
+      const apiStartTime = performance.now();
       const response = await api.get<ScheduleEvent[]>('/events', {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
+      // eslint-disable-next-line no-console
+      console.log(`🌐 API call took: ${(performance.now() - apiStartTime).toFixed(2)}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`📊 Received ${response.data?.length || 0} events`);
+      
       setEvents(response.data);
+      // eslint-disable-next-line no-console
+      console.log(`✅ Total fetch operation took: ${(performance.now() - startTime).toFixed(2)}ms`);
     } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('❌ Error fetching events:', err);
       setError('Could not load events. Please try again later.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  };
 
   const loadUserSchedule = useCallback(async () => {
     if (!user) return;
+    const startTime = performance.now();
     try {
       const schedule = await getUserSchedule(user.id);
       const scheduleMap = schedule.reduce<Record<string, boolean>>((acc, ev) => {
@@ -257,28 +278,96 @@ const ScheduleScreen = () => {
         return acc;
       }, {});
       setUserSchedule(scheduleMap);
+      // eslint-disable-next-line no-console
+      console.log(`📅 User schedule loaded in: ${(performance.now() - startTime).toFixed(2)}ms`);
     } catch {
       // Silently fail - user schedule is not critical
+      // eslint-disable-next-line no-console
+      console.warn(`⚠️ User schedule loading failed after: ${(performance.now() - startTime).toFixed(2)}ms`);
     }
   }, [user]);
 
+  // Separate useEffect for initial data loading to avoid dependency issues
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('🔄 useEffect triggered for fetchEvents');
     fetchEvents();
-    if (user) loadUserSchedule();
-  }, [fetchEvents, loadUserSchedule, user]);
+  }, []); // Now safe since fetchEvents is not a callback
 
-  // --- Filtering logic ---
   useEffect(() => {
+    if (user) {
+      // eslint-disable-next-line no-console
+      console.log('👤 useEffect triggered for loadUserSchedule, user:', user.id);
+      loadUserSchedule();
+    }
+  }, [user, loadUserSchedule]);
+
+  // --- Optimized filtering logic with performance monitoring ---
+  const filteredEvents = useMemo(() => {
+    const startTime = performance.now();
+    
+    if (events.length === 0) {
+      return [];
+    }
+
+    // Debug: Log event dates to see format
+    if (events.length > 0) {
+      // eslint-disable-next-line no-console
+      console.log('📅 Sample event dates:', events.slice(0, 3).map(e => ({ id: e.id, date: e.date, name: e.name })));
+      // eslint-disable-next-line no-console
+      console.log('🎯 Selected day for filtering:', selectedDay);
+    }
+
     let filtered = [...events];
-    filtered = filtered.filter(ev => ev.date === selectedDay);
-    if (selectedStage !== 'all') filtered = filtered.filter(ev => ev.stage === selectedStage);
-    if (showMySchedule) filtered = filtered.filter(ev => userSchedule[ev.id]);
+    
+    // Filter by selected day
+    if (selectedDay) {
+      filtered = filtered.filter(ev => ev.date === selectedDay);
+      // eslint-disable-next-line no-console
+      console.log(`📅 After date filter (${selectedDay}): ${filtered.length} events`);
+    }
+    
+    // Filter by stage
+    if (selectedStage !== 'all') {
+      filtered = filtered.filter(ev => ev.stage === selectedStage);
+      // eslint-disable-next-line no-console
+      console.log(`🎭 After stage filter (${selectedStage}): ${filtered.length} events`);
+    }
+    
+    // Filter by user schedule
+    if (showMySchedule && Object.keys(userSchedule).length > 0) {
+      filtered = filtered.filter(ev => userSchedule[ev.id]);
+      // eslint-disable-next-line no-console
+      console.log(`❤️ After user schedule filter: ${filtered.length} events`);
+    }
+    
+    // Sort by start time
     filtered.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    setFilteredEvents(filtered);
+    
+    // eslint-disable-next-line no-console
+    console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
+    
+    return filtered;
   }, [events, selectedDay, selectedStage, showMySchedule, userSchedule]);
 
+  // Performance monitoring effect
+  useEffect(() => {
+    if (events.length > 0 && filteredEvents.length >= 0) {
+      // eslint-disable-next-line no-console
+      console.log(`📈 Performance Summary:
+        - Total Events: ${events.length}
+        - Filtered Events: ${filteredEvents.length}
+        - Filter Ratio: ${((filteredEvents.length / events.length) * 100).toFixed(1)}%
+        - User Schedule Items: ${Object.keys(userSchedule).length}
+        - Selected Day: ${selectedDay}
+        - Selected Stage: ${selectedStage}
+        - Show My Schedule: ${showMySchedule}
+      `);
+    }
+  }, [events.length, filteredEvents.length, userSchedule, selectedDay, selectedStage, showMySchedule]);
+
   // --- UI Handlers ---
-  const handleToggleSchedule = async (eventToToggle: ScheduleEvent) => {
+  const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
     if (!user) {
       Alert.alert('Login Required', 'Please login to manage your schedule.', [
         { text: 'Cancel', style: 'cancel' },
@@ -295,10 +384,10 @@ const ScheduleScreen = () => {
       await addToSchedule(user.id, eventId);
       setUserSchedule(prev => ({ ...prev, [eventId]: true }));
     }
-  };
+  }, [user, navigation, userSchedule]);
 
   // --- Renderers ---
-  const renderEventCard = ({ item }: { item: ScheduleEvent }) => {
+  const renderEventCard = useCallback(({ item }: { item: ScheduleEvent }) => {
     const isInUserSchedule = userSchedule[item.id];
     let displayImageUrl: string | null = null;
     if (item.imageUrl) {
@@ -377,161 +466,255 @@ const ScheduleScreen = () => {
         </TouchableOpacity>
       </TouchableOpacity>
     );
-  };
+  }, [userSchedule, theme, isDark, handleToggleSchedule, setSelectedEvent, setIsModalVisible]);
+
+  // Debug: Log filter state and filteredEvents on every render
+  useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG] showMySchedule:', showMySchedule, 'selectedDay:', selectedDay, 'selectedStage:', selectedStage);
+    // eslint-disable-next-line no-console
+    console.log('[DEBUG] filteredEvents:', filteredEvents.map(ev => ({ id: ev.id, name: ev.name })));
+  }, [showMySchedule, selectedDay, selectedStage, filteredEvents]);
 
   // --- Main Render ---
   return (
-    <SafeAreaView style={[filterStyles.container, { backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' }]}>
+    <SafeAreaView style={[filterStyles.container, { backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <TopNavBar 
         onSearch={(_query) => { /* Implement search logic */ }} 
-        onSettingsPress={() => navigation.navigate('Settings')} 
+        onSettingsPress={() => navigation.navigate('Settings')}
         onNotificationsPress={() => Alert.alert('Notifications coming soon!')} 
       />
-      
-      {/* Date filter row */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[filterStyles.filterRowContainer, { marginTop: 78, paddingHorizontal: 16 }]}
-        style={{ flexGrow: 0 }}
-      >
-        {getVisibleFestivalDays().map(day => (
+      {/* Main content container */}
+      <View style={{ flex: 1, flexDirection: 'column' }}>
+        {/* Fixed header container for filter rows */}
+        <View
+          style={{
+            backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent',
+            paddingTop: 69, // Make filters flush with TopNavBar
+            paddingBottom: 16,
+            zIndex: 1000,
+            position: 'relative',
+            elevation: 1,
+          }}
+          onLayout={e => {
+            // eslint-disable-next-line no-console
+            console.log('[DEBUG] Filter header row layout:', e.nativeEvent.layout);
+          }}
+        >
+        {/* Date filter row */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            alignItems: 'center',
+            minHeight: 56,
+          }}
+          style={{ flexGrow: 0, }}
+        >
+          {visibleFestivalDays.map(day => (
+            <TouchableOpacity
+              key={day.id}
+              style={[
+                styles.dateFilterButton,
+                { borderColor: theme.border },
+                day.date === selectedDay && { backgroundColor: theme.primary },
+              ]}
+              onPress={() => setSelectedDay(day.date)}
+            >
+              <Text
+                style={[
+                  styles.dateFilterButtonDateText,
+                  day.date === selectedDay ? { color: theme.background } : { color: theme.text }
+                ]}
+                numberOfLines={1}
+                ellipsizeMode='clip'
+              >
+                {day.dayLabel}
+              </Text>
+              <Text
+                style={[
+                  styles.dateFilterButtonText,
+                  day.date === selectedDay ? { color: theme.background } : { color: theme.text }
+                ]}
+                numberOfLines={1}
+                ellipsizeMode='clip'
+              >
+                {day.dayAbbrev}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        {/* 2nd row: grid icon, My Schedule filter, stage dropdown */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            minHeight: 44,
+          }}
+          onLayout={e => {
+            // eslint-disable-next-line no-console
+            console.log('[DEBUG] Second filter row layout:', e.nativeEvent.layout);
+          }}
+        >
+          {/* Grid icon aligned with logo */}
+          <TouchableOpacity style={{ padding: 8 }}>
+            <MaterialCommunityIcons name="view-grid-outline" size={28} color={theme.text} />
+          </TouchableOpacity>
+          
+          {/* My Schedule filter */}
           <TouchableOpacity
-            key={day.id}
-            style={[styles.dateFilterButton, { borderColor: theme.border }, day.date === selectedDay && { backgroundColor: theme.primary }]}
-            onPress={() => setSelectedDay(day.date)}
+            style={[
+              filterStyles.filterButton, 
+              showMySchedule && { backgroundColor: theme.primary }, 
+              {
+                marginLeft: 4, 
+                marginRight: 8, 
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                paddingHorizontal: 12, 
+                paddingVertical: 8, 
+                minWidth: 110,
+                height: 36,
+              }
+            ]}
+            onPress={() => setShowMySchedule(v => !v)}
           >
-            <Text style={[styles.dateFilterButtonDateText, day.date === selectedDay ? { color: theme.background } : { color: theme.text }]}>
-              {day.dayLabel}
-            </Text>
-            <Text style={[styles.dateFilterButtonText, day.date === selectedDay ? { color: theme.background } : { color: theme.text }]}>
-              {day.dayAbbrev}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-      
-      {/* 2nd row: grid icon, My Schedule filter, stage dropdown */}
-      <View style={[filterStyles.filterRowContainer, { flexDirection: 'row', alignItems: 'center', marginBottom: 8, paddingHorizontal: 16 }]}>
-        {/* Grid icon aligned with logo */}
-        <TouchableOpacity style={{ padding: 8 }}>
-          <MaterialCommunityIcons name="view-grid-outline" size={28} color={theme.text} />
-        </TouchableOpacity>
-        
-        {/* My Schedule filter */}
-        <TouchableOpacity
-          style={[
-            filterStyles.filterButton, 
-            showMySchedule && { backgroundColor: theme.primary }, 
-            { marginLeft: 4, marginRight: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, minWidth: 110 }
-          ]}
-          onPress={() => setShowMySchedule(v => !v)}
-        >
-          <Ionicons
-            name={showMySchedule ? 'heart' : 'heart-outline'}
-            size={16}
-            color={showMySchedule ? theme.background : theme.text}
-            style={{ marginRight: 6 }}
-          />
-          <Text style={[filterStyles.filterButtonText, showMySchedule ? { color: theme.background } : { color: theme.text }]}>
-            My Schedule
-          </Text>
-        </TouchableOpacity>
-        
-        {/* Stage dropdown */}
-        <TouchableOpacity
-          style={[filterStyles.filterButton, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minWidth: 110, marginRight: 4 }]}
-          onPress={() => Alert.alert('Stage Dropdown', 'Implement dropdown here.')}
-        >
-          <Text style={[filterStyles.filterButtonText, { flex: 1 }]} numberOfLines={1}>
-            {stages.find(s => s.value === selectedStage)?.label || 'All Stages'}
-          </Text>
-          <Ionicons name="chevron-down" size={18} color={theme.text} />
-        </TouchableOpacity>
-        
-        {/* Spacer to push share button to the right */}
-        <View style={{ flex: 1 }} />
-        
-        {/* Share button with metallic copper background - right aligned */}
-        <TouchableOpacity 
-          style={[
-            filterStyles.filterButton,
-            {
-              backgroundColor: isDark ? '#8B4513' : '#B8860B',
-              borderRadius: 8,
-              paddingHorizontal: 8,
-              paddingVertical: 6,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 36,
-              height: 36,
-              marginRight: 5,
-              shadowColor: '#000',
-              shadowOffset: {
-                width: 0,
-                height: 2,
-              },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
-            }
-          ]}
-          onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
-        >
-          <Ionicons name="share-outline" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
-      {/* Event list */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={{ color: theme.text, marginTop: 16 }}>Loading events...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={theme.error || '#FF0000'} />
-          <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
-          <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchEvents}>
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      ) : filteredEvents.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
-          <Text style={[styles.emptyText, { color: theme.text }]}>No events found for the selected filters.</Text>
-          <TouchableOpacity style={styles.resetButton} onPress={() => { 
-            const visibleDays = getVisibleFestivalDays();
-            setSelectedDay(visibleDays.length > 0 ? visibleDays[0].date : ''); 
-            setSelectedStage('all'); 
-            setShowMySchedule(false); 
-          }}>
-            <Text style={[styles.resetButtonText, { color: theme.primary }]}>Reset Filters</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredEvents}
-          renderItem={renderEventCard}
-          keyExtractor={item => item.id}
-          contentContainerStyle={styles.eventsList}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={() => (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ color: theme.text }}>No events found</Text>
-            </View>
-          )}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefreshing}
-              onRefresh={fetchEvents}
-              colors={[theme.primary]}
-              tintColor={theme.primary}
+            <Ionicons
+              name={showMySchedule ? 'heart' : 'heart-outline'}
+              size={16}
+              color={showMySchedule ? theme.background : theme.text}
+              style={{ marginRight: 6 }}
             />
-          }
-        />
-      )}
+            <Text style={[filterStyles.filterButtonText, showMySchedule ? { color: theme.background } : { color: theme.text }]}>
+              My Schedule
+            </Text>
+          </TouchableOpacity>
+          
+          {/* Stage dropdown */}
+          <TouchableOpacity
+            style={[
+              filterStyles.filterButton,
+              {
+                flexDirection: 'row', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                minWidth: 110, 
+                marginRight: 4,
+                height: 36,
+              }
+            ]}
+            onPress={() => Alert.alert('Stage Dropdown', 'Implement dropdown here.')}
+          >
+            <Text style={[filterStyles.filterButtonText, { flex: 1 }]} numberOfLines={1}>
+              {stages.find(s => s.value === selectedStage)?.label || 'All Stages'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={theme.text} />
+          </TouchableOpacity>
+          
+          {/* Share button */}
+          <TouchableOpacity 
+            style={[
+              filterStyles.filterButton,
+              {
+                borderRadius: 18,
+                backgroundColor: '#FFF',
+                borderWidth: 1,
+                borderColor: theme.border,
+                paddingHorizontal: 10,
+                paddingVertical: 0,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 36,
+                height: 36,
+                marginRight: 0,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.10,
+                shadowRadius: 2,
+                elevation: 2,
+              }
+            ]}
+            onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
+          >
+            <Ionicons name="share-outline" size={20} color={theme.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+      {/* Event list container - takes remaining space */}
+      <View
+        style={{ 
+          flex: 1,
+        }}
+        onLayout={e => {
+          // eslint-disable-next-line no-console
+          console.log('[DEBUG] Event list container layout:', e.nativeEvent.layout);
+        }}
+      >
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={{ color: theme.text, marginTop: 16 }}>Loading events...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={theme.error || '#FF0000'} />
+            <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchEvents}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredEvents}
+            renderItem={renderEventCard}
+            keyExtractor={item => item.id}
+            contentContainerStyle={[
+              styles.eventsList,
+              { paddingTop: 0, flexGrow: 1 } // Ensure list/empty state fills available space
+            ]}
+            showsVerticalScrollIndicator={false}
+            onLayout={e => {
+              // eslint-disable-next-line no-console
+              console.log('[DEBUG] FlatList layout:', e.nativeEvent.layout);
+            }}
+            // Performance optimizations - reduce for better layout stability
+            removeClippedSubviews={false}
+            maxToRenderPerBatch={8}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={5}
+            windowSize={8}
+            ListEmptyComponent={
+              <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
+                <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
+                <Text style={[styles.emptyText, { color: theme.text }]}>No events found for the selected filters.</Text>
+                <TouchableOpacity style={styles.resetButton} onPress={() => { 
+                  setSelectedDay(visibleFestivalDays.length > 0 ? visibleFestivalDays[0].date : ''); 
+                  setSelectedStage('all'); 
+                  setShowMySchedule(false); 
+                }}>
+                  <Text style={[styles.resetButtonText, { color: theme.primary }]}>Reset Filters</Text>
+                </TouchableOpacity>
+              </View>
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={() => {
+                  setIsRefreshing(true);
+                  fetchEvents(); // Refetch on pull-to-refresh
+                }}
+                colors={[theme.primary]}
+                tintColor={theme.primary}
+              />
+            }
+          />
+        )}
+      </View>
+      </View>
       {/* Event details modal */}
       <EventDetailsModal
         isVisible={isModalVisible}
