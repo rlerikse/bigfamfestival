@@ -604,7 +604,7 @@ const ScheduleScreen = () => {
                 borderRadius: 8,
                 borderWidth: 1,
                 borderColor: theme.border,
-                backgroundColor: showMySchedule ? theme.primary : theme.background,
+                backgroundColor: showMySchedule ? theme.primary : 'transparent',
                 marginLeft: 4, 
                 marginRight: 8, 
                 flexDirection: 'row', 
@@ -654,15 +654,15 @@ const ScheduleScreen = () => {
               filterStyles.filterButton,
               {
                 borderRadius: 18,
-                backgroundColor: '#FFF',
+                backgroundColor: '#B87333',
                 borderWidth: 1,
                 borderColor: theme.border,
-                paddingHorizontal: 10,
+                paddingHorizontal: 8,
                 paddingVertical: 0,
+                paddingLeft: 8,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: 36,
                 height: 36,
                 marginRight: 0,
                 shadowColor: '#000',
@@ -674,7 +674,7 @@ const ScheduleScreen = () => {
             ]}
             onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
           >
-            <Ionicons name="share-outline" size={20} color={theme.primary} />
+            <Ionicons name="share-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
