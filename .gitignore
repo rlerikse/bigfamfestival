@@ -14,3 +14,5 @@ backend/.env
 backend/bigfamfestival-d50c655eb421.json
 /backend/dist
 /mobile/android
+mobile/package-lock.json
+mobile/package-lock.backup.json
