@@ -15,7 +15,7 @@ async function bootstrap() {
   // Get configuration service
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 8080);
-  const environment = configService.get<string>('NODE_ENV', 'development');
+  const environment = configService.get<string>('NODE_ENV', 'production');
 
   // Set up logger
   app.useLogger(app.get(Logger));
@@ -56,7 +56,7 @@ async function bootstrap() {
   }
 
   // Start the server
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   console.log(`Application is running on port ${port} in ${environment} mode`);
 }
 
