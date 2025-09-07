@@ -156,4 +156,11 @@ export class EventsService {
       .sort(); // Sort alphabetically
     return uniqueStages;
   }
+
+  /**
+   * Get all genres from Firestore
+   */
+  async getAllGenres(): Promise<{ id: string; tag: string }[]> {
+    return this.firestoreService.getAll('genres');
+  }
 }

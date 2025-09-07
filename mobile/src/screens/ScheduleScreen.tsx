@@ -36,6 +36,13 @@ import TopNavBar from '../components/TopNavBar';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 
+// --- Genre filter types ---
+interface GenreOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
 // --- Types ---
 interface ScheduleEvent {
   id: string;
@@ -47,6 +54,8 @@ interface ScheduleEvent {
   artists: string[];
   description?: string;
   imageUrl?: string;
+  genre?: string;
+  genres?: string[];
 }
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -205,6 +214,33 @@ const ScheduleScreen = () => {
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [selectedStages, setSelectedStages] = useState<string[]>(['all']); // Default to 'all' for showing all stages
   const [showMySchedule, setShowMySchedule] = useState(false);
+  const [availableGenres, setAvailableGenres] = useState<GenreOption[]>([]);
+  const [selectedGenres, setSelectedGenres] = useState<string[]>(['all']);
+  // --- Fetch genres for filter ---
+  useEffect(() => {
+    const fetchGenres = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('userToken');
+        const response = await api.get('/genres', {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
+        // Expecting response.data to be array of { id, tag }
+        interface GenreApiResponse {
+          id?: string;
+          tag: string;
+        }
+        const genreOptions: GenreOption[] = [
+          { id: 'all', label: 'All Genres', value: 'all' },
+          ...response.data.map((g: GenreApiResponse) => ({ id: g.id || g.tag, label: g.tag, value: g.tag }))
+        ];
+        setAvailableGenres(genreOptions);
+      } catch (err) {
+        console.error('Error fetching genres:', err);
+        setAvailableGenres([{ id: 'all', label: 'All Genres', value: 'all' }]);
+      }
+    };
+    fetchGenres();
+  }, []);
 
   // Helper function to check if user has staff privileges
   const isStaffUser = useCallback(() => {
@@ -338,11 +374,9 @@ const ScheduleScreen = () => {
   // --- Optimized filtering logic with performance monitoring ---
   const filteredEvents = useMemo(() => {
     const startTime = performance.now();
-    
     if (events.length === 0) {
       return [];
     }
-
     // Debug: Log event dates to see format
     if (events.length > 0) {
       // eslint-disable-next-line no-console
@@ -350,38 +384,46 @@ const ScheduleScreen = () => {
       // eslint-disable-next-line no-console
       console.log('🎯 Selected day for filtering:', selectedDay);
     }
-
     let filtered = [...events];
-    
     // Filter by selected day
     if (selectedDay) {
       filtered = filtered.filter(ev => ev.date === selectedDay);
       // eslint-disable-next-line no-console
       console.log(`📅 After date filter (${selectedDay}): ${filtered.length} events`);
     }
-    
     // Filter by selected stages (multi-select)
     if (selectedStages.length > 0 && !selectedStages.includes('all')) {
       filtered = filtered.filter(ev => selectedStages.includes(ev.stage));
-      // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console
       console.log(`🎭 After stage filter (${selectedStages.join(', ')}): ${filtered.length} events`);
     }
-    
+    // Filter by selected genres (multi-select)
+    if (selectedGenres.length > 0 && !selectedGenres.includes('all')) {
+      filtered = filtered.filter(ev => {
+        // Assume event.genres is array of genre tags, or event.genre (string)
+        if (Array.isArray(ev.genres)) {
+          return ev.genres.some((g: string) => selectedGenres.includes(g));
+        } else if (ev.genre) {
+          return selectedGenres.includes(ev.genre);
+        }
+        return false;
+      });
+      // eslint-disable-next-line no-console
+      console.log(`🎭 After genre filter (${selectedGenres.join(', ')}): ${filtered.length} events`);
+    }
     // Filter by user schedule
     if (showMySchedule && Object.keys(userSchedule).length > 0) {
       filtered = filtered.filter(ev => userSchedule[ev.id]);
       // eslint-disable-next-line no-console
       console.log(`❤️ After user schedule filter: ${filtered.length} events`);
     }
-    
     // Sort by start time
     filtered.sort((a, b) => a.startTime.localeCompare(b.startTime));
     
     // eslint-disable-next-line no-console
     console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
-    
     return filtered;
-  }, [events, selectedDay, selectedStages, showMySchedule, userSchedule]);
+  }, [events, selectedDay, selectedStages, selectedGenres, showMySchedule, userSchedule]);
 
   // Performance monitoring effect
   useEffect(() => {
@@ -640,6 +682,19 @@ const ScheduleScreen = () => {
             selectedValues={selectedStages}
             onSelectionChange={setSelectedStages}
             placeholder="All Stages"
+            allOptionValue="all"
+            style={{
+              minWidth: 110,
+              marginRight: 4,
+              height: 36,
+            }}
+          />
+          {/* Genre dropdown (multi-select) */}
+          <MultiSelectDropdown
+            options={availableGenres}
+            selectedValues={selectedGenres}
+            onSelectionChange={setSelectedGenres}
+            placeholder="All Genres"
             allOptionValue="all"
             style={{
               minWidth: 110,

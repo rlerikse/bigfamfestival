@@ -16,3 +16,6 @@ backend/bigfamfestival-d50c655eb421.json
 /mobile/android
 mobile/package-lock.json
 mobile/package-lock.backup.json
+backend/artists.csv
+backend/scripts/import-artists-from-csv copy.ts
+backend/scripts/import-artists-from-csv.ts

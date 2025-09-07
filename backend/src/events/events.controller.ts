@@ -109,4 +109,14 @@ export class EventsController {
   async deleteEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.remove(id);
   }
+
+  // GET /genres
+  @Get('genres')
+  async getGenres() {
+    const genres = await this.eventsService.getAllGenres();
+    return genres.map((doc) => ({
+      id: doc.id,
+      tag: doc.tag,
+    }));
+  }
 }
