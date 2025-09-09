@@ -1,7 +1,17 @@
 # Cloud Run service for backend API
 resource "google_cloud_run_service" "bigfam-api" {
-  name     = "bigfam-api-${var.environment}"
+  name     = "bigfam-api-production"
   location = var.region
+
+  # Add this lifecycle block to prevent destroying the existing service
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      template[0].metadata[0].annotations,
+      template[0].spec[0].containers[0].image,
+    ]
+  }
+
 
   template {
     spec {

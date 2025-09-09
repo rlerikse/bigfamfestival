@@ -16,7 +16,7 @@ resource "google_secret_manager_secret_iam_member" "jwt_secret_access" {
 # If not, you'll need to update it manually
 resource "google_cloud_run_service_iam_binding" "service_account_binding" {
   location = "us-central1"  # Match your service region
-  service  = "bigfam-api-development" 
+  service  = "bigfam-api-production" 
   role     = "roles/run.invoker"
   members  = [
     "serviceAccount:${data.google_service_account.bigfam_cloud_run.email}",
