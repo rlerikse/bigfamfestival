@@ -181,7 +181,7 @@ const styles = StyleSheet.create({  container: {
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 1001,
   },
   content: {
     flexDirection: 'row',
@@ -203,8 +203,8 @@ const styles = StyleSheet.create({  container: {
   logo: {
     width: 160,
     position: 'absolute',
-    top: -58,
-    height: 175
+    top: -33,
+    height: 125
   },
   actionsContainer: {
     flexDirection: 'row',

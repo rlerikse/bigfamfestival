@@ -705,7 +705,7 @@ const ScheduleScreen = () => {
         <View
           style={{
             backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent',
-            paddingTop: 73, // Make filters flush with TopNavBar
+            paddingTop: 90, // Make filters flush with TopNavBar + extra space for logo
             paddingBottom: 16,
             zIndex: 1000,
             position: 'relative',
