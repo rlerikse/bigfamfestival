@@ -569,8 +569,24 @@ const ScheduleScreen = () => {
       // eslint-disable-next-line no-console
       console.log(`❤️ After user schedule filter: ${filtered.length} events`);
     }
-    // Sort by start time
-    filtered.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    // Sort by actual chronological order within the 24-hour window (6:30 AM to 6:30 AM next day)
+    filtered.sort((a, b) => {
+      const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
+      
+      // Convert start times to minutes
+      const [aHours, aMinutes] = a.startTime.split(':').map(Number);
+      const aTimeInMinutes = aHours * 60 + aMinutes;
+      
+      const [bHours, bMinutes] = b.startTime.split(':').map(Number);
+      const bTimeInMinutes = bHours * 60 + bMinutes;
+      
+      // Adjust times so that events before 6:30 AM are treated as "next day" (add 24 hours worth of minutes)
+      const aAdjustedTime = aTimeInMinutes < cutoffTimeInMinutes ? aTimeInMinutes + (24 * 60) : aTimeInMinutes;
+      const bAdjustedTime = bTimeInMinutes < cutoffTimeInMinutes ? bTimeInMinutes + (24 * 60) : bTimeInMinutes;
+      
+      // Sort by adjusted time (this puts PM events first, then late-night/early AM events)
+      return aAdjustedTime - bAdjustedTime;
+    });
     
     // eslint-disable-next-line no-console
     console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
