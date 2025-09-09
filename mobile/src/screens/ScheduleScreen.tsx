@@ -223,6 +223,23 @@ interface EventCardProps {
   onEventPress: (event: ScheduleEvent) => void;
 }
 
+// Custom comparison function for EventCard memo
+const EventCardComparison = (prevProps: EventCardProps, nextProps: EventCardProps) => {
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.item.name === nextProps.item.name &&
+    prevProps.item.startTime === nextProps.item.startTime &&
+    prevProps.item.stage === nextProps.item.stage &&
+    prevProps.item.description === nextProps.item.description &&
+    prevProps.item.imageUrl === nextProps.item.imageUrl &&
+    prevProps.isInUserSchedule === nextProps.isInUserSchedule &&
+    prevProps.theme.border === nextProps.theme.border &&
+    prevProps.theme.card === nextProps.theme.card &&
+    prevProps.theme.text === nextProps.theme.text &&
+    prevProps.theme.muted === nextProps.theme.muted
+  );
+};
+
 const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
   const displayImageUrl = useMemo(() => {
     if (!item.imageUrl) return null;
@@ -251,6 +268,24 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
     return `${hour12}:${minutes} ${ampm}`;
   }, [item.startTime]);
 
+  const heartIconName = useMemo(() => isInUserSchedule ? 'heart' : 'heart-outline', [isInUserSchedule]);
+  const heartColor = useMemo(() => isInUserSchedule ? '#B87333' : (theme.muted || '#666666'), [isInUserSchedule, theme.muted]);
+  const heartText = useMemo(() => isInUserSchedule ? 'Added' : 'Add', [isInUserSchedule]);
+
+  const eventCardStyle = useMemo(() => [
+    styles.eventCard, 
+    { borderColor: theme.border, backgroundColor: theme.card }
+  ], [theme.border, theme.card]);
+
+  const eventNameStyle = useMemo(() => [styles.eventName, { color: theme.text }], [theme.text]);
+  const eventDetailsStyle = useMemo(() => [styles.eventDetails, { color: theme.muted }], [theme.muted]);
+  const eventDescriptionStyle = useMemo(() => [
+    styles.eventDescription, 
+    { color: theme.text }
+  ], [theme.text]);
+
+  const favoriteTextStyle = useMemo(() => [styles.favoriteText, { color: heartColor }], [heartColor]);
+
   const handleHeartPress = useCallback((e: GestureResponderEvent) => {
     e.stopPropagation();
     onToggleSchedule(item);
@@ -262,10 +297,7 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
 
   return (
     <TouchableOpacity 
-      style={[
-        styles.eventCard, 
-        { borderColor: theme.border, backgroundColor: theme.card }
-      ]}
+      style={eventCardStyle}
       onPress={handleEventPress}
     >
       {displayImageUrl && (
@@ -273,20 +305,19 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
           source={{ uri: displayImageUrl }}
           style={styles.eventImage}
           resizeMode="cover"
+          loadingIndicatorSource={undefined}
+          fadeDuration={0}
         />
       )}
       <View style={styles.eventInfo}>
-        <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
-        <Text style={[styles.eventDetails, { color: theme.muted }]}>
+        <Text style={eventNameStyle}>{item.name}</Text>
+        <Text style={eventDetailsStyle}>
           {item.stage} - {formattedTime}
         </Text>
         
         {item.description && (
           <Text 
-            style={[
-              styles.eventDescription, 
-              { color: theme.text }
-            ]} 
+            style={eventDescriptionStyle} 
             numberOfLines={2}
           >
             {item.description}
@@ -299,17 +330,17 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
         onPress={handleHeartPress}
       >
         <Ionicons
-          name={isInUserSchedule ? 'heart' : 'heart-outline'}
+          name={heartIconName}
           size={24}
-          color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
+          color={heartColor}
         />
-        <Text style={[styles.favoriteText, { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }]}>
-          {isInUserSchedule ? 'Added' : 'Add'}
+        <Text style={favoriteTextStyle}>
+          {heartText}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
-});
+}, EventCardComparison);
 
 EventCard.displayName = 'EventCard';
 
@@ -874,12 +905,14 @@ const ScheduleScreen = () => {
               { paddingTop: 0, paddingBottom: 100, flexGrow: 1 } // Added bottom padding for nav bar clearance
             ]}
             showsVerticalScrollIndicator={false}
-            // Performance optimizations for large lists
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={100}
-            initialNumToRender={8}
-            windowSize={10}
+            // Balanced performance optimizations - less aggressive to prevent item disappearing
+            removeClippedSubviews={false}
+            maxToRenderPerBatch={15}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={10}
+            windowSize={21}
+            legacyImplementation={false}
+            disableVirtualization={false}
             getItemLayout={(data, index) => ({
               length: 112, // approximate height of event card
               offset: 112 * index,
