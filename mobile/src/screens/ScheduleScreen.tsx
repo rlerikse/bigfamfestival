@@ -7,7 +7,7 @@
  * UI matches new design: date row, then grid icon + My Schedule filter, then stage dropdown.
  * Replaces HomeScreen and MyScheduleScreen logic.
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import {
   RefreshControl,
   Alert,
   StyleSheet,
-  ScrollView,
+  GestureResponderEvent,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -36,12 +36,14 @@ import TopNavBar from '../components/TopNavBar';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 
-// --- Genre filter types ---
+// --- Genre filter types - TEMPORARILY DISABLED ---
+/*
 interface GenreOption {
   id: string;
   label: string;
   value: string;
 }
+*/
 
 // --- Types ---
 interface ScheduleEvent {
@@ -60,14 +62,23 @@ interface ScheduleEvent {
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
+// Days to show in the filter buttons (Friday, Saturday, Sunday)
 const festivalDays = [
-  { id: '2025-09-23', date: '2025-09-23', dayLabel: 'Sep 23', dayAbbrev: 'TUE', staffOnly: true },
-  { id: '2025-09-24', date: '2025-09-24', dayLabel: 'Sep 24', dayAbbrev: 'WED', staffOnly: false },
-  { id: '2025-09-25', date: '2025-09-25', dayLabel: 'Sep 25', dayAbbrev: 'THU', staffOnly: false },
   { id: '2025-09-26', date: '2025-09-26', dayLabel: 'Sep 26', dayAbbrev: 'FRI', staffOnly: false },
   { id: '2025-09-27', date: '2025-09-27', dayLabel: 'Sep 27', dayAbbrev: 'SAT', staffOnly: false },
-  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: true },
+  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: false },
 ];
+
+// All days we need to fetch events for (includes Monday for late-night events)
+// Currently not used since API fetches all events at once
+/*
+const allFestivalDays = [
+  { id: '2025-09-26', date: '2025-09-26', dayLabel: 'Sep 26', dayAbbrev: 'FRI', staffOnly: false },
+  { id: '2025-09-27', date: '2025-09-27', dayLabel: 'Sep 27', dayAbbrev: 'SAT', staffOnly: false },
+  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: false },
+  { id: '2025-09-29', date: '2025-09-29', dayLabel: 'Sep 29', dayAbbrev: 'MON', staffOnly: false },
+];
+*/
 
 // Styles for the event cards (MySchedule style)
 const styles = StyleSheet.create({
@@ -78,13 +89,12 @@ const styles = StyleSheet.create({
     height: 50,
     minHeight: 50,
     paddingVertical: 6,
-    paddingHorizontal: 12, // Adjusted for new height
-    borderRadius: 10, // Adjusted for new height
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    minWidth: 75, // Adjusted for new height
     alignItems: 'center',
     justifyContent: 'center',
-    marginHorizontal: 3, // Reduced margin for tighter spacing
+    marginHorizontal: 3,
   },
   dateFilterButtonText: {
     fontSize: 14, // Adjusted for new height
@@ -199,6 +209,110 @@ const styles = StyleSheet.create({
   },
 });
 
+// Memoized EventCard component for better performance
+interface EventCardProps {
+  item: ScheduleEvent;
+  isInUserSchedule: boolean;
+  theme: {
+    border: string;
+    card: string;
+    text: string;
+    muted: string;
+  };
+  onToggleSchedule: (event: ScheduleEvent) => void;
+  onEventPress: (event: ScheduleEvent) => void;
+}
+
+const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
+  const displayImageUrl = useMemo(() => {
+    if (!item.imageUrl) return null;
+    
+    if (item.imageUrl.startsWith('gs://')) {
+      const gsPath = item.imageUrl.substring(5);
+      const firstSlashIndex = gsPath.indexOf('/');
+      if (firstSlashIndex > 0) {
+        const bucket = gsPath.substring(0, firstSlashIndex);
+        const objectPath = gsPath.substring(firstSlashIndex + 1);
+        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+      }
+    } else if (item.imageUrl.startsWith('http')) {
+      return item.imageUrl;
+    } else {
+      return `https://big-fam-app.S3.us-east-2.amazonaws.com/${item.imageUrl}`;
+    }
+    return null;
+  }, [item.imageUrl]);
+
+  const formattedTime = useMemo(() => {
+    const [hours, minutes] = item.startTime.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }, [item.startTime]);
+
+  const handleHeartPress = useCallback((e: GestureResponderEvent) => {
+    e.stopPropagation();
+    onToggleSchedule(item);
+  }, [item, onToggleSchedule]);
+
+  const handleEventPress = useCallback(() => {
+    onEventPress(item);
+  }, [item, onEventPress]);
+
+  return (
+    <TouchableOpacity 
+      style={[
+        styles.eventCard, 
+        { borderColor: theme.border, backgroundColor: theme.card }
+      ]}
+      onPress={handleEventPress}
+    >
+      {displayImageUrl && (
+        <Image
+          source={{ uri: displayImageUrl }}
+          style={styles.eventImage}
+          resizeMode="cover"
+        />
+      )}
+      <View style={styles.eventInfo}>
+        <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
+        <Text style={[styles.eventDetails, { color: theme.muted }]}>
+          {item.stage} - {formattedTime}
+        </Text>
+        
+        {item.description && (
+          <Text 
+            style={[
+              styles.eventDescription, 
+              { color: theme.text }
+            ]} 
+            numberOfLines={2}
+          >
+            {item.description}
+          </Text>
+        )}
+      </View>
+      
+      <TouchableOpacity
+        style={styles.heartButton}
+        onPress={handleHeartPress}
+      >
+        <Ionicons
+          name={isInUserSchedule ? 'heart' : 'heart-outline'}
+          size={24}
+          color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
+        />
+        <Text style={[styles.favoriteText, { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }]}>
+          {isInUserSchedule ? 'Added' : 'Add'}
+        </Text>
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+});
+
+EventCard.displayName = 'EventCard';
+
 const ScheduleScreen = () => {
   const { theme, isDark, isPerformanceMode } = useTheme();
   const { user } = useAuth();
@@ -214,9 +328,11 @@ const ScheduleScreen = () => {
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [selectedStages, setSelectedStages] = useState<string[]>(['all']); // Default to 'all' for showing all stages
   const [showMySchedule, setShowMySchedule] = useState(false);
-  const [availableGenres, setAvailableGenres] = useState<GenreOption[]>([]);
-  const [selectedGenres, setSelectedGenres] = useState<string[]>(['all']);
-  // --- Fetch genres for filter ---
+  // Genre filtering temporarily disabled
+  // const [availableGenres, setAvailableGenres] = useState<GenreOption[]>([]);
+  // const [selectedGenres, setSelectedGenres] = useState<string[]>(['all']);
+  // --- Fetch genres for filter - TEMPORARILY DISABLED ---
+  /*
   useEffect(() => {
     const fetchGenres = async () => {
       try {
@@ -241,6 +357,7 @@ const ScheduleScreen = () => {
     };
     fetchGenres();
   }, []);
+  */
 
   // Helper function to check if user has staff privileges
   const isStaffUser = useCallback(() => {
@@ -248,6 +365,39 @@ const ScheduleScreen = () => {
     const staffRoles = ['admin', 'staff', 'artist', 'vendor', 'volunteer'];
     return user.role && staffRoles.includes(user.role.toLowerCase());
   }, [user]);
+
+  // Helper function to determine if an event should appear on a given filter day
+  const shouldEventAppearOnDay = useCallback((event: ScheduleEvent, filterDay: string) => {
+    const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
+    const [eventHours, eventMinutes] = event.startTime.split(':').map(Number);
+    const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
+    
+    // Get the next day after the filter day
+    const filterDate = new Date(filterDay);
+    const nextDay = new Date(filterDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const nextDayString = nextDay.toISOString().split('T')[0];
+    
+    // Case 1: Event is on the filter day and starts at 6:30 AM or later
+    if (event.date === filterDay && eventStartTimeInMinutes >= cutoffTimeInMinutes) {
+      return true;
+    }
+    
+    // Case 2: Event is on the next day and starts before 6:30 AM
+    if (event.date === nextDayString && eventStartTimeInMinutes < cutoffTimeInMinutes) {
+      // eslint-disable-next-line no-console
+      console.log(`🌙 Late-night event "${event.name}" (${event.startTime} on ${event.date}) included in ${filterDay} filter`);
+      return true;
+    }
+    
+    // Debug logging for excluded events
+    if (event.date === filterDay && eventStartTimeInMinutes < cutoffTimeInMinutes) {
+      // eslint-disable-next-line no-console
+      console.log(`� Early event "${event.name}" (${event.startTime} on ${event.date}) excluded from ${filterDay} filter (before 6:30 AM)`);
+    }
+    
+    return false;
+  }, []);
 
   // Get filtered festival days based on user role - memoized to prevent unnecessary recalculations
   const visibleFestivalDays = useMemo(() => {
@@ -385,9 +535,9 @@ const ScheduleScreen = () => {
       console.log('🎯 Selected day for filtering:', selectedDay);
     }
     let filtered = [...events];
-    // Filter by selected day
+    // Filter by selected day (including late-night events from next day)
     if (selectedDay) {
-      filtered = filtered.filter(ev => ev.date === selectedDay);
+      filtered = filtered.filter(ev => shouldEventAppearOnDay(ev, selectedDay));
       // eslint-disable-next-line no-console
       console.log(`📅 After date filter (${selectedDay}): ${filtered.length} events`);
     }
@@ -397,7 +547,8 @@ const ScheduleScreen = () => {
     // eslint-disable-next-line no-console
       console.log(`🎭 After stage filter (${selectedStages.join(', ')}): ${filtered.length} events`);
     }
-    // Filter by selected genres (multi-select)
+    // Filter by selected genres (multi-select) - TEMPORARILY DISABLED
+    /*
     if (selectedGenres.length > 0 && !selectedGenres.includes('all')) {
       filtered = filtered.filter(ev => {
         // Assume event.genres is array of genre tags, or event.genre (string)
@@ -411,6 +562,7 @@ const ScheduleScreen = () => {
       // eslint-disable-next-line no-console
       console.log(`🎭 After genre filter (${selectedGenres.join(', ')}): ${filtered.length} events`);
     }
+    */
     // Filter by user schedule
     if (showMySchedule && Object.keys(userSchedule).length > 0) {
       filtered = filtered.filter(ev => userSchedule[ev.id]);
@@ -423,23 +575,15 @@ const ScheduleScreen = () => {
     // eslint-disable-next-line no-console
     console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
     return filtered;
-  }, [events, selectedDay, selectedStages, selectedGenres, showMySchedule, userSchedule]);
+  }, [events, selectedDay, selectedStages, showMySchedule, userSchedule, shouldEventAppearOnDay]);
 
-  // Performance monitoring effect
+  // Performance monitoring effect - simplified
   useEffect(() => {
-    if (events.length > 0 && filteredEvents.length >= 0) {
+    if (__DEV__ && events.length > 0 && filteredEvents.length >= 0) {
       // eslint-disable-next-line no-console
-      console.log(`📈 Performance Summary:
-        - Total Events: ${events.length}
-        - Filtered Events: ${filteredEvents.length}
-        - Filter Ratio: ${((filteredEvents.length / events.length) * 100).toFixed(1)}%
-        - User Schedule Items: ${Object.keys(userSchedule).length}
-        - Selected Day: ${selectedDay}
-        - Selected Stages: ${selectedStages.join(', ')}
-        - Show My Schedule: ${showMySchedule}
-      `);
+      console.log(`📈 Events: ${events.length} → Filtered: ${filteredEvents.length} (${((filteredEvents.length / events.length) * 100).toFixed(1)}%)`);
     }
-  }, [events.length, filteredEvents.length, userSchedule, selectedDay, selectedStages, showMySchedule]);
+  }, [events.length, filteredEvents.length]);
 
   // --- UI Handlers ---
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
@@ -461,95 +605,43 @@ const ScheduleScreen = () => {
     }
   }, [user, navigation, userSchedule]);
 
-  // --- Renderers ---
+  // Event press handlers
+  const handleEventPress = useCallback((item: ScheduleEvent) => {
+    setSelectedEvent(item);
+    setIsModalVisible(true);
+  }, []);
+
+  // Reset filters handler
+  const handleResetFilters = useCallback(() => {
+    setSelectedDay(visibleFestivalDays.length > 0 ? visibleFestivalDays[0].date : '');
+    setSelectedStages(['all']);
+    setShowMySchedule(false);
+  }, [visibleFestivalDays]);
+
+  // Optimized key extractor
+  const keyExtractor = useCallback((item: ScheduleEvent) => item.id, []);
+
+  // --- Optimized Renderer ---
   const renderEventCard = useCallback(({ item }: { item: ScheduleEvent }) => {
     const isInUserSchedule = userSchedule[item.id];
-    let displayImageUrl: string | null = null;
-    if (item.imageUrl) {
-      if (item.imageUrl.startsWith('gs://')) {
-        const gsPath = item.imageUrl.substring(5);
-        const firstSlashIndex = gsPath.indexOf('/');
-        if (firstSlashIndex > 0) {
-          const bucket = gsPath.substring(0, firstSlashIndex);
-          const objectPath = gsPath.substring(firstSlashIndex + 1);
-          displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
-        }
-      } else if (item.imageUrl.startsWith('http')) {
-        displayImageUrl = item.imageUrl;
-      } else {
-        displayImageUrl = `https://big-fam-app.S3.us-east-2.amazonaws.com/${item.imageUrl}`;
-      }
-    }
-
-    const formatTime = (timeString: string) => {
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const hour12 = hour % 12 || 12;
-      return `${hour12}:${minutes} ${ampm}`;
-    };
-
     return (
-      <TouchableOpacity 
-        style={[
-          styles.eventCard, 
-          { borderColor: theme.border, backgroundColor: theme.card }
-        ]}
-        onPress={() => { setSelectedEvent(item); setIsModalVisible(true); }}
-      >
-        {displayImageUrl && (
-          <Image
-            source={{ uri: displayImageUrl }}
-            style={styles.eventImage}
-            resizeMode="cover"
-          />
-        )}
-        <View style={styles.eventInfo}>
-          <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
-          <Text style={[styles.eventDetails, { color: theme.muted }]}>
-            {item.stage} - {formatTime(item.startTime)}
-          </Text>
-          
-          {item.description && (
-            <Text 
-              style={[
-                styles.eventDescription, 
-                { color: theme.text }
-              ]} 
-              numberOfLines={2}
-            >
-              {item.description}
-            </Text>
-          )}
-        </View>
-        
-        <TouchableOpacity
-          style={styles.heartButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleToggleSchedule(item);
-          }}
-        >
-          <Ionicons
-            name={isInUserSchedule ? 'heart' : 'heart-outline'}
-            size={24}
-            color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
-          />
-          <Text style={[styles.favoriteText, { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }]}>
-            {isInUserSchedule ? 'Added' : 'Add'}
-          </Text>
-        </TouchableOpacity>
-      </TouchableOpacity>
+      <EventCard
+        item={item}
+        isInUserSchedule={isInUserSchedule}
+        theme={theme}
+        onToggleSchedule={handleToggleSchedule}
+        onEventPress={handleEventPress}
+      />
     );
-  }, [userSchedule, theme, handleToggleSchedule, setSelectedEvent, setIsModalVisible]);
+  }, [userSchedule, theme, handleToggleSchedule, handleEventPress]);
 
-  // Debug: Log filter state and filteredEvents on every render
+  // Debug logging in development only
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('[DEBUG] showMySchedule:', showMySchedule, 'selectedDay:', selectedDay, 'selectedStages:', selectedStages);
-    // eslint-disable-next-line no-console
-    console.log('[DEBUG] filteredEvents:', filteredEvents.map(ev => ({ id: ev.id, name: ev.name })));
-  }, [showMySchedule, selectedDay, selectedStages, filteredEvents]);
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log('[DEBUG] Filters - showMySchedule:', showMySchedule, 'selectedDay:', selectedDay, 'selectedStages:', selectedStages);
+    }
+  }, [showMySchedule, selectedDay, selectedStages]);
 
   // --- Main Render ---
   return (
@@ -578,22 +670,20 @@ const ScheduleScreen = () => {
           }}
         >
         {/* Date filter row */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{
+        <View 
+          style={{
+            flexDirection: 'row',
             paddingHorizontal: 16,
             alignItems: 'center',
             minHeight: 56,
           }}
-          style={{ flexGrow: 0, }}
         >
           {visibleFestivalDays.map(day => (
             <TouchableOpacity
               key={day.id}
               style={[
                 styles.dateFilterButton,
-                { borderColor: theme.border },
+                { borderColor: theme.border, flex: 1 },
                 day.date === selectedDay && { backgroundColor: theme.primary },
               ]}
               onPress={() => setSelectedDay(day.date)}
@@ -620,7 +710,7 @@ const ScheduleScreen = () => {
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
+        </View>
         {/* 2nd row: grid icon, My Schedule filter, stage dropdown */}
         <View
           style={{
@@ -689,7 +779,8 @@ const ScheduleScreen = () => {
               height: 36,
             }}
           />
-          {/* Genre dropdown (multi-select) */}
+          {/* Genre dropdown (multi-select) - HIDDEN FOR NOW */}
+          {/*
           <MultiSelectDropdown
             options={availableGenres}
             selectedValues={selectedGenres}
@@ -702,6 +793,7 @@ const ScheduleScreen = () => {
               height: 36,
             }}
           />
+          */}
           
           {/* Share button */}
           <TouchableOpacity 
@@ -760,31 +852,28 @@ const ScheduleScreen = () => {
           <FlatList
             data={filteredEvents}
             renderItem={renderEventCard}
-            keyExtractor={item => item.id}
+            keyExtractor={keyExtractor}
             contentContainerStyle={[
               styles.eventsList,
               { paddingTop: 0, flexGrow: 1 } // Ensure list/empty state fills available space
             ]}
             showsVerticalScrollIndicator={false}
-            onLayout={e => {
-              // eslint-disable-next-line no-console
-              console.log('[DEBUG] FlatList layout:', e.nativeEvent.layout);
-            }}
-            // Performance optimizations - reduce for better layout stability
-            removeClippedSubviews={false}
-            maxToRenderPerBatch={8}
-            updateCellsBatchingPeriod={50}
-            initialNumToRender={5}
-            windowSize={8}
+            // Performance optimizations for large lists
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={100}
+            initialNumToRender={8}
+            windowSize={10}
+            getItemLayout={(data, index) => ({
+              length: 112, // approximate height of event card
+              offset: 112 * index,
+              index,
+            })}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
                 <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
                 <Text style={[styles.emptyText, { color: theme.text }]}>No events found for the selected filters.</Text>
-                <TouchableOpacity style={styles.resetButton} onPress={() => { 
-                  setSelectedDay(visibleFestivalDays.length > 0 ? visibleFestivalDays[0].date : ''); 
-                  setSelectedStages(['all']); 
-                  setShowMySchedule(false); 
-                }}>
+                <TouchableOpacity style={styles.resetButton} onPress={handleResetFilters}>
                   <Text style={[styles.resetButtonText, { color: theme.primary }]}>Reset Filters</Text>
                 </TouchableOpacity>
               </View>
