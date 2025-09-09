@@ -113,10 +113,19 @@ export class EventsController {
   // GET /genres
   @Get('genres')
   async getGenres() {
-    const genres = await this.eventsService.getAllGenres();
-    return genres.map((doc) => ({
-      id: doc.id,
-      tag: doc.tag,
-    }));
+    try {
+      const genres = await this.eventsService.getAllGenres();
+      const result = genres.map((doc) => ({
+        id: doc.id,
+        tag: doc.tag,
+      }));
+      // Log the request and result
+      console.log(`[EventsController] /genres requested. Returned:`, result);
+      return result;
+    } catch (error) {
+      console.error(`[EventsController] Error fetching genres:`, error);
+      // Optionally, you can use NestJS's HttpException for more control
+      throw new Error('Failed to fetch genres');
+    }
   }
 }
