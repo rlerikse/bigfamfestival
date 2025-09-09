@@ -871,7 +871,7 @@ const ScheduleScreen = () => {
             keyExtractor={keyExtractor}
             contentContainerStyle={[
               styles.eventsList,
-              { paddingTop: 0, flexGrow: 1 } // Ensure list/empty state fills available space
+              { paddingTop: 0, paddingBottom: 100, flexGrow: 1 } // Added bottom padding for nav bar clearance
             ]}
             showsVerticalScrollIndicator={false}
             // Performance optimizations for large lists
