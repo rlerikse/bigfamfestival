@@ -43,7 +43,8 @@ const HomeScreen = () => {
       <TopNavBar 
         onSearch={(_query) => { /* Implement search logic */ }} 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications coming soon!')} 
+        onNotificationsPress={() => Alert.alert('Notifications coming soon!')}
+        whiteIcons={true}
       />
 
       {/* Main content container */}

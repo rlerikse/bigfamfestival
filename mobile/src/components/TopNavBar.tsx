@@ -18,6 +18,7 @@ interface TopNavBarProps {
   showSearchBar?: boolean;
   onNotificationsPress?: () => void;
   onSettingsPress?: () => void;
+  whiteIcons?: boolean;
 }
 
 const TopNavBar: React.FC<TopNavBarProps> = (props) => {
@@ -25,7 +26,8 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     onSearch, 
     placeholder = 'Search artist, vendor...', 
     onNotificationsPress, 
-    onSettingsPress 
+    onSettingsPress,
+    whiteIcons = false
   } = props;
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -33,6 +35,11 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchContainerWidth, setSearchContainerWidth] = useState(0);
   const searchAnimatedWidth = React.useRef(new Animated.Value(0)).current;
+
+  // Determine icon color based on whiteIcons prop or theme
+  const getIconColor = () => {
+    return whiteIcons ? '#FFFFFF' : (isDark ? '#F5F5DC' : '#000');
+  };
 
   function handleSearchChange(text: string): void {
     setSearchQuery(text);
@@ -101,7 +108,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               <Ionicons
                 name="notifications-outline"
                 size={24}
-                color={isDark ? '#F5F5DC' : '#000'}
+                color={getIconColor()}
               />
             </TouchableOpacity>
           )}
@@ -116,7 +123,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                 <Ionicons
                   name="search"
                   size={24}
-                  color={isDark ? '#F5F5DC' : '#000'}
+                  color={getIconColor()}
                   style={styles.searchIcon}
                 />
                 <TextInput
@@ -132,7 +139,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                   <Ionicons
                     name="close-circle"
                     size={24}
-                    color={isDark ? '#F5F5DC' : '#000'}
+                    color={getIconColor()}
                   />
                 </TouchableOpacity>
               </Animated.View>
@@ -141,7 +148,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                 <Ionicons
                   name="search"
                   size={24}
-                  color={isDark ? '#F5F5DC' : '#000'}
+                  color={getIconColor()}
                 />
               </TouchableOpacity>
             )}
@@ -155,7 +162,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               <Ionicons
                 name="settings-outline"
                 size={24}
-                color={isDark ? '#F5F5DC' : '#000'}
+                color={getIconColor()}
               />
             </TouchableOpacity>
           )}
