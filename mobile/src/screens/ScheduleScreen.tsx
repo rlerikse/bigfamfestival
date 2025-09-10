@@ -907,10 +907,10 @@ const ScheduleScreen = () => {
             showsVerticalScrollIndicator={false}
             // Balanced performance optimizations - less aggressive to prevent item disappearing
             removeClippedSubviews={false}
-            maxToRenderPerBatch={50}
+            maxToRenderPerBatch={15}
             updateCellsBatchingPeriod={50}
-            initialNumToRender={50}
-            windowSize={50}
+            initialNumToRender={10}
+            windowSize={21}
             legacyImplementation={false}
             disableVirtualization={false}
             getItemLayout={(data, index) => ({
