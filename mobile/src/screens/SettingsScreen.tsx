@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useDebug } from '../contexts/DebugContext';
+import { DarkModeToggle } from '../components/DarkModeToggle';
 import { RootStackParamList } from '../navigation';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
@@ -70,13 +71,16 @@ const SettingsScreen = () => {
           icon: isDark ? 'moon-outline' : 'sunny-outline',
           label: 'Dark Mode',
           hasSwitch: false,
-          description: 'Theme switching temporarily disabled',
+          hasToggle: true,
+          description: 'Switch between light and dark themes',
         },
         {
           icon: 'speedometer-outline',
           label: 'Performance Mode',
-          hasSwitch: false,
-          description: 'Performance settings temporarily disabled',
+          hasSwitch: true,
+          switchValue: isPerformanceMode,
+          onSwitchToggle: togglePerformanceMode,
+          description: 'Enable performance optimizations',
         },
         {
           icon: 'language-outline',
@@ -113,7 +117,7 @@ const SettingsScreen = () => {
         key={item.label}
         style={[styles.settingsItem, { borderBottomColor: theme.border }]}
         onPress={item.onPress}
-        disabled={item.hasSwitch}
+        disabled={item.hasSwitch || item.hasToggle}
       >
         <View style={styles.settingsItemLeft}>
           <Ionicons name={item.icon} size={24} color={theme.primary} />
@@ -129,10 +133,12 @@ const SettingsScreen = () => {
           </View>
         </View>
         
-        {item.hasSwitch ? (
+        {item.hasToggle ? (
+          <DarkModeToggle showLabel={false} size="small" />
+        ) : item.hasSwitch ? (
           <Switch
             value={item.switchValue}
-            onValueChange={item.onSwitchChange}
+            onValueChange={item.onSwitchToggle}
             trackColor={{ false: theme.border, true: theme.primary }}
             thumbColor={'#FFFFFF'}
           />

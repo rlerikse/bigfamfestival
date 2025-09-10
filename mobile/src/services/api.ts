@@ -3,12 +3,13 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 
-// ✅ CORRECT: Your backend sets global prefix as 'api/v1'
+// ...existing code...
+const isProduction = !__DEV__;
 const PROD_API_URL = 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1';
-const DEV_API_URL = 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1';
+const DEV_API_URL = 'http://192.168.50.244:8080/api/v1';
 
 // Fixed the logic: __DEV__ is true in development
-const isDevelopment = !__DEV__;
+const isDevelopment = __DEV__;
 const API_URL = isDevelopment ? DEV_API_URL : PROD_API_URL;
 
 // Create axios instance with default config

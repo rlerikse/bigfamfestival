@@ -6,7 +6,6 @@ infrastructure/terraform/.terraform
 mobile/package-lock.json
 /mobile/keystores
 mobile/package-lock.json
-mobile/google-services.json
 mobile/.expo/README.md
 mobile/@eriksensolutions__bigfam-festival.jks
 mobile/google-services.json.base64

@@ -41,6 +41,7 @@ interface ThemeContextProps {
   isDark: boolean;
   isPerformanceMode: boolean; // Added
   togglePerformanceMode: () => void; // Added
+  toggleTheme: () => void; // Added dark mode toggle
 }
 
 const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
@@ -55,10 +56,8 @@ export const useTheme = () => {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemColorScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>('system');
-  const [theme, setTheme] = useState<Theme>(
-    systemColorScheme === 'dark' ? darkTheme : lightTheme
-  );
+  const [mode, setMode] = useState<ThemeMode>('light');
+  const [theme, setTheme] = useState<Theme>(lightTheme);
   const [isPerformanceMode, setIsPerformanceMode] = useState(false); // Added performance mode state
 
   // Initialize theme and performance mode
@@ -68,6 +67,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const savedMode = await SecureStore.getItemAsync('themeMode');
         if (savedMode && ['light', 'dark', 'system'].includes(savedMode)) {
           setMode(savedMode as ThemeMode);
+        } else {
+          // Default to light mode if no saved preference
+          setMode('light');
         }
         const savedPerformanceMode = await SecureStore.getItemAsync('performanceMode');
         if (savedPerformanceMode) {
@@ -75,6 +77,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       } catch (error) {
         console.error('Error loading settings:', error);
+        // Fallback to light mode on error
+        setMode('light');
       }
     };
 
@@ -116,12 +120,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  // Toggle between light and dark mode
+  const toggleTheme = () => {
+    const newMode = mode === 'light' ? 'dark' : 'light';
+    setMode(newMode);
+  };
+
   // Determine if the current theme is dark
   const isDark = 
     mode === 'dark' || (mode === 'system' && systemColorScheme === 'dark');
 
   return (
-    <ThemeContext.Provider value={{ theme, mode, setMode, isDark, isPerformanceMode, togglePerformanceMode }}>
+    <ThemeContext.Provider value={{ theme, mode, setMode, isDark, isPerformanceMode, togglePerformanceMode, toggleTheme }}>
       {children}
     </ThemeContext.Provider>
   );
