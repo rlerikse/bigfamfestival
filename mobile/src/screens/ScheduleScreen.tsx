@@ -7,7 +7,7 @@
  * UI matches new design: date row, then grid icon + My Schedule filter, then stage dropdown.
  * Replaces HomeScreen and MyScheduleScreen logic.
  */
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -223,24 +223,7 @@ interface EventCardProps {
   onEventPress: (event: ScheduleEvent) => void;
 }
 
-// Custom comparison function for EventCard memo
-const EventCardComparison = (prevProps: EventCardProps, nextProps: EventCardProps) => {
-  return (
-    prevProps.item.id === nextProps.item.id &&
-    prevProps.item.name === nextProps.item.name &&
-    prevProps.item.startTime === nextProps.item.startTime &&
-    prevProps.item.stage === nextProps.item.stage &&
-    prevProps.item.description === nextProps.item.description &&
-    prevProps.item.imageUrl === nextProps.item.imageUrl &&
-    prevProps.isInUserSchedule === nextProps.isInUserSchedule &&
-    prevProps.theme.border === nextProps.theme.border &&
-    prevProps.theme.card === nextProps.theme.card &&
-    prevProps.theme.text === nextProps.theme.text &&
-    prevProps.theme.muted === nextProps.theme.muted
-  );
-};
-
-const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
+const EventCard: React.FC<EventCardProps> = ({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
   const displayImageUrl = useMemo(() => {
     if (!item.imageUrl) return null;
     
@@ -268,24 +251,6 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
     return `${hour12}:${minutes} ${ampm}`;
   }, [item.startTime]);
 
-  const heartIconName = useMemo(() => isInUserSchedule ? 'heart' : 'heart-outline', [isInUserSchedule]);
-  const heartColor = useMemo(() => isInUserSchedule ? '#B87333' : (theme.muted || '#666666'), [isInUserSchedule, theme.muted]);
-  const heartText = useMemo(() => isInUserSchedule ? 'Added' : 'Add', [isInUserSchedule]);
-
-  const eventCardStyle = useMemo(() => [
-    styles.eventCard, 
-    { borderColor: theme.border, backgroundColor: theme.card }
-  ], [theme.border, theme.card]);
-
-  const eventNameStyle = useMemo(() => [styles.eventName, { color: theme.text }], [theme.text]);
-  const eventDetailsStyle = useMemo(() => [styles.eventDetails, { color: theme.muted }], [theme.muted]);
-  const eventDescriptionStyle = useMemo(() => [
-    styles.eventDescription, 
-    { color: theme.text }
-  ], [theme.text]);
-
-  const favoriteTextStyle = useMemo(() => [styles.favoriteText, { color: heartColor }], [heartColor]);
-
   const handleHeartPress = useCallback((e: GestureResponderEvent) => {
     e.stopPropagation();
     onToggleSchedule(item);
@@ -297,7 +262,10 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
 
   return (
     <TouchableOpacity 
-      style={eventCardStyle}
+      style={[
+        styles.eventCard, 
+        { borderColor: theme.border, backgroundColor: theme.card }
+      ]}
       onPress={handleEventPress}
     >
       {displayImageUrl && (
@@ -310,14 +278,14 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
         />
       )}
       <View style={styles.eventInfo}>
-        <Text style={eventNameStyle}>{item.name}</Text>
-        <Text style={eventDetailsStyle}>
+        <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
+        <Text style={[styles.eventDetails, { color: theme.muted }]}>
           {item.stage} - {formattedTime}
         </Text>
         
         {item.description && (
           <Text 
-            style={eventDescriptionStyle} 
+            style={[styles.eventDescription, { color: theme.text }]} 
             numberOfLines={2}
           >
             {item.description}
@@ -330,17 +298,20 @@ const EventCard = memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggl
         onPress={handleHeartPress}
       >
         <Ionicons
-          name={heartIconName}
+          name={isInUserSchedule ? 'heart' : 'heart-outline'}
           size={24}
-          color={heartColor}
+          color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
         />
-        <Text style={favoriteTextStyle}>
-          {heartText}
+        <Text style={[
+          styles.favoriteText, 
+          { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }
+        ]}>
+          {isInUserSchedule ? 'Added' : 'Add'}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
-}, EventCardComparison);
+};
 
 EventCard.displayName = 'EventCard';
 
@@ -398,6 +369,7 @@ const ScheduleScreen = () => {
   }, [user]);
 
   // Helper function to determine if an event should appear on a given filter day
+  // Moved outside component to avoid recreation and memoization issues
   const shouldEventAppearOnDay = useCallback((event: ScheduleEvent, filterDay: string) => {
     const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
     const [eventHours, eventMinutes] = event.startTime.split(':').map(Number);
@@ -416,15 +388,7 @@ const ScheduleScreen = () => {
     
     // Case 2: Event is on the next day and starts before 6:30 AM
     if (event.date === nextDayString && eventStartTimeInMinutes < cutoffTimeInMinutes) {
-      // eslint-disable-next-line no-console
-      console.log(`🌙 Late-night event "${event.name}" (${event.startTime} on ${event.date}) included in ${filterDay} filter`);
       return true;
-    }
-    
-    // Debug logging for excluded events
-    if (event.date === filterDay && eventStartTimeInMinutes < cutoffTimeInMinutes) {
-      // eslint-disable-next-line no-console
-      console.log(`� Early event "${event.name}" (${event.startTime} on ${event.date}) excluded from ${filterDay} filter (before 6:30 AM)`);
     }
     
     return false;
@@ -474,8 +438,6 @@ const ScheduleScreen = () => {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
       setAvailableStages(response.data);
-      // eslint-disable-next-line no-console
-      console.log(`🎭 Fetched ${response.data.length} unique stages from API`);
     } catch (err) {
       console.error('Error fetching stages:', err);
       // Fallback to extracting stages from events if API fails
@@ -483,32 +445,15 @@ const ScheduleScreen = () => {
   };
 
   const fetchEvents = async () => {
-    const startTime = performance.now();
-    // eslint-disable-next-line no-console
-    console.log('🚀 Starting to fetch events...');
-    
     setIsLoading(true);
     setError(null);
     try {
-      const tokenStartTime = performance.now();
       const token = await SecureStore.getItemAsync('userToken');
-      // eslint-disable-next-line no-console
-      console.log(`🔑 Token retrieval took: ${(performance.now() - tokenStartTime).toFixed(2)}ms`);
-      
-      const apiStartTime = performance.now();
       const response = await api.get<ScheduleEvent[]>('/events', {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
-      // eslint-disable-next-line no-console
-      console.log(`🌐 API call took: ${(performance.now() - apiStartTime).toFixed(2)}ms`);
-      // eslint-disable-next-line no-console
-      console.log(`📊 Received ${response.data?.length || 0} events`);
-      
       setEvents(response.data);
-      // eslint-disable-next-line no-console
-      console.log(`✅ Total fetch operation took: ${(performance.now() - startTime).toFixed(2)}ms`);
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('❌ Error fetching events:', err);
       setError('Could not load events. Please try again later.');
     } finally {
@@ -519,7 +464,6 @@ const ScheduleScreen = () => {
 
   const loadUserSchedule = useCallback(async () => {
     if (!user) return;
-    const startTime = performance.now();
     try {
       const schedule = await getUserSchedule(user.id);
       const scheduleMap = schedule.reduce<Record<string, boolean>>((acc, ev) => {
@@ -527,27 +471,20 @@ const ScheduleScreen = () => {
         return acc;
       }, {});
       setUserSchedule(scheduleMap);
-      // eslint-disable-next-line no-console
-      console.log(`📅 User schedule loaded in: ${(performance.now() - startTime).toFixed(2)}ms`);
     } catch {
       // Silently fail - user schedule is not critical
-      // eslint-disable-next-line no-console
-      console.warn(`⚠️ User schedule loading failed after: ${(performance.now() - startTime).toFixed(2)}ms`);
+      console.warn('⚠️ User schedule loading failed');
     }
   }, [user]);
 
   // Separate useEffect for initial data loading to avoid dependency issues
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('🔄 useEffect triggered for fetchEvents and fetchStages');
     fetchStages();
     fetchEvents();
-  }, []); // Now safe since fetchEvents and fetchStages are not callbacks
+  }, []);
 
   useEffect(() => {
     if (user) {
-      // eslint-disable-next-line no-console
-      console.log('👤 useEffect triggered for loadUserSchedule, user:', user.id);
       loadUserSchedule();
     }
   }, [user, loadUserSchedule]);
@@ -558,48 +495,24 @@ const ScheduleScreen = () => {
     if (events.length === 0) {
       return [];
     }
-    // Debug: Log event dates to see format
-    if (events.length > 0) {
-      // eslint-disable-next-line no-console
-      console.log('📅 Sample event dates:', events.slice(0, 3).map(e => ({ id: e.id, date: e.date, name: e.name })));
-      // eslint-disable-next-line no-console
-      console.log('🎯 Selected day for filtering:', selectedDay);
-    }
+    
     let filtered = [...events];
+    
     // Filter by selected day (including late-night events from next day)
     if (selectedDay) {
       filtered = filtered.filter(ev => shouldEventAppearOnDay(ev, selectedDay));
-      // eslint-disable-next-line no-console
-      console.log(`📅 After date filter (${selectedDay}): ${filtered.length} events`);
     }
+    
     // Filter by selected stages (multi-select)
     if (selectedStages.length > 0 && !selectedStages.includes('all')) {
       filtered = filtered.filter(ev => selectedStages.includes(ev.stage));
-    // eslint-disable-next-line no-console
-      console.log(`🎭 After stage filter (${selectedStages.join(', ')}): ${filtered.length} events`);
     }
-    // Filter by selected genres (multi-select) - TEMPORARILY DISABLED
-    /*
-    if (selectedGenres.length > 0 && !selectedGenres.includes('all')) {
-      filtered = filtered.filter(ev => {
-        // Assume event.genres is array of genre tags, or event.genre (string)
-        if (Array.isArray(ev.genres)) {
-          return ev.genres.some((g: string) => selectedGenres.includes(g));
-        } else if (ev.genre) {
-          return selectedGenres.includes(ev.genre);
-        }
-        return false;
-      });
-      // eslint-disable-next-line no-console
-      console.log(`🎭 After genre filter (${selectedGenres.join(', ')}): ${filtered.length} events`);
-    }
-    */
+    
     // Filter by user schedule
     if (showMySchedule && Object.keys(userSchedule).length > 0) {
       filtered = filtered.filter(ev => userSchedule[ev.id]);
-      // eslint-disable-next-line no-console
-      console.log(`❤️ After user schedule filter: ${filtered.length} events`);
     }
+    
     // Sort by actual chronological order within the 24-hour window (6:30 AM to 6:30 AM next day)
     filtered.sort((a, b) => {
       const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
@@ -619,8 +532,10 @@ const ScheduleScreen = () => {
       return aAdjustedTime - bAdjustedTime;
     });
     
-    // eslint-disable-next-line no-console
-    console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
+    }
     return filtered;
   }, [events, selectedDay, selectedStages, showMySchedule, userSchedule, shouldEventAppearOnDay]);
 
@@ -628,7 +543,7 @@ const ScheduleScreen = () => {
   useEffect(() => {
     if (__DEV__ && events.length > 0 && filteredEvents.length >= 0) {
       // eslint-disable-next-line no-console
-      console.log(`📈 Events: ${events.length} → Filtered: ${filteredEvents.length} (${((filteredEvents.length / events.length) * 100).toFixed(1)}%)`);
+      console.log(`📈 Events: ${events.length} → Filtered: ${filteredEvents.length}`);
     }
   }, [events.length, filteredEvents.length]);
 
@@ -641,14 +556,41 @@ const ScheduleScreen = () => {
       ]);
       return;
     }
+    
     const eventId = eventToToggle.id;
-    const isInUserSchedule = userSchedule[eventId];
-    if (isInUserSchedule) {
-      await removeFromSchedule(user.id, eventId);
-      setUserSchedule(prev => { const updated = { ...prev }; delete updated[eventId]; return updated; });
+    const isCurrentlyInSchedule = userSchedule[eventId];
+    
+    // Optimistically update UI immediately
+    if (isCurrentlyInSchedule) {
+      setUserSchedule(prev => { 
+        const updated = { ...prev }; 
+        delete updated[eventId]; 
+        return updated; 
+      });
     } else {
-      await addToSchedule(user.id, eventId);
       setUserSchedule(prev => ({ ...prev, [eventId]: true }));
+    }
+    
+    // Perform API call in background
+    try {
+      if (isCurrentlyInSchedule) {
+        await removeFromSchedule(user.id, eventId);
+      } else {
+        await addToSchedule(user.id, eventId);
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      if (isCurrentlyInSchedule) {
+        setUserSchedule(prev => ({ ...prev, [eventId]: true }));
+      } else {
+        setUserSchedule(prev => { 
+          const updated = { ...prev }; 
+          delete updated[eventId]; 
+          return updated; 
+        });
+      }
+      console.error('Error toggling schedule:', error);
+      Alert.alert('Error', 'Failed to update your schedule. Please try again.');
     }
   }, [user, navigation, userSchedule]);
 
@@ -686,7 +628,7 @@ const ScheduleScreen = () => {
   useEffect(() => {
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.log('[DEBUG] Filters - showMySchedule:', showMySchedule, 'selectedDay:', selectedDay, 'selectedStages:', selectedStages);
+      console.log('[DEBUG] Filters:', { showMySchedule, selectedDay, selectedStages });
     }
   }, [showMySchedule, selectedDay, selectedStages]);
 
@@ -710,10 +652,6 @@ const ScheduleScreen = () => {
             zIndex: 1000,
             position: 'relative',
             elevation: 1,
-          }}
-          onLayout={e => {
-            // eslint-disable-next-line no-console
-            console.log('[DEBUG] Filter header row layout:', e.nativeEvent.layout);
           }}
         >
         {/* Date filter row */}
@@ -765,10 +703,6 @@ const ScheduleScreen = () => {
             alignItems: 'center',
             paddingHorizontal: 16,
             minHeight: 44,
-          }}
-          onLayout={e => {
-            // eslint-disable-next-line no-console
-            console.log('[DEBUG] Second filter row layout:', e.nativeEvent.layout);
           }}
         >
           {/* Grid icon aligned with logo */}
@@ -877,10 +811,6 @@ const ScheduleScreen = () => {
         style={{ 
           flex: 1,
         }}
-        onLayout={e => {
-          // eslint-disable-next-line no-console
-          console.log('[DEBUG] Event list container layout:', e.nativeEvent.layout);
-        }}
       >
         {isLoading ? (
           <View style={styles.loadingContainer}>
@@ -902,7 +832,7 @@ const ScheduleScreen = () => {
             keyExtractor={keyExtractor}
             contentContainerStyle={[
               styles.eventsList,
-              { paddingTop: 0, paddingBottom: 100, flexGrow: 1 } // Added bottom padding for nav bar clearance
+              { paddingTop: 0, paddingBottom: 100, flexGrow: 1 }
             ]}
             showsVerticalScrollIndicator={false}
             // Balanced performance optimizations - less aggressive to prevent item disappearing
@@ -914,7 +844,7 @@ const ScheduleScreen = () => {
             legacyImplementation={false}
             disableVirtualization={false}
             getItemLayout={(data, index) => ({
-              length: 112, // approximate height of event card
+              length: 112,
               offset: 112 * index,
               index,
             })}

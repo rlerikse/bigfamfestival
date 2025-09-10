@@ -93,6 +93,8 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
             source={require('../assets/images/bf-logo-trans.png')}
             style={styles.logo}
             resizeMode="contain"
+            fadeDuration={0}
+            loadingIndicatorSource={undefined}
           />
         </View>
         

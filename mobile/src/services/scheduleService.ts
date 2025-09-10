@@ -83,16 +83,13 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
     // If offline, queue the request for later synchronization
     if (!netInfo.isConnected) {
       await queueOfflineAction('addToSchedule', { userId, eventId });
-      
       // Also update local cache immediately for UI consistency
       await updateLocalScheduleCache(userId, eventId, 'add');
-      
       return;
     }
     
-    // Send the request to add to schedule
-    await api.post('/schedule', {
-      // userId, // Removed: userId is now taken from JWT token on backend
+    // Send the request to add to schedule (non-blocking for UI)
+    const apiPromise = api.post('/schedule', {
       event_id: eventId,
     }, {
       headers: {
@@ -100,8 +97,11 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
       },
     });
     
-    // Update local cache for consistency
+    // Update local cache immediately for UI responsiveness
     await updateLocalScheduleCache(userId, eventId, 'add');
+    
+    // Wait for API response in background
+    await apiPromise;
   } catch (error: unknown) {
     console.error('Add to schedule error:', 
       error instanceof Error ? error.message : 'Unknown error');
@@ -110,9 +110,6 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
     const netInfo = await NetInfo.fetch();
     if (netInfo.isConnected) {
       await queueOfflineAction('addToSchedule', { userId, eventId });
-      
-      // Also update local cache for UI consistency
-      await updateLocalScheduleCache(userId, eventId, 'add');
     }
     
     // Type guard for error with response property
@@ -144,24 +141,25 @@ export const removeFromSchedule = async (userId: string, eventId: string): Promi
     // If offline, queue the request for later synchronization
     if (!netInfo.isConnected) {
       await queueOfflineAction('removeFromSchedule', { userId, eventId });
-      
       // Also update local cache immediately for UI consistency
       await updateLocalScheduleCache(userId, eventId, 'remove');
-      
       return;
     }
-      try {
-      // Send the request to remove from schedule
-      // Call the new DELETE endpoint for subcollection strategy
-      await api.delete(`/schedule/${eventId}`, {
+      
+    try {
+      // Send the request to remove from schedule (non-blocking for UI)
+      const apiPromise = api.delete(`/schedule/${eventId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       
-      // Update local cache for consistency
-      await updateLocalScheduleCache(userId, eventId, 'remove');    } catch (apiError: unknown) {
-      // No special handling for 404 anymore since the endpoint is implemented
+      // Update local cache immediately for UI responsiveness
+      await updateLocalScheduleCache(userId, eventId, 'remove');
+      
+      // Wait for API response in background
+      await apiPromise;
+    } catch (apiError: unknown) {
       console.error('API error removing from schedule:', apiError);
       throw apiError;
     }
@@ -173,9 +171,6 @@ export const removeFromSchedule = async (userId: string, eventId: string): Promi
     const netInfo = await NetInfo.fetch();
     if (netInfo.isConnected) {
       await queueOfflineAction('removeFromSchedule', { userId, eventId });
-      
-      // Also update local cache for UI consistency
-      await updateLocalScheduleCache(userId, eventId, 'remove');
     }
     
     // Type guard for error with response property

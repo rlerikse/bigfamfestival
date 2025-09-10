@@ -49,6 +49,8 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             }
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
+          fadeDuration={0}
+          loadingIndicatorSource={undefined}
         />
         
         {/* Tree image partially visible */}
@@ -56,6 +58,8 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
           source={require('../assets/images/tree-3.png')}
           style={styles.treeImage}
           resizeMode="contain"
+          fadeDuration={0}
+          loadingIndicatorSource={undefined}
         />
 
         {/* Tent image - Flipped, scaled, and positioned */}
@@ -63,6 +67,8 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
           source={require('../assets/images/tent.png')}
           style={styles.tentImage}
           resizeMode="contain"
+          fadeDuration={0}
+          loadingIndicatorSource={undefined}
         />
       </View>
       <View style={styles.navbar}>
