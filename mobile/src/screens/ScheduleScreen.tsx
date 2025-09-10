@@ -320,7 +320,6 @@ const ScheduleScreen = () => {
   const { user } = useAuth();
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [availableStages, setAvailableStages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -402,26 +401,25 @@ const ScheduleScreen = () => {
     return festivalDays.filter(day => !day.staffOnly); // Show only public days
   }, [isStaffUser]);
 
-  // Extract unique stages from events for the dropdown options
+  // Extract unique stages from events - this is now the primary approach
   const stageOptions = useMemo(() => {
-    // Prefer stages from API, fallback to extracting from events
-    let stagesToUse = availableStages;
-    
-    if (stagesToUse.length === 0 && events.length > 0) {
-      stagesToUse = Array.from(new Set(events.map(event => event.stage)))
-        .filter(stage => stage && stage.trim() !== '') // Filter out empty/null stages
-        .sort(); // Sort alphabetically
+    if (events.length === 0) {
+      return [{ id: 'all', label: 'All Stages', value: 'all' }];
     }
+    
+    const uniqueStages = Array.from(new Set(events.map(event => event.stage)))
+      .filter(stage => stage && stage.trim() !== '') // Filter out empty/null stages
+      .sort(); // Sort alphabetically
     
     return [
       { id: 'all', label: 'All Stages', value: 'all' },
-      ...stagesToUse.map(stage => ({
+      ...uniqueStages.map(stage => ({
         id: stage,
         label: stage,
         value: stage,
       }))
     ];
-  }, [availableStages, events]);
+  }, [events]);
 
   // Initialize selectedDay based on visible days - simplified to avoid hook ordering issues
   useEffect(() => {
@@ -431,29 +429,6 @@ const ScheduleScreen = () => {
   }, [selectedDay, visibleFestivalDays]);
 
   // --- Fetch events and user schedule ---
-  const fetchStages = useCallback(async () => {
-    try {
-      const token = await SecureStore.getItemAsync('userToken');
-      const response = await api.get<string[]>('/events/stages', {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined
-      });
-      setAvailableStages(response.data);
-    } catch (err) {
-      console.error('Error fetching stages:', err);
-      // Fallback will be handled in a separate useEffect when events are loaded
-    }
-  }, []);
-
-  // Extract stages from events if API fails and events are available
-  useEffect(() => {
-    if (availableStages.length === 0 && events.length > 0) {
-      const extractedStages = Array.from(new Set(events.map(event => event.stage)))
-        .filter(stage => stage && stage.trim() !== '')
-        .sort();
-      setAvailableStages(extractedStages);
-    }
-  }, [events, availableStages]);
-
   const fetchEvents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -489,9 +464,8 @@ const ScheduleScreen = () => {
 
   // Separate useEffect for initial data loading to avoid dependency issues
   useEffect(() => {
-    fetchStages();
     fetchEvents();
-  }, [fetchStages, fetchEvents]);
+  }, [fetchEvents]);
 
   useEffect(() => {
     if (user) {
