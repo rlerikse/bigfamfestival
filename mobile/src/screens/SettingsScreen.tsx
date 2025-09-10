@@ -69,36 +69,19 @@ const SettingsScreen = () => {
         {
           icon: isDark ? 'moon-outline' : 'sunny-outline',
           label: 'Dark Mode',
-          hasSwitch: true,
-          switchValue: isDark,
-          onSwitchChange: handleThemeToggle,
-          description: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          hasSwitch: false,
+          description: 'Theme switching temporarily disabled',
         },
         {
           icon: 'speedometer-outline',
           label: 'Performance Mode',
-          hasSwitch: true,
-          switchValue: isPerformanceMode,
-          onSwitchChange: togglePerformanceMode,
-          description: 'Optimize for performance over visual effects',
+          hasSwitch: false,
+          description: 'Performance settings temporarily disabled',
         },
         {
           icon: 'language-outline',
           label: 'Language',
           onPress: () => Alert.alert('Coming Soon', 'Language settings coming soon!'),
-        },
-      ],
-    },
-    {
-      title: 'Developer',
-      items: [
-        {
-          icon: 'bug-outline',
-          label: 'Debug Mode',
-          hasSwitch: true,
-          switchValue: debugMode,
-          onSwitchChange: handleDebugModeToggle,
-          description: 'Enable debug mode for Day/Night cycle controls',
         },
       ],
     },
@@ -178,10 +161,6 @@ const SettingsScreen = () => {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
-        </View>
-
         {settingsOptions.map(renderSettingsSection)}
       </ScrollView>
     </View>
@@ -194,6 +173,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
+    paddingTop: 20,
     paddingBottom: 40,
   },
   header: {
