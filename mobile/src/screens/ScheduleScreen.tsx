@@ -431,7 +431,7 @@ const ScheduleScreen = () => {
   }, [selectedDay, visibleFestivalDays]);
 
   // --- Fetch events and user schedule ---
-  const fetchStages = async () => {
+  const fetchStages = useCallback(async () => {
     try {
       const token = await SecureStore.getItemAsync('userToken');
       const response = await api.get<string[]>('/events/stages', {
@@ -440,11 +440,21 @@ const ScheduleScreen = () => {
       setAvailableStages(response.data);
     } catch (err) {
       console.error('Error fetching stages:', err);
-      // Fallback to extracting stages from events if API fails
+      // Fallback will be handled in a separate useEffect when events are loaded
     }
-  };
+  }, []);
 
-  const fetchEvents = async () => {
+  // Extract stages from events if API fails and events are available
+  useEffect(() => {
+    if (availableStages.length === 0 && events.length > 0) {
+      const extractedStages = Array.from(new Set(events.map(event => event.stage)))
+        .filter(stage => stage && stage.trim() !== '')
+        .sort();
+      setAvailableStages(extractedStages);
+    }
+  }, [events, availableStages]);
+
+  const fetchEvents = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -460,7 +470,7 @@ const ScheduleScreen = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, []);
 
   const loadUserSchedule = useCallback(async () => {
     if (!user) return;
@@ -481,7 +491,7 @@ const ScheduleScreen = () => {
   useEffect(() => {
     fetchStages();
     fetchEvents();
-  }, []);
+  }, [fetchStages, fetchEvents]);
 
   useEffect(() => {
     if (user) {

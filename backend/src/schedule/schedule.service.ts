@@ -107,7 +107,32 @@ export class ScheduleService {
     }
 
     const eventIds = snapshot.docs.map((doc) => doc.id);
-    const eventPromises = eventIds.map((id) => this.eventsService.findById(id));
+    // Fetch events with error handling for missing events
+    const eventPromises = eventIds.map(async (id) => {
+      try {
+        return await this.eventsService.findById(id);
+      } catch (error) {
+        // Log the missing event but don't fail the entire request
+        console.warn(
+          `Event with ID ${id} not found in events collection, removing from user schedule`,
+        );
+        // Optionally, clean up the invalid reference from the user's schedule
+        try {
+          const itemDocRef = this.firestoreService.db
+            .collection(this.collectionName)
+            .doc(userId)
+            .collection('items')
+            .doc(id);
+          await itemDocRef.delete();
+        } catch (cleanupError) {
+          console.error(
+            `Failed to clean up invalid event reference ${id}:`,
+            cleanupError,
+          );
+        }
+        return null;
+      }
+    });
     const eventsWithNulls = await Promise.all(eventPromises);
     const events = eventsWithNulls.filter((e): e is Event => e !== null);
 

@@ -62,6 +62,27 @@ export class EventsController {
     return this.eventsService.getUniqueStages();
   }
 
+  @Get('genres')
+  @Public()
+  @ApiOperation({ summary: 'Get all genres' })
+  @ApiResponse({ status: 200, description: 'Returns a list of genres' })
+  async getGenres() {
+    try {
+      const genres = await this.eventsService.getAllGenres();
+      const result = genres.map((doc) => ({
+        id: doc.id,
+        tag: doc.tag,
+      }));
+      // Log the request and result
+      console.log(`[EventsController] /genres requested. Returned:`, result);
+      return result;
+    } catch (error) {
+      console.error(`[EventsController] Error fetching genres:`, error);
+      // Optionally, you can use NestJS's HttpException for more control
+      throw new Error('Failed to fetch genres');
+    }
+  }
+
   @Get(':id')
   @Public()
   @ApiOperation({ summary: 'Get event by ID' })
@@ -108,24 +129,5 @@ export class EventsController {
   @ApiResponse({ status: 404, description: 'Event not found' })
   async deleteEvent(@Param('id') id: string, @Request() req) {
     return this.eventsService.remove(id);
-  }
-
-  // GET /genres
-  @Get('genres')
-  async getGenres() {
-    try {
-      const genres = await this.eventsService.getAllGenres();
-      const result = genres.map((doc) => ({
-        id: doc.id,
-        tag: doc.tag,
-      }));
-      // Log the request and result
-      console.log(`[EventsController] /genres requested. Returned:`, result);
-      return result;
-    } catch (error) {
-      console.error(`[EventsController] Error fetching genres:`, error);
-      // Optionally, you can use NestJS's HttpException for more control
-      throw new Error('Failed to fetch genres');
-    }
   }
 }

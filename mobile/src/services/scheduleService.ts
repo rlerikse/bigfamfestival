@@ -47,10 +47,35 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
       
       return response.data;
     } catch (apiError: unknown) {
-      // REMOVED: 404 fallback to mock data. A 404 should be a real error.
-      // The backend should return [] for an empty schedule, not 404.
       console.error('API error fetching schedule:', apiError);
-      throw apiError; // Re-throw the original API error
+      
+      // Check the specific error details
+      const error = apiError as { response?: { status?: number; data?: unknown } };
+      if (error.response) {
+        console.error('Schedule API Error Details:', {
+          status: error.response.status,
+          data: error.response.data,
+          userId: userId
+        });
+      }
+      
+      // Check if it's a 404 (user has no schedule) - this is not an error, return empty array
+      if (error.response?.status === 404) {
+        // eslint-disable-next-line no-console
+        console.warn('User has no saved schedule, returning empty array');
+        return [];
+      }
+      
+      // For other errors, try cached data as fallback
+      const cachedData = await getCachedSchedule(userId);
+      if (cachedData) {
+        // eslint-disable-next-line no-console
+        console.warn('Using cached schedule data due to API error');
+        return cachedData;
+      }
+      
+      // If no cache available, throw the original error
+      throw apiError;
     }
   } catch (error: unknown) {
     console.error('Error fetching schedule:', error);
