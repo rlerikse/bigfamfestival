@@ -66,6 +66,9 @@
     },
     "plugins": [
       [
+        "@react-native-firebase/app"
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Big Fam Festival to use your location to show you on the map and enable navigation at the festival."

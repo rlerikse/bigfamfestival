@@ -10,6 +10,12 @@ import {
   getPushToken,
   setupNotificationListeners 
 } from '../src/services/firebaseMessaging';
+import {
+  requestNotificationPermission as requestFCMPermission,
+  getFCMToken,
+  setupFirebaseMessagingListeners,
+  setupNotificationOpenedApp
+} from '../src/services/firebase-messaging';
 
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
@@ -35,19 +41,38 @@ export default function App() {
   const isLoadingComplete = useCachedResources();
   useEffect(() => {
     async function setupNotifications() {
-      // Request notification permissions
-      const permissionGranted = await requestNotificationPermission();
+      // Request notification permissions for both Expo notifications and Firebase
+      const expoPermissionGranted = await requestNotificationPermission();
+      const fcmPermissionGranted = await requestFCMPermission();
       
-      if (permissionGranted) {
-        // Get the push token
+      if (expoPermissionGranted) {
+        // Get the Expo push token
         await getPushToken();
         
-        // Setup notification listeners
-        const cleanup = setupNotificationListeners();
+        // Setup Expo notification listeners
+        const cleanupExpo = setupNotificationListeners();
 
-        // Return cleanup function
+        // Setup Firebase messaging if permission granted
+        if (fcmPermissionGranted) {
+          // Get FCM token
+          await getFCMToken();
+          
+          // Setup Firebase messaging listeners
+          const cleanupFirebase = setupFirebaseMessagingListeners();
+          
+          // Setup notification opened app handler
+          setupNotificationOpenedApp();
+
+          // Return combined cleanup function
+          return () => {
+            cleanupExpo();
+            cleanupFirebase();
+          };
+        }
+
+        // Return Expo cleanup only
         return () => {
-          cleanup();
+          cleanupExpo();
         };
       }
     }
