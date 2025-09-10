@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -46,7 +45,6 @@ const MapScreen = () => {
   const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation<MapScreenNavigationProp>();
-  const mapRef = useRef<MapView>(null);
   // State variables
   const [pois, setPois] = useState<POI[]>([]);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -93,15 +91,8 @@ const MapScreen = () => {
         // Save last known location for future use
       await AsyncStorage.setItem('last_known_location', JSON.stringify(newLocation));
       
-      // Center map on user location
-      if (mapRef.current) {
-        mapRef.current.animateToRegion({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
-      }    } catch (err) {
+      // Note: Map centering removed since we're not using react-native-maps
+    } catch (err) {
       console.error('Error getting location:', err);
       
       // Try to recover with last known location
@@ -410,32 +401,18 @@ const MapScreen = () => {
       
       {/* Map Content - Full Screen */}
       <View style={styles.mapContainer}>
-        {/* Map View */}
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          showsUserLocation
-          followsUserLocation
-          initialRegion={
-            userLocation
-              ? {
-                  latitude: userLocation.latitude,
-                  longitude: userLocation.longitude,
-                  latitudeDelta: 0.005,
-                  longitudeDelta: 0.005,
-                }
-              : undefined
-          }
-        >
-        {/* Render POI markers */}
-        {/* {pois.map(renderMarker)} */}
-        {/* <Marker
-          coordinate={{ latitude: 37.78825, longitude: -122.4324 }}
-          title="My Marker"
-          description="Some description"
-        /> */}
-      </MapView>
+        {/* Placeholder Map View - react-native-maps removed */}
+        <View style={[styles.map, { backgroundColor: theme.background }]}>
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="map-outline" size={80} color={theme.muted} />
+            <Text style={[styles.mapPlaceholderText, { color: theme.muted }]}>
+              Map functionality coming soon
+            </Text>
+            <Text style={[styles.mapPlaceholderSubtext, { color: theme.muted }]}>
+              react-native-maps temporarily removed
+            </Text>
+          </View>
+        </View>
           {/* Map Legend */}
         <View style={[styles.legendContainer, { backgroundColor: theme.card }]}>
           <Text style={[styles.legendTitle, { color: theme.text }]}>Legend</Text>
@@ -554,6 +531,23 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  mapPlaceholderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  mapPlaceholderSubtext: {
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
   },
   markerContainer: {
     padding: 5,
