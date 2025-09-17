@@ -223,7 +223,7 @@ interface EventCardProps {
   onEventPress: (event: ScheduleEvent) => void;
 }
 
-const EventCard: React.FC<EventCardProps> = ({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
+const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
   const displayImageUrl = useMemo(() => {
     if (!item.imageUrl) return null;
     
@@ -311,12 +311,22 @@ const EventCard: React.FC<EventCardProps> = ({ item, isInUserSchedule, theme, on
       </TouchableOpacity>
     </TouchableOpacity>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent unnecessary re-renders
+  return (
+    prevProps.item.id === nextProps.item.id &&
+    prevProps.isInUserSchedule === nextProps.isInUserSchedule &&
+    prevProps.theme.border === nextProps.theme.border &&
+    prevProps.theme.card === nextProps.theme.card &&
+    prevProps.theme.text === nextProps.theme.text &&
+    prevProps.theme.muted === nextProps.theme.muted
+  );
+});
 
 EventCard.displayName = 'EventCard';
 
 const ScheduleScreen = () => {
-  const { theme, isDark, isPerformanceMode } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user } = useAuth();
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -367,32 +377,6 @@ const ScheduleScreen = () => {
     return user.role && staffRoles.includes(user.role.toLowerCase());
   }, [user]);
 
-  // Helper function to determine if an event should appear on a given filter day
-  // Moved outside component to avoid recreation and memoization issues
-  const shouldEventAppearOnDay = useCallback((event: ScheduleEvent, filterDay: string) => {
-    const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
-    const [eventHours, eventMinutes] = event.startTime.split(':').map(Number);
-    const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
-    
-    // Get the next day after the filter day
-    const filterDate = new Date(filterDay);
-    const nextDay = new Date(filterDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    const nextDayString = nextDay.toISOString().split('T')[0];
-    
-    // Case 1: Event is on the filter day and starts at 6:30 AM or later
-    if (event.date === filterDay && eventStartTimeInMinutes >= cutoffTimeInMinutes) {
-      return true;
-    }
-    
-    // Case 2: Event is on the next day and starts before 6:30 AM
-    if (event.date === nextDayString && eventStartTimeInMinutes < cutoffTimeInMinutes) {
-      return true;
-    }
-    
-    return false;
-  }, []);
-
   // Get filtered festival days based on user role - memoized to prevent unnecessary recalculations
   const visibleFestivalDays = useMemo(() => {
     if (isStaffUser()) {
@@ -401,19 +385,34 @@ const ScheduleScreen = () => {
     return festivalDays.filter(day => !day.staffOnly); // Show only public days
   }, [isStaffUser]);
 
+  // Memoize only needed theme properties to prevent unnecessary re-renders
+  const themeColors = useMemo(() => ({
+    border: theme.border,
+    card: theme.card,
+    text: theme.text,
+    muted: theme.muted
+  }), [theme.border, theme.card, theme.text, theme.muted]);
+
+  // Extract unique stages from events - this is now the primary approach
   // Extract unique stages from events - this is now the primary approach
   const stageOptions = useMemo(() => {
     if (events.length === 0) {
       return [{ id: 'all', label: 'All Stages', value: 'all' }];
     }
     
-    const uniqueStages = Array.from(new Set(events.map(event => event.stage)))
-      .filter(stage => stage && stage.trim() !== '') // Filter out empty/null stages
-      .sort(); // Sort alphabetically
+    // Use a Set directly instead of Array.from(new Set(...))
+    const stageSet = new Set<string>();
+    events.forEach(event => {
+      if (event.stage && event.stage.trim()) {
+        stageSet.add(event.stage);
+      }
+    });
+    
+    const sortedStages = Array.from(stageSet).sort();
     
     return [
       { id: 'all', label: 'All Stages', value: 'all' },
-      ...uniqueStages.map(stage => ({
+      ...sortedStages.map(stage => ({
         id: stage,
         label: stage,
         value: stage,
@@ -484,7 +483,29 @@ const ScheduleScreen = () => {
     
     // Filter by selected day (including late-night events from next day)
     if (selectedDay) {
-      filtered = filtered.filter(ev => shouldEventAppearOnDay(ev, selectedDay));
+      filtered = filtered.filter(ev => {
+        const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
+        const [eventHours, eventMinutes] = ev.startTime.split(':').map(Number);
+        const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
+        
+        // Get the next day after the filter day
+        const filterDate = new Date(selectedDay);
+        const nextDay = new Date(filterDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const nextDayString = nextDay.toISOString().split('T')[0];
+        
+        // Case 1: Event is on the filter day and starts at 6:30 AM or later
+        if (ev.date === selectedDay && eventStartTimeInMinutes >= cutoffTimeInMinutes) {
+          return true;
+        }
+        
+        // Case 2: Event is on the next day and starts before 6:30 AM
+        if (ev.date === nextDayString && eventStartTimeInMinutes < cutoffTimeInMinutes) {
+          return true;
+        }
+        
+        return false;
+      });
     }
     
     // Filter by selected stages (multi-select)
@@ -521,15 +542,7 @@ const ScheduleScreen = () => {
       console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
     }
     return filtered;
-  }, [events, selectedDay, selectedStages, showMySchedule, userSchedule, shouldEventAppearOnDay]);
-
-  // Performance monitoring effect - simplified
-  useEffect(() => {
-    if (__DEV__ && events.length > 0 && filteredEvents.length >= 0) {
-      // eslint-disable-next-line no-console
-      console.log(`📈 Events: ${events.length} → Filtered: ${filteredEvents.length}`);
-    }
-  }, [events.length, filteredEvents.length]);
+  }, [events, selectedDay, selectedStages, showMySchedule, userSchedule]);
 
   // --- UI Handlers ---
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
@@ -601,12 +614,12 @@ const ScheduleScreen = () => {
       <EventCard
         item={item}
         isInUserSchedule={isInUserSchedule}
-        theme={theme}
+        theme={themeColors}
         onToggleSchedule={handleToggleSchedule}
         onEventPress={handleEventPress}
       />
     );
-  }, [userSchedule, theme, handleToggleSchedule, handleEventPress]);
+  }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress]);
 
   // Debug logging in development only
   useEffect(() => {
