@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Image,
   SafeAreaView,
   RefreshControl,
   Alert,
@@ -22,6 +21,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -34,6 +34,7 @@ import { api } from '../services/api';
 import EventDetailsModal from '../components/EventDetailsModal';
 import TopNavBar from '../components/TopNavBar';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
+import OptimizedImage from '../components/OptimizedImage';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 
 // --- Genre filter types - TEMPORARILY DISABLED ---
@@ -224,25 +225,6 @@ interface EventCardProps {
 }
 
 const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
-  const displayImageUrl = useMemo(() => {
-    if (!item.imageUrl) return null;
-    
-    if (item.imageUrl.startsWith('gs://')) {
-      const gsPath = item.imageUrl.substring(5);
-      const firstSlashIndex = gsPath.indexOf('/');
-      if (firstSlashIndex > 0) {
-        const bucket = gsPath.substring(0, firstSlashIndex);
-        const objectPath = gsPath.substring(firstSlashIndex + 1);
-        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
-      }
-    } else if (item.imageUrl.startsWith('http')) {
-      return item.imageUrl;
-    } else {
-      return `https://big-fam-app.S3.us-east-2.amazonaws.com/${item.imageUrl}`;
-    }
-    return null;
-  }, [item.imageUrl]);
-
   const formattedTime = useMemo(() => {
     const [hours, minutes] = item.startTime.split(':');
     const hour = parseInt(hours);
@@ -268,13 +250,14 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
       ]}
       onPress={handleEventPress}
     >
-      {displayImageUrl && (
-        <Image
-          source={{ uri: displayImageUrl }}
+      {item.imageUrl && (
+        <OptimizedImage
+          uri={item.imageUrl}
           style={styles.eventImage}
+          containerStyle={styles.eventImage}
           resizeMode="cover"
-          loadingIndicatorSource={undefined}
-          fadeDuration={0}
+          showLoadingIndicator={false}
+          fallbackIcon="image-outline"
         />
       )}
       <View style={styles.eventInfo}>
@@ -607,11 +590,12 @@ const ScheduleScreen = () => {
   // Optimized key extractor
   const keyExtractor = useCallback((item: ScheduleEvent) => item.id, []);
 
-  // --- Optimized Renderer ---
+  // --- Optimized Renderer with better caching ---
   const renderEventCard = useCallback(({ item }: { item: ScheduleEvent }) => {
-    const isInUserSchedule = userSchedule[item.id];
+    const isInUserSchedule = Boolean(userSchedule[item.id]);
     return (
       <EventCard
+        key={`event-${item.id}`} // Explicit key for better React reconciliation
         item={item}
         isInUserSchedule={isInUserSchedule}
         theme={themeColors}
@@ -833,19 +817,23 @@ const ScheduleScreen = () => {
               { paddingTop: 0, paddingBottom: 100, flexGrow: 1 }
             ]}
             showsVerticalScrollIndicator={false}
-            // Balanced performance optimizations - less aggressive to prevent item disappearing
-            removeClippedSubviews={false}
-            maxToRenderPerBatch={50}
+            // Enhanced performance optimizations for smooth scrolling
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={20}
             updateCellsBatchingPeriod={50}
-            initialNumToRender={50}
-            windowSize={50}
+            initialNumToRender={15}
+            windowSize={21}
             legacyImplementation={false}
             disableVirtualization={false}
+            // Consistent item layout for better performance
             getItemLayout={(data, index) => ({
               length: 112,
               offset: 112 * index,
               index,
             })}
+            // Performance optimizations for scrolling
+            keyboardShouldPersistTaps="handled"
+            scrollEventThrottle={16}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
                 <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
