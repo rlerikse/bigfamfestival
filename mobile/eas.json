@@ -51,8 +51,8 @@
     "production": {
       "ios": {
         "appleId": "eriksen.solutions@gmail.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-apple-team-id"
+        "ascAppId": "6752632634",
+        "appleTeamId": "XQ353QHF7"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",

@@ -18,6 +18,8 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.eriksensolutions.bigfam",
+      "buildNumber": "1",
+      "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
         "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
