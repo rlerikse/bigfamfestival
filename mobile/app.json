@@ -123,7 +123,9 @@
               "GoogleUtilities",
               "RecaptchaInterop",
               "FirebaseFirestoreInternal",
-              "FirebaseCoreInternal"
+              "FirebaseCoreInternal",
+              "FirebaseAuth",
+              "FirebaseFirestore"
             ],
             "deploymentTarget": "15.1",
             "extraPodspecProperties": {
@@ -131,6 +133,30 @@
                 "modular_headers": true
               },
               "FirebaseCoreInternal": {
+                "modular_headers": true
+              },
+              "FirebaseCore": {
+                "modular_headers": true
+              },
+              "FirebaseCoreExtension": {
+                "modular_headers": true
+              },
+              "FirebaseAuthInterop": {
+                "modular_headers": true
+              },
+              "FirebaseAppCheckInterop": {
+                "modular_headers": true
+              },
+              "RecaptchaInterop": {
+                "modular_headers": true
+              },
+              "FirebaseFirestoreInternal": {
+                "modular_headers": true
+              },
+              "FirebaseAuth": {
+                "modular_headers": true
+              },
+              "FirebaseFirestore": {
                 "modular_headers": true
               }
             }
