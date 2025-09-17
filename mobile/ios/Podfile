@@ -1,4 +1,4 @@
-# Commit: Add custom Podfile to force modular headers for Firebase pods
+# Commit: Simplify Podfile to rely on Expo autolinking and modular headers
 platform :ios, '15.1'
 
 require_relative '../node_modules/react-native/scripts/react_native_pods'
@@ -9,24 +9,13 @@ use_modular_headers!
 target 'BigFamFestival' do
   config = use_native_modules!
 
-  # Expo managed dependencies
+  # Expo managed dependencies and autolinked RN pods
   use_expo_modules!
-
-  # React Native Firebase
-  pod 'Firebase/Core', :modular_headers => true
-  pod 'Firebase/Auth', :modular_headers => true
-  pod 'Firebase/Firestore', :modular_headers => true
-  pod 'FirebaseCore', :modular_headers => true
-  pod 'FirebaseCoreExtension', :modular_headers => true
-  pod 'FirebaseAuthInterop', :modular_headers => true
-  pod 'FirebaseAppCheckInterop', :modular_headers => true
-  pod 'GoogleUtilities', :modular_headers => true
-  pod 'RecaptchaInterop', :modular_headers => true
-  pod 'FirebaseFirestoreInternal', :modular_headers => true
-  pod 'FirebaseCoreInternal', :modular_headers => true
 
   post_install do |installer|
     react_native_post_install(installer)
+    # Make UUIDs deterministic to reduce Xcode project UUID issues from merges
+    installer.pods_project.use_deterministic_uuids = true
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
