@@ -7,7 +7,7 @@
  * UI matches new design: date row, then grid icon + My Schedule filter, then stage dropdown.
  * Replaces HomeScreen and MyScheduleScreen logic.
  */
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
 import {
   View,
   Text,
@@ -37,15 +37,6 @@ import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import OptimizedImage from '../components/OptimizedImage';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 
-// --- Genre filter types - TEMPORARILY DISABLED ---
-/*
-interface GenreOption {
-  id: string;
-  label: string;
-  value: string;
-}
-*/
-
 // --- Types ---
 interface ScheduleEvent {
   id: string;
@@ -62,6 +53,40 @@ interface ScheduleEvent {
 }
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
+
+// Consolidate filter states into a reducer for atomic updates
+interface FilterState {
+  selectedDay: string;
+  selectedStages: string[];
+  showMySchedule: boolean;
+}
+
+type FilterAction =
+  | { type: 'SET_SELECTED_DAY'; payload: string }
+  | { type: 'SET_SELECTED_STAGES'; payload: string[] }
+  | { type: 'TOGGLE_MY_SCHEDULE' }
+  | { type: 'RESET_FILTERS'; payload?: string };
+
+const initialFilterState: FilterState = {
+  selectedDay: '',
+  selectedStages: ['all'],
+  showMySchedule: false,
+};
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  switch (action.type) {
+    case 'SET_SELECTED_DAY':
+      return { ...state, selectedDay: action.payload };
+    case 'SET_SELECTED_STAGES':
+      return { ...state, selectedStages: action.payload };
+    case 'TOGGLE_MY_SCHEDULE':
+      return { ...state, showMySchedule: !state.showMySchedule };
+    case 'RESET_FILTERS':
+      return { ...initialFilterState, selectedDay: action.payload || '' };
+    default:
+      return state;
+  }
+}
 
 // Days to show in the filter buttons (Friday, Saturday, Sunday)
 const festivalDays = [
@@ -279,6 +304,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
       <TouchableOpacity
         style={styles.heartButton}
         onPress={handleHeartPress}
+        accessibilityLabel={isInUserSchedule ? 'Remove from schedule' : 'Add to schedule'}
       >
         <Ionicons
           name={isInUserSchedule ? 'heart' : 'heart-outline'}
@@ -293,16 +319,6 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison to prevent unnecessary re-renders
-  return (
-    prevProps.item.id === nextProps.item.id &&
-    prevProps.isInUserSchedule === nextProps.isInUserSchedule &&
-    prevProps.theme.border === nextProps.theme.border &&
-    prevProps.theme.card === nextProps.theme.card &&
-    prevProps.theme.text === nextProps.theme.text &&
-    prevProps.theme.muted === nextProps.theme.muted
   );
 });
 
@@ -319,39 +335,10 @@ const ScheduleScreen = () => {
   const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string>('');
-  const [selectedStages, setSelectedStages] = useState<string[]>(['all']); // Default to 'all' for showing all stages
-  const [showMySchedule, setShowMySchedule] = useState(false);
-  // Genre filtering temporarily disabled
-  // const [availableGenres, setAvailableGenres] = useState<GenreOption[]>([]);
-  // const [selectedGenres, setSelectedGenres] = useState<string[]>(['all']);
-  // --- Fetch genres for filter - TEMPORARILY DISABLED ---
-  /*
-  useEffect(() => {
-    const fetchGenres = async () => {
-      try {
-        const token = await SecureStore.getItemAsync('userToken');
-        const response = await api.get('/genres', {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined
-        });
-        // Expecting response.data to be array of { id, tag }
-        interface GenreApiResponse {
-          id?: string;
-          tag: string;
-        }
-        const genreOptions: GenreOption[] = [
-          { id: 'all', label: 'All Genres', value: 'all' },
-          ...response.data.map((g: GenreApiResponse) => ({ id: g.id || g.tag, label: g.tag, value: g.tag }))
-        ];
-        setAvailableGenres(genreOptions);
-      } catch (err) {
-        console.error('Error fetching genres:', err);
-        setAvailableGenres([{ id: 'all', label: 'All Genres', value: 'all' }]);
-      }
-    };
-    fetchGenres();
-  }, []);
-  */
+  const [filterState, dispatchFilter] = useReducer(filterReducer, initialFilterState);
+  const { selectedDay, selectedStages, showMySchedule } = filterState;
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   // Helper function to check if user has staff privileges
   const isStaffUser = useCallback(() => {
@@ -375,6 +362,12 @@ const ScheduleScreen = () => {
     text: theme.text,
     muted: theme.muted
   }), [theme.border, theme.card, theme.text, theme.muted]);
+
+  // Precompute date-related constants to avoid repeated calculations
+  const dateConstants = useMemo(() => {
+    const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
+    return { cutoffTimeInMinutes };
+  }, []);
 
   // Extract unique stages from events - this is now the primary approach
   // Extract unique stages from events - this is now the primary approach
@@ -406,20 +399,23 @@ const ScheduleScreen = () => {
   // Initialize selectedDay based on visible days - simplified to avoid hook ordering issues
   useEffect(() => {
     if (!selectedDay && visibleFestivalDays.length > 0) {
-      setSelectedDay(visibleFestivalDays[0].date);
+      dispatchFilter({ type: 'SET_SELECTED_DAY', payload: visibleFestivalDays[0].date });
     }
   }, [selectedDay, visibleFestivalDays]);
 
   // --- Fetch events and user schedule ---
-  const fetchEvents = useCallback(async () => {
-    setIsLoading(true);
+  const fetchEvents = useCallback(async (loadMore = false) => {
+    if (loadMore && !hasMore) return;
+    setIsLoading(!loadMore);
     setError(null);
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const response = await api.get<ScheduleEvent[]>('/events', {
+      const response = await api.get<ScheduleEvent[]>(`/events?page=${page}&limit=50`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
-      setEvents(response.data);
+      setEvents(prev => loadMore ? [...prev, ...response.data] : response.data);
+      setHasMore(response.data.length === 50); // Assume 50 is page size
+      if (loadMore) setPage(prev => prev + 1);
     } catch (err) {
       console.error('❌ Error fetching events:', err);
       setError('Could not load events. Please try again later.');
@@ -427,7 +423,7 @@ const ScheduleScreen = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [page, hasMore]);
 
   const loadUserSchedule = useCallback(async () => {
     if (!user) return;
@@ -456,18 +452,31 @@ const ScheduleScreen = () => {
   }, [user, loadUserSchedule]);
 
   // --- Optimized filtering logic with performance monitoring ---
+  // Precompute sorted events (sort only when events change)
+  const sortedEvents = useMemo(() => {
+    if (events.length === 0) return [];
+    return [...events].sort((a, b) => {
+      const [aHours, aMinutes] = a.startTime.split(':').map(Number);
+      const aTimeInMinutes = aHours * 60 + aMinutes;
+      const [bHours, bMinutes] = b.startTime.split(':').map(Number);
+      const bTimeInMinutes = bHours * 60 + bMinutes;
+      const adjustedA = aTimeInMinutes < dateConstants.cutoffTimeInMinutes ? aTimeInMinutes + (24 * 60) : aTimeInMinutes;
+      const adjustedB = bTimeInMinutes < dateConstants.cutoffTimeInMinutes ? bTimeInMinutes + (24 * 60) : bTimeInMinutes;
+      return adjustedA - adjustedB;
+    });
+  }, [events, dateConstants.cutoffTimeInMinutes]);
+
   const filteredEvents = useMemo(() => {
     const startTime = performance.now();
-    if (events.length === 0) {
+    if (sortedEvents.length === 0) {
       return [];
     }
     
-    let filtered = [...events];
+    let filtered = [...sortedEvents]; // Start with pre-sorted array
     
     // Filter by selected day (including late-night events from next day)
     if (selectedDay) {
       filtered = filtered.filter(ev => {
-        const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
         const [eventHours, eventMinutes] = ev.startTime.split(':').map(Number);
         const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
         
@@ -478,12 +487,12 @@ const ScheduleScreen = () => {
         const nextDayString = nextDay.toISOString().split('T')[0];
         
         // Case 1: Event is on the filter day and starts at 6:30 AM or later
-        if (ev.date === selectedDay && eventStartTimeInMinutes >= cutoffTimeInMinutes) {
+        if (ev.date === selectedDay && eventStartTimeInMinutes >= dateConstants.cutoffTimeInMinutes) {
           return true;
         }
         
         // Case 2: Event is on the next day and starts before 6:30 AM
-        if (ev.date === nextDayString && eventStartTimeInMinutes < cutoffTimeInMinutes) {
+        if (ev.date === nextDayString && eventStartTimeInMinutes < dateConstants.cutoffTimeInMinutes) {
           return true;
         }
         
@@ -501,33 +510,25 @@ const ScheduleScreen = () => {
       filtered = filtered.filter(ev => userSchedule[ev.id]);
     }
     
-    // Sort by actual chronological order within the 24-hour window (6:30 AM to 6:30 AM next day)
-    filtered.sort((a, b) => {
-      const cutoffTimeInMinutes = 6 * 60 + 30; // 6:30 AM
-      
-      // Convert start times to minutes
-      const [aHours, aMinutes] = a.startTime.split(':').map(Number);
-      const aTimeInMinutes = aHours * 60 + aMinutes;
-      
-      const [bHours, bMinutes] = b.startTime.split(':').map(Number);
-      const bTimeInMinutes = bHours * 60 + bMinutes;
-      
-      // Adjust times so that events before 6:30 AM are treated as "next day" (add 24 hours worth of minutes)
-      const aAdjustedTime = aTimeInMinutes < cutoffTimeInMinutes ? aTimeInMinutes + (24 * 60) : aTimeInMinutes;
-      const bAdjustedTime = bTimeInMinutes < cutoffTimeInMinutes ? bTimeInMinutes + (24 * 60) : bTimeInMinutes;
-      
-      // Sort by adjusted time (this puts PM events first, then late-night/early AM events)
-      return aAdjustedTime - bAdjustedTime;
-    });
-    
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.log(`🔍 Filtering ${events.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
+      console.log(`🔍 Filtering ${sortedEvents.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
     }
     return filtered;
-  }, [events, selectedDay, selectedStages, showMySchedule, userSchedule]);
+  }, [sortedEvents, selectedDay, selectedStages, showMySchedule, userSchedule, dateConstants.cutoffTimeInMinutes]);
 
   // --- UI Handlers ---
+  const handleDayPress = useCallback((day: string) => {
+    dispatchFilter({ type: 'SET_SELECTED_DAY', payload: day });
+  }, []);
+
+  const handleStagesChange = useCallback((stages: string[]) => {
+    dispatchFilter({ type: 'SET_SELECTED_STAGES', payload: stages });
+  }, []);
+
+  const handleToggleMySchedule = useCallback(() => {
+    dispatchFilter({ type: 'TOGGLE_MY_SCHEDULE' });
+  }, []);
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
     if (!user) {
       Alert.alert('Login Required', 'Please login to manage your schedule.', [
@@ -580,11 +581,15 @@ const ScheduleScreen = () => {
     setIsModalVisible(true);
   }, []);
 
+  // Clear modal state on close to free memory
+  const handleCloseModal = useCallback(() => {
+    setIsModalVisible(false);
+    setSelectedEvent(null);
+  }, []);
+
   // Reset filters handler
   const handleResetFilters = useCallback(() => {
-    setSelectedDay(visibleFestivalDays.length > 0 ? visibleFestivalDays[0].date : '');
-    setSelectedStages(['all']);
-    setShowMySchedule(false);
+    dispatchFilter({ type: 'RESET_FILTERS', payload: visibleFestivalDays.length > 0 ? visibleFestivalDays[0].date : '' });
   }, [visibleFestivalDays]);
 
   // Optimized key extractor
@@ -653,7 +658,8 @@ const ScheduleScreen = () => {
                 { borderColor: theme.border, flex: 1 },
                 day.date === selectedDay && { backgroundColor: theme.primary },
               ]}
-              onPress={() => setSelectedDay(day.date)}
+              onPress={() => handleDayPress(day.date)}
+              accessibilityLabel={`Select ${day.dayLabel} for events`}
             >
               <Text
                 style={[
@@ -710,7 +716,8 @@ const ScheduleScreen = () => {
                 height: 36,
               }
             ]}
-            onPress={() => setShowMySchedule(v => !v)}
+            onPress={handleToggleMySchedule}
+            accessibilityLabel={showMySchedule ? 'Hide my schedule' : 'Show my schedule'}
           >
             <Ionicons
               name={showMySchedule ? 'heart' : 'heart-outline'}
@@ -733,7 +740,7 @@ const ScheduleScreen = () => {
           <MultiSelectDropdown
             options={stageOptions}
             selectedValues={selectedStages}
-            onSelectionChange={setSelectedStages}
+            onSelectionChange={handleStagesChange}
             placeholder="All Stages"
             allOptionValue="all"
             style={{
@@ -803,7 +810,7 @@ const ScheduleScreen = () => {
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={48} color={theme.error || '#FF0000'} />
             <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
-            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={fetchEvents}>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={() => fetchEvents()}>
               <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
           </View>
@@ -834,6 +841,8 @@ const ScheduleScreen = () => {
             // Performance optimizations for scrolling
             keyboardShouldPersistTaps="handled"
             scrollEventThrottle={16}
+            onEndReached={() => fetchEvents(true)}
+            onEndReachedThreshold={0.5}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
                 <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
@@ -861,7 +870,7 @@ const ScheduleScreen = () => {
       {/* Event details modal */}
       <EventDetailsModal
         isVisible={isModalVisible}
-        onClose={() => setIsModalVisible(false)}
+        onClose={handleCloseModal}
         event={selectedEvent ? { ...selectedEvent, endTime: selectedEvent.endTime ?? '' } : null}
         isInSchedule={!!selectedEvent && !!userSchedule[selectedEvent.id]}
         onToggleSchedule={handleToggleSchedule}
