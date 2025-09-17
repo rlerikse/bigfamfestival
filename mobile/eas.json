@@ -39,8 +39,10 @@
         "APP_ENV": "production",
         "GRADLE_VERSION": "8.6"
       },
+      "distribution": "store",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "cache": false
       },
       "android": {
         "buildType": "app-bundle"
