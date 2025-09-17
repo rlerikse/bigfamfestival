@@ -1,15 +1,28 @@
-import { getApps, getApp } from '@react-native-firebase/app';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+// Commit: Replace react-native-firebase with Firebase JS SDK for Expo compatibility
+// Author: GitHub Copilot, 2024-06-10
 
-// Firebase is automatically initialized via google-services.json (Android) 
-// and GoogleService-Info.plist (iOS), so we don't need to manually configure it
-// The app is already initialized when React Native Firebase is installed
+/**
+ * Firebase configuration and initialization for Expo React Native app.
+ * Exports initialized firestore and auth instances.
+ */
 
-// Get the default Firebase app instance
-const app = getApps().length > 0 ? getApp() : getApp();
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
-// React Native Firebase automatically enables offline persistence by default
-// No need to manually enable it like in the web SDK
+// TODO: Move these values to environment variables for security
+const firebaseConfig = {
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+};
+
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+const firestore = getFirestore(app);
+const auth = getAuth(app);
 
 export { firestore, auth, app };
