@@ -632,8 +632,8 @@ const ScheduleScreen = () => {
         <View
           style={{
             backgroundColor: theme.background,
-            paddingTop: 16, // Reduced since marginTop handles TopNavBar spacing
-            paddingBottom: 16,
+            paddingTop: 4, // Minimal padding to be flush with nav bar
+            paddingBottom: 4,
             zIndex: 1000,
             position: 'relative',
             elevation: 1,
