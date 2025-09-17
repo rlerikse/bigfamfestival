@@ -861,7 +861,7 @@ const ScheduleScreen = () => {
             maxToRenderPerBatch={20}
             updateCellsBatchingPeriod={50}
             initialNumToRender={75}
-            windowSize={21}
+            windowSize={10}
             legacyImplementation={false}
             disableVirtualization={false}
             // Consistent item layout for better performance
