@@ -42,7 +42,9 @@
       "distribution": "store",
       "ios": {
         "resourceClass": "m-medium",
-        "cache": false
+        "cache": {
+          "disabled": true
+        }
       },
       "android": {
         "buildType": "app-bundle"
