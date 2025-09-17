@@ -19,6 +19,7 @@ import {
   Alert,
   StyleSheet,
   GestureResponderEvent,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 // @ts-expect-error - Temporary fix for Expo vector icons import
@@ -610,13 +611,44 @@ const ScheduleScreen = () => {
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress]);
 
-  // Debug logging in development only
-  useEffect(() => {
-    if (__DEV__) {
-      // eslint-disable-next-line no-console
-      console.log('[DEBUG] Filters:', { showMySchedule, selectedDay, selectedStages });
-    }
-  }, [showMySchedule, selectedDay, selectedStages]);
+  // Smart image preloading for visible items + lookahead
+  const preloadVisibleImages = useCallback((visibleEvents: ScheduleEvent[]) => {
+    if (!__DEV__) return;
+    
+    // Preload images for currently visible events
+    const visibleImages = visibleEvents
+      .filter(event => event.imageUrl && event.imageUrl.trim())
+      .map(event => event.imageUrl as string);
+    
+    // Also preload next 5 images (lookahead)
+    const allFilteredImages = filteredEvents
+      .filter(event => event.imageUrl && event.imageUrl.trim())
+      .map(event => event.imageUrl as string);
+    
+    const visibleIndices = visibleEvents.map(event => 
+      allFilteredImages.indexOf(event.imageUrl as string)
+    ).filter(index => index >= 0);
+    
+    const maxVisibleIndex = Math.max(...visibleIndices, 0);
+    const lookaheadImages = allFilteredImages.slice(maxVisibleIndex + 1, maxVisibleIndex + 6);
+    
+    const imagesToPreload = [...new Set([...visibleImages, ...lookaheadImages])];
+    
+    // Preload in background with low priority
+    setTimeout(() => {
+      imagesToPreload.forEach(uri => {
+        Image.prefetch(uri).catch(() => {
+          // Silently fail
+        });
+      });
+    }, 500);
+  }, [filteredEvents]);
+
+  // Track visible items for smart preloading
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ item: ScheduleEvent }> }) => {
+    const visibleEvents = viewableItems.map(viewableItem => viewableItem.item);
+    preloadVisibleImages(visibleEvents);
+  }, [preloadVisibleImages]);
 
   // --- Main Render ---
   return (
@@ -828,7 +860,7 @@ const ScheduleScreen = () => {
             removeClippedSubviews={true}
             maxToRenderPerBatch={20}
             updateCellsBatchingPeriod={50}
-            initialNumToRender={15}
+            initialNumToRender={75}
             windowSize={21}
             legacyImplementation={false}
             disableVirtualization={false}
@@ -843,6 +875,10 @@ const ScheduleScreen = () => {
             scrollEventThrottle={16}
             onEndReached={() => fetchEvents(true)}
             onEndReachedThreshold={0.5}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={{
+              itemVisiblePercentThreshold: 50, // Item is considered visible when 50% is showing
+            }}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
                 <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
