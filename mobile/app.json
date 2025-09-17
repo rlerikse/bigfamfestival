@@ -112,6 +112,28 @@
           "android": {
             "gradleVersion": "8.6",
             "usesCleartextTraffic": false
+          },
+          "ios": {
+            "useModularHeaders": true,
+            "moduleMapNamesToGenerate": [
+              "FirebaseCore",
+              "FirebaseCoreExtension",
+              "FirebaseAuthInterop", 
+              "FirebaseAppCheckInterop",
+              "GoogleUtilities",
+              "RecaptchaInterop",
+              "FirebaseFirestoreInternal",
+              "FirebaseCoreInternal"
+            ],
+            "deploymentTarget": "15.1",
+            "extraPodspecProperties": {
+              "GoogleUtilities": {
+                "modular_headers": true
+              },
+              "FirebaseCoreInternal": {
+                "modular_headers": true
+              }
+            }
           }
         }
       ]
