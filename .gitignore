@@ -13,3 +13,4 @@ mobile/package-lock.backup.json
 backend/artists.csv
 backend/scripts/import-artists-from-csv copy.ts
 backend/scripts/import-artists-from-csv.ts
+mobile/.expo/
