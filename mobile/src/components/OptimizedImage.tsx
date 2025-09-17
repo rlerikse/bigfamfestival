@@ -6,7 +6,7 @@
  * A performance-optimized image component that handles loading states, errors,
  * and fallbacks gracefully to prevent scroll jank in lists.
  */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
   Image, 
   View, 
@@ -19,6 +19,9 @@ import {
 // @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+
+// Global cache to track loaded images across component instances
+const loadedImagesCache = new Set<string>();
 
 interface OptimizedImageProps {
   uri?: string | null;
@@ -46,6 +49,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const { theme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const hasAttemptedLoad = useRef(false);
 
   // Convert Google Storage URLs to proper Firebase Storage URLs
   const optimizedUri = useMemo(() => {
@@ -67,15 +71,39 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     return null;
   }, [uri]);
 
+  // Check if image was already loaded successfully
+  const isImageCached = useMemo(() => {
+    return optimizedUri ? loadedImagesCache.has(optimizedUri) : false;
+  }, [optimizedUri]);
+
+  // Initialize loading state based on cache
+  useEffect(() => {
+    if (isImageCached && !hasAttemptedLoad.current) {
+      setIsLoading(false);
+      setHasError(false);
+    } else if (optimizedUri && !hasAttemptedLoad.current) {
+      setIsLoading(true);
+      setHasError(false);
+    }
+  }, [isImageCached, optimizedUri]);
+
   const handleLoadStart = useCallback(() => {
-    setIsLoading(true);
-    setHasError(false);
-  }, []);
+    if (!isImageCached) {
+      setIsLoading(true);
+      setHasError(false);
+    }
+    hasAttemptedLoad.current = true;
+  }, [isImageCached]);
 
   const handleLoadEnd = useCallback(() => {
     setIsLoading(false);
+    setHasError(false);
+    // Mark image as cached
+    if (optimizedUri) {
+      loadedImagesCache.add(optimizedUri);
+    }
     onLoad?.();
-  }, [onLoad]);
+  }, [optimizedUri, onLoad]);
 
   const handleError = useCallback(() => {
     setIsLoading(false);
@@ -114,13 +142,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         onLoadEnd={handleLoadEnd}
         onError={handleError}
         // Performance optimizations
-        fadeDuration={150} // Reduced fade duration for smoother transitions
+        fadeDuration={isImageCached ? 0 : 150} // No fade for cached images
         loadingIndicatorSource={undefined} // Disable default loading indicator
         progressiveRenderingEnabled={true}
       />
 
-      {/* Loading state */}
-      {isLoading && showLoadingIndicator && !hasError && (
+      {/* Loading state - only show for non-cached images */}
+      {isLoading && showLoadingIndicator && !hasError && !isImageCached && (
         <View style={styles.overlay}>
           {placeholder || (
             <ActivityIndicator 

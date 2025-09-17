@@ -611,9 +611,43 @@ const ScheduleScreen = () => {
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress]);
 
+  // Aggressive initial image preloading for first screen
+  const preloadInitialImages = useCallback((events: ScheduleEvent[]) => {
+    const shouldPreload = __DEV__ || true; // Enable for production
+    if (!shouldPreload || events.length === 0) return;
+    
+    // Preload first 10 images immediately for instant loading
+    const initialImages = events
+      .slice(0, 10)
+      .filter(event => event.imageUrl && event.imageUrl.trim())
+      .map(event => event.imageUrl as string);
+    
+    // Preload immediately (no delay) for initial screen
+    initialImages.forEach(uri => {
+      let processedUri = uri;
+      if (uri.startsWith('gs://')) {
+        const gsPath = uri.substring(5);
+        const firstSlashIndex = gsPath.indexOf('/');
+        if (firstSlashIndex > 0) {
+          const bucket = gsPath.substring(0, firstSlashIndex);
+          const objectPath = gsPath.substring(firstSlashIndex + 1);
+          processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+        }
+      } else if (!uri.startsWith('http') && uri.trim()) {
+        processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
+      }
+      
+      Image.prefetch(processedUri).catch(() => {
+        // Silently fail
+      });
+    });
+  }, []);
+
   // Smart image preloading for visible items + lookahead
   const preloadVisibleImages = useCallback((visibleEvents: ScheduleEvent[]) => {
-    if (!__DEV__) return;
+    // Enable in production for better UX
+    const shouldPreload = __DEV__ || true; // Enable for production
+    if (!shouldPreload) return;
     
     // Preload images for currently visible events
     const visibleImages = visibleEvents
@@ -637,12 +671,33 @@ const ScheduleScreen = () => {
     // Preload in background with low priority
     setTimeout(() => {
       imagesToPreload.forEach(uri => {
-        Image.prefetch(uri).catch(() => {
-          // Silently fail
+        // Convert URI to match OptimizedImage format
+        let processedUri = uri;
+        if (uri.startsWith('gs://')) {
+          const gsPath = uri.substring(5);
+          const firstSlashIndex = gsPath.indexOf('/');
+          if (firstSlashIndex > 0) {
+            const bucket = gsPath.substring(0, firstSlashIndex);
+            const objectPath = gsPath.substring(firstSlashIndex + 1);
+            processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+          }
+        } else if (!uri.startsWith('http') && uri.trim()) {
+          processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
+        }
+        
+        Image.prefetch(processedUri).catch(() => {
+          // Silently fail - prefetching is best effort
         });
       });
-    }, 500);
+    }, 300); // Reduced delay for faster preloading
   }, [filteredEvents]);
+
+  // Preload initial images when events load
+  useEffect(() => {
+    if (filteredEvents.length > 0) {
+      preloadInitialImages(filteredEvents);
+    }
+  }, [filteredEvents, preloadInitialImages]);
 
   // Track visible items for smart preloading
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ item: ScheduleEvent }> }) => {
