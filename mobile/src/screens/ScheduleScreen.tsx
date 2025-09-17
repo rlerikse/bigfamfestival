@@ -618,20 +618,21 @@ const ScheduleScreen = () => {
 
   // --- Main Render ---
   return (
-    <SafeAreaView style={[filterStyles.container, { backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' }]}> 
+    <SafeAreaView style={[filterStyles.container, { backgroundColor: theme.background }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <TopNavBar 
         onSearch={(_query) => { /* Implement search logic */ }} 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications coming soon!')} 
+        onNotificationsPress={() => Alert.alert('Notifications coming soon!')}
+        whiteIcons={false}
       />
       {/* Main content container */}
-      <View style={{ flex: 1, flexDirection: 'column' }}>
+      <View style={{ flex: 1, flexDirection: 'column', marginTop: 80 }}>
         {/* Fixed header container for filter rows */}
         <View
           style={{
-            backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent',
-            paddingTop: 90, // Make filters flush with TopNavBar + extra space for logo
+            backgroundColor: theme.background,
+            paddingTop: 16, // Reduced since marginTop handles TopNavBar spacing
             paddingBottom: 16,
             zIndex: 1000,
             position: 'relative',

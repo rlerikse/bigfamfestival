@@ -10,12 +10,7 @@ import {
   getPushToken,
   setupNotificationListeners 
 } from '../src/services/firebaseMessaging';
-import {
-  requestNotificationPermission as requestFCMPermission,
-  getFCMToken,
-  setupFirebaseMessagingListeners,
-  setupNotificationOpenedApp
-} from '../src/services/firebase-messaging';
+// Removed firebase messaging imports
 
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
@@ -43,7 +38,7 @@ export default function App() {
     async function setupNotifications() {
       // Request notification permissions for both Expo notifications and Firebase
       const expoPermissionGranted = await requestNotificationPermission();
-      const fcmPermissionGranted = await requestFCMPermission();
+        // Firebase messaging removed
       
       if (expoPermissionGranted) {
         // Get the Expo push token
@@ -53,22 +48,10 @@ export default function App() {
         const cleanupExpo = setupNotificationListeners();
 
         // Setup Firebase messaging if permission granted
-        if (fcmPermissionGranted) {
-          // Get FCM token
-          await getFCMToken();
           
-          // Setup Firebase messaging listeners
-          const cleanupFirebase = setupFirebaseMessagingListeners();
           
-          // Setup notification opened app handler
-          setupNotificationOpenedApp();
 
-          // Return combined cleanup function
-          return () => {
-            cleanupExpo();
-            cleanupFirebase();
-          };
-        }
+          // Firebase messaging removed
 
         // Return Expo cleanup only
         return () => {
