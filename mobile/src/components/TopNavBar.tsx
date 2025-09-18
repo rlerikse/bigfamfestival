@@ -9,6 +9,7 @@ import {
   LayoutChangeEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -18,6 +19,7 @@ interface TopNavBarProps {
   showSearchBar?: boolean;
   onNotificationsPress?: () => void;
   onSettingsPress?: () => void;
+  whiteIcons?: boolean;
 }
 
 const TopNavBar: React.FC<TopNavBarProps> = (props) => {
@@ -25,7 +27,8 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     onSearch, 
     placeholder = 'Search artist, vendor...', 
     onNotificationsPress, 
-    onSettingsPress 
+    onSettingsPress,
+    whiteIcons = false
   } = props;
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
@@ -33,6 +36,11 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchContainerWidth, setSearchContainerWidth] = useState(0);
   const searchAnimatedWidth = React.useRef(new Animated.Value(0)).current;
+
+  // Determine icon color based on whiteIcons prop or theme
+  const getIconColor = () => {
+    return whiteIcons ? '#FFFFFF' : (isDark ? '#F5F5DC' : '#000');
+  };
 
   function handleSearchChange(text: string): void {
     setSearchQuery(text);
@@ -79,13 +87,15 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
       onSettingsPress();
     }
   };  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]} pointerEvents="box-none">
       <View style={styles.content}>
-        <View style={styles.logoContainer}>
+        <View style={styles.logoContainer} pointerEvents='none'>
           <Image
             source={require('../assets/images/bf-logo-trans.png')}
             style={styles.logo}
             resizeMode="contain"
+            fadeDuration={0}
+            loadingIndicatorSource={undefined}
           />
         </View>
         
@@ -101,7 +111,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               <Ionicons
                 name="notifications-outline"
                 size={24}
-                color={isDark ? '#F5F5DC' : '#000'}
+                color={getIconColor()}
               />
             </TouchableOpacity>
           )}
@@ -116,7 +126,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                 <Ionicons
                   name="search"
                   size={24}
-                  color={isDark ? '#F5F5DC' : '#000'}
+                  color={getIconColor()}
                   style={styles.searchIcon}
                 />
                 <TextInput
@@ -132,7 +142,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                   <Ionicons
                     name="close-circle"
                     size={24}
-                    color={isDark ? '#F5F5DC' : '#000'}
+                    color={getIconColor()}
                   />
                 </TouchableOpacity>
               </Animated.View>
@@ -141,7 +151,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
                 <Ionicons
                   name="search"
                   size={24}
-                  color={isDark ? '#F5F5DC' : '#000'}
+                  color={getIconColor()}
                 />
               </TouchableOpacity>
             )}
@@ -155,7 +165,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               <Ionicons
                 name="settings-outline"
                 size={24}
-                color={isDark ? '#F5F5DC' : '#000'}
+                color={getIconColor()}
               />
             </TouchableOpacity>
           )}
@@ -174,7 +184,7 @@ const styles = StyleSheet.create({  container: {
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
+    zIndex: 1001,
   },
   content: {
     flexDirection: 'row',
@@ -196,8 +206,8 @@ const styles = StyleSheet.create({  container: {
   logo: {
     width: 160,
     position: 'absolute',
-    top: -58,
-    height: 175
+    top: -33,
+    height: 125
   },
   actionsContainer: {
     flexDirection: 'row',

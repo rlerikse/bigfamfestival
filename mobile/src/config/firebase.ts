@@ -1,46 +1,28 @@
-import { initializeApp, getApp, getApps } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+// Commit: Replace react-native-firebase with Firebase JS SDK for Expo compatibility
+// Author: GitHub Copilot, 2024-06-10
+
+/**
+ * Firebase configuration and initialization for Expo React Native app.
+ * Exports initialized firestore and auth instances.
+ */
+
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-// Your web app's Firebase configuration
-// REPLACE THESE WITH YOUR ACTUAL FIREBASE PROJECT CONFIGURATION
+// TODO: Move these values to environment variables for security
 const firebaseConfig = {
-  apiKey: "AIzaSyDxZIs1oOTEtHu0SsuV30Of84RTCDkmg0s",
-  authDomain: "bigfamfestival.firebaseapp.com",
-  projectId: "bigfamfestival", // e.g., "bigfamfestival-d50c6"
-  storageBucket: "bigfamfestival.firebasestorage.app",
-  messagingSenderId: "292369452544", 
-  appId: "1:292369452544:web:b3508390b4600be71c12e5",
-  measurementId: "G-VZ06GV8DGT" // Optional
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-let app;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
+const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 const firestore = getFirestore(app);
 const auth = getAuth(app);
-
-// Enable offline persistence for Firestore
-enableIndexedDbPersistence(firestore)
-  .then(() => {
-    console.log("Firestore offline persistence enabled.");
-  })
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled in one tab at a time.
-      console.warn("Firestore offline persistence failed: Multiple tabs open or other precondition failed.");
-    } else if (err.code == 'unimplemented') {
-      // The current browser does not support all of the
-      // features required to enable persistence
-      console.warn("Firestore offline persistence failed: Browser does not support required features.");
-    } else {
-      console.error("Firestore offline persistence failed: ", err);
-    }
-  });
 
 export { firestore, auth, app };

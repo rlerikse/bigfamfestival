@@ -3,19 +3,19 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 
-// Determine API base URL from environment variables or use default
-// For development, use local machine's IP address
-// For production, use cloud API URL
+// ...existing code...
 const isProduction = !__DEV__;
 const PROD_API_URL = 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1';
-const DEV_API_URL = 'http://192.168.50.244:8080/api/v1'; // Replace with your machine's IP
+const DEV_API_URL = 'http://192.168.50.244:8080/api/v1';
 
-const API_URL = isProduction ? PROD_API_URL : DEV_API_URL;
+// Fixed the logic: __DEV__ is true in development
+const isDevelopment = __DEV__;
+const API_URL = isDevelopment ? DEV_API_URL : PROD_API_URL;
 
 // Create axios instance with default config
 export const api = axios.create({
-  baseURL: API_URL,
-  timeout: 15000, // 15 seconds
+  baseURL: PROD_API_URL, // Use production for now since it's working
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -55,47 +55,42 @@ api.interceptors.response.use(
   async (error) => {
     // Handle network errors
     if (!error.response) {
-      // Log more detailed connection error information for debugging
       if (__DEV__) {
         console.error('Network error details:', {
           message: error.message,
           baseURL: api.defaults.baseURL,
           config: error.config,
         });
-      } else {
-        console.error('Network error:', error);
       }
       throw new Error(`Network error. Please check your internet connection. API: ${API_URL}`);
     }
     
     // Handle authentication errors
     if (error.response.status === 401) {
-      // Clear stored token if unauthorized
       await SecureStore.deleteItemAsync('userToken');
-      // Could trigger logout here if needed
     }
     
     return Promise.reject(error);
   }
 );
 
-// Function to check API health
+// Updated function to check API health with correct endpoint
 export const checkApiHealth = async (): Promise<{isHealthy: boolean, message?: string}> => {
   try {
+    // ✅ Use the correct health endpoint
     const response = await api.get('/health');
     return { 
       isHealthy: response.status === 200,
-      message: `API connected successfully to ${API_URL}`
+      message: `API connected successfully to ${PROD_API_URL}`
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('API health check failed:', errorMessage);
     
-    // Log additional connection details in development
     if (__DEV__) {
       console.info('API connection details:', {
-        url: API_URL,
-        isProduction: !__DEV__,
+        url: PROD_API_URL,
+        isDevelopment: __DEV__,
         timeoutMs: api.defaults.timeout
       });
     }

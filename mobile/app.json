@@ -1,4 +1,5 @@
-{  "expo": {
+{
+  "expo": {
     "name": "Big Fam Festival",
     "slug": "bigfam-festival",
     "newArchEnabled": true,
@@ -17,12 +18,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.eriksensolutions.bigfam",
+      "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
         "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
         "NSCameraUsageDescription": "We need camera access to enable QR code scanning for tickets.",
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["remote-notification"],
+        "UIBackgroundModes": [
+          "remote-notification"
+        ],
         "NSUserNotificationUsageDescription": "Big Fam Festival would like to send you notifications about events, schedules, and important updates.",
         "NSUserNotificationTypesAllowed": [
           "alert",
@@ -63,6 +68,9 @@
     },
     "plugins": [
       [
+        "@react-native-firebase/app"
+      ],
+      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow Big Fam Festival to use your location to show you on the map and enable navigation at the festival."
@@ -79,7 +87,9 @@
         {
           "icon": "./src/assets/images/notification-icon.png",
           "color": "#2E4031",
-          "sounds": ["./src/assets/sounds/notification.wav"],
+          "sounds": [
+            "./src/assets/sounds/notification.wav"
+          ],
           "androidSettings": {
             "priority": "high",
             "sound": true,
@@ -93,6 +103,18 @@
             "critical": false,
             "badge": true,
             "interruptionLevel": "active"
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "gradleVersion": "8.6",
+            "usesCleartextTraffic": false
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
       ]

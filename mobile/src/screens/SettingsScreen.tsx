@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useDebug } from '../contexts/DebugContext';
+import { DarkModeToggle } from '../components/DarkModeToggle';
 import { RootStackParamList } from '../navigation';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
@@ -69,36 +70,22 @@ const SettingsScreen = () => {
         {
           icon: isDark ? 'moon-outline' : 'sunny-outline',
           label: 'Dark Mode',
-          hasSwitch: true,
-          switchValue: isDark,
-          onSwitchChange: handleThemeToggle,
-          description: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+          hasSwitch: false,
+          hasToggle: true,
+          description: 'Switch between light and dark themes',
         },
         {
           icon: 'speedometer-outline',
           label: 'Performance Mode',
           hasSwitch: true,
           switchValue: isPerformanceMode,
-          onSwitchChange: togglePerformanceMode,
-          description: 'Optimize for performance over visual effects',
+          onSwitchToggle: togglePerformanceMode,
+          description: 'Enable performance optimizations',
         },
         {
           icon: 'language-outline',
           label: 'Language',
           onPress: () => Alert.alert('Coming Soon', 'Language settings coming soon!'),
-        },
-      ],
-    },
-    {
-      title: 'Developer',
-      items: [
-        {
-          icon: 'bug-outline',
-          label: 'Debug Mode',
-          hasSwitch: true,
-          switchValue: debugMode,
-          onSwitchChange: handleDebugModeToggle,
-          description: 'Enable debug mode for Day/Night cycle controls',
         },
       ],
     },
@@ -130,7 +117,7 @@ const SettingsScreen = () => {
         key={item.label}
         style={[styles.settingsItem, { borderBottomColor: theme.border }]}
         onPress={item.onPress}
-        disabled={item.hasSwitch}
+        disabled={item.hasSwitch || item.hasToggle}
       >
         <View style={styles.settingsItemLeft}>
           <Ionicons name={item.icon} size={24} color={theme.primary} />
@@ -146,10 +133,12 @@ const SettingsScreen = () => {
           </View>
         </View>
         
-        {item.hasSwitch ? (
+        {item.hasToggle ? (
+          <DarkModeToggle showLabel={false} size="small" />
+        ) : item.hasSwitch ? (
           <Switch
             value={item.switchValue}
-            onValueChange={item.onSwitchChange}
+            onValueChange={item.onSwitchToggle}
             trackColor={{ false: theme.border, true: theme.primary }}
             thumbColor={'#FFFFFF'}
           />
@@ -178,10 +167,6 @@ const SettingsScreen = () => {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
-        </View>
-
         {settingsOptions.map(renderSettingsSection)}
       </ScrollView>
     </View>
@@ -194,6 +179,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
+    paddingTop: 20,
     paddingBottom: 40,
   },
   header: {

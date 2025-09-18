@@ -1,14 +1,24 @@
 # Cloud Run service for backend API
 resource "google_cloud_run_service" "bigfam-api" {
-  name     = "bigfam-api-${var.environment}"
+  name     = "bigfam-api-production"
   location = var.region
+
+  # Add this lifecycle block to prevent destroying the existing service
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes = [
+      template[0].metadata[0].annotations,
+      template[0].spec[0].containers[0].image,
+    ]
+  }
+
 
   template {
     spec {
       service_account_name = google_service_account.cloud_run_sa.email
       containers {
-        # image = var.backend_image
-        image = "gcr.io/cloudrun/hello"  # Public sample image from Google
+        # ✅ FIXED: Use the actual backend image
+        image = var.backend_image
 
         resources {
           limits = {
@@ -31,6 +41,11 @@ resource "google_cloud_run_service" "bigfam-api" {
           name  = "CORS_ORIGIN"
           value = var.cors_origin
         }
+
+        env {
+          name  = "STORAGE_BUCKET"
+          value = "${var.project_id}.appspot.com"
+        }
         
         # Secrets (should be managed separately and referred here)
         env {
@@ -42,6 +57,17 @@ resource "google_cloud_run_service" "bigfam-api" {
             }
           }
         }
+
+        # Optional: Add Google Application Credentials if needed
+        # env {
+        #   name = "GOOGLE_APPLICATION_CREDENTIALS"
+        #   value_from {
+        #     secret_key_ref {
+        #       name = "google-application-credentials"
+        #       key  = "latest"
+        #     }
+        #   }
+        # }
       }
     }
     
@@ -71,18 +97,6 @@ resource "google_cloud_run_service_iam_member" "public_access" {
   role     = "roles/run.invoker"
   member   = "allUsers"
 }
-
-# Cloud Run custom domain mapping (optional, uncomment if needed)
-# resource "google_cloud_run_domain_mapping" "api_domain" {
-#   name     = "api.bigfamfestival.com"
-#   location = var.region
-#   metadata {
-#     namespace = var.project_id
-#   }
-#   spec {
-#     route_name = google_cloud_run_service.bigfam-api.name
-#   }
-# }
 
 # Output the service URL
 output "service_url" {

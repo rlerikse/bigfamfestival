@@ -6,20 +6,58 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "node": "20.19.4",
+      "env": {
+        "APP_ENV": "staging",
+        "GRADLE_VERSION": "8.6"
+      },
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
       "autoIncrement": true,
+      "node": "20.19.4",
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "GRADLE_VERSION": "8.6"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
-  "projectId": "0c013fd4-da29-4e1c-9c8d-b69783e98066",
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "eriksen.solutions@gmail.com",
+        "ascAppId": "6752632634",
+        "appleTeamId": "XQ353QHFF7"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "production"
+      }
+    }
   }
 }

@@ -5,7 +5,7 @@ resource "google_monitoring_alert_policy" "service_availability" {
   conditions {
     display_name = "Uptime check failed"
     condition_threshold {
-      filter     = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"bigfam-api-development\" AND metric.type = \"run.googleapis.com/request_count\""
+      filter     = "resource.type = \"cloud_run_revision\" AND resource.labels.service_name = \"bigfam-api-production\" AND metric.type = \"run.googleapis.com/request_count\""
       aggregations {
         alignment_period   = "300s"
         per_series_aligner = "ALIGN_SUM"

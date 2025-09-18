@@ -10,6 +10,7 @@ import {
   getPushToken,
   setupNotificationListeners 
 } from '../src/services/firebaseMessaging';
+// Removed firebase messaging imports
 
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
@@ -35,19 +36,26 @@ export default function App() {
   const isLoadingComplete = useCachedResources();
   useEffect(() => {
     async function setupNotifications() {
-      // Request notification permissions
-      const permissionGranted = await requestNotificationPermission();
+      // Request notification permissions for both Expo notifications and Firebase
+      const expoPermissionGranted = await requestNotificationPermission();
+        // Firebase messaging removed
       
-      if (permissionGranted) {
-        // Get the push token
+      if (expoPermissionGranted) {
+        // Get the Expo push token
         await getPushToken();
         
-        // Setup notification listeners
-        const cleanup = setupNotificationListeners();
+        // Setup Expo notification listeners
+        const cleanupExpo = setupNotificationListeners();
 
-        // Return cleanup function
+        // Setup Firebase messaging if permission granted
+          
+          
+
+          // Firebase messaging removed
+
+        // Return Expo cleanup only
         return () => {
-          cleanup();
+          cleanupExpo();
         };
       }
     }

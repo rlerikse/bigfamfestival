@@ -1,6 +1,6 @@
 # Reference the existing Cloud Run service instead of creating a new one
 data "google_cloud_run_service" "bigfam_api" {
-  name     = "bigfam-api-development"
+  name     = "bigfam-api-production"
   location = "us-central1"
 }
 
