@@ -112,6 +112,9 @@
           "android": {
             "gradleVersion": "8.6",
             "usesCleartextTraffic": false
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
       ]

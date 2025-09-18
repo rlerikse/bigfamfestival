@@ -22,7 +22,6 @@ import {
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

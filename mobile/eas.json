@@ -52,7 +52,7 @@
       "ios": {
         "appleId": "eriksen.solutions@gmail.com",
         "ascAppId": "6752632634",
-        "appleTeamId": "XQ353QHF7"
+        "appleTeamId": "XQ353QHFF7"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
