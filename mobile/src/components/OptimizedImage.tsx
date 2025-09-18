@@ -8,7 +8,6 @@
  */
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
-  Image, 
   View, 
   StyleSheet, 
   ImageStyle, 
@@ -16,7 +15,7 @@ import {
   ActivityIndicator,
   Text
 } from 'react-native';
-// @ts-expect-error - Temporary fix for Expo vector icons import
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -29,7 +28,8 @@ interface OptimizedImageProps {
   containerStyle?: ViewStyle;
   fallbackIcon?: keyof typeof Ionicons.glyphMap;
   showLoadingIndicator?: boolean;
-  resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
+  contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  priority?: 'low' | 'normal' | 'high';
   placeholder?: React.ReactNode;
   onLoad?: () => void;
   onError?: () => void;
@@ -41,7 +41,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   containerStyle,
   fallbackIcon = 'image-outline',
   showLoadingIndicator = true,
-  resizeMode = 'cover',
+  contentFit = 'cover',
+  priority = 'high',
   placeholder,
   onLoad,
   onError,
@@ -137,14 +138,14 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       <Image
         source={{ uri: optimizedUri }}
         style={[styles.image, style]}
-        resizeMode={resizeMode}
+        contentFit={contentFit}
+        cachePolicy="memory-disk"
+        priority={priority}
+        allowDownscaling={true}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
-        // Performance optimizations
-        fadeDuration={isImageCached ? 0 : 150} // No fade for cached images
-        loadingIndicatorSource={undefined} // Disable default loading indicator
-        progressiveRenderingEnabled={true}
+        placeholder={placeholder}
       />
 
       {/* Loading state - only show for non-cached images */}

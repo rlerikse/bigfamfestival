@@ -281,7 +281,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
           uri={item.imageUrl}
           style={styles.eventImage}
           containerStyle={styles.eventImage}
-          resizeMode="cover"
+          contentFit="cover"
           showLoadingIndicator={false}
           fallbackIcon="image-outline"
         />
@@ -616,28 +616,29 @@ const ScheduleScreen = () => {
     const shouldPreload = __DEV__ || true; // Enable for production
     if (!shouldPreload || events.length === 0) return;
     
-    // Preload first 10 images immediately for instant loading
+    // Preload first 30 images immediately for faster initial loading
     const initialImages = events
-      .slice(0, 10)
+      .slice(0, 30)
       .filter(event => event.imageUrl && event.imageUrl.trim())
-      .map(event => event.imageUrl as string);
+      .map(event => {
+        let processedUri = event.imageUrl as string;
+        if (processedUri.startsWith('gs://')) {
+          const gsPath = processedUri.substring(5);
+          const firstSlashIndex = gsPath.indexOf('/');
+          if (firstSlashIndex > 0) {
+            const bucket = gsPath.substring(0, firstSlashIndex);
+            const objectPath = gsPath.substring(firstSlashIndex + 1);
+            processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+          }
+        } else if (!processedUri.startsWith('http') && processedUri.trim()) {
+          processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${processedUri}`;
+        }
+        return { uri: processedUri };
+      });
     
     // Preload immediately (no delay) for initial screen
-    initialImages.forEach(uri => {
-      let processedUri = uri;
-      if (uri.startsWith('gs://')) {
-        const gsPath = uri.substring(5);
-        const firstSlashIndex = gsPath.indexOf('/');
-        if (firstSlashIndex > 0) {
-          const bucket = gsPath.substring(0, firstSlashIndex);
-          const objectPath = gsPath.substring(firstSlashIndex + 1);
-          processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
-        }
-      } else if (!uri.startsWith('http') && uri.trim()) {
-        processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
-      }
-      
-      Image.prefetch(processedUri).catch(() => {
+    initialImages.forEach(({ uri }) => {
+      Image.prefetch(uri).catch(() => {
         // Silently fail
       });
     });
@@ -654,7 +655,7 @@ const ScheduleScreen = () => {
       .filter(event => event.imageUrl && event.imageUrl.trim())
       .map(event => event.imageUrl as string);
     
-    // Also preload next 5 images (lookahead)
+    // Also preload next 10 images (increased lookahead)
     const allFilteredImages = filteredEvents
       .filter(event => event.imageUrl && event.imageUrl.trim())
       .map(event => event.imageUrl as string);
@@ -664,32 +665,33 @@ const ScheduleScreen = () => {
     ).filter(index => index >= 0);
     
     const maxVisibleIndex = Math.max(...visibleIndices, 0);
-    const lookaheadImages = allFilteredImages.slice(maxVisibleIndex + 1, maxVisibleIndex + 6);
+    const lookaheadImages = allFilteredImages.slice(maxVisibleIndex + 1, maxVisibleIndex + 11);  // Increased to 10 lookahead
     
     const imagesToPreload = [...new Set([...visibleImages, ...lookaheadImages])];
     
-    // Preload in background with low priority
-    setTimeout(() => {
-      imagesToPreload.forEach(uri => {
-        // Convert URI to match OptimizedImage format
-        let processedUri = uri;
-        if (uri.startsWith('gs://')) {
-          const gsPath = uri.substring(5);
-          const firstSlashIndex = gsPath.indexOf('/');
-          if (firstSlashIndex > 0) {
-            const bucket = gsPath.substring(0, firstSlashIndex);
-            const objectPath = gsPath.substring(firstSlashIndex + 1);
-            processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
-          }
-        } else if (!uri.startsWith('http') && uri.trim()) {
-          processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
+    // Preload immediately without delay for faster loading
+    const processedImages = imagesToPreload.map(uri => {
+      let processedUri = uri;
+      if (uri.startsWith('gs://')) {
+        const gsPath = uri.substring(5);
+        const firstSlashIndex = gsPath.indexOf('/');
+        if (firstSlashIndex > 0) {
+          const bucket = gsPath.substring(0, firstSlashIndex);
+          const objectPath = gsPath.substring(firstSlashIndex + 1);
+          processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
         }
-        
-        Image.prefetch(processedUri).catch(() => {
-          // Silently fail - prefetching is best effort
-        });
+      } else if (!uri.startsWith('http') && uri.trim()) {
+        processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
+      }
+      return { uri: processedUri };
+    });
+    
+    // Preload immediately without delay for faster loading
+    processedImages.forEach(({ uri }) => {
+      Image.prefetch(uri).catch(() => {
+        // Silently fail - prefetching is best effort
       });
-    }, 300); // Reduced delay for faster preloading
+    });
   }, [filteredEvents]);
 
   // Preload initial images when events load
@@ -914,9 +916,9 @@ const ScheduleScreen = () => {
             // Enhanced performance optimizations for smooth scrolling
             removeClippedSubviews={true}
             maxToRenderPerBatch={20}
-            updateCellsBatchingPeriod={50}
+            updateCellsBatchingPeriod={100}
             initialNumToRender={75}
-            windowSize={10}
+            windowSize={15}
             legacyImplementation={false}
             disableVirtualization={false}
             // Consistent item layout for better performance
