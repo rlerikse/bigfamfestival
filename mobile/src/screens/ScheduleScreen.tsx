@@ -12,7 +12,7 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
+  SectionList,
   ActivityIndicator,
   SafeAreaView,
   RefreshControl,
@@ -111,6 +111,16 @@ const allFestivalDays = [
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  timeHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderBottomWidth: 0,
+  },
+  timeHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   dateFilterButton: {
     height: 50,
@@ -324,6 +334,15 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
 });
 
 EventCard.displayName = 'EventCard';
+
+// Helper to format an HH:mm string to h:mm A (12-hour)
+const formatTimeLabel = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 || 12;
+  const minutes = m.toString().padStart(2, '0');
+  return `${hour12}:${minutes} ${ampm}`;
+};
 
 const ScheduleScreen = () => {
   const { theme, isDark } = useTheme();
@@ -611,6 +630,23 @@ const ScheduleScreen = () => {
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress]);
 
+  // Group filtered events by start time into sections
+  type TimeSection = { title: string; time: string; data: ScheduleEvent[] };
+  const sections: TimeSection[] = useMemo(() => {
+    if (filteredEvents.length === 0) return [];
+    const map = new Map<string, ScheduleEvent[]>();
+    const order: string[] = [];
+    for (const ev of filteredEvents) {
+      if (!map.has(ev.startTime)) {
+        map.set(ev.startTime, []);
+        order.push(ev.startTime);
+      }
+      const arr = map.get(ev.startTime);
+      if (arr) arr.push(ev);
+    }
+    return order.map((time) => ({ title: formatTimeLabel(time), time, data: map.get(time) || [] }));
+  }, [filteredEvents]);
+
   // Aggressive initial image preloading for first screen
   const preloadInitialImages = useCallback((events: ScheduleEvent[]) => {
     const shouldPreload = __DEV__ || true; // Enable for production
@@ -702,9 +738,13 @@ const ScheduleScreen = () => {
   }, [filteredEvents, preloadInitialImages]);
 
   // Track visible items for smart preloading
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ item: ScheduleEvent }> }) => {
-    const visibleEvents = viewableItems.map(viewableItem => viewableItem.item);
-    preloadVisibleImages(visibleEvents);
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: Array<{ item?: ScheduleEvent }> }) => {
+    const visibleEvents: ScheduleEvent[] = viewableItems
+      .map(v => v.item)
+      .filter((it): it is ScheduleEvent => Boolean(it));
+    if (visibleEvents.length > 0) {
+      preloadVisibleImages(visibleEvents);
+    }
   }, [preloadVisibleImages]);
 
   // --- Main Render ---
@@ -718,126 +758,164 @@ const ScheduleScreen = () => {
         whiteIcons={false}
       />
       {/* Main content container */}
-      <View style={{ flex: 1, flexDirection: 'column', marginTop: 80 }}>
+  <View style={{ flex: 1, flexDirection: 'column', marginTop: 70 }}>
         {/* Fixed header container for filter rows */}
         <View
           style={{
             backgroundColor: theme.background,
             paddingTop: 4, // Minimal padding to be flush with nav bar
-            paddingBottom: 4,
+            paddingBottom: 0, // reduce extra spacing beneath filters
             zIndex: 1000,
             position: 'relative',
             elevation: 1,
           }}
         >
-        {/* Date filter row */}
-        <View 
-          style={{
-            flexDirection: 'row',
-            paddingHorizontal: 16,
-            alignItems: 'center',
-            minHeight: 56,
-          }}
-        >
-          {visibleFestivalDays.map(day => (
+          {/* Date filter row */}
+          <View 
+            style={{
+              flexDirection: 'row',
+              paddingHorizontal: 16,
+              alignItems: 'center',
+              minHeight: 56,
+            }}
+          >
+            {visibleFestivalDays.map(day => (
+              <TouchableOpacity
+                key={day.id}
+                style={[
+                  styles.dateFilterButton,
+                  { borderColor: theme.border, flex: 1 },
+                  day.date === selectedDay && { backgroundColor: theme.primary },
+                ]}
+                onPress={() => handleDayPress(day.date)}
+                accessibilityLabel={`Select ${day.dayLabel} for events`}
+              >
+                <Text
+                  style={[
+                    styles.dateFilterButtonDateText,
+                    day.date === selectedDay ? { color: theme.background } : { color: theme.text }
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode='clip'
+                >
+                  {day.dayLabel}
+                </Text>
+                <Text
+                  style={[
+                    styles.dateFilterButtonText,
+                    day.date === selectedDay ? { color: theme.background } : { color: theme.text }
+                  ]}
+                  numberOfLines={1}
+                  ellipsizeMode='clip'
+                >
+                  {day.dayAbbrev}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {/* Second row: grid toggle, My Schedule, All Stages, Share */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 4,
+              columnGap: 8,
+              rowGap: 8,
+              flexWrap: 'wrap',
+            }}
+          >
+            {/* Grid toggle button */}
             <TouchableOpacity
-              key={day.id}
-              style={[
-                styles.dateFilterButton,
-                { borderColor: theme.border, flex: 1 },
-                day.date === selectedDay && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => handleDayPress(day.date)}
-              accessibilityLabel={`Select ${day.dayLabel} for events`}
+              style={{
+                height: 36,
+                width: 44,
+                borderRadius: 8,
+                backgroundColor: 'transparent',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onPress={() => { /* TODO: implement grid/list toggle */ }}
+              accessibilityLabel="Toggle grid view"
             >
-              <Text
-                style={[
-                  styles.dateFilterButtonDateText,
-                  day.date === selectedDay ? { color: theme.background } : { color: theme.text }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode='clip'
-              >
-                {day.dayLabel}
-              </Text>
-              <Text
-                style={[
-                  styles.dateFilterButtonText,
-                  day.date === selectedDay ? { color: theme.background } : { color: theme.text }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode='clip'
-              >
-                {day.dayAbbrev}
+              <MaterialCommunityIcons name="view-grid-outline" size={22} color={theme.text} />
+            </TouchableOpacity>
+
+            {/* My Schedule filter */}
+            <TouchableOpacity
+              style={[
+                {
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  backgroundColor: 'transparent',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 12,
+                  height: 36,
+                }
+              ]}
+              onPress={handleToggleMySchedule}
+              accessibilityLabel={showMySchedule ? 'Hide my schedule' : 'Show my schedule'}
+            >
+              <Ionicons
+                name={showMySchedule ? 'heart' : 'heart-outline'}
+                size={16}
+                color={showMySchedule ? '#B87333' : theme.text}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[
+                {
+                  fontSize: 14,
+                  fontWeight: '500',
+                  color: theme.text
+                }
+              ]}>
+                My Schedule
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-        {/* 2nd row: grid icon, My Schedule filter, stage dropdown */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            minHeight: 44,
-          }}
-        >
-          {/* Grid icon aligned with logo */}
-          <TouchableOpacity style={{ padding: 8 }}>
-            <MaterialCommunityIcons name="view-grid-outline" size={28} color={theme.text} />
-          </TouchableOpacity>
-          
-          {/* My Schedule filter */}
-          <TouchableOpacity
-            style={[
-              {
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: theme.border,
-                backgroundColor: showMySchedule ? theme.primary : 'transparent',
-                marginLeft: 4, 
-                marginRight: 8, 
-                flexDirection: 'row', 
-                alignItems: 'center', 
-                paddingHorizontal: 12, 
-                paddingVertical: 8, 
-                minWidth: 110,
+
+            {/* Stage dropdown (multi-select) */}
+            <MultiSelectDropdown
+              options={stageOptions}
+              selectedValues={selectedStages}
+              onSelectionChange={handleStagesChange}
+              placeholder="All Stages"
+              allOptionValue="all"
+              style={{
+                minWidth: 130,
                 height: 36,
-              }
-            ]}
-            onPress={handleToggleMySchedule}
-            accessibilityLabel={showMySchedule ? 'Hide my schedule' : 'Show my schedule'}
-          >
-            <Ionicons
-              name={showMySchedule ? 'heart' : 'heart-outline'}
-              size={16}
-              color={showMySchedule ? '#B87333' : theme.text}
-              style={{ marginRight: 6 }}
+              }}
             />
-            <Text style={[
-              {
-                fontSize: 14,
-                fontWeight: '500',
-                color: showMySchedule ? theme.background : theme.text
-              }
-            ]}>
-              My Schedule
-            </Text>
-          </TouchableOpacity>
-          
-          {/* Stage dropdown (multi-select) */}
-          <MultiSelectDropdown
-            options={stageOptions}
-            selectedValues={selectedStages}
-            onSelectionChange={handleStagesChange}
-            placeholder="All Stages"
-            allOptionValue="all"
-            style={{
-              minWidth: 110,
-              marginRight: 4,
-              height: 36,
-            }}
-          />
+
+            {/* Share button */}
+            <TouchableOpacity 
+              style={[
+                filterStyles.filterButton,
+                {
+                  borderRadius: 18,
+                  backgroundColor: '#B87333',
+                  borderWidth: 1,
+                  borderColor: theme.border,
+                  paddingHorizontal: 12,
+                  paddingVertical: 0,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: 36,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.10,
+                  shadowRadius: 2,
+                  elevation: 2,
+                }
+              ]}
+              onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
+              accessibilityLabel="Share your schedule"
+            >
+              <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
           {/* Genre dropdown (multi-select) - HIDDEN FOR NOW */}
           {/*
           <MultiSelectDropdown
@@ -853,43 +931,9 @@ const ScheduleScreen = () => {
             }}
           />
           */}
-          
-          {/* Share button */}
-          <TouchableOpacity 
-            style={[
-              filterStyles.filterButton,
-              {
-                borderRadius: 18,
-                backgroundColor: '#B87333',
-                borderWidth: 1,
-                borderColor: theme.border,
-                paddingHorizontal: 8,
-                paddingVertical: 0,
-                paddingLeft: 8,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: 36,
-                marginRight: 0,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.10,
-                shadowRadius: 2,
-                elevation: 2,
-              }
-            ]}
-            onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
-          >
-            <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
         </View>
-      </View>
-      {/* Event list container - takes remaining space */}
-      <View
-        style={{ 
-          flex: 1,
-        }}
-      >
+        {/* Event list container - takes remaining space */}
+        <View style={{ flex: 1 }}>
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
@@ -904,37 +948,33 @@ const ScheduleScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          <FlatList
-            data={filteredEvents}
-            renderItem={renderEventCard}
+          <SectionList
+            sections={sections}
+            renderItem={({ item }) => renderEventCard({ item })}
+            renderSectionHeader={({ section }) => (
+              <View style={[styles.timeHeader, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+                <Text style={[styles.timeHeaderText, { color: theme.muted }]}>{section.title}</Text>
+              </View>
+            )}
             keyExtractor={keyExtractor}
             contentContainerStyle={[
               styles.eventsList,
               { paddingTop: 0, paddingBottom: 100, flexGrow: 1 }
             ]}
+            stickySectionHeadersEnabled
             showsVerticalScrollIndicator={false}
-            // Enhanced performance optimizations for smooth scrolling
             removeClippedSubviews={true}
             maxToRenderPerBatch={20}
             updateCellsBatchingPeriod={100}
             initialNumToRender={75}
             windowSize={15}
-            legacyImplementation={false}
-            disableVirtualization={false}
-            // Consistent item layout for better performance
-            getItemLayout={(data, index) => ({
-              length: 112,
-              offset: 112 * index,
-              index,
-            })}
-            // Performance optimizations for scrolling
             keyboardShouldPersistTaps="handled"
             scrollEventThrottle={16}
             onEndReached={() => fetchEvents(true)}
             onEndReachedThreshold={0.5}
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={{
-              itemVisiblePercentThreshold: 50, // Item is considered visible when 50% is showing
+              itemVisiblePercentThreshold: 50,
             }}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
@@ -950,7 +990,7 @@ const ScheduleScreen = () => {
                 refreshing={isRefreshing}
                 onRefresh={() => {
                   setIsRefreshing(true);
-                  fetchEvents(); // Refetch on pull-to-refresh
+                  fetchEvents();
                 }}
                 colors={[theme.primary]}
                 tintColor={theme.primary}
@@ -958,7 +998,7 @@ const ScheduleScreen = () => {
             }
           />
         )}
-      </View>
+        </View>
       </View>
       {/* Event details modal */}
       <EventDetailsModal
