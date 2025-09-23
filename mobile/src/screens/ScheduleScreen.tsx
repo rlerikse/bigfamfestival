@@ -34,23 +34,9 @@ import { api } from '../services/api';
 import EventDetailsModal from '../components/EventDetailsModal';
 import TopNavBar from '../components/TopNavBar';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
-import OptimizedImage from '../components/OptimizedImage';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
-
-// --- Types ---
-interface ScheduleEvent {
-  id: string;
-  name: string;
-  date: string;
-  startTime: string;
-  endTime?: string;
-  stage: string;
-  artists: string[];
-  description?: string;
-  imageUrl?: string;
-  genre?: string;
-  genres?: string[];
-}
+import EventCard from '../components/EventCard';
+import { ScheduleEvent } from '../types/event';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -234,95 +220,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
-// Memoized EventCard component for better performance
-interface EventCardProps {
-  item: ScheduleEvent;
-  isInUserSchedule: boolean;
-  theme: {
-    border: string;
-    card: string;
-    text: string;
-    muted: string;
-  };
-  onToggleSchedule: (event: ScheduleEvent) => void;
-  onEventPress: (event: ScheduleEvent) => void;
-}
-
-const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress }) => {
-  const formattedTime = useMemo(() => {
-    const [hours, minutes] = item.startTime.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  }, [item.startTime]);
-
-  const handleHeartPress = useCallback((e: GestureResponderEvent) => {
-    e.stopPropagation();
-    onToggleSchedule(item);
-  }, [item, onToggleSchedule]);
-
-  const handleEventPress = useCallback(() => {
-    onEventPress(item);
-  }, [item, onEventPress]);
-
-  return (
-    <TouchableOpacity 
-      style={[
-        styles.eventCard, 
-        { borderColor: theme.border, backgroundColor: theme.card }
-      ]}
-      onPress={handleEventPress}
-    >
-      {item.imageUrl && (
-        <OptimizedImage
-          uri={item.imageUrl}
-          style={styles.eventImage}
-          containerStyle={styles.eventImage}
-          contentFit="cover"
-          showLoadingIndicator={false}
-          fallbackIcon="image-outline"
-        />
-      )}
-      <View style={styles.eventInfo}>
-        <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
-        <Text style={[styles.eventDetails, { color: theme.muted }]}>
-          {item.stage} - {formattedTime}
-        </Text>
-        
-        {item.description && (
-          <Text 
-            style={[styles.eventDescription, { color: theme.text }]} 
-            numberOfLines={2}
-          >
-            {item.description}
-          </Text>
-        )}
-      </View>
-      
-      <TouchableOpacity
-        style={styles.heartButton}
-        onPress={handleHeartPress}
-        accessibilityLabel={isInUserSchedule ? 'Remove from schedule' : 'Add to schedule'}
-      >
-        <Ionicons
-          name={isInUserSchedule ? 'heart' : 'heart-outline'}
-          size={24}
-          color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
-        />
-        <Text style={[
-          styles.favoriteText, 
-          { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }
-        ]}>
-          {isInUserSchedule ? 'Added' : 'Add'}
-        </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
-});
-
-EventCard.displayName = 'EventCard';
 
 const ScheduleScreen = () => {
   const { theme, isDark } = useTheme();

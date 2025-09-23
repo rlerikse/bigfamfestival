@@ -1,64 +1,58 @@
-// Commit: Add placeholder Messages screen for bottom navigation
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+// Commit: Replace complex map screen with a simple static camping map image
+// Author: GitHub Copilot (automated)
+// Date: 2025-09-23
+
+import React, { useEffect, useState } from 'react';
+import { SafeAreaView, StyleSheet, Image, View, useWindowDimensions } from 'react-native';
+
+import campingMap from '../assets/images/bff25_CampingMap.png';
+import TopNavBar from '../components/TopNavBar';
 
 /**
- * Placeholder Messages screen for future messaging functionality
+ * Simple MapScreen
+ * - Shows the bundled camping map image sized to the device width
+ * - Vertically centers the image on the screen
+ * Props: none
  */
-const MapScreen: React.FC = () => {
-  const { theme } = useTheme();
+export default function MapScreen() {
+  const { width } = useWindowDimensions();
+  const [height, setHeight] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    // Use the imported local asset
+    const resolved = Image.resolveAssetSource(campingMap);
+    if (resolved && resolved.width && resolved.height) {
+      const h = (resolved.height / resolved.width) * width;
+      setHeight(h);
+    } else {
+      // Fallback: leave height undefined so 'contain' will handle it
+      setHeight(undefined);
+    }
+  }, [width]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.content}>
-        <Ionicons
-          name="map-outline"
-          size={80}
-          color={theme.muted || '#666666'}
+    <SafeAreaView style={styles.container}>
+  <TopNavBar whiteIcons={true} />
+        <Image
+          source={campingMap}
+          style={[styles.image, { width, height: height ?? undefined }]}
+          resizeMode="contain"
+          accessibilityLabel="Camping map"
         />
-        <Text style={[styles.title, { color: theme.text }]}>
-          Map
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.muted }]}>
-          Coming Soon!
-        </Text>
-        <Text style={[styles.description, { color: theme.muted }]}>
-          Explore the festival grounds, find stages, campsites, and points of interest. Interactive map coming soon!
-        </Text>
-      </View>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  content: {
-    flex: 1,
+    // Force a consistent dark green background regardless of theme
+    backgroundColor: '#235001',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 0,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  description: {
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 24,
+  image: {
+    // height is calculated dynamically to preserve aspect ratio
   },
 });
-
-export default MapScreen;
