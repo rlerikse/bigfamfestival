@@ -11,6 +11,7 @@ import { RootStackParamList, MainTabParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, addToSchedule, removeFromSchedule } from '../services/scheduleService';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { isLoggedInUser } from '../utils/userUtils';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -20,7 +21,7 @@ type LiveUpcomingEventsProps = {
 
 const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress }) => {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigation = useNavigation<NavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
@@ -32,9 +33,10 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
     const fetchEventsAndSchedule = async () => {
       try {
         // Fetch events and user schedule in parallel for speed
+        // Only fetch user schedule if user is logged in (not a guest)
         const [eventsResponse, scheduleResponse] = await Promise.all([
           api.get<ScheduleEvent[]>('/events'),
-          user ? getUserSchedule(user.id) : Promise.resolve([]),
+          (user && isLoggedInUser(user)) ? getUserSchedule(user.id) : Promise.resolve([]),
         ]);
 
         setEvents(eventsResponse.data);
@@ -95,10 +97,34 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
   }, [events, now]);
 
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
+    // If no user, show login prompt
     if (!user) {
-      Alert.alert('Login Required', 'Please login to manage your schedule.', [
+      const message = 'You need to be logged in to add events to your schedule.';
+      Alert.alert('Login Required', message, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+    
+    // Check if user is a guest user
+    if (user.id === 'guest-user') {
+      const message = 'You need to be logged in to add events to your schedule.';
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            try {
+              // Need to logout first to remove guest user so Auth stack becomes available
+              await logout();
+              // Let the navigation system update to show Auth screen
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Could not log out. Please try again.');
+            }
+          }
+        },
       ]);
       return;
     }
@@ -136,7 +162,7 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
       });
       Alert.alert('Error', 'Failed to update your schedule. Please try again.');
     }
-  }, [user, userSchedule, navigation]);
+  }, [user, userSchedule, navigation, logout]);
 
   const handleEventPress = useCallback((item: ScheduleEvent) => {
     if (onEventPress) {

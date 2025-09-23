@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Image, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import the hook
+import { useAuth } from '../contexts/AuthContext'; // Import AuthContext hook
 import SafeText from './SafeText';
 
 const { width } = Dimensions.get('window');
@@ -34,6 +35,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets(); // Use the hook to get insets
   const bottomPadding = insets.bottom; // Get the bottom inset
+  const { user, logout } = useAuth(); // Get user and logout function from auth context
   
   return (
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
@@ -83,6 +85,61 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
               canPreventDefault: true,
             });
             
+            // Check if this is the Profile tab and user is a guest
+            // Note: 'Profile' must match the exact route name in the tab navigator
+            if (route.name === 'Profile' && user?.id === 'guest-user') {
+              // Prevent default navigation
+              event.preventDefault();
+              
+              // Show login prompt
+              Alert.alert(
+                'Login Required', 
+                'You need to be logged in to view your profile.', 
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Login', 
+                    onPress: async () => {
+                      try {
+                        // Need to logout first to remove guest user so Auth stack becomes available
+                        await logout();
+                        // Let the navigation system update to show Auth screen
+                      } catch (error) {
+                        console.error('Error during logout:', error);
+                        Alert.alert('Error', 'Could not log out. Please try again.');
+                      }
+                    }
+                  },
+                ]
+              );
+              return;
+            }
+            
+            // Handle case when user is already on Profile tab and taps it again
+            if (isFocused && route.name === 'Profile' && user?.id === 'guest-user') {
+              // Show login prompt even when focused
+              Alert.alert(
+                'Login Required', 
+                'You need to be logged in to view your profile.', 
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Login', 
+                    onPress: async () => {
+                      try {
+                        await logout();
+                      } catch (error) {
+                        console.error('Error during logout:', error);
+                        Alert.alert('Error', 'Could not log out. Please try again.');
+                      }
+                    }
+                  },
+                ]
+              );
+              return;
+            }
+            
+            // For other tabs or logged in users, proceed normally
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }

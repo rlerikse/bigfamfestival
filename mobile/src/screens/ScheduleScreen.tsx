@@ -37,6 +37,7 @@ import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
+import { isLoggedInUser } from '../utils/userUtils';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
 
 const ScheduleScreen = () => {
   const { theme, isDark } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -323,7 +324,8 @@ const ScheduleScreen = () => {
   }, [page, hasMore]);
 
   const loadUserSchedule = useCallback(async () => {
-    if (!user) return;
+    // Only fetch user schedule if user is logged in (not a guest)
+    if (!user || !isLoggedInUser(user)) return;
     try {
       const schedule = await getUserSchedule(user.id);
       const scheduleMap = schedule.reduce<Record<string, boolean>>((acc, ev) => {
@@ -343,7 +345,8 @@ const ScheduleScreen = () => {
   }, [fetchEvents]);
 
   useEffect(() => {
-    if (user) {
+    // Only load user schedule if user exists and is logged in (not a guest)
+    if (user && isLoggedInUser(user)) {
       loadUserSchedule();
     }
   }, [user, loadUserSchedule]);
@@ -403,8 +406,14 @@ const ScheduleScreen = () => {
     }
     
     // Filter by user schedule
-    if (showMySchedule && Object.keys(userSchedule).length > 0) {
-      filtered = filtered.filter(ev => userSchedule[ev.id]);
+    if (showMySchedule) {
+      // Check if there are any events in the user's schedule
+      if (Object.keys(userSchedule).length > 0) {
+        filtered = filtered.filter(ev => userSchedule[ev.id]);
+      } else {
+        // No events in schedule, return empty array
+        filtered = [];
+      }
     }
     
     if (__DEV__) {
@@ -424,13 +433,68 @@ const ScheduleScreen = () => {
   }, []);
 
   const handleToggleMySchedule = useCallback(() => {
+    // Check if user exists and is not a guest
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to view your schedule.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+    
+    // Check if user is a guest user
+    if (user.id === 'guest-user') {
+      const message = 'You need to be logged in to view your schedule.';
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            try {
+              // Need to logout first to remove guest user so Auth stack becomes available
+              await logout();
+              // Let the navigation system update to show Auth screen
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Could not log out. Please try again.');
+            }
+          }
+        },
+      ]);
+      return;
+    }
+    
+    // User is authenticated, proceed with toggling the filter
     dispatchFilter({ type: 'TOGGLE_MY_SCHEDULE' });
-  }, []);
+  }, [user, navigation, logout]);
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
+    // If no user, show login prompt
     if (!user) {
       Alert.alert('Login Required', 'Please login to manage your schedule.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+    
+    // Check if user is a guest user
+    if (user.id === 'guest-user') {
+      const message = 'You need to be logged in to add events to your schedule.';
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            try {
+              // Need to logout first to remove guest user so Auth stack becomes available
+              await logout();
+              // Let the navigation system update to show Auth screen
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Could not log out. Please try again.');
+            }
+          }
+        },
       ]);
       return;
     }
@@ -470,7 +534,7 @@ const ScheduleScreen = () => {
       console.error('Error toggling schedule:', error);
       Alert.alert('Error', 'Failed to update your schedule. Please try again.');
     }
-  }, [user, navigation, userSchedule]);
+  }, [user, navigation, userSchedule, logout]);
 
   // Event press handlers
   const handleEventPress = useCallback((item: ScheduleEvent) => {

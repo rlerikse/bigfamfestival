@@ -3,6 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { ScheduleEvent } from '../types/event';
+import { isLoggedInUser } from '../utils/userUtils';
+import { User } from '../contexts/AuthContext';
 
 /**
  * Get user's schedule
@@ -386,6 +388,42 @@ const getCachedSchedule = async (userId: string): Promise<ScheduleEvent[] | null
 
 /**
  * Check if an event is in the user's schedule
+ * 
+ * @param user The user object (from AuthContext)  
+ * @param eventId The event ID to check
+ * @returns Promise that resolves to true if the event is in the user's schedule, false otherwise
+ */
+export const isEventInUserSchedule = async (user: User | null, eventId: string): Promise<boolean> => {
+  if (!user || !isLoggedInUser(user)) {
+    return false; // Guest users don't have schedules
+  }
+  
+  try {
+    // Try to get the user's schedule (this will use cached data if offline)
+    const schedule = await getUserSchedule(user.id);
+    
+    // Check if the event is in the schedule
+    return schedule.some(event => event.id === eventId);
+  } catch (error) {
+    console.error('Error checking if event is in schedule:', error);
+    
+    // As a fallback, try to check the cached schedule directly
+    try {
+      const cachedSchedule = await getCachedSchedule(user.id);
+      if (cachedSchedule) {
+        return cachedSchedule.some(event => event.id === eventId);
+      }
+    } catch (cacheError) {
+      console.error('Error checking cached schedule:', cacheError);
+    }
+    
+    // If all else fails, return false
+    return false;
+  }
+};
+
+/**
+ * Check if an event is in the user's schedule (legacy function for backwards compatibility)
  * 
  * @param userId The user ID
  * @param eventId The event ID to check

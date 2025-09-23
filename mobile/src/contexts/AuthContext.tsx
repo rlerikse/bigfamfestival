@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { Alert } from 'react-native';
 import { UserRole } from '../types/user';
 import { loginUser, registerUser, getUserProfile } from '../services/authService';
-import { Alert } from 'react-native';
 
 export interface User {
   id: string;
@@ -24,6 +24,8 @@ interface AuthContextProps {
   loginAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  isGuestUser: () => boolean;
+  redirectToLogin: (message?: string) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -35,6 +37,8 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// We don't need navigation ref anymore since we're using a simpler approach
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -135,8 +139,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Check if current user is a guest
+  const isGuestUser = (): boolean => {
+    return user?.id === 'guest-user';
+  };
+
+  // Redirect to login screen with optional message
+  const redirectToLogin = (message?: string) => {
+    if (message) {
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            // For guest users, need to logout first so Auth stack becomes available
+            if (isGuestUser()) {
+              await logout();
+            }
+          }
+        },
+      ]);
+    } else {
+      // For guest users, need to logout first so Auth stack becomes available
+      if (isGuestUser()) {
+        logout();
+      }
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, loginAsGuest, updateUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoading, 
+      login, 
+      register, 
+      logout, 
+      loginAsGuest, 
+      updateUser,
+      isGuestUser,
+      redirectToLogin
+    }}>
       {children}
     </AuthContext.Provider>
   );

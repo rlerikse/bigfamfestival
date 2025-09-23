@@ -18,6 +18,7 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
+import { isLoggedInUser } from '../utils/userUtils';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -33,7 +34,8 @@ const HomeScreen = () => {
   React.useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!user) return;
+      // Only fetch user schedule if user is logged in (not a guest)
+      if (!user || !isLoggedInUser(user)) return;
       try {
         const schedule = await getUserSchedule(user.id);
         if (!mounted) return;
