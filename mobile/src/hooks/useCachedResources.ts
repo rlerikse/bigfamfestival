@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 import { checkApiHealth } from '../services/api';
+import { Asset } from 'expo-asset';
 
 /**
  * Hook to load resources and data needed before rendering the app
@@ -48,6 +49,16 @@ export default function useCachedResources() {
         }
 
         // Load additional fonts or other assets here
+        // Preload commonly used images to avoid pop-in when screens mount
+        const imagesToCache = [
+          require('../assets/images/bf-logo-trans.png'),
+          require('../assets/images/grass-seamless.png'),
+          require('../assets/images/tree-3.png'),
+          require('../assets/images/tent.png'),
+        ];
+
+        const cacheImages = imagesToCache.map((img) => Asset.fromModule(img).downloadAsync());
+        await Promise.all(cacheImages);
       } catch (e) {
         // Log error but don't prevent app from loading
         console.warn('Error loading resources:', e);

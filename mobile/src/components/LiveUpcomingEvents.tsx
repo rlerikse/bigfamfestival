@@ -1,6 +1,6 @@
 // src/components/LiveUpcomingEvents.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, Image, ImageRequireSource } from 'react-native';
 import { api } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCard from '../components/EventCard';
@@ -179,15 +179,35 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
 
   return (
     <View style={styles.container}>
-      {liveOrUpcomingEventsByStage.map(event => (
-        <EventCard
-          key={event.id}
-          item={event}
-          isInUserSchedule={!!userSchedule[event.id]}
-          onToggleSchedule={handleToggleSchedule}
-          onEventPress={() => handleEventPress(event)}
-          theme={themeForCard}
-        />
+      {liveOrUpcomingEventsByStage.map((event, idx) => (
+        <View key={event.id} style={styles.cardWrapper}>
+          {/* Stage logo overlapping top-left only for Bayou stage or 2nd item */}
+          {/* Stage-specific logos: Apogee (first), Bayou (second), The Gallery (third) */}
+          {(() => {
+            let logoSource: ImageRequireSource | null = null;
+            let logoStyle = styles.stageLogo;
+            if (event.stage === 'Apogee' || idx === 0) {
+              logoSource = require('../assets/images/apogee-logo-trans.png');
+              logoStyle = styles.stageLogoApogee;
+            } else if (event.stage === 'Bayou' || idx === 1) {
+              logoSource = require('../assets/images/bayou-logo-trans.png');
+              logoStyle = styles.stageLogoBayou;
+            } else if (event.stage === 'The Gallery' || idx === 2) {
+              logoSource = require('../assets/images/gallery-logo-trans.png');
+              logoStyle = styles.stageLogoGallery;
+            }
+            return logoSource ? (
+              <Image source={logoSource} style={logoStyle} resizeMode="contain" />
+            ) : null;
+          })()}
+          <EventCard
+            item={event}
+            isInUserSchedule={!!userSchedule[event.id]}
+            onToggleSchedule={handleToggleSchedule}
+            onEventPress={() => handleEventPress(event)}
+            theme={themeForCard}
+          />
+        </View>
       ))}
     </View>
   );
@@ -210,6 +230,47 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: 'center',
     letterSpacing: 0.3,
+  },
+  cardWrapper: {
+    marginBottom: 16,
+    position: 'relative',
+    width: '100%',
+  },
+  stageLogo: {
+    position: 'absolute',
+    top: -60,
+    left: -20,
+    width: 112,
+    height: 112,
+    zIndex: 5,
+    opacity: 0.95,
+  },
+  stageLogoApogee: {
+    position: 'absolute',
+    top: -64,
+    left: -18,
+    width: 120,
+    height: 120,
+    zIndex: 6,
+    opacity: 1,
+  },
+  stageLogoBayou: {
+    position: 'absolute',
+    top: -58,
+    left: -16,
+    width: 102,
+    height: 102,
+    zIndex: 6,
+    opacity: 0.95,
+  },
+  stageLogoGallery: {
+    position: 'absolute',
+    top: -56,
+    left: -16,
+    width: 118,
+    height: 118,
+    zIndex: 6,
+    opacity: 0.95,
   },
 });
 

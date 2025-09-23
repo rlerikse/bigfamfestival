@@ -20,6 +20,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
     overflow: 'hidden',
+    paddingVertical: 0, // ensure consistent vertical spacing so card height stays stable
   },
   eventImage: {
     width: 100,
@@ -28,7 +29,7 @@ const styles = StyleSheet.create({
   eventInfo: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10, // moved padding to the card container to stabilize height on press
     paddingHorizontal: 12,
   },
   eventName: {
