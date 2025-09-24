@@ -32,6 +32,7 @@ api.interceptors.request.use(
         
         // Debug logging for requests to notifications endpoints
         if (__DEV__ && config.url?.includes('/notifications')) {
+          // eslint-disable-next-line no-console
           console.log(`Setting Authorization header: Bearer ${token.substring(0, 10)}...`);
           
           try {
@@ -39,9 +40,11 @@ api.interceptors.request.use(
             const tokenParts = token.split('.');
             if (tokenParts.length === 3) {
               const payload = JSON.parse(atob(tokenParts[1]));
+              // eslint-disable-next-line no-console
               console.log('JWT payload:', payload);
             }
           } catch (err) {
+            // eslint-disable-next-line no-console
             console.log('Error decoding JWT token:', err);
           }
         }

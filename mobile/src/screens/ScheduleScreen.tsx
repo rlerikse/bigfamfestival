@@ -18,12 +18,11 @@ import {
   RefreshControl,
   Alert,
   StyleSheet,
-  GestureResponderEvent,
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
@@ -391,7 +390,7 @@ const ScheduleScreen = () => {
       genreTags.sort();
       setGenres(genreTags);
       
-      console.log(`✅ Fetched ${genreTags.length} genres from Firestore:`, genreTags);
+  // Dev note: fetched genres count available here for debugging if needed
     } catch (err) {
       console.warn('⚠️ Firestore permissions error - using sample genres until rules are updated');
       console.error('Full error:', err);
@@ -415,7 +414,7 @@ const ScheduleScreen = () => {
       ].sort();
       
       setGenres(sampleGenres);
-      console.log(`📋 Using ${sampleGenres.length} sample genres:`, sampleGenres);
+  // Dev note: using sample genres fallback
     }
   }, []);
 
@@ -918,6 +917,7 @@ const ScheduleScreen = () => {
             onSelectionChange={handleGenresChange}
             placeholder="All Genres"
             allOptionValue="all"
+            dropdownMinWidth={200}
             style={{
               flex: 1,
               marginRight: 4,

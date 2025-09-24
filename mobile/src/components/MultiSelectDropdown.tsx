@@ -36,7 +36,8 @@ interface MultiSelectDropdownProps {
   style?: ViewStyle;
   disabled?: boolean;
   allOptionValue?: string; // Value that represents "all" option (e.g., "all")
-  icon?: string; // Optional icon name from Ionicons
+  icon?: React.ComponentProps<typeof Ionicons>['name']; // Optional icon name from Ionicons
+  dropdownMinWidth?: number; // Optional minimum width for the dropdown menu
 }
 
 const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
@@ -49,12 +50,13 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   disabled = false,
   allOptionValue = 'all', // Default "all" option value
   icon,
+  dropdownMinWidth,
 }) => {
   const { theme } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const buttonRef = useRef<View>(null);
-
+  const screenWidth = Dimensions.get('window').width;
   const toggleOption = (value: string) => {
     if (value === allOptionValue) {
       // If "All" is clicked
@@ -189,7 +191,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
       >
         {icon && (
           <Ionicons
-            name={icon as any}
+            name={icon}
             size={16}
             color={theme.text}
             style={{ marginRight: 8 }}
@@ -230,8 +232,15 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
               {
                 position: 'absolute',
                 top: dropdownPosition.top,
-                left: dropdownPosition.left,
-                width: dropdownPosition.width,
+                  // Enforce a minimum dropdown width and keep it on screen
+                  width: Math.max(dropdownPosition.width, dropdownMinWidth ?? 0),
+                  left: Math.max(
+                    8,
+                    Math.min(
+                      dropdownPosition.left,
+                      screenWidth - Math.max(dropdownPosition.width, dropdownMinWidth ?? 0) - 8
+                    )
+                  ),
                 backgroundColor: theme.background,
                 borderColor: theme.border,
                 shadowColor: theme.text,
