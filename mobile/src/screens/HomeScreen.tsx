@@ -137,9 +137,9 @@ const HomeScreen = () => {
            marginTop: 80, // Account for TopNavBar
          }}>
           {/* Copper divider above Gates Open In image */}
-          <View style={{ height: 12 }} />
+          <View style={{ height: 6 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
-          <View style={{ height: 12 }} />
+          <View style={{ height: 6 }} />
           {/* Gates Open In image centered above countdown, width matches countdown */}
           <View style={{ alignItems: 'center', marginBottom: 2 }}>
             <ExpoImage
