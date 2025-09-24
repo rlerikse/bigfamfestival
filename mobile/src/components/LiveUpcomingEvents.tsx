@@ -242,6 +242,8 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
             onToggleSchedule={handleToggleSchedule}
             onEventPress={() => handleEventPress(event)}
             theme={themeForCard}
+            showStatusBadge
+            currentTime={now.getTime()}
           />
         </View>
       ))}
