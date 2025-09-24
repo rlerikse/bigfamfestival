@@ -16,7 +16,6 @@ import {
   Text
 } from 'react-native';
 import { Image } from 'expo-image';
-// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
