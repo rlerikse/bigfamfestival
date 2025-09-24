@@ -277,7 +277,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         <View
           style={{
             position: 'absolute',
-            top: 2,
+            top: 5,
             right: 4,
             paddingHorizontal: 8,
             paddingVertical: 2,

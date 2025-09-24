@@ -4,7 +4,6 @@ import {
   Dimensions,
   SafeAreaView,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
@@ -141,21 +140,10 @@ const HomeScreen = () => {
            marginHorizontal: 20,
            marginTop: insets.top + 55, // TopNavBar height (55) + safe area + small buffer
          }}>
-          {/* Copper divider above Gates Open In image */}
-          <View style={{ height: 6 }} />
+          {/* Copper divider above timer / clock */}
+          <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
-          <View style={{ height: 6 }} />
-          {/* Gates Open In image centered above countdown, width matches countdown */}
-          <View style={{ alignItems: 'center', marginBottom: 2 }}>
-            <ExpoImage
-              source={require('../assets/images/gates-open-in.png')}
-              style={{ width: 320, height: 60 }}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              transition={300}
-              accessibilityLabel="Gates Open In"
-            />
-          </View>
+          <View style={{ height: 12 }} />
           <Countdown targetDate={gatesOpenDate} />
 
           {/* subtle divider + even less spacing between countdown and events */}
