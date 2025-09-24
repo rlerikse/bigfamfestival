@@ -136,6 +136,10 @@ const HomeScreen = () => {
            marginHorizontal: 20,
            marginTop: 80, // Account for TopNavBar
          }}>
+          {/* Copper divider above Gates Open In image */}
+          <View style={{ height: 12 }} />
+          <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
+          <View style={{ height: 12 }} />
           {/* Gates Open In image centered above countdown, width matches countdown */}
           <View style={{ alignItems: 'center', marginBottom: 2 }}>
             <ExpoImage
@@ -149,10 +153,10 @@ const HomeScreen = () => {
           </View>
           <Countdown targetDate={gatesOpenDate} />
 
-          {/* subtle divider + spacing between countdown and events */}
+          {/* subtle divider + even less spacing between countdown and events */}
           <View style={{ height: 12 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
-          <View style={{ height: 12 }} />
+          <View style={{ height: 0 }} />
 
           <LiveUpcomingEvents onEventPress={openEventModal} />
          </View>
