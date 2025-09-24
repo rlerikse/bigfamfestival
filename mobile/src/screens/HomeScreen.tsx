@@ -113,7 +113,6 @@ const HomeScreen = () => {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <TopNavBar 
-        onSearch={(_query) => { /* Implement search logic */ }} 
         onSettingsPress={() => navigation.navigate('Settings')}
         whiteIcons={true}
       />

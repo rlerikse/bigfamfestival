@@ -17,18 +17,21 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAppSettings } from '../contexts/AppSettingsContext';
 import { updateUserProfile, uploadProfilePicture } from '../services/userService';
 
 const ProfileScreen = () => {
   const { user, updateUser, logout } = useAuth();
   const { theme, isDark } = useTheme();
+  const { scheduleNotificationsEnabled, toggleScheduleNotifications } = useAppSettings();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [shareMyCampsite, setShareMyCampsite] = useState(user?.shareMyCampsite || false);
-  const [shareMyLocation, setShareMyLocation] = useState(user?.shareMyLocation || false);
+  // Sharing preferences - commented out for later implementation
+  // const [shareMyCampsite, setShareMyCampsite] = useState(user?.shareMyCampsite || false);
+  // const [shareMyLocation, setShareMyLocation] = useState(user?.shareMyLocation || false);
   const [profileImage, setProfileImage] = useState<string | null>(user?.profilePictureUrl || null);
   const [isImageUploading, setIsImageUploading] = useState(false);
 
@@ -48,8 +51,9 @@ const ProfileScreen = () => {
       const updatedData = {
         name,
         phone,
-        shareMyCampsite,
-        shareMyLocation,
+        // Sharing preferences commented out
+        // shareMyCampsite,
+        // shareMyLocation,
       };
       
       await updateUserProfile(user.id, updatedData);
@@ -207,6 +211,33 @@ const ProfileScreen = () => {
           </View>
 
           <View style={[styles.infoSection, { borderColor: theme.border }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Notification Preferences</Text>
+            
+            {user && user.id !== 'guest-user' ? (
+              <>
+                <View style={styles.switchField}>
+                  <Text style={[styles.fieldLabel, { color: theme.text }]}>Schedule Notifications</Text>
+                  <Switch
+                    value={scheduleNotificationsEnabled}
+                    onValueChange={toggleScheduleNotifications}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                    thumbColor={'#FFFFFF'}
+                  />
+                </View>
+                
+                <Text style={[styles.switchDescription, { color: theme.muted }]}>
+                  Get notified 15 minutes before events in your schedule
+                </Text>
+              </>
+            ) : (
+              <Text style={[styles.switchDescription, { color: theme.muted }]}>
+                Login with an account to enable notification preferences
+              </Text>
+            )}
+          </View>
+
+          {/* Sharing Preferences - commented out for later implementation
+          <View style={[styles.infoSection, { borderColor: theme.border }]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Sharing Preferences</Text>
             
             <View style={styles.switchField}>
@@ -239,6 +270,7 @@ const ProfileScreen = () => {
               When enabled, your real-time location will be visible to your friends
             </Text>
           </View>
+          */}
 
           <TouchableOpacity
             style={[styles.logoutButton, { borderColor: theme.border }]}

@@ -28,11 +28,48 @@ const SettingsScreen = () => {
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { isGuestUser, deleteAccount, user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const { scheduleNotificationsEnabled, toggleScheduleNotifications } = useAppSettings();
+  const { 
+    scheduleNotificationsEnabled, 
+    toggleScheduleNotifications,
+    // currentLanguage,
+    // changeLanguage,
+    // getSupportedLanguages
+  } = useAppSettings();
 
   // Scheduled notifications admin section hidden; related state and effects removed
 
   // Debug mode toggle removed to avoid unused warnings; debug tools accessible elsewhere
+
+  // Language functionality - commented out for later implementation
+  /*
+  const handleLanguagePress = () => {
+    const languages = getSupportedLanguages();
+    const currentLang = languages.find(lang => lang.code === currentLanguage);
+    
+    const buttons = [
+      ...languages.map(lang => ({
+        text: `${lang.flag} ${lang.name}${lang.code === currentLanguage ? ' ✓' : ''}`,
+        onPress: () => {
+          if (lang.code !== currentLanguage) {
+            changeLanguage(lang.code);
+          }
+        }
+      })),
+      { text: 'Cancel', style: 'cancel' as const }
+    ];
+    
+    Alert.alert(
+      'Select Language',
+      `Current language: ${currentLang?.flag} ${currentLang?.name}`,
+      buttons
+    );
+  };
+
+  const getCurrentLanguageDisplay = () => {
+    const lang = getSupportedLanguages().find(lang => lang.code === currentLanguage);
+    return `${lang?.flag} ${lang?.name}`;
+  };
+  */
 
   const handleGoToProfile = () => {
     navigation.navigate('Profile');
@@ -139,11 +176,14 @@ const SettingsScreen = () => {
           label: 'Profile',
           onPress: handleGoToProfile,
         }] : []),
+        // Privacy & Security - commented out for later implementation
+        /*
         {
           icon: 'shield-outline',
           label: 'Privacy & Security',
           onPress: () => Alert.alert('Coming Soon', 'Privacy settings coming soon!'),
         },
+        */
       ].filter(Boolean), // Remove any undefined items
     },
     {
@@ -184,26 +224,36 @@ const SettingsScreen = () => {
           onSwitchToggle: togglePerformanceMode,
           description: 'Enable performance optimizations',
         },
+        // Language selection - commented out for later implementation
+        /*
         {
           icon: 'language-outline',
           label: 'Language',
-          onPress: () => Alert.alert('Coming Soon', 'Language settings coming soon!'),
+          onPress: handleLanguagePress,
+          description: getCurrentLanguageDisplay(),
         },
+        */
       ],
     },
     {
       title: 'Support',
       items: [
+        // Help & FAQ - commented out for later implementation
+        /*
         {
           icon: 'help-circle-outline',
           label: 'Help & FAQ',
           onPress: () => Alert.alert('Coming Soon', 'Help section coming soon!'),
         },
+        */
+        // Contact Support - commented out for later implementation
+        /*
         {
           icon: 'mail-outline',
           label: 'Contact Support',
           onPress: () => Alert.alert('Coming Soon', 'Contact support coming soon!'),
         },
+        */
         {
           icon: 'information-circle-outline',
           label: 'About',

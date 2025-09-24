@@ -21,6 +21,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     overflow: 'hidden',
     paddingVertical: 0, // ensure consistent vertical spacing so card height stays stable
+    maxHeight: 100, // Match the image height for consistent card sizing
   },
   eventImage: {
     width: 100,
@@ -40,6 +41,12 @@ const styles = StyleSheet.create({
   eventDetails: {
     fontSize: 13,
     marginBottom: 2,
+  },
+  eventGenres: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 2,
+    fontStyle: 'italic',
   },
   eventDescription: {
     fontSize: 12,
@@ -93,6 +100,8 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
     onEventPress(item);
   }, [item, onEventPress]);
 
+  // Note: Genres will be populated by genreService from artists' data
+
   return (
     <TouchableOpacity
       style={[
@@ -121,10 +130,22 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
           {item.stage} - {formattedTime}
         </Text>
         
+        {/* Display genres if available */}
+        {(item.genres && item.genres.length > 0) && (
+          <Text 
+            style={[styles.eventGenres, { color: theme.muted }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {item.genres.join(' • ')}
+          </Text>
+        )}
+        
         {item.description && (
           <Text
             style={[styles.eventDescription, { color: theme.text }]}
-            numberOfLines={2}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
             {item.description}
           </Text>

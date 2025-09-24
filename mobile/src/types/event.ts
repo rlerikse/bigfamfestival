@@ -5,6 +5,8 @@ export interface Event {
     id: string;
     name: string;
     stage: string;
+    genre?: string; // Event genre/category
+    genres?: string[]; // Array of genre tags (populated by backend from artists)
     date: string;  // YYYY-MM-DD format
     startTime: string;  // HH:MM format
     endTime: string;  // HH:MM format

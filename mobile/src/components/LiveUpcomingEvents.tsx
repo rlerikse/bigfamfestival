@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, addToSchedule, removeFromSchedule } from '../services/scheduleService';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { isLoggedInUser } from '../utils/userUtils';
+import genreService from '../services/genreService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -40,7 +41,9 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
           (user && isLoggedInUser(user)) ? getUserSchedule(user.id) : Promise.resolve([]),
         ]);
 
-        setEvents(eventsResponse.data);
+        // Populate genres for the events
+        const eventsWithGenres = await genreService.populateEventGenres(eventsResponse.data);
+        setEvents(eventsWithGenres);
 
         if (scheduleResponse) {
           const scheduleMap = scheduleResponse.reduce<Record<string, boolean>>((acc, ev) => {

@@ -313,7 +313,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                     <Ionicons 
                       name={isInSchedule ? "heart" : "heart-outline"} 
                       size={24} 
-                      color={isInSchedule ? "red" : "#fff"} 
+                      color={isInSchedule ? "#B87333" : "#fff"} 
                     />
                   </TouchableOpacity>
                 </View>

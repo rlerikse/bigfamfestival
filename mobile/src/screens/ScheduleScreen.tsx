@@ -39,6 +39,9 @@ import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
+import { firestore } from '../config/firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import genreService from '../services/genreService';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -46,18 +49,21 @@ type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 interface FilterState {
   selectedDay: string;
   selectedStages: string[];
+  selectedGenres: string[];
   showMySchedule: boolean;
 }
 
 type FilterAction =
   | { type: 'SET_SELECTED_DAY'; payload: string }
   | { type: 'SET_SELECTED_STAGES'; payload: string[] }
+  | { type: 'SET_SELECTED_GENRES'; payload: string[] }
   | { type: 'TOGGLE_MY_SCHEDULE' }
   | { type: 'RESET_FILTERS'; payload?: string };
 
 const initialFilterState: FilterState = {
   selectedDay: '',
   selectedStages: ['all'],
+  selectedGenres: ['all'],
   showMySchedule: false,
 };
 
@@ -67,6 +73,8 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
       return { ...state, selectedDay: action.payload };
     case 'SET_SELECTED_STAGES':
       return { ...state, selectedStages: action.payload };
+    case 'SET_SELECTED_GENRES':
+      return { ...state, selectedGenres: action.payload };
     case 'TOGGLE_MY_SCHEDULE':
       return { ...state, showMySchedule: !state.showMySchedule };
     case 'RESET_FILTERS':
@@ -229,6 +237,7 @@ const ScheduleScreen = () => {
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -236,7 +245,7 @@ const ScheduleScreen = () => {
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [filterState, dispatchFilter] = useReducer(filterReducer, initialFilterState);
-  const { selectedDay, selectedStages, showMySchedule } = filterState;
+  const { selectedDay, selectedStages, selectedGenres, showMySchedule } = filterState;
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -296,6 +305,24 @@ const ScheduleScreen = () => {
     ];
   }, [events]);
 
+  // Extract unique genres from fetched genres list
+  const genreOptions = useMemo(() => {
+    if (genres.length === 0) {
+      return [{ id: 'all', label: 'All Genres', value: 'all' }];
+    }
+    
+    const sortedGenres = [...genres].sort();
+    
+    return [
+      { id: 'all', label: 'All Genres', value: 'all' },
+      ...sortedGenres.map(genre => ({
+        id: genre,
+        label: genre,
+        value: genre,
+      }))
+    ];
+  }, [genres]);
+
   // Initialize selectedDay based on visible days - simplified to avoid hook ordering issues
   useEffect(() => {
     if (!selectedDay && visibleFestivalDays.length > 0) {
@@ -313,7 +340,11 @@ const ScheduleScreen = () => {
       const response = await api.get<ScheduleEvent[]>(`/events?page=${page}&limit=50`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
-      setEvents(prev => loadMore ? [...prev, ...response.data] : response.data);
+      
+      // Populate genres for the events
+      const eventsWithGenres = await genreService.populateEventGenres(response.data);
+      
+      setEvents(prev => loadMore ? [...prev, ...eventsWithGenres] : eventsWithGenres);
       setHasMore(response.data.length === 50); // Assume 50 is page size
       if (loadMore) setPage(prev => prev + 1);
     } catch (err) {
@@ -341,6 +372,53 @@ const ScheduleScreen = () => {
     }
   }, [user]);
 
+  // Fetch genres from the API
+  const fetchGenres = useCallback(async () => {
+    try {
+      // Fetch directly from Firestore genres collection
+      const genresCollection = collection(firestore, 'genres');
+      const genresSnapshot = await getDocs(genresCollection);
+      
+      const genreTags: string[] = [];
+      genresSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.tag && typeof data.tag === 'string') {
+          genreTags.push(data.tag);
+        }
+      });
+      
+      // Sort genres alphabetically
+      genreTags.sort();
+      setGenres(genreTags);
+      
+      console.log(`✅ Fetched ${genreTags.length} genres from Firestore:`, genreTags);
+    } catch (err) {
+      console.warn('⚠️ Firestore permissions error - using sample genres until rules are updated');
+      console.error('Full error:', err);
+      
+      // Use expanded sample genres that match what's likely in your Firestore
+      const sampleGenres = [
+        'Live Electronic',
+        'Hip Hop', 
+        'Rock',
+        'Jazz',
+        'Folk',
+        'Techno',
+        'House',
+        'Ambient',
+        'Experimental',
+        'Pop',
+        'R&B',
+        'Reggae',
+        'Funk',
+        'Soul'
+      ].sort();
+      
+      setGenres(sampleGenres);
+      console.log(`📋 Using ${sampleGenres.length} sample genres:`, sampleGenres);
+    }
+  }, []);
+
   // Separate useEffect for initial data loading to avoid dependency issues
   useEffect(() => {
     fetchEvents();
@@ -352,6 +430,24 @@ const ScheduleScreen = () => {
       loadUserSchedule();
     }
   }, [user, loadUserSchedule]);
+
+  // Load genres on user login or token change
+  useEffect(() => {
+    // Fetch genres only if user is logged in (token exists)
+    const fetchData = async () => {
+      const token = await SecureStore.getItemAsync('userToken');
+      if (token) {
+        fetchGenres();
+      }
+    };
+    
+    fetchData();
+  }, [user, fetchGenres]);
+
+  // Fetch genres on component mount
+  useEffect(() => {
+    fetchGenres();
+  }, [fetchGenres]);
 
   // --- Optimized filtering logic with performance monitoring ---
   // Precompute sorted events (sort only when events change)
@@ -407,6 +503,18 @@ const ScheduleScreen = () => {
       filtered = filtered.filter(ev => selectedStages.includes(ev.stage));
     }
     
+    // Filter by selected genres (multi-select)
+    if (selectedGenres.length > 0 && !selectedGenres.includes('all')) {
+      filtered = filtered.filter(ev => {
+        // Check if event has genres array (populated by backend)
+        if (ev.genres && Array.isArray(ev.genres)) {
+          return ev.genres.some(genre => selectedGenres.includes(genre));
+        }
+        // Fallback: check single genre field
+        return ev.genre && selectedGenres.includes(ev.genre);
+      });
+    }
+    
     // Filter by user schedule
     if (showMySchedule) {
       // Check if there are any events in the user's schedule
@@ -423,7 +531,7 @@ const ScheduleScreen = () => {
       console.log(`🔍 Filtering ${sortedEvents.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
     }
     return filtered;
-  }, [sortedEvents, selectedDay, selectedStages, showMySchedule, userSchedule, dateConstants.cutoffTimeInMinutes]);
+  }, [sortedEvents, selectedDay, selectedStages, selectedGenres, showMySchedule, userSchedule, dateConstants.cutoffTimeInMinutes]);
 
   // --- UI Handlers ---
   const handleDayPress = useCallback((day: string) => {
@@ -432,6 +540,10 @@ const ScheduleScreen = () => {
 
   const handleStagesChange = useCallback((stages: string[]) => {
     dispatchFilter({ type: 'SET_SELECTED_STAGES', payload: stages });
+  }, []);
+
+  const handleGenresChange = useCallback((genres: string[]) => {
+    dispatchFilter({ type: 'SET_SELECTED_GENRES', payload: genres });
   }, []);
 
   const handleToggleMySchedule = useCallback(() => {
@@ -674,7 +786,6 @@ const ScheduleScreen = () => {
     <SafeAreaView style={[filterStyles.container, { backgroundColor: theme.background }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <TopNavBar 
-        onSearch={(_query) => { /* Implement search logic */ }} 
         onSettingsPress={() => navigation.navigate('Settings')}
         whiteIcons={false}
       />
@@ -734,7 +845,7 @@ const ScheduleScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
-        {/* 2nd row: grid icon, My Schedule filter, stage dropdown */}
+        {/* 2nd row: My Schedule filter, stage dropdown */}
         <View
           style={{
             flexDirection: 'row',
@@ -743,10 +854,11 @@ const ScheduleScreen = () => {
             minHeight: 44,
           }}
         >
-          {/* Grid icon aligned with logo */}
+          {/* Grid icon - hidden for now
           <TouchableOpacity style={{ padding: 8 }}>
             <MaterialCommunityIcons name="view-grid-outline" size={28} color={theme.text} />
           </TouchableOpacity>
+          */}
           
           {/* My Schedule filter */}
           <TouchableOpacity
@@ -756,7 +868,7 @@ const ScheduleScreen = () => {
                 borderWidth: 1,
                 borderColor: theme.border,
                 backgroundColor: showMySchedule ? theme.primary : 'transparent',
-                marginLeft: 4, 
+                marginLeft: 0, // Changed from 4 since grid icon is hidden 
                 marginRight: 8, 
                 flexDirection: 'row', 
                 alignItems: 'center', 
@@ -799,23 +911,21 @@ const ScheduleScreen = () => {
               height: 36,
             }}
           />
-          {/* Genre dropdown (multi-select) - HIDDEN FOR NOW */}
-          {/*
+          {/* Genre dropdown (multi-select) */}
           <MultiSelectDropdown
-            options={availableGenres}
+            options={genreOptions}
             selectedValues={selectedGenres}
-            onSelectionChange={setSelectedGenres}
+            onSelectionChange={handleGenresChange}
             placeholder="All Genres"
             allOptionValue="all"
             style={{
-              minWidth: 110,
+              flex: 1,
               marginRight: 4,
               height: 36,
             }}
           />
-          */}
           
-          {/* Share button */}
+          {/* Share button - hidden for now
           <TouchableOpacity 
             style={[
               filterStyles.filterButton,
@@ -837,12 +947,15 @@ const ScheduleScreen = () => {
                 shadowOpacity: 0.10,
                 shadowRadius: 2,
                 elevation: 2,
+                opacity: 0.5, // Reduced opacity to indicate disabled state
               }
             ]}
+            disabled={true}
             onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
           >
             <Ionicons name="share-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
+          */}
         </View>
       </View>
       {/* Event list container - takes remaining space */}
@@ -934,3 +1047,10 @@ const ScheduleScreen = () => {
 };
 
 export default ScheduleScreen;
+
+// NOTE: Backend should populate event.genres array by:
+  // 1. For each event, iterate through event.artists array
+  // 2. For each artist ID, fetch from artists collection
+  // 3. Get artist's genres subcollection documents
+  // 4. Look up each genre document in genres collection to get tag
+  // 5. Add all unique genre tags to event.genres array

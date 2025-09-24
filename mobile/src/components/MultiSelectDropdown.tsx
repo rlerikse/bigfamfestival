@@ -36,6 +36,7 @@ interface MultiSelectDropdownProps {
   style?: ViewStyle;
   disabled?: boolean;
   allOptionValue?: string; // Value that represents "all" option (e.g., "all")
+  icon?: string; // Optional icon name from Ionicons
 }
 
 const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
@@ -47,6 +48,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
   style,
   disabled = false,
   allOptionValue = 'all', // Default "all" option value
+  icon,
 }) => {
   const { theme } = useTheme();
   const [isVisible, setIsVisible] = useState(false);
@@ -106,7 +108,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         .map(value => options.find(opt => opt.value === value)?.label || value)
         .join(', ');
     } else {
-      return `${selectedValues.length} stages selected`;
+      return `${selectedValues.length} selected`;
     }
   };
 
@@ -117,11 +119,11 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
       const screenHeight = Dimensions.get('window').height;
       const dropdownHeight = Math.min(options.length * 50 + 20, screenHeight * 0.5);
       
-      let top = py + height - 5; // Moved up by 10 pixels (from +5 to -5)
+      let top = py + height - 35; // Moved up by 30px more (from -5 to -35)
       
       // Adjust if dropdown would go off screen
       if (top + dropdownHeight > screenHeight - 50) {
-        top = py - dropdownHeight - 15; // Also moved up by 10 pixels here (from -5 to -15)
+        top = py - dropdownHeight - 45; // Also moved up by 30px more (from -15 to -45)
       }
       
       setDropdownPosition({
@@ -185,6 +187,14 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         onPress={openDropdown}
         disabled={disabled}
       >
+        {icon && (
+          <Ionicons
+            name={icon as any}
+            size={16}
+            color={theme.text}
+            style={{ marginRight: 8 }}
+          />
+        )}
         <Text
           style={[
             styles.dropdownButtonText,

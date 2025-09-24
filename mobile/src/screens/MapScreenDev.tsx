@@ -476,7 +476,6 @@ const MapScreen = () => {
 
       {/* Top Navigation Bar Overlay */}      
       <TopNavBar 
-        onSearch={handleSearch} 
         placeholder="Search map locations..." 
         onSettingsPress={() => navigation.navigate('Settings')}
       />

@@ -156,6 +156,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
             </TouchableOpacity>
           )}
 
+          {/* Search functionality - hidden until fully implemented
           <View style={[
             styles.searchArea,
             isSearchExpanded && styles.searchAreaExpanded
@@ -196,6 +197,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               </TouchableOpacity>
             )}
           </View>
+          */}
           
           {!isSearchExpanded && (
             <TouchableOpacity 
