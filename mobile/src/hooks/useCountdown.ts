@@ -1,5 +1,5 @@
 // src/hooks/useCountdown.ts
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 interface TimeLeft {
   days: number;
@@ -25,20 +25,38 @@ const calculateTimeLeft = (targetDate: Date): TimeLeft | null => {
 export const useCountdown = (targetDate: Date, onFinish?: () => void) => {
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(() => calculateTimeLeft(targetDate));
 
-  useEffect(() => {
-    const timer = setInterval(() => {
+
+  React.useEffect(() => {
+    let frameId: number;
+    let finished = false;
+    let prevDisplay: string | null = null;
+
+    const tick = () => {
+      if (finished) return;
       const newTimeLeft = calculateTimeLeft(targetDate);
-      setTimeLeft(newTimeLeft);
+
+      // Only update state if the display value actually changes
+      const display = newTimeLeft
+        ? `${newTimeLeft.days}:${newTimeLeft.hours}:${newTimeLeft.minutes}:${newTimeLeft.seconds}`
+        : 'done';
+      if (display !== prevDisplay) {
+        setTimeLeft(newTimeLeft);
+        prevDisplay = display;
+      }
 
       if (!newTimeLeft) {
-        if (onFinish) {
-          onFinish();
-        }
-        clearInterval(timer);
+        finished = true;
+        if (onFinish) onFinish();
+        return;
       }
-    }, 1000);
+      frameId = requestAnimationFrame(tick);
+    };
 
-    return () => clearInterval(timer);
+    frameId = requestAnimationFrame(tick);
+    return () => {
+      finished = true;
+      if (frameId) cancelAnimationFrame(frameId);
+    };
   }, [targetDate, onFinish]);
 
   return timeLeft;

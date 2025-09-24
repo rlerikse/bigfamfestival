@@ -40,14 +40,13 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
   // Initialize all animations
   useEffect(() => {
     // Initialize star twinkle animations (more realistic with varying intensity)
-    starTwinkleRefs.current = Array.from({ length: 100 }, () => new Animated.Value(Math.random()));
+  starTwinkleRefs.current = Array.from({ length: 40 }, () => new Animated.Value(Math.random()));
     
     // Generate star positions once and store them
     if (starsRef.current.length === 0) {
       const stars = [];
-      
       // Major stars (brighter, larger)
-      for (let i = 0; i < 25; i++) {
+      for (let i = 0; i < 10; i++) {
         stars.push({
           id: i,
           x: Math.random() * width,
@@ -57,9 +56,8 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
           type: 'major' as const
         });
       }
-      
       // Minor stars (dimmer, smaller)
-      for (let i = 25; i < 100; i++) {
+      for (let i = 10; i < 40; i++) {
         stars.push({
           id: i,
           x: Math.random() * width,
@@ -69,7 +67,6 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
           type: 'minor' as const
         });
       }
-      
       starsRef.current = stars;
     }
     
@@ -78,19 +75,18 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       const delay = Math.random() * 3000; // Stagger the animations
       const minOpacity = index % 3 === 0 ? 0.8 : 0.3; // Some stars are brighter
       const maxOpacity = index % 3 === 0 ? 1 : 0.7;
-      
       return Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
           Animated.timing(ref, {
             toValue: maxOpacity,
             duration: 1500 + Math.random() * 3000,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
           Animated.timing(ref, {
             toValue: minOpacity,
             duration: 1500 + Math.random() * 3000,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ])
       );
@@ -104,12 +100,12 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         Animated.timing(auroraAnimRef.current, {
           toValue: 1,
           duration: 8000,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(auroraAnimRef.current, {
           toValue: 0,
           duration: 6000,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ])
     ).start();
@@ -120,12 +116,12 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         Animated.timing(sunRayAnimation, {
           toValue: 1,
           duration: 7000, // Slow animation (7 seconds)
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(sunRayAnimation, {
           toValue: 0,
           duration: 7000, // Slow animation (7 seconds)
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ])
     ).start();
@@ -145,7 +141,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       Animated.timing(cloudLayer1, {
         toValue: 1,
         duration: 480000, // 8 minutes - slow but visible
-        useNativeDriver: false,
+        useNativeDriver: true,
       })
     ).start();
 
@@ -154,7 +150,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       Animated.timing(cloudLayer2, {
         toValue: 1,
         duration: 720000, // 12 minutes - medium slow
-        useNativeDriver: false,
+        useNativeDriver: true,
       })
     ).start();
 
@@ -163,7 +159,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       Animated.timing(cloudLayer3, {
         toValue: 1,
         duration: 900000, // 15 minutes - slow
-        useNativeDriver: false,
+        useNativeDriver: true,
       })
     ).start();
 
@@ -172,18 +168,18 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       Animated.timing(bigBackgroundCloud, {
         toValue: 1,
         duration: 1500000, // 25 minutes - very slow background movement
-        useNativeDriver: false,
+        useNativeDriver: true,
       })
     ).start();
   }, [cloudLayer1, cloudLayer2, cloudLayer3, bigBackgroundCloud, height]);
-  // Update time every 10 seconds for smoother transitions
+  // Update time every 1 second for smooth countdown and animation sync
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
-    }, 10000); // Update every 10 seconds for very smooth transitions
+    }, 1000); // Update every second
 
     return () => clearInterval(interval);
-  }, []);  // Enhanced time-based values with more granular periods
+  }, []);
   const getTimeValues = React.useCallback(() => {
     let timeDecimal: number;
     
@@ -291,31 +287,31 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       Animated.timing(starOpacity, {
         toValue: isNight ? 1 : 0,
         duration: 3000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       // Sun glow effect
       Animated.timing(sunGlow, {
         toValue: (isDay || isGoldenHour || isSunset || isDawn) ? 1 : 0,
         duration: 2000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       // Moon glow effect
       Animated.timing(moonGlow, {
         toValue: isNight || isDusk ? 1 : 0,
         duration: 3000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       // Horizon atmospheric glow
       Animated.timing(horizonGlow, {
         toValue: (isGoldenHour || isSunset || isDawn) ? 1 : 0,
         duration: 2000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       // Aurora effect (only during deep night)
       Animated.timing(auroraOpacity, {
         toValue: timeValues.isDeepNight ? 0.6 : 0,
         duration: 4000,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
 
@@ -727,14 +723,21 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        left: cloudLayer1.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['-100%', '100%'],
-        }),
         opacity: 0.8,
         width: '120%',
         height: '25%',
         zIndex: 2,
+        transform: [
+          {
+            translateX: cloudLayer1.interpolate({
+              inputRange: [0, 1],
+              outputRange: [
+                -1 * width * 1.0, // -100% of width
+                width * 1.0 // 100% of width
+              ],
+            })
+          }
+        ]
       }}>
         <Image
           source={require('../assets/images/cloud-1.png')}
@@ -746,14 +749,21 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        left: cloudLayer2.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['100%', '-100%'],
-        }),
         opacity: 0.7,
         width: '110%',
         height: '22%',
         zIndex: 2,
+        transform: [
+          {
+            translateX: cloudLayer2.interpolate({
+              inputRange: [0, 1],
+              outputRange: [
+                width * 1.0, // 100% of width
+                -1 * width * 1.0 // -100% of width
+              ],
+            })
+          }
+        ]
       }}>
         <Image
           source={require('../assets/images/cloud-2.png')}
@@ -765,14 +775,21 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        left: cloudLayer3.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['-120%', '120%'],
-        }),
-        opacity: 0.75,
-        width: '130%',
-        height: '28%',
+        opacity: 0.6,
+        width: '100%',
+        height: '18%',
         zIndex: 2,
+        transform: [
+          {
+            translateX: cloudLayer3.interpolate({
+              inputRange: [0, 1],
+              outputRange: [
+                -1 * width * 1.2, // -120% of width
+                width * 1.2 // 120% of width
+              ],
+            })
+          }
+        ]
       }}>
         <Image
           source={require('../assets/images/cloud-3.png')}
@@ -784,14 +801,21 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        left: bigBackgroundCloud.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['-50%', '150%'],
-        }),
         opacity: 0.6,
         width: '180%',
         height: '35%',
         zIndex: 1,
+        transform: [
+          {
+            translateX: bigBackgroundCloud.interpolate({
+              inputRange: [0, 1],
+              outputRange: [
+                -1 * width * 0.5, // -50% of width
+                width * 1.5 // 150% of width
+              ],
+            })
+          }
+        ]
       }}>
         <Image
           source={require('../assets/images/cloud-4.png')}
