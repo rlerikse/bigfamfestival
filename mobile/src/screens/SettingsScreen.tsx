@@ -17,6 +17,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useDebug } from '../contexts/DebugContext';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { RootStackParamList } from '../navigation';
+import { useAuth } from '../contexts/AuthContext';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -24,6 +25,7 @@ const SettingsScreen = () => {
   const { theme, isDark, setMode, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { debugMode, setDebugMode } = useDebug();
+  const { isGuestUser } = useAuth();
 
   const handleDebugModeToggle = (value: boolean) => {
     setDebugMode(value);
@@ -69,15 +71,17 @@ const SettingsScreen = () => {
     );
   };
 
+  // Build settings options dynamically based on user type
   const settingsOptions = [
     {
       title: 'General',
       items: [
-        {
-          icon: 'person-outline',
+        // Only show Profile option for non-guest users
+        ...(!isGuestUser() ? [{
+          icon: 'person-outline' as const,
           label: 'Profile',
           onPress: handleGoToProfile,
-        },
+        }] : []),
         {
           icon: 'notifications-outline', 
           label: 'Notifications',
@@ -88,7 +92,7 @@ const SettingsScreen = () => {
           label: 'Privacy & Security',
           onPress: () => Alert.alert('Coming Soon', 'Privacy settings coming soon!'),
         },
-      ],
+      ].filter(Boolean), // Remove any undefined items
     },
     {
       title: 'App Settings',
@@ -135,7 +139,8 @@ const SettingsScreen = () => {
         },
       ],
     },
-    {
+    // Only show Account section for non-guest users
+    ...(!isGuestUser() ? [{
       title: 'Account',
       items: [
         {
@@ -145,7 +150,7 @@ const SettingsScreen = () => {
           danger: true,
         },
       ],
-    },
+    }] : []),
   ];
 
   const renderSettingsItem = (item: any) => {
