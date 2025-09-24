@@ -262,6 +262,13 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   {dateFormatted}
                 </SafeText>
                 
+                {/* Display genres if available */}
+                {(event.genres && event.genres.length > 0) && (
+                  <SafeText style={styles.genresText}>
+                    {event.genres.join(' • ')}
+                  </SafeText>
+                )}
+                
                 <SafeText style={styles.bioText}>{description}</SafeText>
                 
                 <View style={styles.actionsContainer}>
@@ -422,6 +429,14 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontStyle: 'italic',
     marginBottom: 15, // Adjusted margin
+    textAlign: 'center',
+  },
+  genresText: {
+    fontSize: 14,
+    color: '#B87333', // Copper color to match the heart
+    fontWeight: '500',
+    marginBottom: 15,
+    fontStyle: 'italic',
     textAlign: 'center',
   },
   timeText: {
