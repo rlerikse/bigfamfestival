@@ -117,7 +117,8 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",
