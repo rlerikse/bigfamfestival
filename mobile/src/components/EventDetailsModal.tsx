@@ -1,3 +1,24 @@
+// Show logo.png from assets/images if event image fails to load
+const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
+  const [error, setError] = React.useState(false);
+  if (!imageUrl || error) {
+    return (
+      <Image
+        source={require('../assets/images/bf-logo-trans.png')}
+        style={style}
+        resizeMode="contain"
+      />
+    );
+  }
+  return (
+    <Image
+      source={{ uri: getFullImageUrl(imageUrl) }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
+};
 // filepath: e:\repos\bigfamfestival\mobile\src\components\EventDetailsModal.tsx
 import React from 'react';
 import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
@@ -191,6 +212,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   };
 
   try {
+
     // Variables eventName, eventStage, etc. are already defined above with fallbacks
 
     return (
@@ -212,13 +234,8 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
               }}>
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
-              
               <View style={styles.imageContainer}>
-                <Image 
-                  source={{ uri: getFullImageUrl(event.imageUrl) }} 
-                  style={styles.eventImage}
-                  onError={(e) => debugLog('Image load error:', { imagePath: event.imageUrl, error: e.nativeEvent.error })}
-                />
+                <EventImageWithFallback imageUrl={event.imageUrl} style={styles.eventImage} />
                 <View style={styles.gradientOverlay}>
                   <SafeText style={styles.eventName}>{eventName}</SafeText>
                 </View>

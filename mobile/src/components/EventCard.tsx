@@ -101,16 +101,14 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
       ]}
       onPress={handleEventPress}
     >
-      {item.imageUrl && (
-        <OptimizedImage
-          uri={item.imageUrl}
-          style={styles.eventImage}
-          containerStyle={styles.eventImage}
-          contentFit="cover"
-          showLoadingIndicator={false}
-          fallbackIcon="image-outline"
-        />
-      )}
+      <OptimizedImage
+        uri={item.imageUrl}
+        style={styles.eventImage}
+        containerStyle={styles.eventImage}
+        contentFit="cover"
+        showLoadingIndicator={false}
+        fallbackImage={require('../assets/images/logo.png')}
+      />
       <View style={styles.eventInfo}>
         <Text
           style={[styles.eventName, { color: theme.text }]}

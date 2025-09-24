@@ -28,6 +28,7 @@ interface OptimizedImageProps {
   style?: ImageStyle;
   containerStyle?: ViewStyle;
   fallbackIcon?: keyof typeof Ionicons.glyphMap;
+  fallbackImage?: any; // require('...')
   showLoadingIndicator?: boolean;
   contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   priority?: 'low' | 'normal' | 'high';
@@ -41,6 +42,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   style,
   containerStyle,
   fallbackIcon = 'image-outline',
+  fallbackImage,
   showLoadingIndicator = true,
   contentFit = 'cover',
   priority = 'high',
@@ -124,11 +126,20 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   if (!optimizedUri) {
     return (
       <View style={combinedContainerStyle}>
-        <Ionicons 
-          name={fallbackIcon} 
-          size={24} 
-          color={theme.muted || '#666666'} 
-        />
+        {fallbackImage ? (
+          <Image
+            source={fallbackImage}
+            style={[styles.image, style]}
+            contentFit={contentFit}
+            resizeMode="contain"
+          />
+        ) : (
+          <Ionicons 
+            name={fallbackIcon} 
+            size={24} 
+            color={theme.muted || '#666666'} 
+          />
+        )}
       </View>
     );
   }
@@ -164,11 +175,20 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Error state */}
       {hasError && (
         <View style={styles.overlay}>
-          <Ionicons 
-            name="image-outline" 
-            size={24} 
-            color={theme.muted || '#666666'} 
-          />
+          {fallbackImage ? (
+            <Image
+              source={fallbackImage}
+              style={[styles.image, style]}
+              contentFit={contentFit}
+              resizeMode="contain"
+            />
+          ) : (
+            <Ionicons 
+              name="image-outline" 
+              size={24} 
+              color={theme.muted || '#666666'} 
+            />
+          )}
           <Text style={[styles.errorText, { color: theme.muted }]}>
             Image unavailable
           </Text>
