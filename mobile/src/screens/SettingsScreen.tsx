@@ -25,7 +25,7 @@ const SettingsScreen = () => {
   const { theme, isDark, setMode, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { debugMode, setDebugMode } = useDebug();
-  const { isGuestUser } = useAuth();
+  const { isGuestUser, deleteAccount } = useAuth();
 
   const handleDebugModeToggle = (value: boolean) => {
     setDebugMode(value);
@@ -58,9 +58,10 @@ const SettingsScreen = () => {
                 {
                   text: 'Yes, Delete My Account',
                   style: 'destructive',
-                  onPress: () => {
-                    // Placeholder - functionality to be implemented later
-                    Alert.alert('Coming Soon', 'Account deletion functionality will be implemented soon.');
+                  onPress: async () => {
+                    try {
+                      await deleteAccount();
+                    } catch {}
                   }
                 }
               ]

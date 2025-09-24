@@ -12,12 +12,14 @@ import { getAuth } from 'firebase/auth';
 
 // TODO: Move these values to environment variables for security
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyDxZIs1oOTEtHu0SsuV30Of84RTCDkmg0s",
+  authDomain: "bigfamfestival.firebaseapp.com",
+  databaseURL: "https://bigfamfestival-default-rtdb.firebaseio.com",
+  projectId: "bigfamfestival",
+  storageBucket: "bigfamfestival.firebasestorage.app",
+  messagingSenderId: "292369452544",
+  appId: "1:292369452544:web:b3508390b4600be71c12e5",
+  measurementId: "G-VZ06GV8DGT"
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);

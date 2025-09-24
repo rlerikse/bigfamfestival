@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 import { UserRole } from '../types/user';
 import { loginUser, registerUser, getUserProfile } from '../services/authService';
+import { deleteAccountFromFirestore } from '../services/deleteAccountService';
 
 export interface User {
   id: string;
@@ -15,8 +16,7 @@ export interface User {
   ticketType?: string;
   profilePictureUrl?: string;
 }
-
-interface AuthContextProps {
+export interface AuthContextProps {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -26,6 +26,7 @@ interface AuthContextProps {
   updateUser: (userData: Partial<User>) => void;
   isGuestUser: () => boolean;
   redirectToLogin: (message?: string) => void;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -41,6 +42,23 @@ export const useAuth = () => {
 // We don't need navigation ref anymore since we're using a simpler approach
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Delete account from Firestore and log out
+  const deleteAccount = async () => {
+    if (!user) return;
+    try {
+      setIsLoading(true);
+      await deleteAccountFromFirestore(user.id);
+      await SecureStore.deleteItemAsync('userToken');
+      setUser(null);
+      Alert.alert('Account Deleted', 'Your account has been deleted.');
+    } catch (error) {
+      console.error('Delete account error:', error);
+      Alert.alert('Delete Failed', error instanceof Error ? error.message : 'Failed to delete your account. Please try again.');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -177,7 +195,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loginAsGuest, 
       updateUser,
       isGuestUser,
-      redirectToLogin
+      redirectToLogin,
+      deleteAccount
     }}>
       {children}
     </AuthContext.Provider>
