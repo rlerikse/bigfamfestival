@@ -1,5 +1,5 @@
 // Commit: Replace Messages screen with Notifications placeholder screen
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,6 +25,7 @@ const NotificationsScreen: React.FC = () => {
     () => (typeof isGuestUser === 'function' ? isGuestUser() : !user),
     [isGuestUser, user]
   );
+  const isAdmin = user?.role === 'admin';
 
   // Local types to avoid name collision with component import
   interface NotificationHistoryEntry {
@@ -49,6 +50,8 @@ const NotificationsScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [localTriggered, setLocalTriggered] = useState<NotificationHistoryEntry[]>([]);
   const [dismissedKeys, setDismissedKeys] = useState<Set<string>>(new Set());
+  // Prevent repeated API calls/logs when backend forbids access (e.g., non-admin users)
+  const apiForbiddenRef = useRef<boolean>(false);
 
   // Normalize backend categories to UI-friendly categories
   const normalizeCategory = useCallback((cat?: string): string | undefined => {
@@ -167,8 +170,13 @@ const NotificationsScreen: React.FC = () => {
   }, [visibleHistory, makeKey, persistDismissed]);
 
   const fetchFromApi = React.useCallback(async () => {
-    // Guests are not authorized for /notifications; show local-only
-    if (isGuest) {
+    // Only admins should call /notifications; guests and attendees skip
+    if (isGuest || !isAdmin) {
+      setIsLoadingHistory(false);
+      return;
+    }
+    if (apiForbiddenRef.current) {
+      // API is forbidden for this user (likely non-admin); avoid spamming requests/logs
       setIsLoadingHistory(false);
       return;
     }
@@ -201,18 +209,29 @@ const NotificationsScreen: React.FC = () => {
       });
       setNotificationHistory(items);
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Fallback notifications fetch failed:', error);
+      const status = (error as { response?: { status?: number } }).response?.status;
+      if (status === 401 || status === 403) {
+        apiForbiddenRef.current = true;
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.info('Notifications API forbidden for this user; disabling API fallback/polling.');
+        }
+        // If we were polling due to Firestore denial, stop polling to prevent repeated 403s
+        if (usePolling) setUsePolling(false);
+      } else if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.error('Fallback notifications fetch failed:', error);
+      }
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [normalizeCategory, isGuest]);
+  }, [normalizeCategory, isGuest, isAdmin, usePolling]);
 
   useEffect(() => {
     // If we've already switched to polling due to Firestore rules, don't attach the realtime listener
     if (usePolling) {
-      // Ensure we have fresh data via API (skip if guest)
-      if (!isGuest) {
+      // Ensure we have fresh data via API (admins only)
+      if (!isGuest && isAdmin && !apiForbiddenRef.current) {
         fetchFromApi();
       } else {
         setIsLoadingHistory(false);
@@ -273,8 +292,8 @@ const NotificationsScreen: React.FC = () => {
               // eslint-disable-next-line no-console
               console.info('Firestore denied read for notifications; falling back to API polling.');
             }
-            // For guests, do not fall back to API (unauthorized). For authed users, enable polling.
-            if (!isGuest) {
+            // For guests or non-admins, do not fall back to API. For admins, enable polling unless API is forbidden.
+            if (!isGuest && isAdmin && !apiForbiddenRef.current) {
               setUsePolling(true);
               // Immediate fallback fetch
               fetchFromApi();
@@ -293,7 +312,7 @@ const NotificationsScreen: React.FC = () => {
       };
     } catch (err) {
       setIsLoadingHistory(false);
-      if (!isGuest) {
+      if (!isGuest && isAdmin && !apiForbiddenRef.current) {
         setUsePolling(true);
         // Kick off an immediate fallback fetch
         fetchFromApi();
@@ -302,24 +321,24 @@ const NotificationsScreen: React.FC = () => {
         /* no-op */
       };
     }
-  }, [fetchFromApi, usePolling, normalizeCategory, isGuest]);
+  }, [fetchFromApi, usePolling, normalizeCategory, isGuest, isAdmin]);
 
   // Polling fallback when Firestore rules block realtime reads
   useEffect(() => {
-    if (!usePolling || isGuest) return;
+    if (!usePolling || isGuest || !isAdmin || apiForbiddenRef.current) return;
     const intervalId = setInterval(() => {
       fetchFromApi();
     }, 30000);
     // Do an extra fetch when polling turns on
     fetchFromApi();
     return () => clearInterval(intervalId);
-  }, [usePolling, fetchFromApi, normalizeCategory, isGuest]);
+  }, [usePolling, fetchFromApi, normalizeCategory, isGuest, isAdmin]);
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      if (isGuest) {
-        // Nothing to fetch for guests; rely on local-triggered notifications
+      if (isGuest || !isAdmin || apiForbiddenRef.current) {
+        // Nothing to fetch for guests/attendees; rely on local-triggered notifications
         return;
       }
       if (usePolling) {
@@ -368,7 +387,7 @@ const NotificationsScreen: React.FC = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [usePolling, fetchFromApi, normalizeCategory, isGuest]);
+  }, [usePolling, fetchFromApi, normalizeCategory, isGuest, isAdmin]);
 
   // Capture locally-triggered MySchedule notifications when this screen is mounted
   useEffect(() => {
