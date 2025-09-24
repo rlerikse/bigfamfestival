@@ -38,9 +38,35 @@ const SettingsScreen = () => {
     navigation.navigate('Profile');
   };
 
-  const handleThemeToggle = () => {
-    const newMode = isDark ? 'light' : 'dark';
-    setMode(newMode);
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Confirm Deletion',
+              'This will permanently delete your account and all associated data. Are you absolutely sure?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Yes, Delete My Account',
+                  style: 'destructive',
+                  onPress: () => {
+                    // Placeholder - functionality to be implemented later
+                    Alert.alert('Coming Soon', 'Account deletion functionality will be implemented soon.');
+                  }
+                }
+              ]
+            );
+          }
+        }
+      ]
+    );
   };
 
   const settingsOptions = [
@@ -109,9 +135,21 @@ const SettingsScreen = () => {
         },
       ],
     },
+    {
+      title: 'Account',
+      items: [
+        {
+          icon: 'trash-outline',
+          label: 'Delete Account',
+          onPress: handleDeleteAccount,
+          danger: true,
+        },
+      ],
+    },
   ];
 
   const renderSettingsItem = (item: any) => {
+    const isDanger = item.danger;
     return (
       <TouchableOpacity
         key={item.label}
@@ -120,9 +158,16 @@ const SettingsScreen = () => {
         disabled={item.hasSwitch || item.hasToggle}
       >
         <View style={styles.settingsItemLeft}>
-          <Ionicons name={item.icon} size={24} color={theme.primary} />
+          <Ionicons 
+            name={item.icon} 
+            size={24} 
+            color={isDanger ? '#FF3B30' : theme.primary} 
+          />
           <View style={styles.settingsItemText}>
-            <Text style={[styles.settingsItemLabel, { color: theme.text }]}>
+            <Text style={[
+              styles.settingsItemLabel, 
+              { color: isDanger ? '#FF3B30' : theme.text }
+            ]}>
               {item.label}
             </Text>
             {item.description && typeof item.description === 'string' && (
@@ -143,7 +188,11 @@ const SettingsScreen = () => {
             thumbColor={'#FFFFFF'}
           />
         ) : (
-          <Ionicons name="chevron-forward" size={20} color={theme.muted} />
+          <Ionicons 
+            name="chevron-forward" 
+            size={20} 
+            color={isDanger ? '#FF3B30' : theme.muted} 
+          />
         )}
       </TouchableOpacity>
     );
