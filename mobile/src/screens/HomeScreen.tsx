@@ -3,6 +3,8 @@ import {
   View,
   Dimensions,
   SafeAreaView,
+  Text,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
@@ -135,6 +137,14 @@ const HomeScreen = () => {
            marginHorizontal: 20,
            marginTop: 80, // Account for TopNavBar
          }}>
+          {/* Gates Open In image centered above countdown, width matches countdown */}
+          <View style={{ alignItems: 'center', marginBottom: 2 }}>
+            <Image
+              source={require('../assets/images/gates-open-in.png')}
+              style={{ width: 320, height: 60, resizeMode: 'contain' }}
+              accessibilityLabel="Gates Open In"
+            />
+          </View>
           <Countdown targetDate={gatesOpenDate} />
 
           {/* subtle divider + spacing between countdown and events */}
