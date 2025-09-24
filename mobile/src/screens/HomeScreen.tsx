@@ -4,8 +4,8 @@ import {
   Dimensions,
   SafeAreaView,
   Text,
-  Image,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
 import DayNightCycle from '../components/DayNightCycle';
@@ -139,9 +139,12 @@ const HomeScreen = () => {
          }}>
           {/* Gates Open In image centered above countdown, width matches countdown */}
           <View style={{ alignItems: 'center', marginBottom: 2 }}>
-            <Image
+            <ExpoImage
               source={require('../assets/images/gates-open-in.png')}
-              style={{ width: 320, height: 60, resizeMode: 'contain' }}
+              style={{ width: 320, height: 60 }}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={300}
               accessibilityLabel="Gates Open In"
             />
           </View>

@@ -1,6 +1,7 @@
 // src/components/LiveUpcomingEvents.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, Image, ImageRequireSource } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { api } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCard from '../components/EventCard';
@@ -223,7 +224,13 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
               logoStyle = styles.stageLogoGallery;
             }
             return logoSource ? (
-              <Image source={logoSource} style={logoStyle} resizeMode="contain" />
+              <ExpoImage 
+                source={logoSource} 
+                style={logoStyle} 
+                contentFit="contain" 
+                cachePolicy="memory-disk"
+                transition={300}
+              />
             ) : null;
           })()}
           <EventCard
