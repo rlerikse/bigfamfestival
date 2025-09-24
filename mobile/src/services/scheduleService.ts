@@ -5,6 +5,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
 import { User } from '../contexts/AuthContext';
+import { scheduleEventNotification, cancelEventNotification } from './notificationService';
 
 /**
  * Get user's schedule
@@ -127,6 +128,12 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
     // Update local cache immediately for UI responsiveness
     await updateLocalScheduleCache(userId, eventId, 'add');
     
+    // Schedule notification
+    const event = (await getCachedSchedule(userId))?.find(e => e.id === eventId);
+    if (event) {
+      await scheduleEventNotification(event);
+    }
+
     // Wait for API response in background
     await apiPromise;
   } catch (error: unknown) {
@@ -183,6 +190,9 @@ export const removeFromSchedule = async (userId: string, eventId: string): Promi
       
       // Update local cache immediately for UI responsiveness
       await updateLocalScheduleCache(userId, eventId, 'remove');
+
+      // Cancel notification
+      await cancelEventNotification(eventId);
       
       // Wait for API response in background
       await apiPromise;

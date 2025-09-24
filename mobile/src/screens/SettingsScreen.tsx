@@ -12,6 +12,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Notifications from 'expo-notifications';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useDebug } from '../contexts/DebugContext';
@@ -38,6 +39,39 @@ const SettingsScreen = () => {
 
   const handleGoToProfile = () => {
     navigation.navigate('Profile');
+  };
+
+  const handleTestNotification = async () => {
+    try {
+      // Request permissions if not already granted
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          "Permission Required", 
+          "Please enable notifications in your device settings to receive event reminders."
+        );
+        return;
+      }
+
+      // Send an immediate notification
+      await Notifications.presentNotificationAsync({
+        title: "Test Notification",
+        body: "This is a test notification from Big Fam Festival!",
+        data: { test: 'test' },
+      });
+      
+      Alert.alert("Test Notification Sent", "You should see a notification immediately.");
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+      Alert.alert("Error", "Failed to send notification. Check console for details.");
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -84,16 +118,22 @@ const SettingsScreen = () => {
           onPress: handleGoToProfile,
         }] : []),
         {
-          icon: 'notifications-outline', 
-          label: 'Notifications',
-          onPress: () => Alert.alert('Coming Soon', 'Notification settings coming soon!'),
-        },
-        {
           icon: 'shield-outline',
           label: 'Privacy & Security',
           onPress: () => Alert.alert('Coming Soon', 'Privacy settings coming soon!'),
         },
       ].filter(Boolean), // Remove any undefined items
+    },
+    {
+      title: 'Notifications',
+      items: [
+        {
+          icon: 'notifications-outline', 
+          label: 'Test Notification',
+          onPress: handleTestNotification,
+          description: 'Send a test notification immediately',
+        },
+      ],
     },
     {
       title: 'App Settings',

@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { UserRole } from '../types/user';
 import { loginUser, registerUser, getUserProfile } from '../services/authService';
 import { deleteAccountFromFirestore } from '../services/deleteAccountService';
+import { scheduleAllUserEventsNotifications, cancelAllUserEventsNotifications } from '../services/notificationService';
 
 export interface User {
   id: string;
@@ -93,6 +94,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Save token securely
       await SecureStore.setItemAsync('userToken', token);
       setUser(user);
+
+      // Schedule notifications for user's events
+      await scheduleAllUserEventsNotifications(user.id);
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', error instanceof Error ? error.message : 'Please check your credentials');
@@ -111,6 +115,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Save token securely
       await SecureStore.setItemAsync('userToken', token);
       setUser(user);
+
+      // Schedule notifications for user's events
+      await scheduleAllUserEventsNotifications(user.id);
     } catch (error) {
       console.error('Registration error:', error);
       Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Please try again later');
@@ -125,6 +132,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await SecureStore.deleteItemAsync('userToken');
       setUser(null);
+      // Cancel all scheduled notifications
+      await cancelAllUserEventsNotifications();
     } catch (error) {
       console.error('Logout error:', error);
     }
