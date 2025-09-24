@@ -41,5 +41,5 @@ COPY --from=builder /app/package.json ./package.json
 # Expose port
 EXPOSE 8080
 
-# Run application
-CMD ["node", "dist/main.js"]
+# Run application (tsconfig outputs compiled files under dist/src)
+CMD ["node", "dist/src/main.js"]

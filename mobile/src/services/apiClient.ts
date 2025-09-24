@@ -11,7 +11,7 @@ const isDev = __DEV__;
 
 // Create an API client with default configurations
 const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
