@@ -2,15 +2,12 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
+import { navigationRef } from './navigation/navigationRef';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 // import * as SecureStore from 'expo-secure-store';
-import { 
-  requestNotificationPermission, 
-  getPushToken,
-  setupNotificationListeners 
-} from '../src/services/firebaseMessaging';
-// Removed firebase messaging imports
+// Import our new notification listener component
+import NotificationListener from './components/NotificationListener';
 
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
@@ -35,33 +32,7 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const isLoadingComplete = useCachedResources();
-  useEffect(() => {
-    async function setupNotifications() {
-      // Request notification permissions for both Expo notifications and Firebase
-      const expoPermissionGranted = await requestNotificationPermission();
-        // Firebase messaging removed
-      
-      if (expoPermissionGranted) {
-        // Get the Expo push token
-        await getPushToken();
-        
-        // Setup Expo notification listeners
-        const cleanupExpo = setupNotificationListeners();
-
-        // Setup Firebase messaging if permission granted
-          
-          
-
-          // Firebase messaging removed
-
-        // Return Expo cleanup only
-        return () => {
-          cleanupExpo();
-        };
-      }
-    }
-    setupNotifications();
-  }, []);
+  // Removed old notification setup code
 
   useEffect(() => {
     // Hide splash screen once resources are loaded
@@ -84,8 +55,9 @@ export default function App() {
           <AuthProvider>
             <AppSettingsProvider>
               <DebugProvider>
-                <NavigationContainer>
+                <NavigationContainer ref={navigationRef}>
                   <Navigation />
+                  <NotificationListener />
                   <StatusBar style="auto" />
                 </NavigationContainer>
               </DebugProvider>

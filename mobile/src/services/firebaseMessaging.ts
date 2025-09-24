@@ -86,7 +86,7 @@ export async function sendLocalNotification(title: string, body: string): Promis
         content: {
             title,
             body,
-            data: { data: 'goes here' },
+      data: { data: 'goes here', category: 'my_schedule' },
         },
         trigger: null, // Send immediately
     } as LocalNotificationScheduleOptions);

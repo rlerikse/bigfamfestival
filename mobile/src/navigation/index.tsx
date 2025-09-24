@@ -13,6 +13,7 @@ import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import MapScreen from '../screens/MapScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import AdminNotificationsScreen from '../screens/AdminNotificationsScreen'; // Import the new screen
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Profile: undefined;
   Settings: undefined;
   Debug: undefined;
+  AdminNotifications: undefined; // Add the new screen to types
 };
 
 export type AuthStackParamList = {
@@ -239,6 +241,15 @@ export default function Navigation() {
             options={{
               headerShown: true,
               title: 'Settings',
+              presentation: 'modal',
+            }}
+          />
+          <Stack.Screen
+            name="AdminNotifications"
+            component={AdminNotificationsScreen}
+            options={{
+              headerShown: true,
+              title: 'Send Notifications',
               presentation: 'modal',
             }}
           />

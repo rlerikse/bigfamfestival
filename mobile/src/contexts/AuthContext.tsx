@@ -69,6 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const token = await SecureStore.getItemAsync('userToken');
         if (token) {
+          // Also store as accessToken for API interceptors
+          await SecureStore.setItemAsync('accessToken', token);
+          
           // If we have a token, fetch user data to validate it
           const userData = await getUserProfile(token);
           setUser(userData);
@@ -77,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error loading user:', error);
         // Clear token if it's invalid
         await SecureStore.deleteItemAsync('userToken');
+        await SecureStore.deleteItemAsync('accessToken');
       } finally {
         setIsLoading(false);
       }
@@ -91,8 +95,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       const { token, user } = await loginUser(email, password);
       
-      // Save token securely
+      // Save token securely in both places for compatibility
       await SecureStore.setItemAsync('userToken', token);
+      await SecureStore.setItemAsync('accessToken', token);
+      
+      // Debug log for development - this will help us see if the role is correctly set
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('User logged in with role:', user.role);
+      }
+      
       setUser(user);
 
       // Schedule notifications for user's events
@@ -112,8 +124,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       const { token, user } = await registerUser({ name, email, password, phone });
       
-      // Save token securely
+      // Save token securely in both places for compatibility
       await SecureStore.setItemAsync('userToken', token);
+      await SecureStore.setItemAsync('accessToken', token);
+      
       setUser(user);
 
       // Schedule notifications for user's events
@@ -131,6 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await SecureStore.deleteItemAsync('userToken');
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
       setUser(null);
       // Cancel all scheduled notifications
       await cancelAllUserEventsNotifications();

@@ -1,4 +1,5 @@
-import React from 'react';
+// Commit: Show scheduled notifications under Admin in Settings
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,12 +11,11 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 
 import { useTheme } from '../contexts/ThemeContext';
-import { useDebug } from '../contexts/DebugContext';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { RootStackParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,18 +26,38 @@ type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 const SettingsScreen = () => {
   const { theme, isDark, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
-  const { setDebugMode } = useDebug();
-  const { isGuestUser, deleteAccount } = useAuth();
+  const { isGuestUser, deleteAccount, user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { scheduleNotificationsEnabled, toggleScheduleNotifications } = useAppSettings();
 
-  const handleDebugModeToggle = (value: boolean) => {
-    setDebugMode(value);
-    
-    if (value) {
-      // Navigate to debug screen when enabled
-      navigation.navigate('Debug');
+  // Scheduled notifications state (Admin only)
+  const [scheduled, setScheduled] = useState<Notifications.NotificationRequest[]>([]);
+  const [scheduledLoading, setScheduledLoading] = useState(false);
+
+  const loadScheduled = useCallback(async () => {
+    try {
+      setScheduledLoading(true);
+      const list = await Notifications.getAllScheduledNotificationsAsync();
+      setScheduled(list);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load scheduled notifications:', e);
+    } finally {
+      setScheduledLoading(false);
     }
-  };
+  }, []);
+
+  // Refresh on focus for up-to-date list
+  useFocusEffect(
+    useCallback(() => {
+      if (isAdmin) {
+        loadScheduled();
+      }
+      return undefined;
+    }, [isAdmin, loadScheduled])
+  );
+
+  // Debug mode toggle removed to avoid unused warnings; debug tools accessible elsewhere
 
   const handleGoToProfile = () => {
     navigation.navigate('Profile');
@@ -73,6 +93,40 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error('Failed to send notification:', error);
       Alert.alert("Error", "Failed to send notification. Check console for details.");
+    }
+  };
+
+  const handleScheduleTestNotification = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please enable notifications in your device settings to allow scheduled reminders.'
+        );
+        return;
+      }
+
+      // Schedule a local notification to fire in ~5 seconds
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Event Reminder',
+          body: 'Scheduled test notification (fires ~5s after tapping).',
+          data: { category: 'my_schedule', test: 'scheduled-5s' },
+          sound: 'default',
+        },
+        trigger: { seconds: 5 } as Notifications.TimeIntervalTriggerInput,
+      });
+
+      Alert.alert('Scheduled', 'A test notification will fire in about 5 seconds.');
+    } catch (error) {
+      console.error('Failed to schedule test notification:', error);
+      Alert.alert('Error', 'Failed to schedule notification. Check console for details.');
     }
   };
 
@@ -116,6 +170,92 @@ const SettingsScreen = () => {
 
   // Build settings options dynamically based on user type
   const settingsOptions = [
+    // Admin section - only for admin users
+    ...(isAdmin
+      ? [
+          {
+            title: 'Admin',
+            items: [
+              {
+                icon: 'megaphone-outline',
+                label: 'Send Notification to All Users',
+                onPress: () => navigation.navigate('AdminNotifications'),
+                description: 'Broadcast a push notification to everyone',
+              },
+            ],
+            // Custom content: show all scheduled notifications
+            customContent: (
+              <View>
+                <View style={styles.scheduledHeaderRow}>
+                  <Text style={[styles.scheduledHeaderTitle, { color: theme.text }]}>Scheduled Notifications</Text>
+                  <TouchableOpacity onPress={loadScheduled} style={styles.scheduledRefreshBtn} accessibilityRole="button">
+                    <Ionicons name="refresh" size={18} color={theme.primary} />
+                    <Text style={[styles.scheduledRefreshText, { color: theme.primary }]}>Refresh</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={[styles.sectionContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  {scheduledLoading ? (
+                    <View style={styles.scheduledLoadingWrap}>
+                      <Text style={[styles.scheduledEmpty, { color: theme.muted }]}>Loading…</Text>
+                    </View>
+                  ) : scheduled.length === 0 ? (
+                    <View style={styles.scheduledEmptyWrap}>
+                      <Text style={[styles.scheduledEmpty, { color: theme.muted }]}>No scheduled notifications</Text>
+                    </View>
+                  ) : (
+                    scheduled.map((req) => {
+                      // Best-effort formatting of trigger
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const trig: any = req.trigger as any;
+                      let when = '';
+                      if (trig?.date) {
+                        const ts = typeof trig.date === 'number' ? trig.date : Date.parse(trig.date);
+                        when = new Date(ts).toLocaleString();
+                      } else if (typeof trig?.timestamp === 'number') {
+                        when = new Date(trig.timestamp).toLocaleString();
+                      } else if (typeof trig?.seconds === 'number') {
+                        when = `${trig.seconds}s interval${trig?.repeats ? ' (repeating)' : ''}`;
+                      } else if (
+                        typeof trig?.hour === 'number' ||
+                        typeof trig?.minute === 'number' ||
+                        typeof trig?.weekday === 'number'
+                      ) {
+                        const parts = [
+                          trig.weekday ? `weekday ${trig.weekday}` : undefined,
+                          Number.isFinite(trig.hour) ? `hour ${trig.hour}` : undefined,
+                          Number.isFinite(trig.minute) ? `min ${trig.minute}` : undefined,
+                        ].filter(Boolean);
+                        when = parts.join(', ');
+                        if (trig?.repeats) when += ' (repeating)';
+                      } else {
+                        when = 'Scheduled';
+                      }
+                      return (
+                        <View key={req.identifier} style={[styles.scheduledItem, { borderBottomColor: theme.border }]}>
+                          <Ionicons name="calendar-outline" size={20} color={theme.primary} style={{ marginRight: 10 }} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.scheduledTitle, { color: theme.text }]} numberOfLines={1}>
+                              {req.content?.title || 'Untitled'}
+                            </Text>
+                            {!!req.content?.body && (
+                              <Text style={[styles.scheduledBody, { color: theme.muted }]} numberOfLines={2}>
+                                {req.content?.body}
+                              </Text>
+                            )}
+                            <Text style={[styles.scheduledMeta, { color: theme.muted }]}>
+                              {when}
+                            </Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </View>
+            ),
+          },
+        ]
+      : []),
     {
       title: 'General',
       items: [
@@ -149,6 +289,12 @@ const SettingsScreen = () => {
           label: 'Test Notification',
           onPress: handleTestNotification,
           description: 'Send a test notification immediately',
+        },
+        {
+          icon: 'alarm-outline',
+          label: 'Schedule Test (5s)',
+          onPress: handleScheduleTestNotification,
+          description: 'Schedules a local test notification to fire in about 5 seconds',
         },
       ],
     },
@@ -294,6 +440,9 @@ const SettingsScreen = () => {
         <View style={[styles.sectionContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
           {section.items.map(renderSettingsItem)}
         </View>
+        {section.customContent ? (
+          <View style={styles.sectionCustom}>{section.customContent}</View>
+        ) : null}
       </View>
     );
   };
@@ -340,6 +489,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
   },
+  sectionCustom: {
+    marginTop: 12,
+  },
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -364,6 +516,57 @@ const styles = StyleSheet.create({
   settingsItemDescription: {
     fontSize: 14,
     marginTop: 2,
+  },
+  scheduledHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  scheduledHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  scheduledRefreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scheduledRefreshText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  scheduledLoadingWrap: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  scheduledEmptyWrap: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  scheduledEmpty: {
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  scheduledItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  scheduledTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  scheduledBody: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  scheduledMeta: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 

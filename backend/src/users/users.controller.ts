@@ -43,6 +43,25 @@ export class UsersController {
     return this.usersService.update(req.user.id, updateUserDto);
   }
 
+  @Put('push-token')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update push notification token' })
+  @ApiResponse({ status: 200, description: 'Updates the user push token' })
+  async updatePushToken(@Request() req, @Body() { token }: { token: string }) {
+    return this.usersService.updatePushToken(req.user.id, token);
+  }
+
+  @Put('notifications')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Enable/disable push notifications' })
+  @ApiResponse({ status: 200, description: 'Updates notification preferences' })
+  async toggleNotifications(
+    @Request() req,
+    @Body() { enabled }: { enabled: boolean },
+  ) {
+    return this.usersService.toggleNotifications(req.user.id, enabled);
+  }
+
   @Get(':id')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user by ID' })

@@ -48,7 +48,7 @@ export const scheduleEventNotification = async (event: ScheduleEvent): Promise<v
       content: {
         title: `${event.name} is starting soon!`,
         body: `Head over to ${event.stage} in ${NOTIFICATION_LEAD_TIME_MINUTES} minutes.`,
-        data: { eventId: event.id },
+        data: { eventId: event.id, category: 'my_schedule' },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

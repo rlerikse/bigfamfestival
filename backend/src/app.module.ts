@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { FirestoreModule } from './config/firestore/firestore.module';
+import { FirebaseAdminModule } from './config/firebase/firebase-admin.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
@@ -10,7 +11,9 @@ import { ScheduleModule } from './schedule/schedule.module';
 // import { MapModule } from './map/map.module';
 // import { FriendsModule } from './friends/friends.module';
 import { HealthModule } from './health/health.module';
-import { CampsitesModule } from './campsites/campsites.module'; // Added import
+import { CampsitesModule } from './campsites/campsites.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { DebugModule } from './debug/debug.module'; // Debug endpoints
 import * as Joi from 'joi';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -54,6 +57,7 @@ import { ArtistsModule } from './artists/artists.module';
 
     // Firebase/Firestore
     FirestoreModule,
+    FirebaseAdminModule, // Add Firebase Admin initialization
 
     // Application modules
     AuthModule,
@@ -65,7 +69,11 @@ import { ArtistsModule } from './artists/artists.module';
     // FriendsModule,
     HealthModule,
     CampsitesModule,
-    ArtistsModule, // Added module
+    ArtistsModule,
+    NotificationsModule,
+
+    // Debug modules (non-production only)
+    ...(process.env.NODE_ENV !== 'production' ? [DebugModule] : []),
   ],
   controllers: [],
   providers: [

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   TextInput,
@@ -7,10 +7,11 @@ import {
   Animated,
   LayoutChangeEvent,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface TopNavBarProps {
@@ -20,6 +21,7 @@ interface TopNavBarProps {
   onNotificationsPress?: () => void;
   onSettingsPress?: () => void;
   whiteIcons?: boolean;
+  unreadCount?: number; // optional external control for unread badge
 }
 
 const TopNavBar: React.FC<TopNavBarProps> = (props) => {
@@ -28,15 +30,40 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     placeholder = 'Search artist, vendor...', 
     onNotificationsPress, 
     onSettingsPress,
-    whiteIcons = false
+    whiteIcons = false,
+    unreadCount,
   } = props;
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const route = useRoute();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchContainerWidth, setSearchContainerWidth] = useState(0);
   const searchAnimatedWidth = React.useRef(new Animated.Value(0)).current;
+  const [hasUnread, setHasUnread] = useState(false);
+
+  const refreshUnread = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem('visible_notifications_count');
+      const count = raw ? parseInt(raw, 10) : 0;
+      setHasUnread(Number.isFinite(count) && count > 0);
+    } catch {
+      setHasUnread(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUnread();
+  }, [refreshUnread]);
+
+  // Refresh when the hosting screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshUnread();
+      return undefined;
+    }, [refreshUnread])
+  );
 
   // Determine icon color based on whiteIcons prop or theme
   const getIconColor = () => {
@@ -116,11 +143,16 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               onPress={handleNotificationsPress} 
               style={styles.iconButton}
             >
-              <Ionicons
-                name="notifications-outline"
-                size={24}
-                color={getIconColor()}
-              />
+              <View>
+                <Ionicons
+                  name={route?.name === 'Notifications' ? 'notifications' : 'notifications-outline'}
+                  size={24}
+                  color={getIconColor()}
+                />
+                {(typeof unreadCount === 'number' ? unreadCount > 0 : hasUnread) ? (
+                  <View style={styles.redDot} accessibilityLabel="Unread notifications" />
+                ) : null}
+              </View>
             </TouchableOpacity>
           )}
 
@@ -238,6 +270,15 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20
+  },
+  redDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
   },
   expandedSearch: {
     flexDirection: 'row',

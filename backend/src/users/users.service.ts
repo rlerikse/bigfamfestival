@@ -94,4 +94,22 @@ export class UsersService {
   async updateTicketType(id: string, ticketType: string): Promise<User> {
     return this.update(id, { ticketType });
   }
+  /**
+   * Update user's Expo push notification token
+   */
+  async updatePushToken(id: string, expoPushToken: string): Promise<User> {
+    return this.update(id, { expoPushToken });
+  }
+  /**
+   * Toggle user's notification settings
+   */
+  async toggleNotifications(id: string, enabled: boolean): Promise<User> {
+    return this.update(id, { notificationsEnabled: enabled });
+  }
+  /**
+   * Update user groups (for targeted notifications)
+   */
+  async updateUserGroups(id: string, userGroups: string[]): Promise<User> {
+    return this.update(id, { userGroups });
+  }
 }
