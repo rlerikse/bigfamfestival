@@ -16,6 +16,7 @@ import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DebugProvider } from './contexts/DebugContext';
+import { AppSettingsProvider } from './contexts/AppSettingsContext';
 import useCachedResources from './hooks/useCachedResources';
 
 // Create React Query client
@@ -81,12 +82,14 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <DebugProvider>
-              <NavigationContainer>
-                <Navigation />
-                <StatusBar style="auto" />
-              </NavigationContainer>
-            </DebugProvider>
+            <AppSettingsProvider>
+              <DebugProvider>
+                <NavigationContainer>
+                  <Navigation />
+                  <StatusBar style="auto" />
+                </NavigationContainer>
+              </DebugProvider>
+            </AppSettingsProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>

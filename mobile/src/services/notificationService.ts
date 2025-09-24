@@ -1,5 +1,6 @@
 // /src/services/notificationService.ts
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { getUserSchedule } from './scheduleService';
 
@@ -13,12 +14,18 @@ const NOTIFICATION_LEAD_TIME_MINUTES = 15;
  */
 export const scheduleEventNotification = async (event: ScheduleEvent): Promise<void> => {
   try {
+    // Parse the event date and time
+    // Event date is in YYYY-MM-DD format and time is in HH:MM format
     const eventDateTime = new Date(`${event.date}T${event.startTime}`);
+    const currentDate = new Date();
+    
+    // Calculate when notification should be sent (15 mins before event)
     const notificationTime = new Date(eventDateTime);
     notificationTime.setMinutes(notificationTime.getMinutes() - NOTIFICATION_LEAD_TIME_MINUTES);
-
+    
     // Don't schedule notifications for events that have already passed
-    if (notificationTime < new Date()) {
+    if (notificationTime < currentDate) {
+      console.warn(`Skipping notification for past event: ${event.name}`);
       return;
     }
 
@@ -35,9 +42,8 @@ export const scheduleEventNotification = async (event: ScheduleEvent): Promise<v
       console.warn('Notification permissions not granted');
       return;
     }
-
-    // Use a date object for the trigger - the API will handle it correctly
-    // The timestamp is the number of milliseconds since epoch
+    
+    // Set up notification with proper trigger format for Expo notifications
     await Notifications.scheduleNotificationAsync({
       content: {
         title: `${event.name} is starting soon!`,
@@ -45,7 +51,7 @@ export const scheduleEventNotification = async (event: ScheduleEvent): Promise<v
         data: { eventId: event.id },
       },
       trigger: {
-        channelId: 'event-reminders',
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: notificationTime
       },
       identifier: event.id, // Use event ID as identifier to prevent duplicates
@@ -71,11 +77,20 @@ export const cancelEventNotification = async (eventId: string): Promise<void> =>
 /**
  * Schedules notifications for all events in the user's schedule.
  * This should be called when the user logs in or when the schedule is updated.
+ * This will check if notifications are enabled for the user before scheduling.
  *
  * @param userId The ID of the user.
  */
 export const scheduleAllUserEventsNotifications = async (userId: string): Promise<void> => {
   try {
+    // Check if notifications are enabled for this user
+    const notificationsEnabled = await AsyncStorage.getItem(`schedule_notifications_enabled_${userId}`);
+    // If explicitly disabled, don't schedule notifications
+    if (notificationsEnabled === 'false') {
+      // User has disabled schedule notifications
+      return;
+    }
+
     const schedule = await getUserSchedule(userId);
     for (const event of schedule) {
       await scheduleEventNotification(event);

@@ -19,14 +19,16 @@ import { useDebug } from '../contexts/DebugContext';
 import { DarkModeToggle } from '../components/DarkModeToggle';
 import { RootStackParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppSettings } from '../contexts/AppSettingsContext';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
 const SettingsScreen = () => {
-  const { theme, isDark, setMode, isPerformanceMode, togglePerformanceMode } = useTheme();
+  const { theme, isDark, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
-  const { debugMode, setDebugMode } = useDebug();
+  const { setDebugMode } = useDebug();
   const { isGuestUser, deleteAccount } = useAuth();
+  const { scheduleNotificationsEnabled, toggleScheduleNotifications } = useAppSettings();
 
   const handleDebugModeToggle = (value: boolean) => {
     setDebugMode(value);
@@ -95,7 +97,13 @@ const SettingsScreen = () => {
                   onPress: async () => {
                     try {
                       await deleteAccount();
-                    } catch {}
+                    } catch (error) {
+                      console.error('Error deleting account:', error);
+                      Alert.alert(
+                        'Error',
+                        'Failed to delete account. Please try again later.'
+                      );
+                    }
                   }
                 }
               ]
@@ -127,6 +135,15 @@ const SettingsScreen = () => {
     {
       title: 'Notifications',
       items: [
+        // Schedule notifications toggle (only for non-guest users)
+        ...(!isGuestUser() ? [{
+          icon: 'calendar-outline',
+          label: 'Schedule Notifications',
+          hasSwitch: true,
+          switchValue: scheduleNotificationsEnabled,
+          onSwitchToggle: toggleScheduleNotifications,
+          description: 'Get notified 15 minutes before events in your schedule',
+        }] : []),
         {
           icon: 'notifications-outline', 
           label: 'Test Notification',
@@ -194,6 +211,23 @@ const SettingsScreen = () => {
     }] : []),
   ];
 
+  // TypeScript type annotations are causing conflicts with the dynamic nature of our items
+  // Let's simplify and use type assertions where needed
+
+  /**
+   * Renders a settings item with proper layout and styling
+   * @param {Object} item - The settings item configuration
+   * @param {string} item.icon - Ionicons icon name
+   * @param {string} item.label - Display label for the setting
+   * @param {string} [item.description] - Optional description text
+   * @param {Function} [item.onPress] - Handler for item press
+   * @param {boolean} [item.hasSwitch] - Whether to show a toggle switch
+   * @param {boolean} [item.hasToggle] - Whether to show dark mode toggle
+   * @param {boolean} [item.switchValue] - Current value for the switch
+   * @param {Function} [item.onSwitchToggle] - Handler for switch toggle
+   * @param {boolean} [item.danger] - Whether to use danger styling
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderSettingsItem = (item: any) => {
     const isDanger = item.danger;
     return (
@@ -244,6 +278,13 @@ const SettingsScreen = () => {
     );
   };
 
+  /**
+   * Renders a settings section with title and items
+   * @param {Object} section - The section configuration
+   * @param {string} section.title - Section title
+   * @param {Array} section.items - Array of setting items
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const renderSettingsSection = (section: any) => {
     return (
       <View key={section.title} style={styles.section}>
