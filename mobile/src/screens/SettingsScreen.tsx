@@ -1,5 +1,5 @@
 // Commit: Show scheduled notifications under Admin in Settings
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import {
   StyleSheet,
   View,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 
@@ -30,32 +30,7 @@ const SettingsScreen = () => {
   const isAdmin = user?.role === 'admin';
   const { scheduleNotificationsEnabled, toggleScheduleNotifications } = useAppSettings();
 
-  // Scheduled notifications state (Admin only)
-  const [scheduled, setScheduled] = useState<Notifications.NotificationRequest[]>([]);
-  const [scheduledLoading, setScheduledLoading] = useState(false);
-
-  const loadScheduled = useCallback(async () => {
-    try {
-      setScheduledLoading(true);
-      const list = await Notifications.getAllScheduledNotificationsAsync();
-      setScheduled(list);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to load scheduled notifications:', e);
-    } finally {
-      setScheduledLoading(false);
-    }
-  }, []);
-
-  // Refresh on focus for up-to-date list
-  useFocusEffect(
-    useCallback(() => {
-      if (isAdmin) {
-        loadScheduled();
-      }
-      return undefined;
-    }, [isAdmin, loadScheduled])
-  );
+  // Scheduled notifications admin section hidden; related state and effects removed
 
   // Debug mode toggle removed to avoid unused warnings; debug tools accessible elsewhere
 
@@ -63,38 +38,7 @@ const SettingsScreen = () => {
     navigation.navigate('Profile');
   };
 
-  const handleTestNotification = async () => {
-    try {
-      // Request permissions if not already granted
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      
-      if (finalStatus !== 'granted') {
-        Alert.alert(
-          "Permission Required", 
-          "Please enable notifications in your device settings to receive event reminders."
-        );
-        return;
-      }
-
-      // Send an immediate notification
-      await Notifications.presentNotificationAsync({
-        title: "Test Notification",
-        body: "This is a test notification from Big Fam Festival!",
-        data: { test: 'test' },
-      });
-      
-      Alert.alert("Test Notification Sent", "You should see a notification immediately.");
-    } catch (error) {
-      console.error('Failed to send notification:', error);
-      Alert.alert("Error", "Failed to send notification. Check console for details.");
-    }
-  };
+  // Immediate test notification button hidden
 
   const handleScheduleTestNotification = async () => {
     try {
@@ -183,76 +127,6 @@ const SettingsScreen = () => {
                 description: 'Broadcast a push notification to everyone',
               },
             ],
-            // Custom content: show all scheduled notifications
-            customContent: (
-              <View>
-                <View style={styles.scheduledHeaderRow}>
-                  <Text style={[styles.scheduledHeaderTitle, { color: theme.text }]}>Scheduled Notifications</Text>
-                  <TouchableOpacity onPress={loadScheduled} style={styles.scheduledRefreshBtn} accessibilityRole="button">
-                    <Ionicons name="refresh" size={18} color={theme.primary} />
-                    <Text style={[styles.scheduledRefreshText, { color: theme.primary }]}>Refresh</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={[styles.sectionContent, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                  {scheduledLoading ? (
-                    <View style={styles.scheduledLoadingWrap}>
-                      <Text style={[styles.scheduledEmpty, { color: theme.muted }]}>Loading…</Text>
-                    </View>
-                  ) : scheduled.length === 0 ? (
-                    <View style={styles.scheduledEmptyWrap}>
-                      <Text style={[styles.scheduledEmpty, { color: theme.muted }]}>No scheduled notifications</Text>
-                    </View>
-                  ) : (
-                    scheduled.map((req) => {
-                      // Best-effort formatting of trigger
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      const trig: any = req.trigger as any;
-                      let when = '';
-                      if (trig?.date) {
-                        const ts = typeof trig.date === 'number' ? trig.date : Date.parse(trig.date);
-                        when = new Date(ts).toLocaleString();
-                      } else if (typeof trig?.timestamp === 'number') {
-                        when = new Date(trig.timestamp).toLocaleString();
-                      } else if (typeof trig?.seconds === 'number') {
-                        when = `${trig.seconds}s interval${trig?.repeats ? ' (repeating)' : ''}`;
-                      } else if (
-                        typeof trig?.hour === 'number' ||
-                        typeof trig?.minute === 'number' ||
-                        typeof trig?.weekday === 'number'
-                      ) {
-                        const parts = [
-                          trig.weekday ? `weekday ${trig.weekday}` : undefined,
-                          Number.isFinite(trig.hour) ? `hour ${trig.hour}` : undefined,
-                          Number.isFinite(trig.minute) ? `min ${trig.minute}` : undefined,
-                        ].filter(Boolean);
-                        when = parts.join(', ');
-                        if (trig?.repeats) when += ' (repeating)';
-                      } else {
-                        when = 'Scheduled';
-                      }
-                      return (
-                        <View key={req.identifier} style={[styles.scheduledItem, { borderBottomColor: theme.border }]}>
-                          <Ionicons name="calendar-outline" size={20} color={theme.primary} style={{ marginRight: 10 }} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={[styles.scheduledTitle, { color: theme.text }]} numberOfLines={1}>
-                              {req.content?.title || 'Untitled'}
-                            </Text>
-                            {!!req.content?.body && (
-                              <Text style={[styles.scheduledBody, { color: theme.muted }]} numberOfLines={2}>
-                                {req.content?.body}
-                              </Text>
-                            )}
-                            <Text style={[styles.scheduledMeta, { color: theme.muted }]}>
-                              {when}
-                            </Text>
-                          </View>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-              </View>
-            ),
           },
         ]
       : []),
@@ -285,16 +159,10 @@ const SettingsScreen = () => {
           description: 'Get notified 15 minutes before events in your schedule',
         }] : []),
         {
-          icon: 'notifications-outline', 
-          label: 'Test Notification',
-          onPress: handleTestNotification,
-          description: 'Send a test notification immediately',
-        },
-        {
           icon: 'alarm-outline',
-          label: 'Schedule Test (5s)',
+          label: 'Test Push Notification',
           onPress: handleScheduleTestNotification,
-          description: 'Schedules a local test notification to fire in about 5 seconds',
+          description: 'Sends a test push notification in about 5 seconds',
         },
       ],
     },
