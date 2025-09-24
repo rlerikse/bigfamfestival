@@ -133,7 +133,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         {/* Display genres if available */}
         {(item.genres && item.genres.length > 0) && (
           <Text 
-            style={[styles.eventGenres, { color: theme.muted }]}
+            style={[styles.eventGenres, { color: '#B87333' }]}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
