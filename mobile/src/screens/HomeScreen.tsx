@@ -3,7 +3,6 @@ import {
   View,
   Dimensions,
   SafeAreaView,
-  Text,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
@@ -61,11 +60,16 @@ const HomeScreen = () => {
   };
 
   const handleToggleSchedule = async (ev: ScheduleEvent) => {
-    if (!user) {
-      Alert.alert('Login Required', 'Please login to manage your schedule.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => navigation.navigate('Auth') },
-      ]);
+    // Require a logged-in (non-guest) user to manage schedule
+    if (!user || !isLoggedInUser(user) || user.id === 'guest-user') {
+      Alert.alert(
+        'Login Required',
+        'Please log in to manage your schedule.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => navigation.navigate('Auth') },
+        ]
+      );
       return;
     }
     const id = ev.id;
