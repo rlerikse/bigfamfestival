@@ -38,8 +38,13 @@ export default function MapScreen() {
     return { width, aspectRatio: 1 };
   }, [width]);
   
-  // Handle image caching to file system
+  // Image is now preloaded at app startup, so we can use it directly
   useEffect(() => {
+    // Since the image is preloaded in useCachedResources,
+    // we just need to set loading to false immediately
+    setIsLoading(false);
+    
+    // Optional: For file system caching, we can still keep this as a backup
     const cacheImage = async () => {
       try {
         // Create a unique filename based on the image source
@@ -52,17 +57,12 @@ export default function MapScreen() {
         
         if (fileInfo.exists) {
           // Use cached file
-          // Using commented log to avoid lint warnings but maintain the logging intent
-          // console.log('Using cached map image');
           setCachedImageUri(cacheFilePath);
-          setIsLoading(false);
         } else {
           // Need to resolve the actual URI from the bundled asset
           const imageAssetModule = Image.resolveAssetSource(campingMap);
           
           // Download and cache the file
-          // Using commented log to avoid lint warnings but maintain the logging intent
-          // console.log('Caching map image for future use');
           const downloadResult = await FileSystem.downloadAsync(
             imageAssetModule.uri,
             cacheFilePath
@@ -71,15 +71,14 @@ export default function MapScreen() {
           if (downloadResult.status === 200) {
             setCachedImageUri(downloadResult.uri);
           }
-          setIsLoading(false);
         }
       } catch (error) {
         console.warn('Error caching image:', error);
-        // Fallback to using the asset directly
-        setIsLoading(false);
+        // Fallback to using the asset directly - which is fine since it's preloaded
       }
     };
     
+    // Run the caching in the background
     cacheImage();
   }, []);
   

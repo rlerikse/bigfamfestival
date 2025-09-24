@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
 import {
   View,
-  Image,
   TextInput,
   StyleSheet,
   TouchableOpacity,
   Animated,
   LayoutChangeEvent,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -90,12 +89,13 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     <View style={[styles.container, { paddingTop: insets.top }]} pointerEvents="box-none">
       <View style={styles.content}>
         <View style={styles.logoContainer} pointerEvents='none'>
-          <Image
+          <ExpoImage
             source={require('../assets/images/bf-logo-trans.png')}
             style={styles.logo}
-            resizeMode="contain"
-            fadeDuration={0}
-            loadingIndicatorSource={undefined}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={150}
+            accessibilityLabel="Big Fam Festival Logo"
           />
         </View>
         
