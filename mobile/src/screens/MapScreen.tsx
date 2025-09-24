@@ -3,7 +3,7 @@
 // Date: 2025-09-23
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { SafeAreaView, StyleSheet, View, useWindowDimensions, ActivityIndicator, Image } from 'react-native';
+import { SafeAreaView, StyleSheet, View, useWindowDimensions, ActivityIndicator, Image, useColorScheme } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as FileSystem from 'expo-file-system';
 
@@ -16,12 +16,20 @@ import TopNavBar from '../components/TopNavBar';
  * - Calculates dimensions once and memoizes the result
  * - Shows loading indicator until the image is ready
  * - Implements file system caching for faster subsequent loads
+ * - Background color and icon colors adapt to light/dark theme
  * Props: none
  */
 export default function MapScreen() {
   const { width } = useWindowDimensions();
   const [isLoading, setIsLoading] = useState(true);
   const [cachedImageUri, setCachedImageUri] = useState<string | null>(null);
+  const colorScheme = useColorScheme();
+  
+  // Determine background color based on theme
+  const backgroundColor = colorScheme === 'dark' ? '#235001' : '#ffffff';
+  
+  // Icons should be white on dark background, dark on light background
+  const whiteIcons = colorScheme === 'dark';
   
   // Calculate and memoize image height based on aspect ratio
   const imageStyle = useMemo(() => {
@@ -83,8 +91,8 @@ export default function MapScreen() {
   }, []);
   
   return (
-    <SafeAreaView style={styles.container}>
-      <TopNavBar whiteIcons={true} />
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+      <TopNavBar whiteIcons={whiteIcons} />
       
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -108,8 +116,7 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Force a consistent dark green background regardless of theme
-    backgroundColor: '#235001',
+    // Background color is now dynamic based on theme
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 0,
