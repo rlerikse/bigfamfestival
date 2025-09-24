@@ -257,7 +257,6 @@ const MyScheduleScreen = () => {
         onSearch={handleSearch} 
         placeholder="Search your schedule..." 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications', 'Notifications coming soon!')}
       />
       
       {/* Day filter at the top with proper alignment */}

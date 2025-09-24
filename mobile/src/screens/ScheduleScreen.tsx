@@ -674,7 +674,6 @@ const ScheduleScreen = () => {
       <TopNavBar 
         onSearch={(_query) => { /* Implement search logic */ }} 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications coming soon!')}
         whiteIcons={false}
       />
       {/* Main content container */}

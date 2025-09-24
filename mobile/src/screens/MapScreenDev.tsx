@@ -479,7 +479,6 @@ const MapScreen = () => {
         onSearch={handleSearch} 
         placeholder="Search map locations..." 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => showSimpleAlert('Notifications', 'Notifications coming soon!')}
       />
       
       {/* Confirmation Modal */}

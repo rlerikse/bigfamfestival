@@ -4,15 +4,17 @@ import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import TopNavBar from '../components/TopNavBar';
 
 /**
  * Placeholder Notifications screen for future notifications functionality
  */
 const NotificationsScreen: React.FC = () => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <TopNavBar whiteIcons={isDark} />
       <View style={styles.content}>
         <Ionicons 
           name="notifications-outline" 

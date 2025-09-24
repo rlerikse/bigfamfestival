@@ -3,12 +3,13 @@
 // Date: 2025-09-23
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { SafeAreaView, StyleSheet, View, useWindowDimensions, ActivityIndicator, Image, useColorScheme } from 'react-native';
+import { SafeAreaView, StyleSheet, View, useWindowDimensions, ActivityIndicator, Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as FileSystem from 'expo-file-system';
 
 import campingMap from '../assets/images/bff25_CampingMap.png';
 import TopNavBar from '../components/TopNavBar';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * Enhanced MapScreen with optimized loading
@@ -16,20 +17,17 @@ import TopNavBar from '../components/TopNavBar';
  * - Calculates dimensions once and memoizes the result
  * - Shows loading indicator until the image is ready
  * - Implements file system caching for faster subsequent loads
- * - Background color and icon colors adapt to light/dark theme
+ * - Background color adapts to theme using theme context
  * Props: none
  */
 export default function MapScreen() {
   const { width } = useWindowDimensions();
   const [isLoading, setIsLoading] = useState(true);
   const [cachedImageUri, setCachedImageUri] = useState<string | null>(null);
-  const colorScheme = useColorScheme();
-  
-  // Determine background color based on theme
-  const backgroundColor = colorScheme === 'dark' ? '#235001' : '#ffffff';
+  const { theme, isDark } = useTheme();
   
   // Icons should be white on dark background, dark on light background
-  const whiteIcons = colorScheme === 'dark';
+  const whiteIcons = isDark;
   
   // Calculate and memoize image height based on aspect ratio
   const imageStyle = useMemo(() => {
@@ -91,7 +89,7 @@ export default function MapScreen() {
   }, []);
   
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <TopNavBar whiteIcons={whiteIcons} />
       
       {isLoading ? (

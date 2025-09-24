@@ -10,6 +10,7 @@ import {
 import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface TopNavBarProps {
@@ -31,6 +32,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   } = props;
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchContainerWidth, setSearchContainerWidth] = useState(0);
@@ -78,12 +80,18 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   const handleNotificationsPress = () => {
     if (onNotificationsPress) {
       onNotificationsPress();
+    } else {
+      // Navigate to Notifications screen
+      navigation.navigate('Notifications' as never);
     }
   };
 
   const handleSettingsPress = () => {
     if (onSettingsPress) {
       onSettingsPress();
+    } else {
+      // Navigate to Settings screen
+      navigation.navigate('Settings' as never);
     }
   };  return (
     <View style={[styles.container, { paddingTop: insets.top }]} pointerEvents="box-none">

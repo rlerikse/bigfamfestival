@@ -12,7 +12,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import MapScreen from '../screens/MapScreen';
-import MessagesScreen from '../screens/MessagesScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -37,7 +37,7 @@ export type MainTabParamList = {
   Home: undefined;
   Schedule: undefined;
   Map: undefined;
-  Messages: undefined;
+  Notifications: undefined;
   Profile: undefined;
 };
 
@@ -124,12 +124,12 @@ function MainNavigator() {
           }}
         />
         <Tab.Screen
-          name="Messages"
-          component={MessagesScreen}
+          name="Notifications"
+          component={NotificationsScreen}
           options={{
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
-                name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
+                name={focused ? 'notifications' : 'notifications-outline'}
                 size={size}
                 color={color}
               />
