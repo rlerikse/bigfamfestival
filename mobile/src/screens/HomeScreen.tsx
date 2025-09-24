@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import DayNightCycle from '../components/DayNightCycle';
 import TopNavBar from '../components/TopNavBar';
@@ -26,6 +27,7 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'M
 const HomeScreen = () => {
   const { theme, isDark, isPerformanceMode } = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const gatesOpenDate = new Date('2025-09-26T10:00:00');
   const { user } = useAuth();
   const [selectedEvent, setSelectedEvent] = React.useState<ScheduleEvent | null>(null);
@@ -138,7 +140,7 @@ const HomeScreen = () => {
            padding: 5,
            borderRadius: 16,
            marginHorizontal: 20,
-           marginTop: 80, // Account for TopNavBar
+           marginTop: insets.top + 55, // TopNavBar height (55) + safe area + small buffer
          }}>
           {/* Copper divider above Gates Open In image */}
           <View style={{ height: 6 }} />

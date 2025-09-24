@@ -22,6 +22,7 @@ import {
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -226,6 +227,7 @@ const ScheduleScreen = () => {
   const { theme, isDark } = useTheme();
   const { user, logout } = useAuth();
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -677,7 +679,7 @@ const ScheduleScreen = () => {
         whiteIcons={false}
       />
       {/* Main content container */}
-      <View style={{ flex: 1, flexDirection: 'column', marginTop: 80 }}>
+      <View style={{ flex: 1, flexDirection: 'column', marginTop: insets.top + 55 }}>
         {/* Fixed header container for filter rows */}
         <View
           style={{
