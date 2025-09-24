@@ -112,7 +112,13 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         />
       )}
       <View style={styles.eventInfo}>
-        <Text style={[styles.eventName, { color: theme.text }]}>{item.name}</Text>
+        <Text
+          style={[styles.eventName, { color: theme.text }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {item.name}
+        </Text>
         <Text style={[styles.eventDetails, { color: theme.muted }]}>
           {item.stage} - {formattedTime}
         </Text>

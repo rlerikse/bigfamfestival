@@ -242,7 +242,6 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 24,
     width: '100%',
   },
   centered: {
@@ -259,6 +258,8 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     marginBottom: 16,
+    maxHeight: 80,
+    marginTop: 46,
     position: 'relative',
     width: '100%',
   },

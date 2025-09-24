@@ -61,17 +61,26 @@ const styles = StyleSheet.create({
     fontSize: 48,
     fontWeight: 'bold',
     fontFamily: 'SpaceMono-Regular', // Assuming SpaceMono is loaded
+    // Create a more pronounced copper outline effect
+    textShadowColor: '#B87333', // Copper outline color
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
+    // Note: We can't add multiple shadows in React Native directly,
+    // but we can use a slightly increased radius for a thicker appearance
   },
   labelText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
     marginTop: 4,
+    textShadowColor: '#B87333', // Copper outline color
+    textShadowOffset: { width: 0.5, height: 0.5 },
+    textShadowRadius: 2,
   },
   separator: {
     width: 1,
     height: 50,
-    backgroundColor: '#D2B48C', // Copper color from theme
+    backgroundColor: '#B87333', // Updated to match copper color
     marginHorizontal: 5,
   },
   finishedText: {
@@ -79,6 +88,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
+    textShadowColor: '#B87333', // Copper outline color
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 });
 
