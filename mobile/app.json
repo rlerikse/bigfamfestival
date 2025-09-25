@@ -37,6 +37,7 @@
       }
     },
     "android": {
+      "targetSdkVersion": 35,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#F5F5DC"
@@ -101,6 +102,7 @@
         "expo-build-properties",
         {
           "android": {
+            "targetSdkVersion": 35,
             "gradleVersion": "8.6",
             "usesCleartextTraffic": false
           },
