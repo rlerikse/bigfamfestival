@@ -55,13 +55,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
       ],
-      "googleServicesFile": "./google-services.json",
-      "notification": {
-        "androidMode": "default",
-        "androidCollapsedTitle": "Big Fam Festival Updates",
-        "color": "#2E4031",
-        "icon": "./src/assets/images/notification-icon.png"
-      }
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"
