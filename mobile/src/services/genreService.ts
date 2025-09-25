@@ -1,6 +1,5 @@
 // src/services/genreService.ts
-import { firestore } from '../config/firebase';
-import { collection, doc, getDocs, getDoc } from 'firebase/firestore';
+import firestore, { collection, getDocs, doc, getDoc } from '../utils/firebaseCompat';
 import { ScheduleEvent } from '../types/event';
 
 interface Genre {

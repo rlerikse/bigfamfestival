@@ -10,8 +10,14 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import TopNavBar from '../components/TopNavBar';
 import NotificationHistoryItem from '../components/NotificationHistoryItem';
-import { collection, onSnapshot, orderBy, query, limit as fsLimit, getDocs } from 'firebase/firestore';
-import { firestore } from '../config/firebase';
+import firestore, { 
+  collection, 
+  getDocs, 
+  onSnapshot, 
+  orderBy, 
+  query, 
+  limit as fsLimit 
+} from '../utils/firebaseCompat';
 import { api } from '../services/api';
 
 /**

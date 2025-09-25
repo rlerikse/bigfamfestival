@@ -38,8 +38,7 @@ import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
-import { firestore } from '../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import firestore, { collection, getDocs } from '../utils/firebaseCompat';
 import genreService from '../services/genreService';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;

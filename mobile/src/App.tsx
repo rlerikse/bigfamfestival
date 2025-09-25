@@ -9,6 +9,9 @@ import * as SplashScreen from 'expo-splash-screen';
 // Import our new notification listener component
 import NotificationListener from './components/NotificationListener';
 
+// Firebase initialization
+import initializeNativeFirebase from './config/nativeFirebase';
+
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -35,13 +38,17 @@ export default function App() {
   // Removed old notification setup code
 
   useEffect(() => {
-    // Hide splash screen once resources are loaded
-    async function hideSplash() {
+    // Initialize Firebase and hide splash screen once resources are loaded
+    async function initializeAndHideSplash() {
       if (isLoadingComplete) {
+        // Initialize React Native Firebase
+        initializeNativeFirebase();
+        
+        // Hide splash screen
         await SplashScreen.hideAsync();
       }
     }
-    hideSplash();
+    initializeAndHideSplash();
   }, [isLoadingComplete]);
 
   if (!isLoadingComplete) {

@@ -1,7 +1,6 @@
 // Commit: Add deleteAccountFromFirestore service for deleting user doc from Firestore
 // Author: GitHub Copilot, 2025-09-23
-import { firestore } from '../config/firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import firestore, { doc, deleteDoc } from '../utils/firebaseCompat';
 
 /**
  * Delete the user document from Firestore users collection

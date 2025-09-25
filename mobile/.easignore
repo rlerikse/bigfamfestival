@@ -1,0 +1,10 @@
+# .easignore
+node_modules/**/*
+.git
+.idea
+.vscode
+.gradle
+android/.gradle
+android/app/build
+ios/build
+ios/Pods
