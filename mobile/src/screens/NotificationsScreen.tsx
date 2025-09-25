@@ -1,7 +1,6 @@
 // Commit: Replace Messages screen with Notifications placeholder screen
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -89,6 +88,164 @@ const NotificationsScreen: React.FC = () => {
     return `${category}|${title}|${body}|${bucket}`;
   }, [toIso]);
 
+  // Persist previous notification IDs between renders to only trigger local push for new notifications
+  const previousIdsRef = useRef<Set<string>>(new Set());
+
+  // Load previously seen notification IDs from storage on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem('seen_notification_ids');
+        if (stored) {
+          const ids = JSON.parse(stored) as string[];
+          previousIdsRef.current = new Set(ids);
+        }
+      } catch (e) {
+        // Ignore storage errors
+      }
+    })();
+  }, []);
+
+  // Persist seen notification IDs to storage
+  const persistSeenIds = useCallback(async (ids: Set<string>) => {
+    try {
+      await AsyncStorage.setItem('seen_notification_ids', JSON.stringify(Array.from(ids)));
+    } catch (e) {
+      // Ignore storage errors
+    }
+  }, []);
+
+  const fetchFromApi = React.useCallback(async () => {
+    // Only admins should call /notifications; guests and attendees skip
+    if (isGuest || !isAdmin) {
+      setIsLoadingHistory(false);
+      return;
+    }
+    if (apiForbiddenRef.current) {
+      // API is forbidden for this user (likely non-admin); avoid spamming requests/logs
+      setIsLoadingHistory(false);
+      return;
+    }
+    try {
+      setIsLoadingHistory(true);
+      const response = await api.get('/notifications?limit=10');
+      const raw = Array.isArray(response.data)
+        ? (response.data as unknown[])
+        : ((response.data?.items as unknown[]) || []);
+      const items: NotificationHistoryEntry[] = raw.map((it) => {
+        const asItem = it as Partial<NotificationHistoryEntry> & { sentAt?: unknown } & { id?: string };
+        const sentAtVal = asItem?.sentAt as unknown;
+        let sentAt: string | { _seconds: number; _nanoseconds: number } = new Date().toISOString();
+        if (sentAtVal) {
+          if (typeof sentAtVal === 'string') {
+            sentAt = sentAtVal;
+          } else if ((sentAtVal as { _seconds?: number })._seconds) {
+            sentAt = new Date((sentAtVal as { _seconds: number })._seconds * 1000).toISOString();
+          }
+        }
+        const rawCategory = asItem.category || ((asItem.id || '').startsWith('local-') ? 'my_schedule' : undefined);
+        return {
+          id: asItem.id || '',
+          title: asItem.title || '',
+          body: asItem.body || '',
+          sentAt,
+          category: normalizeCategory(rawCategory),
+          priority: asItem.priority,
+        } as NotificationHistoryEntry;
+      });
+      setNotificationHistory(items);
+    } catch (error) {
+      const status = (error as { response?: { status?: number } }).response?.status;
+      if (status === 401 || status === 403) {
+        apiForbiddenRef.current = true;
+        if (__DEV__) {
+          // eslint-disable-next-line no-console
+          console.info('Notifications API forbidden for this user; disabling API fallback/polling.');
+        }
+        // If we were polling due to Firestore denial, stop polling to prevent repeated 403s
+        if (usePolling) setUsePolling(false);
+      } else if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.error('Fallback notifications fetch failed:', error);
+      }
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [normalizeCategory, isGuest, isAdmin, usePolling]);
+
+  useEffect(() => {
+    setIsLoadingHistory(true);
+    try {
+      const q = query(
+        collection(firestore, 'notifications'),
+        orderBy('sentAt', 'desc'),
+        fsLimit(10)
+      );
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items: NotificationHistoryEntry[] = snapshot.docs.map((doc) => {
+            const raw = doc.data() as Record<string, unknown>;
+            const sentAtVal = (raw as { sentAt?: unknown }).sentAt;
+            let sentAt: string | { _seconds: number; _nanoseconds: number } = new Date().toISOString();
+            if (sentAtVal) {
+              if (typeof sentAtVal === 'string') {
+                sentAt = sentAtVal;
+              } else if (
+                typeof (sentAtVal as { toDate?: () => Date }).toDate === 'function'
+              ) {
+                sentAt = (sentAtVal as { toDate: () => Date }).toDate().toISOString();
+              } else if (
+                (sentAtVal as { seconds?: number; _seconds?: number }).seconds ||
+                (sentAtVal as { seconds?: number; _seconds?: number })._seconds
+              ) {
+                const secs =
+                  (sentAtVal as { seconds?: number; _seconds?: number }).seconds ?? 
+                  (sentAtVal as { seconds?: number; _seconds?: number })._seconds ?? 0;
+                sentAt = new Date(secs * 1000).toISOString();
+              }
+            }
+            return {
+              id: doc.id,
+              title: (raw.title as string) || '',
+              body: (raw.body as string) || '',
+              sentAt,
+              category: normalizeCategory(raw.category as string | undefined),
+              priority: raw.priority as 'normal' | 'high' | undefined,
+            } as NotificationHistoryEntry;
+          });
+
+          // Track seen notification IDs for deduplication (but don't trigger local push - NotificationListener handles that)
+          const currentIds = new Set(items.map((item) => item.id));
+          previousIdsRef.current = currentIds;
+          // Persist the seen IDs to storage
+          persistSeenIds(currentIds);
+
+          setNotificationHistory(items);
+          setIsLoadingHistory(false);
+        },
+        (error) => {
+          setIsLoadingHistory(false);
+          if ((error as { code?: string }).code === 'permission-denied') {/* Lines 303-314 omitted */}
+          // Other errors (network, etc.)
+          if (__DEV__) {/* Lines 317-319 omitted */}
+        }
+      );
+      return () => {
+        unsubscribe();
+      };
+    } catch (err) {
+      setIsLoadingHistory(false);
+      if (isAdmin && !apiForbiddenRef.current) {
+        setUsePolling(true);
+        fetchFromApi();
+      }
+      return () => {
+        /* no-op */
+      };
+    }
+  }, [fetchFromApi, usePolling, normalizeCategory, isAdmin, persistSeenIds]);
+
   const mergedHistory = useMemo(() => {
     // Prefer server history items over local duplicates (same title/body/time bucket/category)
     const map = new Map<string, NotificationHistoryEntry>();
@@ -175,165 +332,6 @@ const NotificationsScreen: React.FC = () => {
     });
   }, [visibleHistory, makeKey, persistDismissed]);
 
-  const fetchFromApi = React.useCallback(async () => {
-    // Only admins should call /notifications; guests and attendees skip
-    if (isGuest || !isAdmin) {
-      setIsLoadingHistory(false);
-      return;
-    }
-    if (apiForbiddenRef.current) {
-      // API is forbidden for this user (likely non-admin); avoid spamming requests/logs
-      setIsLoadingHistory(false);
-      return;
-    }
-    try {
-      setIsLoadingHistory(true);
-      const response = await api.get('/notifications?limit=10');
-      const raw = Array.isArray(response.data)
-        ? (response.data as unknown[])
-        : ((response.data?.items as unknown[]) || []);
-      const items: NotificationHistoryEntry[] = raw.map((it) => {
-        const asItem = it as Partial<NotificationHistoryEntry> & { sentAt?: unknown } & { id?: string };
-        const sentAtVal = asItem?.sentAt as unknown;
-        let sentAt: string | { _seconds: number; _nanoseconds: number } = new Date().toISOString();
-        if (sentAtVal) {
-          if (typeof sentAtVal === 'string') {
-            sentAt = sentAtVal;
-          } else if ((sentAtVal as { _seconds?: number })._seconds) {
-            sentAt = new Date((sentAtVal as { _seconds: number })._seconds * 1000).toISOString();
-          }
-        }
-        const rawCategory = asItem.category || ((asItem.id || '').startsWith('local-') ? 'my_schedule' : undefined);
-        return {
-          id: asItem.id || '',
-          title: asItem.title || '',
-          body: asItem.body || '',
-          sentAt,
-          category: normalizeCategory(rawCategory),
-          priority: asItem.priority,
-        } as NotificationHistoryEntry;
-      });
-      setNotificationHistory(items);
-    } catch (error) {
-      const status = (error as { response?: { status?: number } }).response?.status;
-      if (status === 401 || status === 403) {
-        apiForbiddenRef.current = true;
-        if (__DEV__) {
-          // eslint-disable-next-line no-console
-          console.info('Notifications API forbidden for this user; disabling API fallback/polling.');
-        }
-        // If we were polling due to Firestore denial, stop polling to prevent repeated 403s
-        if (usePolling) setUsePolling(false);
-      } else if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.error('Fallback notifications fetch failed:', error);
-      }
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  }, [normalizeCategory, isGuest, isAdmin, usePolling]);
-
-  useEffect(() => {
-    // Always attach Firestore realtime listener for all users
-    setIsLoadingHistory(true);
-    let previousIds: Set<string> = new Set();
-    try {
-      const q = query(
-        collection(firestore, 'notifications'),
-        orderBy('sentAt', 'desc'),
-        fsLimit(10)
-      );
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const items: NotificationHistoryEntry[] = snapshot.docs.map((doc) => {
-            const raw = doc.data() as Record<string, unknown>;
-            const sentAtVal = (raw as { sentAt?: unknown }).sentAt;
-            let sentAt: string | { _seconds: number; _nanoseconds: number } = new Date().toISOString();
-            if (sentAtVal) {
-              if (typeof sentAtVal === 'string') {
-                sentAt = sentAtVal;
-              } else if (
-                typeof (sentAtVal as { toDate?: () => Date }).toDate === 'function'
-              ) {
-                sentAt = (sentAtVal as { toDate: () => Date }).toDate().toISOString();
-              } else if (
-                (sentAtVal as { seconds?: number; _seconds?: number }).seconds ||
-                (sentAtVal as { seconds?: number; _seconds?: number })._seconds
-              ) {
-                const secs =
-                  (sentAtVal as { seconds?: number; _seconds?: number }).seconds ??
-                  (sentAtVal as { seconds?: number; _seconds?: number })._seconds ?? 0;
-                sentAt = new Date(secs * 1000).toISOString();
-              }
-            }
-            return {
-              id: doc.id,
-              title: (raw.title as string) || '',
-              body: (raw.body as string) || '',
-              sentAt,
-              category: normalizeCategory(raw.category as string | undefined),
-              priority: raw.priority as 'normal' | 'high' | undefined,
-            } as NotificationHistoryEntry;
-          });
-
-          // Detect new notifications and trigger local push
-          const currentIds = new Set(items.map((item) => item.id));
-          items.forEach((item) => {
-            if (!previousIds.has(item.id)) {
-              // Only trigger for new notifications
-              Notifications.scheduleNotificationAsync({
-                content: {
-                  title: item.title || 'New Notification',
-                  body: item.body || '',
-                  data: { category: item.category },
-                },
-                trigger: null, // Immediate
-              });
-            }
-          });
-          previousIds = currentIds;
-
-          setNotificationHistory(items);
-          setIsLoadingHistory(false);
-        },
-        (error) => {
-          setIsLoadingHistory(false);
-          if ((error as { code?: string }).code === 'permission-denied') {
-            // Dev-only note; avoid noisy error logs in production
-            if (__DEV__) {
-              // eslint-disable-next-line no-console
-              console.info('Firestore denied read for notifications; falling back to API polling.');
-            }
-            // For admins, enable polling unless API is forbidden.
-            if (isAdmin && !apiForbiddenRef.current) {
-              setUsePolling(true);
-              fetchFromApi();
-            }
-            return;
-          }
-          // Other errors (network, etc.)
-          if (__DEV__) {
-            // eslint-disable-next-line no-console
-            console.error('Realtime notifications listener error:', error);
-          }
-        }
-      );
-      return () => {
-        unsubscribe();
-      };
-    } catch (err) {
-      setIsLoadingHistory(false);
-      if (isAdmin && !apiForbiddenRef.current) {
-        setUsePolling(true);
-        fetchFromApi();
-      }
-      return () => {
-        /* no-op */
-      };
-    }
-  }, [fetchFromApi, usePolling, normalizeCategory, isAdmin]);
-
   // Polling fallback when Firestore rules block realtime reads
   useEffect(() => {
     if (!usePolling || isGuest || !isAdmin || apiForbiddenRef.current) return;
@@ -417,48 +415,7 @@ const NotificationsScreen: React.FC = () => {
       }
     })();
 
-    const sub = Notifications.addNotificationReceivedListener(async (notification) => {
-      try {
-        const content = notification.request?.content;
-        const identifier = notification.request?.identifier || `${Date.now()}`;
-        const title = content?.title || 'Event Reminder';
-        const body = content?.body || '';
-        const data = content?.data as Record<string, unknown> | undefined;
-        const normalizedCat = normalizeCategory((data?.category as string) || 'my_schedule');
-        // Ignore non-MySchedule local notifications to prevent duplication with server/global
-        if (normalizedCat !== 'my_schedule') {
-          return;
-        }
-        const newItem: NotificationHistoryEntry = {
-          id: `local-${identifier}`,
-          title,
-          body,
-          sentAt: new Date().toISOString(),
-          category: normalizedCat,
-          priority: 'high',
-        };
-        setLocalTriggered((prev) => {
-          if (prev.some((p) => p.id === newItem.id)) return prev;
-          return [newItem, ...prev].slice(0, 20);
-        });
-        try {
-          const key = 'local_notifications_log';
-          const existing = await AsyncStorage.getItem(key);
-          const arr = existing ? (JSON.parse(existing) as NotificationHistoryEntry[]) : [];
-          const next = [newItem, ...arr.filter((e) => e.id !== newItem.id)].slice(0, 30);
-          await AsyncStorage.setItem(key, JSON.stringify(next));
-        } catch (persistErr) {
-          // eslint-disable-next-line no-console
-          console.error('Failed to persist local notification from screen listener:', persistErr);
-        }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to add local notification to history:', e);
-      }
-    });
-    return () => {
-      Notifications.removeNotificationSubscription(sub);
-    };
+    // No need for duplicate notification listener - NotificationListener component handles this globally
   }, [normalizeCategory]);
 
   // Keep local log fresh on screen focus
