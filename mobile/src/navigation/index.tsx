@@ -215,11 +215,15 @@ function MainNavigator() {
 // Root navigation
 export default function Navigation() {
   const { user, isLoading } = useAuth();
+  const { theme } = useTheme();
 
   // Show loading screen if auth state is still loading
   if (isLoading) {
     return null;
   }
+
+  // Use theme background color if provided, otherwise fall back to white
+  const backgroundColor = theme?.background ?? '#ffffffff';
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -233,6 +237,7 @@ export default function Navigation() {
               headerShown: true,
               title: 'Profile',
               presentation: 'modal',
+              contentStyle: { backgroundColor }, // Use theme background color if available
             }}
           />
           <Stack.Screen
@@ -242,6 +247,7 @@ export default function Navigation() {
               headerShown: true,
               title: 'Settings',
               presentation: 'modal',
+              contentStyle: { backgroundColor },
             }}
           />
           <Stack.Screen
@@ -251,6 +257,7 @@ export default function Navigation() {
               headerShown: true,
               title: 'Send Notifications',
               presentation: 'modal',
+              contentStyle: { backgroundColor },
             }}
           />
           <Stack.Screen
@@ -259,6 +266,7 @@ export default function Navigation() {
             options={{
               headerShown: false,
               presentation: 'fullScreenModal',
+              contentStyle: { backgroundColor },
             }}
           />
         </>

@@ -9,7 +9,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
-
 // TODO: Move these values to environment variables for security
 const firebaseConfig = {
   apiKey: "AIzaSyDxZIs1oOTEtHu0SsuV30Of84RTCDkmg0s",
@@ -26,5 +25,4 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 const firestore = getFirestore(app);
 const auth = getAuth(app);
-
 export { firestore, auth, app };

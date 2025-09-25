@@ -10,7 +10,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import NotificationListener from './components/NotificationListener';
 
 // Firebase initialization
-import initializeNativeFirebase from './config/nativeFirebase';
+// import initializeNativeFirebase from './config/nativeFirebase';
 
 import Navigation from './navigation';
 import { AuthProvider } from './contexts/AuthContext';
@@ -42,7 +42,7 @@ export default function App() {
     async function initializeAndHideSplash() {
       if (isLoadingComplete) {
         // Initialize React Native Firebase
-        initializeNativeFirebase();
+        // initializeNativeFirebase();
         
         // Hide splash screen
         await SplashScreen.hideAsync();

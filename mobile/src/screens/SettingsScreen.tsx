@@ -31,6 +31,8 @@ const SettingsScreen = () => {
   const { 
     scheduleNotificationsEnabled, 
     toggleScheduleNotifications,
+    globalNotificationsEnabled,
+    toggleGlobalNotifications,
     // currentLanguage,
     // changeLanguage,
     // getSupportedLanguages
@@ -190,14 +192,24 @@ const SettingsScreen = () => {
       title: 'Notifications',
       items: [
         // Schedule notifications toggle (only for non-guest users)
-        ...(!isGuestUser() ? [{
-          icon: 'calendar-outline',
-          label: 'Schedule Notifications',
-          hasSwitch: true,
-          switchValue: scheduleNotificationsEnabled,
-          onSwitchToggle: toggleScheduleNotifications,
-          description: 'Get notified 15 minutes before events in your schedule',
-        }] : []),
+        ...(!isGuestUser() ? [
+          {
+            icon: 'calendar-outline',
+            label: 'Schedule Notifications',
+            hasSwitch: true,
+            switchValue: scheduleNotificationsEnabled,
+            onSwitchToggle: toggleScheduleNotifications,
+            description: 'Get notified 15 minutes before events in your schedule',
+          },
+          {
+            icon: 'globe-outline',
+            label: 'Global Notifications',
+            hasSwitch: true,
+            switchValue: globalNotificationsEnabled,
+            onSwitchToggle: toggleGlobalNotifications,
+            description: 'Enable/disable public notifications for all users',
+          }
+        ] : []),
         {
           icon: 'alarm-outline',
           label: 'Test Push Notification',
@@ -365,10 +377,14 @@ const SettingsScreen = () => {
     );
   };
 
+  // Custom header style for dark/light mode
+  const headerBg = isDark ? theme.background : theme.background;
+  const headerText = isDark ? theme.text : theme.text;
+  const headerIcon = isDark ? theme.text : theme.primary;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
       <ScrollView contentContainerStyle={styles.content}>
         {settingsOptions.map(renderSettingsSection)}
       </ScrollView>

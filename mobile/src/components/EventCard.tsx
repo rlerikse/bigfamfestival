@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     marginRight: 4,
+  paddingTop: 5,
   },
   favoriteText: {
     marginLeft: 0,

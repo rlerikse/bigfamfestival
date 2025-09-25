@@ -234,20 +234,9 @@ const NotificationsScreen: React.FC = () => {
   }, [normalizeCategory, isGuest, isAdmin, usePolling]);
 
   useEffect(() => {
-    // If we've already switched to polling due to Firestore rules, don't attach the realtime listener
-    if (usePolling) {
-      // Ensure we have fresh data via API (admins only)
-      if (!isGuest && isAdmin && !apiForbiddenRef.current) {
-        fetchFromApi();
-      } else {
-        setIsLoadingHistory(false);
-      }
-      return () => {
-        /* no-op when polling */
-      };
-    }
-
+    // Always attach Firestore realtime listener for all users
     setIsLoadingHistory(true);
+    let previousIds: Set<string> = new Set();
     try {
       const q = query(
         collection(firestore, 'notifications'),
@@ -287,6 +276,24 @@ const NotificationsScreen: React.FC = () => {
               priority: raw.priority as 'normal' | 'high' | undefined,
             } as NotificationHistoryEntry;
           });
+
+          // Detect new notifications and trigger local push
+          const currentIds = new Set(items.map((item) => item.id));
+          items.forEach((item) => {
+            if (!previousIds.has(item.id)) {
+              // Only trigger for new notifications
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: item.title || 'New Notification',
+                  body: item.body || '',
+                  data: { category: item.category },
+                },
+                trigger: null, // Immediate
+              });
+            }
+          });
+          previousIds = currentIds;
+
           setNotificationHistory(items);
           setIsLoadingHistory(false);
         },
@@ -298,10 +305,9 @@ const NotificationsScreen: React.FC = () => {
               // eslint-disable-next-line no-console
               console.info('Firestore denied read for notifications; falling back to API polling.');
             }
-            // For guests or non-admins, do not fall back to API. For admins, enable polling unless API is forbidden.
-            if (!isGuest && isAdmin && !apiForbiddenRef.current) {
+            // For admins, enable polling unless API is forbidden.
+            if (isAdmin && !apiForbiddenRef.current) {
               setUsePolling(true);
-              // Immediate fallback fetch
               fetchFromApi();
             }
             return;
@@ -318,16 +324,15 @@ const NotificationsScreen: React.FC = () => {
       };
     } catch (err) {
       setIsLoadingHistory(false);
-      if (!isGuest && isAdmin && !apiForbiddenRef.current) {
+      if (isAdmin && !apiForbiddenRef.current) {
         setUsePolling(true);
-        // Kick off an immediate fallback fetch
         fetchFromApi();
       }
       return () => {
         /* no-op */
       };
     }
-  }, [fetchFromApi, usePolling, normalizeCategory, isGuest, isAdmin]);
+  }, [fetchFromApi, usePolling, normalizeCategory, isAdmin]);
 
   // Polling fallback when Firestore rules block realtime reads
   useEffect(() => {
@@ -544,6 +549,7 @@ const NotificationsScreen: React.FC = () => {
                   category={item.category}
                   priority={item.priority}
                   onDismiss={() => handleDismiss(item)}
+                  isDark={isDark}
                 />
               ))}
             </View>

@@ -11,6 +11,7 @@ interface NotificationHistoryItemProps {
   category?: string;
   priority?: 'normal' | 'high';
   onDismiss?: () => void;
+  isDark?: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ const NotificationHistoryItem: React.FC<NotificationHistoryItemProps> = ({
   category = 'announcement',
   priority = 'normal',
   onDismiss,
+  isDark,
 }) => {
   const { theme } = useTheme();
 
@@ -61,20 +63,24 @@ const NotificationHistoryItem: React.FC<NotificationHistoryItemProps> = ({
     : '#3498db';
 
   return (
-    <View style={[
-      styles.container,
-      { borderLeftColor: accentColor, borderLeftWidth: 4, borderColor: isEmergency ? accentColor : 'transparent', borderWidth: isEmergency ? 1 : 0 }
-    ]}>
+    <View
+      style={[
+        styles.container,
+        {
+          borderLeftColor: accentColor,
+          borderLeftWidth: 4,
+          borderColor: isEmergency ? accentColor : 'transparent',
+          borderWidth: isEmergency ? 1 : 0,
+          backgroundColor: theme?.card || (isDark ? '#222' : '#fff'),
+        },
+      ]}
+    >
       <View style={styles.iconContainer}>
-        <Ionicons
-          name={getCategoryIcon()}
-          size={24}
-          color={accentColor}
-        />
+        <Ionicons name={getCategoryIcon()} size={24} color={accentColor} />
       </View>
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={[styles.title, { color: theme?.text || (isDark ? '#fff' : '#222') }]} numberOfLines={1}>
             {title}
           </Text>
           {priority === 'high' && (
@@ -94,10 +100,10 @@ const NotificationHistoryItem: React.FC<NotificationHistoryItemProps> = ({
             </TouchableOpacity>
           ) : null}
         </View>
-        <Text style={styles.body} numberOfLines={2}>
+        <Text style={[styles.body, { color: theme?.text || (isDark ? '#fff' : '#222') }]} numberOfLines={2}>
           {body}
         </Text>
-        <Text style={styles.timestamp}>{formatDate(sentAt)}</Text>
+        <Text style={[styles.timestamp, { color: theme?.muted || (isDark ? '#bbb' : '#888') }]}>{formatDate(sentAt)}</Text>
       </View>
     </View>
   );

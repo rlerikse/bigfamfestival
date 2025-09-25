@@ -25,6 +25,8 @@ interface AppSettingsContextProps {
   currentLanguage: SupportedLanguage;
   changeLanguage: (language: SupportedLanguage) => Promise<void>;
   getSupportedLanguages: () => LanguageOption[];
+  globalNotificationsEnabled: boolean;
+  toggleGlobalNotifications: () => Promise<void>;
 }
 
 const AppSettingsContext = createContext<AppSettingsContextProps | undefined>(undefined);
@@ -40,6 +42,7 @@ export const useAppSettings = () => {
 export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [scheduleNotificationsEnabled, setScheduleNotificationsEnabled] = useState<boolean>(true);
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
+  const [globalNotificationsEnabled, setGlobalNotificationsEnabled] = useState<boolean>(true);
   const { user, isGuestUser } = useAuth();
 
   // Load saved settings when the user changes
@@ -49,19 +52,23 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         try {
           const savedNotificationSetting = await AsyncStorage.getItem(`schedule_notifications_enabled_${user.id}`);
           const savedLanguageSetting = await AsyncStorage.getItem(`app_language_${user.id}`);
+          const savedGlobalNotifications = await AsyncStorage.getItem(`global_notifications_enabled_${user.id}`);
           // Default to true if no setting is saved
           setScheduleNotificationsEnabled(savedNotificationSetting !== 'false');
+          setGlobalNotificationsEnabled(savedGlobalNotifications !== 'false');
           // Set current language or default to English
           setCurrentLanguage((savedLanguageSetting as SupportedLanguage) || 'en');
         } catch (error) {
           console.error('Error loading settings:', error);
           // Default to true on error
           setScheduleNotificationsEnabled(true);
+          setGlobalNotificationsEnabled(true);
           setCurrentLanguage('en');
         }
       } else {
         // Guest users don't have notification settings
         setScheduleNotificationsEnabled(false);
+        setGlobalNotificationsEnabled(true); // Guests get global notifications by default
         // Load global language setting for guests
         try {
           const savedLanguage = await AsyncStorage.getItem('global_language');
@@ -100,6 +107,22 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
+  // Toggle global notifications
+  const toggleGlobalNotifications = async () => {
+    if (user && !isGuestUser()) {
+      try {
+        const newValue = !globalNotificationsEnabled;
+        setGlobalNotificationsEnabled(newValue);
+        await AsyncStorage.setItem(`global_notifications_enabled_${user.id}`, newValue ? 'true' : 'false');
+      } catch (error) {
+        console.error('Error toggling global notifications:', error);
+      }
+    } else {
+      // For guests, just update state
+      setGlobalNotificationsEnabled((prev) => !prev);
+    }
+  };
+
   // Change app language
   const changeLanguage = async (language: SupportedLanguage) => {
     try {
@@ -129,7 +152,9 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         toggleScheduleNotifications,
         currentLanguage,
         changeLanguage,
-        getSupportedLanguages
+        getSupportedLanguages,
+        globalNotificationsEnabled,
+        toggleGlobalNotifications
       }}
     >
       {children}
