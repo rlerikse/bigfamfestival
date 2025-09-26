@@ -47,7 +47,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             styles.actualImage,
             {
               height: SCALED_TOTAL_IMAGE_HEIGHT + bottomPadding,
-              bottom: Platform.OS === 'ios' ? -bottomPadding : -bottomPadding - 30, // Adjusted for consistency across platforms
+              bottom: Platform.OS === 'ios' ? -bottomPadding - 0 : -bottomPadding - 5, // iOS stays same, Android moved up by 20px more
             }
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({  container: {
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: Platform.OS === 'ios' ? -30 : -20, // iOS needs -30px, Android needs -25px to match iOS
+    bottom: Platform.OS === 'ios' ? 0 : 0, // iOS stays at 0, Android moved up by 20px to 0
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({  container: {
   },  tentImage: {
     position: 'absolute',
     right: -45, // Moved 5px to the right (was -40)
-    top: Platform.OS === 'ios' ? -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80 : -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 75, // Platform-specific position
+    top: Platform.OS === 'ios' ? -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80 : -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 100, // iOS stays the same, Android moved down by another 5px (total 25px)
     width: 100, // Scaled width
     height: 80, // Scaled height
     transform: [{ scaleX: -1 }], // Flipped on X-axis
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: Platform.OS === 'ios' ? -10 : -20, // Platform-specific adjustments
+    marginTop: Platform.OS === 'ios' ? 20 : 30, // iOS stays at 20, Android adjusted to 30 to compensate for moved grass
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',
