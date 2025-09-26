@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Image, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { View, Image, StyleSheet, Dimensions, TouchableOpacity, Alert, Platform } from 'react-native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs/lib/typescript/src/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import the hook
 import { useAuth } from '../contexts/AuthContext'; // Import AuthContext hook
 import SafeText from './SafeText';
@@ -47,7 +47,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             styles.actualImage,
             {
               height: SCALED_TOTAL_IMAGE_HEIGHT + bottomPadding,
-              bottom: -bottomPadding, // Pull image down to fill safe area
+              bottom: Platform.OS === 'ios' ? -bottomPadding : -bottomPadding - 35, // Move grass down more on Android
             }
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
@@ -74,14 +74,14 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
         />
       </View>
       <View style={styles.navbar}>
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
+        {state.routes.map((route: { key: React.Key | null | undefined; name: string; }, index: any) => {
+          const { options } = route.key !== null && route.key !== undefined ? descriptors[String(route.key)] : {};
           const isFocused = state.index === index;
 
           const onPress = () => {
             const event = navigation.emit({
               type: 'tabPress',
-              target: route.key,
+              target: route.key != null ? String(route.key) : undefined,
               canPreventDefault: true,
             });
             
@@ -151,7 +151,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
               onPress={onPress}
               style={styles.tabItem}
             ><View style={styles.tabContent}>
-                {options.tabBarIcon && options.tabBarIcon({
+                {options?.tabBarIcon && options.tabBarIcon({
                   focused: isFocused,
                   color: isFocused ? '#D4946B' : '#F5F5DC',
                   size: 32,
@@ -162,15 +162,15 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
                     { color: isFocused ? '#D4946B' : '#F5F5DC' }
                   ]}
                 >
-                  {typeof options.tabBarLabel === 'function' 
-                    ? options.tabBarLabel({
-                        focused: isFocused,
-                        color: isFocused ? '#D4946B' : '#F5F5DC',
-                        position: 'below-icon',
-                        children: options.title || route.name
-                      })
-                    : options.tabBarLabel || options.title || route.name
-                  }
+                  {typeof options?.tabBarLabel === 'function' 
+                      ? options.tabBarLabel({
+                          focused: isFocused,
+                          color: isFocused ? '#D4946B' : '#F5F5DC',
+                          position: 'below-icon',
+                          children: options?.title || route.name
+                        })
+                      : options?.tabBarLabel || options?.title || route.name
+                    }
                 </SafeText>
               </View>
             </TouchableOpacity>
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({  container: {
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: -50, // Move down by 50px to align properly with screen bottom
+    bottom: Platform.OS === 'ios' ? -30 : 0, // iOS needs -30px, Android stays at 0
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({  container: {
   },  treeImage: {
     position: 'absolute',
     left: -105, // Keep left aligned position (adjusted for smaller size)
-    bottom: ORIGINAL_NAVBAR_HEIGHT + 60, // Moved up by 30px (was +30, now +60)
+    bottom: Platform.OS === 'ios' ? 120 : 90, // iOS: 120px, Android: 80px (40px lower for testing)
     width: 200, // Half of 400 - scaled down
     height: 150, // Half of 300 - scaled down
     opacity: 1, // Full opacity
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({  container: {
   },  tentImage: {
     position: 'absolute',
     right: -45, // Moved 5px to the right (was -40)
-    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 40, // Back to original position
+    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80, // Moved down by 40px (was +40, now +80)
     width: 100, // Scaled width
     height: 80, // Scaled height
     transform: [{ scaleX: -1 }], // Flipped on X-axis
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: -80, // Moved icons up by 10px
+    marginTop: -10, // Moved icons down (was -80, now -50 to move down by 30px)
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',

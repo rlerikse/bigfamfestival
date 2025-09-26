@@ -444,14 +444,14 @@ const NotificationsScreen: React.FC = () => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
-      edges={['left', 'right', 'bottom']}
+      edges={['top', 'left', 'right', 'bottom']}
     >
   <TopNavBar whiteIcons={isDark} unreadCount={visibleHistory.length} />
       
       {/* Admin controls moved to Settings screen */}
       
       <ScrollView
-        style={{ marginTop: insets.top + 55 }}
+        style={{ paddingTop: 55 }} // TopNavBar height, safe area handled by SafeAreaView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl

@@ -19,6 +19,7 @@ import {
   Alert,
   StyleSheet,
   Image,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -829,8 +830,8 @@ const ScheduleScreen = () => {
     <SafeAreaView style={[filterStyles.container, { backgroundColor: theme.background }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
   {/* Main content container */}
-  {/* TopNavBar already consumes safe-area top; only offset by nav height (55) to avoid double-padding on iOS */}
-  <View style={{ flex: 1, flexDirection: 'column', marginTop: insets.top + 55 }}>
+  {/* Account for TopNavBar height, platform-specific padding */}
+  <View style={{ flex: 1, flexDirection: 'column', paddingTop: Platform.OS === 'ios' ? 55 : 85 }}>
         {/* Fixed header container for filter rows - align flush with nav bar bottom */}
         <View
           style={{
