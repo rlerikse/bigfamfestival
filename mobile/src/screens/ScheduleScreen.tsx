@@ -831,21 +831,19 @@ const ScheduleScreen = () => {
   return (
     <SafeAreaView style={[filterStyles.container, { backgroundColor: theme.background }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <TopNavBar 
-        onSettingsPress={() => navigation.navigate('Settings')}
-        whiteIcons={false}
-      />
-      {/* Main content container */}
-      <View style={{ flex: 1, flexDirection: 'column', marginTop: insets.top + 55 }}>
-        {/* Fixed header container for filter rows */}
+  {/* Main content container */}
+  {/* TopNavBar already consumes safe-area top; only offset by nav height (55) to avoid double-padding on iOS */}
+  <View style={{ flex: 1, flexDirection: 'column', marginTop: insets.top + 55 }}>
+        {/* Fixed header container for filter rows - align flush with nav bar bottom */}
         <View
           style={{
             backgroundColor: theme.background,
-            paddingTop: 4, // Minimal padding to be flush with nav bar
-            paddingBottom: 4,
+            paddingTop: 0, // remove extra top padding so filters are flush with nav bar
+            paddingBottom: 6,
             zIndex: 1000,
             position: 'relative',
             elevation: 1,
+            justifyContent: 'flex-end',
           }}
         >
         {/* Date filter row */}
@@ -853,7 +851,7 @@ const ScheduleScreen = () => {
           style={{
             flexDirection: 'row',
             paddingHorizontal: 16,
-            alignItems: 'center',
+            alignItems: 'flex-end',
             minHeight: 56,
           }}
         >
@@ -1032,7 +1030,8 @@ const ScheduleScreen = () => {
             keyExtractor={keyExtractor}
             contentContainerStyle={[
               styles.eventsList,
-              { paddingTop: 0, paddingBottom: 100, flexGrow: 1 }
+              // Respect bottom safe-area and keep minimum scroll space for footers/tab bar
+              { paddingTop: 0, paddingBottom: Math.max(100, insets.bottom + 16), flexGrow: 1 }
             ]}
             showsVerticalScrollIndicator={false}
             // Enhanced performance optimizations for smooth scrolling
@@ -1088,6 +1087,12 @@ const ScheduleScreen = () => {
         )}
       </View>
       </View>
+      {/* Top navigation bar (render last so it overlays content reliably) */}
+      <TopNavBar 
+        onSettingsPress={() => navigation.navigate('Settings')}
+        whiteIcons={false}
+      />
+
       {/* Event details modal */}
       <EventDetailsModal
         isVisible={isModalVisible}

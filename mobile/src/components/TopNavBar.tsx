@@ -226,7 +226,9 @@ const styles = StyleSheet.create({  container: {
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1001,
+    zIndex: 2000,
+    elevation: 12,
+    overflow: 'visible'
   },
   content: {
     flexDirection: 'row',
@@ -248,8 +250,9 @@ const styles = StyleSheet.create({  container: {
   logo: {
     width: 160,
     position: 'absolute',
-    top: -33,
-    height: 125
+    top: -20,
+    height: 110,
+    overflow: 'visible'
   },
   actionsContainer: {
     flexDirection: 'row',
