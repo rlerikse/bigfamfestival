@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import TopNavBar from '../components/TopNavBar';
@@ -183,7 +184,7 @@ const NotificationsScreen: React.FC = () => {
       );
       const unsubscribe = onSnapshot(
         q,
-        (snapshot) => {
+        async (snapshot) => {
           const items: NotificationHistoryEntry[] = snapshot.docs.map((doc) => {
             const raw = doc.data() as Record<string, unknown>;
             const sentAtVal = (raw as { sentAt?: unknown }).sentAt;
@@ -215,8 +216,33 @@ const NotificationsScreen: React.FC = () => {
             } as NotificationHistoryEntry;
           });
 
-          // Track seen notification IDs for deduplication (but don't trigger local push - NotificationListener handles that)
+          // Check for new notifications and trigger push notifications
           const currentIds = new Set(items.map((item) => item.id));
+          const newNotifications = items.filter(item => !previousIdsRef.current.has(item.id));
+          
+          // Only trigger notifications if we have previous IDs (not on first load)
+          if (previousIdsRef.current.size > 0 && newNotifications.length > 0) {
+            for (const notification of newNotifications) {
+              try {
+                await Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: notification.title || 'New Notification',
+                    body: notification.body || '',
+                    data: { 
+                      id: notification.id,
+                      category: notification.category,
+                      priority: notification.priority 
+                    },
+                  },
+                  trigger: null, // Show immediately
+                });
+                console.log(`📱 Triggered push notification for: ${notification.title}`);
+              } catch (error) {
+                console.error('Failed to trigger local notification:', error);
+              }
+            }
+          }
+
           previousIdsRef.current = currentIds;
           // Persist the seen IDs to storage
           persistSeenIds(currentIds);
