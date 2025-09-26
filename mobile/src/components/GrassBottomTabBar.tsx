@@ -47,7 +47,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             styles.actualImage,
             {
               height: SCALED_TOTAL_IMAGE_HEIGHT + bottomPadding,
-              bottom: Platform.OS === 'ios' ? -bottomPadding : -bottomPadding - 35, // Move grass down more on Android
+              bottom: Platform.OS === 'ios' ? -bottomPadding : -bottomPadding - 30, // Adjusted for consistency across platforms
             }
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({  container: {
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: Platform.OS === 'ios' ? -30 : 0, // iOS needs -30px, Android stays at 0
+    bottom: Platform.OS === 'ios' ? -30 : -20, // iOS needs -30px, Android needs -25px to match iOS
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({  container: {
   },  treeImage: {
     position: 'absolute',
     left: -105, // Keep left aligned position (adjusted for smaller size)
-    bottom: Platform.OS === 'ios' ? 120 : 90, // iOS: 120px, Android: 80px (40px lower for testing)
+    bottom: Platform.OS === 'ios' ? 120 : 100, // iOS: 120px, Android: 115px (adjusted for consistency)
     width: 200, // Half of 400 - scaled down
     height: 150, // Half of 300 - scaled down
     opacity: 1, // Full opacity
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({  container: {
   },  tentImage: {
     position: 'absolute',
     right: -45, // Moved 5px to the right (was -40)
-    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80, // Moved down by 40px (was +40, now +80)
+    top: Platform.OS === 'ios' ? -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80 : -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 75, // Platform-specific position
     width: 100, // Scaled width
     height: 80, // Scaled height
     transform: [{ scaleX: -1 }], // Flipped on X-axis
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: -10, // Moved icons down (was -80, now -50 to move down by 30px)
+    marginTop: Platform.OS === 'ios' ? -10 : -20, // Platform-specific adjustments
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',

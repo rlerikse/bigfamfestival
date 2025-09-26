@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   LayoutChangeEvent,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image as ExpoImage } from 'expo-image';
@@ -278,11 +279,11 @@ const styles = StyleSheet.create({  container: {
   },
   redDot: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    top: Platform.OS === 'ios' ? -2 : 0,
+    right: Platform.OS === 'ios' ? -2 : 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#FF3B30',
   },
   expandedSearch: {
