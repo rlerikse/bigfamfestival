@@ -244,8 +244,6 @@ const ScheduleScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [filterState, dispatchFilter] = useReducer(filterReducer, initialFilterState);
   const { selectedDay, selectedStages, selectedGenres, showMySchedule } = filterState;
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   // Current time ticker for countdown badges
   const [now, setNow] = useState<number>(Date.now());
   // FlatList ref for programmatic scrolling to live events
@@ -341,21 +339,20 @@ const ScheduleScreen = () => {
 
   // --- Fetch events and user schedule ---
   const fetchEvents = useCallback(async (loadMore = false) => {
-    if (loadMore && !hasMore) return;
-    setIsLoading(!loadMore);
+    if (loadMore) return; // No pagination supported yet
+    setIsLoading(true);
     setError(null);
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const response = await api.get<ScheduleEvent[]>(`/events?page=${page}&limit=50`, {
+      const response = await api.get<ScheduleEvent[]>(`/events`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
       
       // Populate genres for the events
       const eventsWithGenres = await genreService.populateEventGenres(response.data);
       
-      setEvents(prev => loadMore ? [...prev, ...eventsWithGenres] : eventsWithGenres);
-      setHasMore(response.data.length === 50); // Assume 50 is page size
-      if (loadMore) setPage(prev => prev + 1);
+      setEvents(eventsWithGenres);
+      setEvents(eventsWithGenres);
     } catch (err) {
       console.error('❌ Error fetching events:', err);
       setError('Could not load events. Please try again later.');
@@ -363,7 +360,7 @@ const ScheduleScreen = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [page, hasMore]);
+  }, []);
 
   const loadUserSchedule = useCallback(async () => {
     // Only fetch user schedule if user is logged in (not a guest)

@@ -47,45 +47,8 @@ export default function MapScreen() {
   // Image is now preloaded at app startup, so we can use it directly
   useEffect(() => {
     // Since the image is preloaded in useCachedResources,
-    // we just need to set loading to false immediately
+    // we just set loading to false immediately
     setIsLoading(false);
-    
-    // Optional: For file system caching, we can still keep this as a backup
-    const cacheImage = async () => {
-      try {
-        // Create a unique filename based on the image source
-        const imageName = "bff25_CampingMap.png";
-        const cacheDir = FileSystem.cacheDirectory;
-        const cacheFilePath = `${cacheDir}${imageName}`;
-        
-        // Check if file exists in cache
-        const fileInfo = await FileSystem.getInfoAsync(cacheFilePath);
-        
-        if (fileInfo.exists) {
-          // Use cached file
-          setCachedImageUri(cacheFilePath);
-        } else {
-          // Need to resolve the actual URI from the bundled asset
-          const imageAssetModule = Image.resolveAssetSource(campingMap);
-          
-          // Download and cache the file
-          const downloadResult = await FileSystem.downloadAsync(
-            imageAssetModule.uri,
-            cacheFilePath
-          );
-          
-          if (downloadResult.status === 200) {
-            setCachedImageUri(downloadResult.uri);
-          }
-        }
-      } catch (error) {
-        console.warn('Error caching image:', error);
-        // Fallback to using the asset directly - which is fine since it's preloaded
-      }
-    };
-    
-    // Run the caching in the background
-    cacheImage();
   }, []);
   
   return (
@@ -98,7 +61,7 @@ export default function MapScreen() {
         </View>
       ) : (
         <ExpoImage
-          source={cachedImageUri ? { uri: cachedImageUri } : campingMap}
+          source={campingMap}
           style={[styles.image, { width: imageStyle.width, height: imageStyle.height }]}
           contentFit="contain"
           cachePolicy="memory-disk"

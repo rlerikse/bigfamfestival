@@ -31,7 +31,8 @@ interface OptimizedImageProps {
   showLoadingIndicator?: boolean;
   contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   priority?: 'low' | 'normal' | 'high';
-  placeholder?: React.ReactNode;
+  placeholder?: any; // ImageSource or blurred base64 string
+  customLoadingComponent?: React.ReactNode;
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -46,6 +47,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   contentFit = 'cover',
   priority = 'high',
   placeholder,
+  customLoadingComponent,
   onLoad,
   onError,
 }) => {
@@ -162,7 +164,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Loading state - only show for non-cached images */}
       {isLoading && showLoadingIndicator && !hasError && !isImageCached && (
         <View style={styles.overlay}>
-          {placeholder || (
+          {customLoadingComponent || (
             <ActivityIndicator 
               size="small" 
               color={theme.primary} 
