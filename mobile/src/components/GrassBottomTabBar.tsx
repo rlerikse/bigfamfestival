@@ -103,7 +103,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
                       try {
                         // Need to logout first to remove guest user so Auth stack becomes available
                         await logout();
-                        // Let the navigation system update to show Auth screen
+                        // Don't navigate here - let the auth state change trigger the navigation
                       } catch (error) {
                         console.error('Error during logout:', error);
                         Alert.alert('Error', 'Could not log out. Please try again.');
@@ -128,6 +128,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
                     onPress: async () => {
                       try {
                         await logout();
+                        // Don't navigate here - let the auth state change trigger the navigation
                       } catch (error) {
                         console.error('Error during logout:', error);
                         Alert.alert('Error', 'Could not log out. Please try again.');
