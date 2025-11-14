@@ -1,10 +1,11 @@
 // Commit: Replace Messages screen with Notifications placeholder screen
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import TopNavBar from '../components/TopNavBar';
@@ -68,6 +69,97 @@ const NotificationsScreen: React.FC = () => {
     }
     return cat;
   }, []);
+
+  // App state monitoring for missed notifications
+  const appState = useRef(AppState.currentState);
+  const lastCheckTimeRef = useRef<number>(Date.now());
+
+  // Check for missed notifications when app comes to foreground
+  const checkForMissedNotifications = useCallback(async () => {
+    try {
+      const q = query(
+        collection(firestore, 'notifications'),
+        orderBy('sentAt', 'desc'),
+        fsLimit(5)
+      );
+      const snapshot = await getDocs(q);
+      
+      const items: NotificationHistoryEntry[] = snapshot.docs.map((doc) => {
+        const raw = doc.data() as Record<string, unknown>;
+        const sentAtVal = (raw as { sentAt?: unknown }).sentAt;
+        let sentAt: string | { _seconds: number; _nanoseconds: number } = new Date().toISOString();
+        if (sentAtVal) {
+          if (typeof sentAtVal === 'string') {
+            sentAt = sentAtVal;
+          } else if (typeof (sentAtVal as { toDate?: () => Date }).toDate === 'function') {
+            sentAt = (sentAtVal as { toDate: () => Date }).toDate().toISOString();
+          } else if (
+            (sentAtVal as { seconds?: number; _seconds?: number }).seconds ||
+            (sentAtVal as { seconds?: number; _seconds?: number })._seconds
+          ) {
+            const secs =
+              (sentAtVal as { seconds?: number; _seconds?: number }).seconds ?? 
+              (sentAtVal as { seconds?: number; _seconds?: number })._seconds ?? 0;
+            sentAt = new Date(secs * 1000).toISOString();
+          }
+        }
+        return {
+          id: doc.id,
+          title: (raw.title as string) || '',
+          body: (raw.body as string) || '',
+          sentAt,
+          category: normalizeCategory(raw.category as string | undefined),
+          priority: raw.priority as 'normal' | 'high' | undefined,
+        } as NotificationHistoryEntry;
+      });
+
+      // Check for notifications that arrived while app was backgrounded
+      const missedNotifications = items.filter(item => {
+        const notificationTime = new Date(typeof item.sentAt === 'string' ? item.sentAt : new Date()).getTime();
+        return notificationTime > lastCheckTimeRef.current && !previousIdsRef.current.has(item.id);
+      });
+
+      // Trigger notifications for missed items
+      for (const notification of missedNotifications) {
+        try {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: notification.title || 'New Notification',
+              body: notification.body || '',
+              data: { 
+                id: notification.id,
+                category: notification.category,
+                priority: notification.priority 
+              },
+            },
+            trigger: null,
+          });
+          console.log(`📱 Triggered missed notification: ${notification.title}`);
+        } catch (error) {
+          console.error('Failed to trigger missed notification:', error);
+        }
+      }
+
+      lastCheckTimeRef.current = Date.now();
+    } catch (error) {
+      console.error('Failed to check for missed notifications:', error);
+    }
+  }, [normalizeCategory]);
+
+  // Monitor app state changes
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.log('📱 App came to foreground, checking for missed notifications...');
+        checkForMissedNotifications();
+      }
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription?.remove();
+    };
+  }, [checkForMissedNotifications]);
 
   // Helper to normalize to ISO string for sorting
   const toIso = useCallback((v: NotificationHistoryEntry['sentAt']): string => {
@@ -183,7 +275,7 @@ const NotificationsScreen: React.FC = () => {
       );
       const unsubscribe = onSnapshot(
         q,
-        (snapshot) => {
+        async (snapshot) => {
           const items: NotificationHistoryEntry[] = snapshot.docs.map((doc) => {
             const raw = doc.data() as Record<string, unknown>;
             const sentAtVal = (raw as { sentAt?: unknown }).sentAt;
@@ -215,8 +307,33 @@ const NotificationsScreen: React.FC = () => {
             } as NotificationHistoryEntry;
           });
 
-          // Track seen notification IDs for deduplication (but don't trigger local push - NotificationListener handles that)
+          // Check for new notifications and trigger push notifications
           const currentIds = new Set(items.map((item) => item.id));
+          const newNotifications = items.filter(item => !previousIdsRef.current.has(item.id));
+          
+          // Only trigger notifications if we have previous IDs (not on first load)
+          if (previousIdsRef.current.size > 0 && newNotifications.length > 0) {
+            for (const notification of newNotifications) {
+              try {
+                await Notifications.scheduleNotificationAsync({
+                  content: {
+                    title: notification.title || 'New Notification',
+                    body: notification.body || '',
+                    data: { 
+                      id: notification.id,
+                      category: notification.category,
+                      priority: notification.priority 
+                    },
+                  },
+                  trigger: null, // Show immediately
+                });
+                console.log(`📱 Triggered push notification for: ${notification.title}`);
+              } catch (error) {
+                console.error('Failed to trigger local notification:', error);
+              }
+            }
+          }
+
           previousIdsRef.current = currentIds;
           // Persist the seen IDs to storage
           persistSeenIds(currentIds);
@@ -444,14 +561,14 @@ const NotificationsScreen: React.FC = () => {
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
-      edges={['left', 'right', 'bottom']}
+      edges={['top', 'left', 'right', 'bottom']}
     >
   <TopNavBar whiteIcons={isDark} unreadCount={visibleHistory.length} />
       
       {/* Admin controls moved to Settings screen */}
       
       <ScrollView
-        style={{ marginTop: insets.top + 55 }}
+        style={{ paddingTop: 55 }} // TopNavBar height, safe area handled by SafeAreaView
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl

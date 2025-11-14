@@ -74,7 +74,6 @@ export const uploadProfilePicture = async (
     // Upload the image to the signed URL
     await FileSystem.uploadAsync(uploadUrl, imageUri, {
       httpMethod: 'PUT',
-      uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
       headers: {
         'Content-Type': 'image/jpeg',
       },

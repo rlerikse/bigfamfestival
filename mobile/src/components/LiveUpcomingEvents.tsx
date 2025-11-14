@@ -6,12 +6,11 @@ import { api } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp as GenericNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, MainTabParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, addToSchedule, removeFromSchedule } from '../services/scheduleService';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { isLoggedInUser } from '../utils/userUtils';
 import genreService from '../services/genreService';
 
@@ -174,9 +173,10 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
       return;
     }
     // Fallback: switch to the Schedule tab in the parent tab navigator
-    const parent = navigation.getParent<BottomTabNavigationProp<MainTabParamList>>();
+    // Fallback: switch to the Schedule tab in the parent tab navigator
+    const parent = navigation.getParent<GenericNavigationProp<MainTabParamList>>();
     parent?.navigate('Schedule');
-  }, [onEventPress, navigation]);
+  }, [navigation, onEventPress]);
 
   // Pass the full theme object as expected by EventCard
   const themeForCard = useMemo(() => ({

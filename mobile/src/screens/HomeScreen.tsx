@@ -135,10 +135,11 @@ const HomeScreen = () => {
            alignItems: 'stretch', 
            zIndex: 1,
            backgroundColor: 'transparent',
-           padding: 5,
+           paddingHorizontal: 5,
+           paddingBottom: 5,
            borderRadius: 16,
            marginHorizontal: 20,
-           marginTop: insets.top + 55, // TopNavBar height (55) + safe area + small buffer
+           paddingTop: 75, // TopNavBar height (55) + extra padding (20)
          }}>
           {/* Copper divider above timer / clock */}
           <View style={{ height: 4 }} />

@@ -88,14 +88,25 @@ export class EventsService {
       events = await this.firestoreService.getAll<Event>(this.collection);
     }
 
-    // Sort events by date and start time
+    // Sort events by date and start time with error handling
     return events.sort((a, b) => {
-      // First compare by date
-      const dateComparison = a.date.localeCompare(b.date);
-      if (dateComparison !== 0) return dateComparison;
+      try {
+        // Ensure date and startTime exist and are strings
+        const dateA = a.date || '';
+        const dateB = b.date || '';
+        const startTimeA = a.startTime || '';
+        const startTimeB = b.startTime || '';
 
-      // If same date, compare by start time
-      return a.startTime.localeCompare(b.startTime);
+        // First compare by date
+        const dateComparison = dateA.localeCompare(dateB);
+        if (dateComparison !== 0) return dateComparison;
+
+        // If same date, compare by start time
+        return startTimeA.localeCompare(startTimeB);
+      } catch (error) {
+        console.error('Error sorting events:', error, { eventA: a, eventB: b });
+        return 0; // Keep original order if sorting fails
+      }
     });
   }
 

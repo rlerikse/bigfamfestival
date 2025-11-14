@@ -25,7 +25,7 @@ const DebugScreen = () => {
   const navigation = useNavigation<DebugScreenNavigationProp>();
   const { setDebugMode, debugHour, setDebugHour } = useDebug(); // Removed debugMode
   const [isAnimating, setIsAnimating] = useState(false); // State for animation
-  const animationIntervalRef = useRef<NodeJS.Timeout | null>(null); // Ref for interval
+  const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null); // Ref for interval
 
   // Animation loop for debugHour
   useEffect(() => {
