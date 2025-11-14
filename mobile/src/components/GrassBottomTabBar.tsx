@@ -187,7 +187,7 @@ const styles = StyleSheet.create({  container: {
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: -50, // Move down by 50px to align properly with screen bottom
+    bottom: -40, // Align with screen bottom - let safe area insets handle padding
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: -80, // Moved icons up by 10px
+    marginTop: -70, // Adjusted positioning for better alignment across devices
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',

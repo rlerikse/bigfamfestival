@@ -56,7 +56,15 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
       ],
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "navigationBar": {
+        "visible": "immersive",
+        "backgroundColor": "#8B7355"
+      },
+      "statusBar": {
+        "backgroundColor": "transparent",
+        "translucent": true
+      }
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"
