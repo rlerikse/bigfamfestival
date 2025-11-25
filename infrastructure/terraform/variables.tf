@@ -50,3 +50,27 @@ variable "cors_origin" {
   type        = string
   default     = "*"
 }
+
+variable "festival_name" {
+  description = "Festival name for resource naming"
+  type        = string
+  default     = "bigfam"
+}
+
+variable "festival_id" {
+  description = "Festival/tenant ID for multi-tenant deployments"
+  type        = string
+  default     = ""
+}
+
+variable "api_title" {
+  description = "API title for Swagger documentation"
+  type        = string
+  default     = "Big Fam Festival API"
+}
+
+variable "api_description" {
+  description = "API description for Swagger documentation"
+  type        = string
+  default     = "API for the Big Fam Festival App"
+}

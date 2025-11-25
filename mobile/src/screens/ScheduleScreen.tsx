@@ -83,12 +83,10 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
   }
 }
 
-// Days to show in the filter buttons (Friday, Saturday, Sunday)
-const festivalDays = [
-  { id: '2025-09-26', date: '2025-09-26', dayLabel: 'Sep 26', dayAbbrev: 'FRI', staffOnly: false },
-  { id: '2025-09-27', date: '2025-09-27', dayLabel: 'Sep 27', dayAbbrev: 'SAT', staffOnly: false },
-  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: false },
-];
+import { festivalConfig } from '../config/festival.config';
+
+// Days to show in the filter buttons - loaded from festival config
+const festivalDays = festivalConfig.dates;
 
 // All days we need to fetch events for (includes Monday for late-night events)
 // Currently not used since API fetches all events at once

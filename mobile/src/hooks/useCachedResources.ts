@@ -30,11 +30,19 @@ export default function useCachedResources() {
         // Check if server is reachable when online
         if (netInfo.isConnected) {
           try {
-            await checkApiHealth();
+            console.log('[STARTUP] Checking API health...');
+            const healthResult = await checkApiHealth();
+            if (healthResult.isHealthy) {
+              console.log('[STARTUP] ✅ API connection successful!');
+            } else {
+              console.warn('[STARTUP] ⚠️ API health check failed:', healthResult.message);
+            }
           } catch (error) {
-            console.warn('API health check failed:', error);
+            console.error('[STARTUP] ❌ API health check error:', error);
             // Continue loading the app even if the API is unreachable
           }
+        } else {
+          console.warn('[STARTUP] ⚠️ No network connection detected');
         }
 
         // Verify token if exists

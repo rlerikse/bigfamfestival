@@ -17,6 +17,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DebugProvider } from './contexts/DebugContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
+import ErrorBoundary from './components/ErrorBoundary';
+import { initSentry } from './config/sentry';
 import useCachedResources from './hooks/useCachedResources';
 
 // Create React Query client
@@ -38,11 +40,11 @@ export default function App() {
   // Removed old notification setup code
 
   useEffect(() => {
-    // Initialize Firebase and hide splash screen once resources are loaded
+    // Initialize services and hide splash screen once resources are loaded
     async function initializeAndHideSplash() {
       if (isLoadingComplete) {
-        // Initialize React Native Firebase
-        // initializeNativeFirebase();
+        // Initialize Sentry for error tracking (production only)
+        await initSentry();
         
         // Hide splash screen
         await SplashScreen.hideAsync();
@@ -56,22 +58,24 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider style={{ backgroundColor: 'transparent' }}>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppSettingsProvider>
-              <DebugProvider>
-                <NavigationContainer ref={navigationRef}>
-                  <Navigation />
-                  <NotificationListener />
-                  <StatusBar style="auto" />
-                </NavigationContainer>
-              </DebugProvider>
-            </AppSettingsProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider style={{ backgroundColor: 'transparent' }}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppSettingsProvider>
+                <DebugProvider>
+                  <NavigationContainer ref={navigationRef}>
+                    <Navigation />
+                    <NotificationListener />
+                    <StatusBar style="auto" />
+                  </NavigationContainer>
+                </DebugProvider>
+              </AppSettingsProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

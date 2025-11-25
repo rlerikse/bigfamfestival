@@ -20,6 +20,7 @@ import { DarkModeToggle } from '../components/DarkModeToggle';
 import { RootStackParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
+import { festivalConfig } from '../config/festival.config';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -250,26 +251,10 @@ const SettingsScreen = () => {
     {
       title: 'Support',
       items: [
-        // Help & FAQ - commented out for later implementation
-        /*
-        {
-          icon: 'help-circle-outline',
-          label: 'Help & FAQ',
-          onPress: () => Alert.alert('Coming Soon', 'Help section coming soon!'),
-        },
-        */
-        // Contact Support - commented out for later implementation
-        /*
-        {
-          icon: 'mail-outline',
-          label: 'Contact Support',
-          onPress: () => Alert.alert('Coming Soon', 'Contact support coming soon!'),
-        },
-        */
         {
           icon: 'information-circle-outline',
           label: 'About',
-          onPress: () => Alert.alert('Big Fam Festival', 'Version 1.0.0\n\nBuilt with ❤️ for the festival community'),
+          onPress: () => Alert.alert(festivalConfig.name, `Version 1.0.0\n\nBuilt with ❤️ for the festival community`),
         },
       ],
     },

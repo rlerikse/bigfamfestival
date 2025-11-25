@@ -13,9 +13,11 @@ interface CountdownProps {
   targetDate: Date;
 }
 
-const BROOKLYN_LAT = 42.1059;
-const BROOKLYN_LON = -84.2486;
-const FESTIVAL_TIMEZONE = 'America/Detroit';
+import { festivalConfig } from '../config/festival.config';
+
+const FESTIVAL_LAT = festivalConfig.location.latitude;
+const FESTIVAL_LON = festivalConfig.location.longitude;
+const FESTIVAL_TIMEZONE = festivalConfig.location.timezone;
 
 interface WeatherDay {
   date: string;

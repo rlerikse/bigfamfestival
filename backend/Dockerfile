@@ -1,4 +1,5 @@
 # Build stage
+# Multi-stage build for optimization
 FROM node:18-alpine AS builder
 
 # Set working directory

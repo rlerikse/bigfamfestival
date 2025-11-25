@@ -25,7 +25,7 @@ const SCALED_GRASS_HEIGHT = SCALED_TOTAL_IMAGE_HEIGHT * IMG_GRASS_PROPORTION; //
 const EFFECTIVE_GRASS_VISIBLE_HEIGHT = SCALED_GRASS_HEIGHT;
 
 // Constants for positioning decorative elements (keep original values for consistency)
-const ORIGINAL_NAVBAR_HEIGHT = 60;
+// Note: ORIGINAL_NAVBAR_HEIGHT removed as it's not used
 const ORIGINAL_EFFECTIVE_GRASS_HEIGHT = 67.4;
 
 const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({ 
@@ -74,7 +74,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
         />
       </View>
       <View style={styles.navbar}>
-        {state.routes.map((route: { key: React.Key | null | undefined; name: string; }, index: any) => {
+        {state.routes.map((route: { key: React.Key | null | undefined; name: string; }, index: number) => {
           const { options } = route.key !== null && route.key !== undefined ? descriptors[String(route.key)] : {};
           const isFocused = state.index === index;
 
