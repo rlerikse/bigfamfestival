@@ -8,7 +8,7 @@
 # 2. Ensure SPEC_KIT_CONTEXT_TOKEN org secret exists
 # 3. Merge to main - specs will sync automatically
 #
-# Documentation: https://github.com/ford-innersource/spec-kit-context/blob/main/SETUP.md
+# Documentation: https://github.com/rlerikse/spec-kit-context/blob/main/SETUP.md
 
 name: Sync Spec Context
 
@@ -130,7 +130,7 @@ jobs:
           API_TOKEN_GITHUB: ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}
         with:
           source_file: 'spec-metadata.json'
-          destination_repo: 'ford-innersource/spec-kit-context'
+          destination_repo: 'rlerikse/spec-kit-context'
           destination_folder: 'repos/${{ github.event.repository.name }}/${{ github.ref_name }}'
           destination_branch: 'main'
           user_email: 'spec-kit-bot@ford.com'
@@ -144,4 +144,4 @@ jobs:
           echo "✅ Spec context synced to central repository!"
           echo ""
           echo "View in context repo:"
-          echo "https://github.com/ford-innersource/spec-kit-context/tree/main/repos/${{ github.event.repository.name }}"
+          echo "https://github.com/rlerikse/spec-kit-context/tree/main/repos/${{ github.event.repository.name }}"
