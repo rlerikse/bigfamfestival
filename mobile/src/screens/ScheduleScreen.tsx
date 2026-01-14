@@ -7,7 +7,7 @@
  * UI matches new design: date row, then grid icon + My Schedule filter, then stage dropdown.
  * Replaces HomeScreen and MyScheduleScreen logic.
  */
-import React, { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,11 +18,12 @@ import {
   RefreshControl,
   Alert,
   StyleSheet,
-  GestureResponderEvent,
   Image,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
@@ -37,6 +38,9 @@ import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
+import { isLoggedInUser } from '../utils/userUtils';
+import firestore, { collection, getDocs } from '../utils/firebaseCompat';
+import genreService from '../services/genreService';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -44,18 +48,21 @@ type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 interface FilterState {
   selectedDay: string;
   selectedStages: string[];
+  selectedGenres: string[];
   showMySchedule: boolean;
 }
 
 type FilterAction =
   | { type: 'SET_SELECTED_DAY'; payload: string }
   | { type: 'SET_SELECTED_STAGES'; payload: string[] }
+  | { type: 'SET_SELECTED_GENRES'; payload: string[] }
   | { type: 'TOGGLE_MY_SCHEDULE' }
   | { type: 'RESET_FILTERS'; payload?: string };
 
 const initialFilterState: FilterState = {
   selectedDay: '',
   selectedStages: ['all'],
+  selectedGenres: ['all'],
   showMySchedule: false,
 };
 
@@ -65,6 +72,8 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
       return { ...state, selectedDay: action.payload };
     case 'SET_SELECTED_STAGES':
       return { ...state, selectedStages: action.payload };
+    case 'SET_SELECTED_GENRES':
+      return { ...state, selectedGenres: action.payload };
     case 'TOGGLE_MY_SCHEDULE':
       return { ...state, showMySchedule: !state.showMySchedule };
     case 'RESET_FILTERS':
@@ -74,12 +83,10 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
   }
 }
 
-// Days to show in the filter buttons (Friday, Saturday, Sunday)
-const festivalDays = [
-  { id: '2025-09-26', date: '2025-09-26', dayLabel: 'Sep 26', dayAbbrev: 'FRI', staffOnly: false },
-  { id: '2025-09-27', date: '2025-09-27', dayLabel: 'Sep 27', dayAbbrev: 'SAT', staffOnly: false },
-  { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: false },
-];
+import { festivalConfig } from '../config/festival.config';
+
+// Days to show in the filter buttons - loaded from festival config
+const festivalDays = festivalConfig.dates;
 
 // All days we need to fetch events for (includes Monday for late-night events)
 // Currently not used since API fetches all events at once
@@ -223,9 +230,11 @@ const styles = StyleSheet.create({
 
 const ScheduleScreen = () => {
   const { theme, isDark } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
+  const [genres, setGenres] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,9 +242,18 @@ const ScheduleScreen = () => {
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [filterState, dispatchFilter] = useReducer(filterReducer, initialFilterState);
-  const { selectedDay, selectedStages, showMySchedule } = filterState;
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
+  const { selectedDay, selectedStages, selectedGenres, showMySchedule } = filterState;
+  // Current time ticker for countdown badges
+  const [now, setNow] = useState<number>(Date.now());
+  // FlatList ref for programmatic scrolling to live events
+  const flatListRef = useRef<FlatList<ScheduleEvent>>(null);
+  const previousDayRef = useRef<string | null>(null);
+
+  // Update current time every minute to refresh countdowns
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Helper function to check if user has staff privileges
   const isStaffUser = useCallback(() => {
@@ -293,6 +311,24 @@ const ScheduleScreen = () => {
     ];
   }, [events]);
 
+  // Extract unique genres from fetched genres list
+  const genreOptions = useMemo(() => {
+    if (genres.length === 0) {
+      return [{ id: 'all', label: 'All Genres', value: 'all' }];
+    }
+    
+    const sortedGenres = [...genres].sort();
+    
+    return [
+      { id: 'all', label: 'All Genres', value: 'all' },
+      ...sortedGenres.map(genre => ({
+        id: genre,
+        label: genre,
+        value: genre,
+      }))
+    ];
+  }, [genres]);
+
   // Initialize selectedDay based on visible days - simplified to avoid hook ordering issues
   useEffect(() => {
     if (!selectedDay && visibleFestivalDays.length > 0) {
@@ -302,17 +338,20 @@ const ScheduleScreen = () => {
 
   // --- Fetch events and user schedule ---
   const fetchEvents = useCallback(async (loadMore = false) => {
-    if (loadMore && !hasMore) return;
-    setIsLoading(!loadMore);
+    if (loadMore) return; // No pagination supported yet
+    setIsLoading(true);
     setError(null);
     try {
       const token = await SecureStore.getItemAsync('userToken');
-      const response = await api.get<ScheduleEvent[]>(`/events?page=${page}&limit=50`, {
+      const response = await api.get<ScheduleEvent[]>(`/events`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
-      setEvents(prev => loadMore ? [...prev, ...response.data] : response.data);
-      setHasMore(response.data.length === 50); // Assume 50 is page size
-      if (loadMore) setPage(prev => prev + 1);
+      
+      // Populate genres for the events
+      const eventsWithGenres = await genreService.populateEventGenres(response.data);
+      
+      setEvents(eventsWithGenres);
+      setEvents(eventsWithGenres);
     } catch (err) {
       console.error('❌ Error fetching events:', err);
       setError('Could not load events. Please try again later.');
@@ -320,10 +359,11 @@ const ScheduleScreen = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [page, hasMore]);
+  }, []);
 
   const loadUserSchedule = useCallback(async () => {
-    if (!user) return;
+    // Only fetch user schedule if user is logged in (not a guest)
+    if (!user || !isLoggedInUser(user)) return;
     try {
       const schedule = await getUserSchedule(user.id);
       const scheduleMap = schedule.reduce<Record<string, boolean>>((acc, ev) => {
@@ -337,16 +377,82 @@ const ScheduleScreen = () => {
     }
   }, [user]);
 
+  // Fetch genres from the API
+  const fetchGenres = useCallback(async () => {
+    try {
+      // Fetch directly from Firestore genres collection
+      const genresCollection = collection(firestore, 'genres');
+      const genresSnapshot = await getDocs(genresCollection);
+      
+      const genreTags: string[] = [];
+      genresSnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.tag && typeof data.tag === 'string') {
+          genreTags.push(data.tag);
+        }
+      });
+      
+      // Sort genres alphabetically
+      genreTags.sort();
+      setGenres(genreTags);
+      
+  // Dev note: fetched genres count available here for debugging if needed
+    } catch (err) {
+      console.warn('⚠️ Firestore permissions error - using sample genres until rules are updated');
+      console.error('Full error:', err);
+      
+      // Use expanded sample genres that match what's likely in your Firestore
+      const sampleGenres = [
+        'Live Electronic',
+        'Hip Hop', 
+        'Rock',
+        'Jazz',
+        'Folk',
+        'Techno',
+        'House',
+        'Ambient',
+        'Experimental',
+        'Pop',
+        'R&B',
+        'Reggae',
+        'Funk',
+        'Soul'
+      ].sort();
+      
+      setGenres(sampleGenres);
+  // Dev note: using sample genres fallback
+    }
+  }, []);
+
   // Separate useEffect for initial data loading to avoid dependency issues
   useEffect(() => {
     fetchEvents();
   }, [fetchEvents]);
 
   useEffect(() => {
-    if (user) {
+    // Only load user schedule if user exists and is logged in (not a guest)
+    if (user && isLoggedInUser(user)) {
       loadUserSchedule();
     }
   }, [user, loadUserSchedule]);
+
+  // Load genres on user login or token change
+  useEffect(() => {
+    // Fetch genres only if user is logged in (token exists)
+    const fetchData = async () => {
+      const token = await SecureStore.getItemAsync('userToken');
+      if (token) {
+        fetchGenres();
+      }
+    };
+    
+    fetchData();
+  }, [user, fetchGenres]);
+
+  // Fetch genres on component mount
+  useEffect(() => {
+    fetchGenres();
+  }, [fetchGenres]);
 
   // --- Optimized filtering logic with performance monitoring ---
   // Precompute sorted events (sort only when events change)
@@ -402,9 +508,27 @@ const ScheduleScreen = () => {
       filtered = filtered.filter(ev => selectedStages.includes(ev.stage));
     }
     
+    // Filter by selected genres (multi-select)
+    if (selectedGenres.length > 0 && !selectedGenres.includes('all')) {
+      filtered = filtered.filter(ev => {
+        // Check if event has genres array (populated by backend)
+        if (ev.genres && Array.isArray(ev.genres)) {
+          return ev.genres.some(genre => selectedGenres.includes(genre));
+        }
+        // Fallback: check single genre field
+        return ev.genre && selectedGenres.includes(ev.genre);
+      });
+    }
+    
     // Filter by user schedule
-    if (showMySchedule && Object.keys(userSchedule).length > 0) {
-      filtered = filtered.filter(ev => userSchedule[ev.id]);
+    if (showMySchedule) {
+      // Check if there are any events in the user's schedule
+      if (Object.keys(userSchedule).length > 0) {
+        filtered = filtered.filter(ev => userSchedule[ev.id]);
+      } else {
+        // No events in schedule, return empty array
+        filtered = [];
+      }
     }
     
     if (__DEV__) {
@@ -412,7 +536,7 @@ const ScheduleScreen = () => {
       console.log(`🔍 Filtering ${sortedEvents.length} events → ${filtered.length} results took: ${(performance.now() - startTime).toFixed(2)}ms`);
     }
     return filtered;
-  }, [sortedEvents, selectedDay, selectedStages, showMySchedule, userSchedule, dateConstants.cutoffTimeInMinutes]);
+  }, [sortedEvents, selectedDay, selectedStages, selectedGenres, showMySchedule, userSchedule, dateConstants.cutoffTimeInMinutes]);
 
   // --- UI Handlers ---
   const handleDayPress = useCallback((day: string) => {
@@ -423,14 +547,73 @@ const ScheduleScreen = () => {
     dispatchFilter({ type: 'SET_SELECTED_STAGES', payload: stages });
   }, []);
 
-  const handleToggleMySchedule = useCallback(() => {
-    dispatchFilter({ type: 'TOGGLE_MY_SCHEDULE' });
+  const handleGenresChange = useCallback((genres: string[]) => {
+    dispatchFilter({ type: 'SET_SELECTED_GENRES', payload: genres });
   }, []);
+
+  const handleToggleMySchedule = useCallback(() => {
+    // Check if user exists and is not a guest
+    if (!user) {
+      Alert.alert('Login Required', 'Please login to view your schedule.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+    
+    // Check if user is a guest user
+    if (user.id === 'guest-user') {
+      const message = 'You need to be logged in to view your schedule.';
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            try {
+              // Need to logout first to remove guest user so Auth stack becomes available
+              await logout();
+              // Let the navigation system update to show Auth screen
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Could not log out. Please try again.');
+            }
+          }
+        },
+      ]);
+      return;
+    }
+    
+    // User is authenticated, proceed with toggling the filter
+    dispatchFilter({ type: 'TOGGLE_MY_SCHEDULE' });
+  }, [user, navigation, logout]);
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
+    // If no user, show login prompt
     if (!user) {
       Alert.alert('Login Required', 'Please login to manage your schedule.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+    
+    // Check if user is a guest user
+    if (user.id === 'guest-user') {
+      const message = 'You need to be logged in to add events to your schedule.';
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            try {
+              // Need to logout first to remove guest user so Auth stack becomes available
+              await logout();
+              // Let the navigation system update to show Auth screen
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Could not log out. Please try again.');
+            }
+          }
+        },
       ]);
       return;
     }
@@ -470,7 +653,7 @@ const ScheduleScreen = () => {
       console.error('Error toggling schedule:', error);
       Alert.alert('Error', 'Failed to update your schedule. Please try again.');
     }
-  }, [user, navigation, userSchedule]);
+  }, [user, navigation, userSchedule, logout]);
 
   // Event press handlers
   const handleEventPress = useCallback((item: ScheduleEvent) => {
@@ -503,9 +686,46 @@ const ScheduleScreen = () => {
         theme={themeColors}
         onToggleSchedule={handleToggleSchedule}
         onEventPress={handleEventPress}
+        showStatusBadge
+        currentTime={now}
       />
     );
-  }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress]);
+  }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress, now]);
+
+  // Determine if event is currently live (mirrors logic inside EventCard)
+  const isEventLive = useCallback((ev: ScheduleEvent, nowMs: number) => {
+    if (!ev.date || !ev.startTime) return false;
+    const startTs = new Date(`${ev.date}T${ev.startTime}`).getTime();
+    let endTs: number;
+    if (ev.endTime && ev.endTime.trim()) {
+      endTs = new Date(`${ev.date}T${ev.endTime}`).getTime();
+      if (endTs <= startTs) endTs += 24 * 60 * 60 * 1000; // crosses midnight
+    } else {
+      endTs = startTs + 2 * 60 * 60 * 1000; // fallback 2h
+    }
+    return nowMs >= startTs && nowMs < endTs;
+  }, []);
+
+  // On day change (after initial set), auto-scroll to first live event if present
+  useEffect(() => {
+    if (!selectedDay) return;
+    if (previousDayRef.current && previousDayRef.current !== selectedDay) {
+      const nowMs = now;
+      const liveIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
+      if (liveIndex >= 0) {
+        // Defer to ensure FlatList rendered new data
+        setTimeout(() => {
+          try {
+            flatListRef.current?.scrollToIndex({ index: liveIndex, animated: true });
+          } catch (err) {
+            // Fallback to offset scroll if measurement not ready
+            flatListRef.current?.scrollToOffset({ offset: liveIndex * 112, animated: true });
+          }
+        }, 0);
+      }
+    }
+    previousDayRef.current = selectedDay;
+  }, [selectedDay, filteredEvents, now, isEventLive]);
 
   // Aggressive initial image preloading for first screen
   const preloadInitialImages = useCallback((events: ScheduleEvent[]) => {
@@ -607,23 +827,19 @@ const ScheduleScreen = () => {
   return (
     <SafeAreaView style={[filterStyles.container, { backgroundColor: theme.background }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <TopNavBar 
-        onSearch={(_query) => { /* Implement search logic */ }} 
-        onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications coming soon!')}
-        whiteIcons={false}
-      />
-      {/* Main content container */}
-      <View style={{ flex: 1, flexDirection: 'column', marginTop: 80 }}>
-        {/* Fixed header container for filter rows */}
+  {/* Main content container */}
+  {/* Account for TopNavBar height, platform-specific padding */}
+  <View style={{ flex: 1, flexDirection: 'column', paddingTop: Platform.OS === 'ios' ? 55 : 85 }}>
+        {/* Fixed header container for filter rows - align flush with nav bar bottom */}
         <View
           style={{
             backgroundColor: theme.background,
-            paddingTop: 4, // Minimal padding to be flush with nav bar
-            paddingBottom: 4,
+            paddingTop: 0, // remove extra top padding so filters are flush with nav bar
+            paddingBottom: 6,
             zIndex: 1000,
             position: 'relative',
             elevation: 1,
+            justifyContent: 'flex-end',
           }}
         >
         {/* Date filter row */}
@@ -631,7 +847,7 @@ const ScheduleScreen = () => {
           style={{
             flexDirection: 'row',
             paddingHorizontal: 16,
-            alignItems: 'center',
+            alignItems: 'flex-end',
             minHeight: 56,
           }}
         >
@@ -669,7 +885,7 @@ const ScheduleScreen = () => {
             </TouchableOpacity>
           ))}
         </View>
-        {/* 2nd row: grid icon, My Schedule filter, stage dropdown */}
+        {/* 2nd row: My Schedule filter, stage dropdown */}
         <View
           style={{
             flexDirection: 'row',
@@ -678,10 +894,11 @@ const ScheduleScreen = () => {
             minHeight: 44,
           }}
         >
-          {/* Grid icon aligned with logo */}
+          {/* Grid icon - hidden for now
           <TouchableOpacity style={{ padding: 8 }}>
             <MaterialCommunityIcons name="view-grid-outline" size={28} color={theme.text} />
           </TouchableOpacity>
+          */}
           
           {/* My Schedule filter */}
           <TouchableOpacity
@@ -691,7 +908,7 @@ const ScheduleScreen = () => {
                 borderWidth: 1,
                 borderColor: theme.border,
                 backgroundColor: showMySchedule ? theme.primary : 'transparent',
-                marginLeft: 4, 
+                marginLeft: 0, // Changed from 4 since grid icon is hidden 
                 marginRight: 8, 
                 flexDirection: 'row', 
                 alignItems: 'center', 
@@ -734,23 +951,22 @@ const ScheduleScreen = () => {
               height: 36,
             }}
           />
-          {/* Genre dropdown (multi-select) - HIDDEN FOR NOW */}
-          {/*
+          {/* Genre dropdown (multi-select) */}
           <MultiSelectDropdown
-            options={availableGenres}
+            options={genreOptions}
             selectedValues={selectedGenres}
-            onSelectionChange={setSelectedGenres}
+            onSelectionChange={handleGenresChange}
             placeholder="All Genres"
             allOptionValue="all"
+            dropdownMinWidth={200}
             style={{
-              minWidth: 110,
+              flex: 1,
               marginRight: 4,
               height: 36,
             }}
           />
-          */}
           
-          {/* Share button */}
+          {/* Share button - hidden for now
           <TouchableOpacity 
             style={[
               filterStyles.filterButton,
@@ -772,12 +988,15 @@ const ScheduleScreen = () => {
                 shadowOpacity: 0.10,
                 shadowRadius: 2,
                 elevation: 2,
+                opacity: 0.5, // Reduced opacity to indicate disabled state
               }
             ]}
+            disabled={true}
             onPress={() => Alert.alert('Share Schedule', 'Schedule sharing coming soon!')}
           >
             <Ionicons name="share-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
+          */}
         </View>
       </View>
       {/* Event list container - takes remaining space */}
@@ -801,12 +1020,14 @@ const ScheduleScreen = () => {
           </View>
         ) : (
           <FlatList
+            ref={flatListRef}
             data={filteredEvents}
             renderItem={renderEventCard}
             keyExtractor={keyExtractor}
             contentContainerStyle={[
               styles.eventsList,
-              { paddingTop: 0, paddingBottom: 100, flexGrow: 1 }
+              // Respect bottom safe-area and keep minimum scroll space for footers/tab bar
+              { paddingTop: 0, paddingBottom: Math.max(100, insets.bottom + 16), flexGrow: 1 }
             ]}
             showsVerticalScrollIndicator={false}
             // Enhanced performance optimizations for smooth scrolling
@@ -832,6 +1053,12 @@ const ScheduleScreen = () => {
             viewabilityConfig={{
               itemVisiblePercentThreshold: 50, // Item is considered visible when 50% is showing
             }}
+            onScrollToIndexFailed={({ index }) => {
+              // Retry after a brief delay with approximate offset
+              setTimeout(() => {
+                flatListRef.current?.scrollToOffset({ offset: index * 112, animated: true });
+              }, 60);
+            }}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
                 <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
@@ -856,6 +1083,12 @@ const ScheduleScreen = () => {
         )}
       </View>
       </View>
+      {/* Top navigation bar (render last so it overlays content reliably) */}
+      <TopNavBar 
+        onSettingsPress={() => navigation.navigate('Settings')}
+        whiteIcons={false}
+      />
+
       {/* Event details modal */}
       <EventDetailsModal
         isVisible={isModalVisible}
@@ -869,3 +1102,10 @@ const ScheduleScreen = () => {
 };
 
 export default ScheduleScreen;
+
+// NOTE: Backend should populate event.genres array by:
+  // 1. For each event, iterate through event.artists array
+  // 2. For each artist ID, fetch from artists collection
+  // 3. Get artist's genres subcollection documents
+  // 4. Look up each genre document in genres collection to get tag
+  // 5. Add all unique genre tags to event.genres array

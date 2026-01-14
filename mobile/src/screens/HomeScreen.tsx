@@ -5,6 +5,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import DayNightCycle from '../components/DayNightCycle';
 import TopNavBar from '../components/TopNavBar';
@@ -18,12 +19,14 @@ import EventDetailsModal from '../components/EventDetailsModal';
 import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
+import { isLoggedInUser } from '../utils/userUtils';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
 const HomeScreen = () => {
   const { theme, isDark, isPerformanceMode } = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const gatesOpenDate = new Date('2025-09-26T10:00:00');
   const { user } = useAuth();
   const [selectedEvent, setSelectedEvent] = React.useState<ScheduleEvent | null>(null);
@@ -33,7 +36,8 @@ const HomeScreen = () => {
   React.useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!user) return;
+      // Only fetch user schedule if user is logged in (not a guest)
+      if (!user || !isLoggedInUser(user)) return;
       try {
         const schedule = await getUserSchedule(user.id);
         if (!mounted) return;
@@ -57,11 +61,16 @@ const HomeScreen = () => {
   };
 
   const handleToggleSchedule = async (ev: ScheduleEvent) => {
-    if (!user) {
-      Alert.alert('Login Required', 'Please login to manage your schedule.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Login', onPress: () => navigation.navigate('Auth') },
-      ]);
+    // Require a logged-in (non-guest) user to manage schedule
+    if (!user || !isLoggedInUser(user) || user.id === 'guest-user') {
+      Alert.alert(
+        'Login Required',
+        'Please log in to manage your schedule.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => navigation.navigate('Auth') },
+        ]
+      );
       return;
     }
     const id = ev.id;
@@ -103,9 +112,7 @@ const HomeScreen = () => {
       <StatusBar style={isDark ? 'light' : 'dark'} />
       
       <TopNavBar 
-        onSearch={(_query) => { /* Implement search logic */ }} 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications coming soon!')}
         whiteIcons={true}
       />
 
@@ -128,17 +135,22 @@ const HomeScreen = () => {
            alignItems: 'stretch', 
            zIndex: 1,
            backgroundColor: 'transparent',
-           padding: 5,
+           paddingHorizontal: 5,
+           paddingBottom: 5,
            borderRadius: 16,
            marginHorizontal: 20,
-           marginTop: 80, // Account for TopNavBar
+           paddingTop: 75, // TopNavBar height (55) + extra padding (20)
          }}>
-          <Countdown targetDate={gatesOpenDate} />
-
-          {/* subtle divider + spacing between countdown and events */}
-          <View style={{ height: 12 }} />
+          {/* Copper divider above timer / clock */}
+          <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
           <View style={{ height: 12 }} />
+          <Countdown targetDate={gatesOpenDate} />
+
+          {/* subtle divider + even less spacing between countdown and events */}
+          <View style={{ height: 12 }} />
+          <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
+          <View style={{ height: 0 }} />
 
           <LiveUpcomingEvents onEventPress={openEventModal} />
          </View>

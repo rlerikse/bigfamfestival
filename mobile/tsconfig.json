@@ -11,6 +11,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "types": [
+      "react-native",
+      "jest"
+    ],
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
@@ -29,6 +33,7 @@
   "exclude": [
     "node_modules",
     "babel.config.js",
+    "metro.config.js",
     "jest.setup.js"
   ],
   "extends": "expo/tsconfig.base"

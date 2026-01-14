@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAK-HhnM34hcfra0k3WXepqP0aUEFdcJ54</string>
+	<key>GCM_SENDER_ID</key>
+	<string>292369452544</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.eriksensolutions.bigfam</string>
+	<key>PROJECT_ID</key>
+	<string>bigfamfestival</string>
+	<key>STORAGE_BUCKET</key>
+	<string>bigfamfestival.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:292369452544:ios:f1ad03983d542f161c12e5</string>
+	<key>DATABASE_URL</key>
+	<string>https://bigfamfestival-default-rtdb.firebaseio.com</string>
+</dict>
+</plist>

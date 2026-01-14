@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { Alert } from 'react-native';
 import { UserRole } from '../types/user';
 import { loginUser, registerUser, getUserProfile } from '../services/authService';
-import { Alert } from 'react-native';
+import { deleteAccountFromFirestore } from '../services/deleteAccountService';
+import { scheduleAllUserEventsNotifications, cancelAllUserEventsNotifications } from '../services/notificationService';
 
 export interface User {
   id: string;
@@ -15,8 +17,7 @@ export interface User {
   ticketType?: string;
   profilePictureUrl?: string;
 }
-
-interface AuthContextProps {
+export interface AuthContextProps {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -24,6 +25,9 @@ interface AuthContextProps {
   loginAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
+  isGuestUser: () => boolean;
+  redirectToLogin: (message?: string) => void;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -36,7 +40,26 @@ export const useAuth = () => {
   return context;
 };
 
+// We don't need navigation ref anymore since we're using a simpler approach
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Delete account from Firestore and log out
+  const deleteAccount = async () => {
+    if (!user) return;
+    try {
+      setIsLoading(true);
+      await deleteAccountFromFirestore(user.id);
+      await SecureStore.deleteItemAsync('userToken');
+      setUser(null);
+      Alert.alert('Account Deleted', 'Your account has been deleted.');
+    } catch (error) {
+      console.error('Delete account error:', error);
+      Alert.alert('Delete Failed', error instanceof Error ? error.message : 'Failed to delete your account. Please try again.');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,6 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const token = await SecureStore.getItemAsync('userToken');
         if (token) {
+          // Also store as accessToken for API interceptors
+          await SecureStore.setItemAsync('accessToken', token);
+          
           // If we have a token, fetch user data to validate it
           const userData = await getUserProfile(token);
           setUser(userData);
@@ -54,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error loading user:', error);
         // Clear token if it's invalid
         await SecureStore.deleteItemAsync('userToken');
+        await SecureStore.deleteItemAsync('accessToken');
       } finally {
         setIsLoading(false);
       }
@@ -68,9 +95,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       const { token, user } = await loginUser(email, password);
       
-      // Save token securely
+      // Save token securely in both places for compatibility
       await SecureStore.setItemAsync('userToken', token);
+      await SecureStore.setItemAsync('accessToken', token);
+      
+      // Debug log for development - this will help us see if the role is correctly set
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('User logged in with role:', user.role);
+      }
+      
       setUser(user);
+
+      // Schedule notifications for user's events
+      await scheduleAllUserEventsNotifications(user.id);
     } catch (error) {
       console.error('Login error:', error);
       Alert.alert('Login Failed', error instanceof Error ? error.message : 'Please check your credentials');
@@ -86,9 +124,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       const { token, user } = await registerUser({ name, email, password, phone });
       
-      // Save token securely
+      // Save token securely in both places for compatibility
       await SecureStore.setItemAsync('userToken', token);
+      await SecureStore.setItemAsync('accessToken', token);
+      
       setUser(user);
+
+      // Schedule notifications for user's events
+      await scheduleAllUserEventsNotifications(user.id);
     } catch (error) {
       console.error('Registration error:', error);
       Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Please try again later');
@@ -102,7 +145,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await SecureStore.deleteItemAsync('userToken');
+      await SecureStore.deleteItemAsync('accessToken');
+      await SecureStore.deleteItemAsync('refreshToken');
       setUser(null);
+      // Cancel all scheduled notifications
+      await cancelAllUserEventsNotifications();
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -135,8 +182,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Check if current user is a guest
+  const isGuestUser = (): boolean => {
+    return user?.id === 'guest-user';
+  };
+
+  // Redirect to login screen with optional message
+  const redirectToLogin = (message?: string) => {
+    if (message) {
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            // For guest users, need to logout first so Auth stack becomes available
+            if (isGuestUser()) {
+              await logout();
+            }
+          }
+        },
+      ]);
+    } else {
+      // For guest users, need to logout first so Auth stack becomes available
+      if (isGuestUser()) {
+        logout();
+      }
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout, loginAsGuest, updateUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoading, 
+      login, 
+      register, 
+      logout, 
+      loginAsGuest, 
+      updateUser,
+      isGuestUser,
+      redirectToLogin,
+      deleteAccount
+    }}>
       {children}
     </AuthContext.Provider>
   );

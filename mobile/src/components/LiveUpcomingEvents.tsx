@@ -1,16 +1,18 @@
 // src/components/LiveUpcomingEvents.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, Image, ImageRequireSource } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { api } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, NavigationProp as GenericNavigationProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, MainTabParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, addToSchedule, removeFromSchedule } from '../services/scheduleService';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { isLoggedInUser } from '../utils/userUtils';
+import genreService from '../services/genreService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -20,7 +22,7 @@ type LiveUpcomingEventsProps = {
 
 const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress }) => {
   const { theme } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigation = useNavigation<NavigationProp>();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
@@ -32,12 +34,15 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
     const fetchEventsAndSchedule = async () => {
       try {
         // Fetch events and user schedule in parallel for speed
+        // Only fetch user schedule if user is logged in (not a guest)
         const [eventsResponse, scheduleResponse] = await Promise.all([
           api.get<ScheduleEvent[]>('/events'),
-          user ? getUserSchedule(user.id) : Promise.resolve([]),
+          (user && isLoggedInUser(user)) ? getUserSchedule(user.id) : Promise.resolve([]),
         ]);
 
-        setEvents(eventsResponse.data);
+        // Populate genres for the events
+        const eventsWithGenres = await genreService.populateEventGenres(eventsResponse.data);
+        setEvents(eventsWithGenres);
 
         if (scheduleResponse) {
           const scheduleMap = scheduleResponse.reduce<Record<string, boolean>>((acc, ev) => {
@@ -95,10 +100,34 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
   }, [events, now]);
 
   const handleToggleSchedule = useCallback(async (eventToToggle: ScheduleEvent) => {
+    // If no user, show login prompt
     if (!user) {
-      Alert.alert('Login Required', 'Please login to manage your schedule.', [
+      const message = 'You need to be logged in to add events to your schedule.';
+      Alert.alert('Login Required', message, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Login', onPress: () => navigation.navigate('Auth') },
+      ]);
+      return;
+    }
+    
+    // Check if user is a guest user
+    if (user.id === 'guest-user') {
+      const message = 'You need to be logged in to add events to your schedule.';
+      Alert.alert('Login Required', message, [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Login', 
+          onPress: async () => {
+            try {
+              // Need to logout first to remove guest user so Auth stack becomes available
+              await logout();
+              // Let the navigation system update to show Auth screen
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Could not log out. Please try again.');
+            }
+          }
+        },
       ]);
       return;
     }
@@ -136,7 +165,7 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
       });
       Alert.alert('Error', 'Failed to update your schedule. Please try again.');
     }
-  }, [user, userSchedule, navigation]);
+  }, [user, userSchedule, navigation, logout]);
 
   const handleEventPress = useCallback((item: ScheduleEvent) => {
     if (onEventPress) {
@@ -144,9 +173,10 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
       return;
     }
     // Fallback: switch to the Schedule tab in the parent tab navigator
-    const parent = navigation.getParent<BottomTabNavigationProp<MainTabParamList>>();
+    // Fallback: switch to the Schedule tab in the parent tab navigator
+    const parent = navigation.getParent<GenericNavigationProp<MainTabParamList>>();
     parent?.navigate('Schedule');
-  }, [onEventPress, navigation]);
+  }, [navigation, onEventPress]);
 
   // Pass the full theme object as expected by EventCard
   const themeForCard = useMemo(() => ({
@@ -197,7 +227,13 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
               logoStyle = styles.stageLogoGallery;
             }
             return logoSource ? (
-              <Image source={logoSource} style={logoStyle} resizeMode="contain" />
+              <ExpoImage 
+                source={logoSource} 
+                style={logoStyle} 
+                contentFit="contain" 
+                cachePolicy="memory-disk"
+                transition={300}
+              />
             ) : null;
           })()}
           <EventCard
@@ -206,6 +242,8 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
             onToggleSchedule={handleToggleSchedule}
             onEventPress={() => handleEventPress(event)}
             theme={themeForCard}
+            showStatusBadge
+            currentTime={now.getTime()}
           />
         </View>
       ))}
@@ -216,7 +254,6 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 24,
     width: '100%',
   },
   centered: {
@@ -233,6 +270,8 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     marginBottom: 16,
+    maxHeight: 80,
+    marginTop: 46,
     position: 'relative',
     width: '100%',
   },

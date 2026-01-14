@@ -21,6 +21,8 @@ import { RootStackParamList } from '../navigation';
 import { getUserSchedule, removeFromSchedule } from '../services/scheduleService';
 import { ScheduleEvent } from '../types/event';
 import TopNavBar from '../components/TopNavBar';
+import { isLoggedInUser } from '../utils/userUtils';
+import genreService from '../services/genreService';
 
 type MyScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -48,12 +50,16 @@ const MyScheduleScreen = () => {
 
   // fetchSchedule is now defined before useEffect
   const fetchSchedule = useCallback(async () => {
-    if (!user) return;
+    // Only fetch schedule if user is logged in (not a guest)
+    if (!user || !isLoggedInUser(user)) return;
     
     setIsLoading(true);
     try {
       const scheduleData = await getUserSchedule(user.id);
-      setEvents(scheduleData);
+      
+      // Populate genres for the schedule events
+      const scheduleWithGenres = await genreService.populateEventGenres(scheduleData);
+      setEvents(scheduleWithGenres);
         // Default to 'all' if available
       if (FESTIVAL_DAYS.length > 0) {
         if (!selectedDay || !FESTIVAL_DAYS.some(day => day.date === selectedDay)) {
@@ -252,10 +258,8 @@ const MyScheduleScreen = () => {
       
       {/* Top Navigation Bar */}
       <TopNavBar 
-        onSearch={handleSearch} 
         placeholder="Search your schedule..." 
         onSettingsPress={() => navigation.navigate('Settings')}
-        onNotificationsPress={() => Alert.alert('Notifications', 'Notifications coming soon!')}
       />
       
       {/* Day filter at the top with proper alignment */}
@@ -291,8 +295,20 @@ const MyScheduleScreen = () => {
       )}
       
       <View style={styles.contentContainer}>
-        {/* Loading state */}
-        {isLoading ? (
+        {/* Guest user check */}
+        {user && !isLoggedInUser(user) ? (
+          <View style={styles.centeredContent}>
+            <Text style={[styles.emptyText, { color: theme.muted }]}>
+              Please login to view and manage your personal schedule.
+            </Text>
+            <TouchableOpacity 
+              style={[styles.retryButton, { backgroundColor: theme.primary }]} 
+              onPress={() => navigation.navigate('Auth')}
+            >
+              <Text style={styles.retryButtonText}>Login</Text>
+            </TouchableOpacity>
+          </View>
+        ) : isLoading ? (
           <View style={styles.centeredContent}>
             <ActivityIndicator size="large" color={theme.primary} />
           </View>

@@ -14,3 +14,4 @@ backend/artists.csv
 backend/scripts/import-artists-from-csv copy.ts
 backend/scripts/import-artists-from-csv.ts
 /mobile/bigfamfestival-4af9c9a24721.json
+/mobile/.expo

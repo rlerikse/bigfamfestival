@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { View, Image, StyleSheet, Dimensions, TouchableOpacity, Alert, Platform } from 'react-native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs/lib/typescript/src/types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import the hook
+import { useAuth } from '../contexts/AuthContext'; // Import AuthContext hook
 import SafeText from './SafeText';
 
 const { width } = Dimensions.get('window');
@@ -24,7 +25,7 @@ const SCALED_GRASS_HEIGHT = SCALED_TOTAL_IMAGE_HEIGHT * IMG_GRASS_PROPORTION; //
 const EFFECTIVE_GRASS_VISIBLE_HEIGHT = SCALED_GRASS_HEIGHT;
 
 // Constants for positioning decorative elements (keep original values for consistency)
-const ORIGINAL_NAVBAR_HEIGHT = 60;
+// Note: ORIGINAL_NAVBAR_HEIGHT removed as it's not used
 const ORIGINAL_EFFECTIVE_GRASS_HEIGHT = 67.4;
 
 const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({ 
@@ -34,6 +35,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
 }) => {
   const insets = useSafeAreaInsets(); // Use the hook to get insets
   const bottomPadding = insets.bottom; // Get the bottom inset
+  const { user, logout } = useAuth(); // Get user and logout function from auth context
   
   return (
     <View style={[styles.container, { paddingBottom: bottomPadding }]}>
@@ -45,7 +47,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
             styles.actualImage,
             {
               height: SCALED_TOTAL_IMAGE_HEIGHT + bottomPadding,
-              bottom: -bottomPadding, // Pull image down to fill safe area
+              bottom: Platform.OS === 'ios' ? -bottomPadding - 0 : -bottomPadding - 5, // iOS stays same, Android moved up by 20px more
             }
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
@@ -72,17 +74,73 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
         />
       </View>
       <View style={styles.navbar}>
-        {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
+        {state.routes.map((route: { key: React.Key | null | undefined; name: string; }, index: number) => {
+          const { options } = route.key !== null && route.key !== undefined ? descriptors[String(route.key)] : {};
           const isFocused = state.index === index;
 
           const onPress = () => {
             const event = navigation.emit({
               type: 'tabPress',
-              target: route.key,
+              target: route.key != null ? String(route.key) : undefined,
               canPreventDefault: true,
             });
             
+            // Check if this is the Profile tab and user is a guest
+            // Note: 'Profile' must match the exact route name in the tab navigator
+            if (route.name === 'Profile' && user?.id === 'guest-user') {
+              // Prevent default navigation
+              event.preventDefault();
+              
+              // Show login prompt
+              Alert.alert(
+                'Login Required', 
+                'You need to be logged in to view your profile.', 
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Login', 
+                    onPress: async () => {
+                      try {
+                        // Need to logout first to remove guest user so Auth stack becomes available
+                        await logout();
+                        // Don't navigate here - let the auth state change trigger the navigation
+                      } catch (error) {
+                        console.error('Error during logout:', error);
+                        Alert.alert('Error', 'Could not log out. Please try again.');
+                      }
+                    }
+                  },
+                ]
+              );
+              return;
+            }
+            
+            // Handle case when user is already on Profile tab and taps it again
+            if (isFocused && route.name === 'Profile' && user?.id === 'guest-user') {
+              // Show login prompt even when focused
+              Alert.alert(
+                'Login Required', 
+                'You need to be logged in to view your profile.', 
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Login', 
+                    onPress: async () => {
+                      try {
+                        await logout();
+                        // Don't navigate here - let the auth state change trigger the navigation
+                      } catch (error) {
+                        console.error('Error during logout:', error);
+                        Alert.alert('Error', 'Could not log out. Please try again.');
+                      }
+                    }
+                  },
+                ]
+              );
+              return;
+            }
+            
+            // For other tabs or logged in users, proceed normally
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
@@ -94,7 +152,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
               onPress={onPress}
               style={styles.tabItem}
             ><View style={styles.tabContent}>
-                {options.tabBarIcon && options.tabBarIcon({
+                {options?.tabBarIcon && options.tabBarIcon({
                   focused: isFocused,
                   color: isFocused ? '#D4946B' : '#F5F5DC',
                   size: 32,
@@ -105,15 +163,15 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
                     { color: isFocused ? '#D4946B' : '#F5F5DC' }
                   ]}
                 >
-                  {typeof options.tabBarLabel === 'function' 
-                    ? options.tabBarLabel({
-                        focused: isFocused,
-                        color: isFocused ? '#D4946B' : '#F5F5DC',
-                        position: 'below-icon',
-                        children: options.title || route.name
-                      })
-                    : options.tabBarLabel || options.title || route.name
-                  }
+                  {typeof options?.tabBarLabel === 'function' 
+                      ? options.tabBarLabel({
+                          focused: isFocused,
+                          color: isFocused ? '#D4946B' : '#F5F5DC',
+                          position: 'below-icon',
+                          children: options?.title || route.name
+                        })
+                      : options?.tabBarLabel || options?.title || route.name
+                    }
                 </SafeText>
               </View>
             </TouchableOpacity>
@@ -130,7 +188,7 @@ const styles = StyleSheet.create({  container: {
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
-    bottom: -50, // Move down by 50px to align properly with screen bottom
+    bottom: Platform.OS === 'ios' ? 0 : 0, // iOS stays at 0, Android moved up by 20px to 0
     zIndex: 10, // Ensure it appears above other elements
   },
   imageContainer: { 
@@ -151,7 +209,7 @@ const styles = StyleSheet.create({  container: {
   },  treeImage: {
     position: 'absolute',
     left: -105, // Keep left aligned position (adjusted for smaller size)
-    bottom: ORIGINAL_NAVBAR_HEIGHT + 60, // Moved up by 30px (was +30, now +60)
+    bottom: Platform.OS === 'ios' ? 120 : 100, // iOS: 120px, Android: 115px (adjusted for consistency)
     width: 200, // Half of 400 - scaled down
     height: 150, // Half of 300 - scaled down
     opacity: 1, // Full opacity
@@ -159,7 +217,7 @@ const styles = StyleSheet.create({  container: {
   },  tentImage: {
     position: 'absolute',
     right: -45, // Moved 5px to the right (was -40)
-    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 40, // Back to original position
+    top: Platform.OS === 'ios' ? -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80 : -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 100, // iOS stays the same, Android moved down by another 5px (total 25px)
     width: 100, // Scaled width
     height: 80, // Scaled height
     transform: [{ scaleX: -1 }], // Flipped on X-axis
@@ -179,7 +237,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: -80, // Moved icons up by 10px
+    marginTop: Platform.OS === 'ios' ? 20 : 30, // iOS stays at 20, Android adjusted to 30 to compensate for moved grass
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',

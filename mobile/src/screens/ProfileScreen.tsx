@@ -17,18 +17,22 @@ import { StatusBar } from 'expo-status-bar';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAppSettings } from '../contexts/AppSettingsContext';
 import { updateUserProfile, uploadProfilePicture } from '../services/userService';
+import TopNavBar from '../components/TopNavBar';
 
 const ProfileScreen = () => {
   const { user, updateUser, logout } = useAuth();
   const { theme, isDark } = useTheme();
+  const { scheduleNotificationsEnabled, toggleScheduleNotifications, globalNotificationsEnabled, toggleGlobalNotifications } = useAppSettings();
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [shareMyCampsite, setShareMyCampsite] = useState(user?.shareMyCampsite || false);
-  const [shareMyLocation, setShareMyLocation] = useState(user?.shareMyLocation || false);
+  // Sharing preferences - commented out for later implementation
+  // const [shareMyCampsite, setShareMyCampsite] = useState(user?.shareMyCampsite || false);
+  // const [shareMyLocation, setShareMyLocation] = useState(user?.shareMyLocation || false);
   const [profileImage, setProfileImage] = useState<string | null>(user?.profilePictureUrl || null);
   const [isImageUploading, setIsImageUploading] = useState(false);
 
@@ -48,8 +52,9 @@ const ProfileScreen = () => {
       const updatedData = {
         name,
         phone,
-        shareMyCampsite,
-        shareMyLocation,
+        // Sharing preferences commented out
+        // shareMyCampsite,
+        // shareMyLocation,
       };
       
       await updateUserProfile(user.id, updatedData);
@@ -115,19 +120,8 @@ const ProfileScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: theme.text }]}>Profile</Text>
-          <TouchableOpacity
-            style={[styles.editButton, isEditing && { backgroundColor: theme.primary }]}
-            onPress={handleEditToggle}
-            disabled={isLoading}
-          >
-            <Text style={[styles.editButtonText, isEditing && { color: '#FFFFFF' }]}>
-              {isEditing ? 'Save' : 'Edit'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+      <TopNavBar whiteIcons={isDark} />
+  <ScrollView contentContainerStyle={[styles.content, { paddingTop: 100 }]}> 
 
         <View style={styles.profileImageContainer}>
           <View style={[styles.profileImageWrapper, { borderColor: theme.border }]}>
@@ -155,7 +149,20 @@ const ProfileScreen = () => {
 
         <View style={styles.infoContainer}>
           <View style={[styles.infoSection, { borderColor: theme.border }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Information</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Information</Text>
+              <TouchableOpacity
+                style={[styles.editButton, isEditing && { backgroundColor: theme.primary }]}
+                onPress={handleEditToggle}
+                disabled={isLoading}
+              >
+                {isEditing ? (
+                  <Text style={[styles.editButtonText, { color: '#FFFFFF' }]}>Save</Text>
+                ) : (
+                  <Ionicons name="pencil" size={22} color={isDark ? '#FFFFFF' : theme.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
             
             <View style={styles.field}>
               <Text style={[styles.fieldLabel, { color: theme.muted }]}>Name</Text>
@@ -207,6 +214,51 @@ const ProfileScreen = () => {
           </View>
 
           <View style={[styles.infoSection, { borderColor: theme.border }]}>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Notification Preferences</Text>
+
+            {user && user.id !== 'guest-user' ? (
+              <>
+                <View style={styles.switchField}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Ionicons name="calendar-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                    <Text style={[styles.fieldLabel, { color: theme.text }]}>Schedule Notifications</Text>
+                  </View>
+                  <Switch
+                    value={scheduleNotificationsEnabled}
+                    onValueChange={toggleScheduleNotifications}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                    thumbColor={'#FFFFFF'}
+                  />
+                </View>
+                <Text style={[styles.switchDescription, { color: theme.muted }]}> 
+                  Get notified 15 minutes before events in your schedule
+                </Text>
+
+                <View style={styles.switchField}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    <Ionicons name="globe-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
+                    <Text style={[styles.fieldLabel, { color: theme.text }]}>Global Notifications</Text>
+                  </View>
+                  <Switch
+                    value={globalNotificationsEnabled}
+                    onValueChange={toggleGlobalNotifications}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                    thumbColor={'#FFFFFF'}
+                  />
+                </View>
+                <Text style={[styles.switchDescription, { color: theme.muted }]}> 
+                  Enable to receive public festival-wide notifications and announcements
+                </Text>
+              </>
+            ) : (
+              <Text style={[styles.switchDescription, { color: theme.muted }]}> 
+                Login with an account to enable notification preferences
+              </Text>
+            )}
+          </View>
+
+          {/* Sharing Preferences - commented out for later implementation
+          <View style={[styles.infoSection, { borderColor: theme.border }]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Sharing Preferences</Text>
             
             <View style={styles.switchField}>
@@ -239,6 +291,7 @@ const ProfileScreen = () => {
               When enabled, your real-time location will be visible to your friends
             </Text>
           </View>
+          */}
 
           <TouchableOpacity
             style={[styles.logoutButton, { borderColor: theme.border }]}

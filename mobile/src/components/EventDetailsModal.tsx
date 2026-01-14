@@ -1,3 +1,24 @@
+// Show logo.png from assets/images if event image fails to load
+const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
+  const [error, setError] = React.useState(false);
+  if (!imageUrl || error) {
+    return (
+      <Image
+        source={require('../assets/images/bf-logo-trans.png')}
+        style={style}
+        resizeMode="contain"
+      />
+    );
+  }
+  return (
+    <Image
+      source={{ uri: getFullImageUrl(imageUrl) }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
+};
 // filepath: e:\repos\bigfamfestival\mobile\src\components\EventDetailsModal.tsx
 import React from 'react';
 import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
@@ -191,6 +212,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   };
 
   try {
+
     // Variables eventName, eventStage, etc. are already defined above with fallbacks
 
     return (
@@ -212,13 +234,8 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
               }}>
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
-              
               <View style={styles.imageContainer}>
-                <Image 
-                  source={{ uri: getFullImageUrl(event.imageUrl) }} 
-                  style={styles.eventImage}
-                  onError={(e) => debugLog('Image load error:', { imagePath: event.imageUrl, error: e.nativeEvent.error })}
-                />
+                <EventImageWithFallback imageUrl={event.imageUrl} style={styles.eventImage} />
                 <View style={styles.gradientOverlay}>
                   <SafeText style={styles.eventName}>{eventName}</SafeText>
                 </View>
@@ -244,6 +261,13 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 <SafeText style={styles.dateText}>
                   {dateFormatted}
                 </SafeText>
+                
+                {/* Display genres if available */}
+                {(event.genres && event.genres.length > 0) && (
+                  <SafeText style={styles.genresText}>
+                    {event.genres.join(' • ')}
+                  </SafeText>
+                )}
                 
                 <SafeText style={styles.bioText}>{description}</SafeText>
                 
@@ -296,7 +320,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                     <Ionicons 
                       name={isInSchedule ? "heart" : "heart-outline"} 
                       size={24} 
-                      color={isInSchedule ? "red" : "#fff"} 
+                      color={isInSchedule ? "#B87333" : "#fff"} 
                     />
                   </TouchableOpacity>
                 </View>
@@ -405,6 +429,14 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontStyle: 'italic',
     marginBottom: 15, // Adjusted margin
+    textAlign: 'center',
+  },
+  genresText: {
+    fontSize: 14,
+    color: '#B87333', // Copper color to match the heart
+    fontWeight: '500',
+    marginBottom: 15,
+    fontStyle: 'italic',
     textAlign: 'center',
   },
   timeText: {

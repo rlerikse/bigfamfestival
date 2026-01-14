@@ -1,0 +1,211 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { FirestoreService } from '../config/firestore/firestore.service';
+import * as admin from 'firebase-admin';
+import { Timestamp } from '@google-cloud/firestore';
+
+export interface AdminNotification {
+  id: string;
+  title: string;
+  body: string;
+  data?: Record<string, any>;
+  sentAt: Timestamp;
+  sentBy: string;
+  category?: string;
+  priority?: 'normal' | 'high';
+  receiverGroups?: string[];
+}
+
+interface FailedToken {
+  token: string;
+  error: any;
+}
+
+@Injectable()
+export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+  
+  constructor(private readonly firebaseService: FirestoreService) {}
+
+  async createNotification(
+    notification: Omit<AdminNotification, 'id' | 'sentAt'>,
+  ): Promise<string> {
+    try {
+      const db = this.firebaseService.db;
+      const notificationRef = db.collection('notifications').doc();
+      const notificationData = {
+        ...notification,
+        id: notificationRef.id,
+        sentAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      
+      await notificationRef.set(notificationData);
+      
+      // After storing, send the notification to all devices
+      // We don't await this to improve response time, any errors will be logged
+      this.sendNotificationToAllDevices({
+        ...notificationData,
+        sentAt: admin.firestore.Timestamp.now(), // Convert to proper Timestamp for the function
+      } as AdminNotification)
+        .catch(err => this.logger.error('Failed to send notification to devices', err));
+      
+      return notificationRef.id;
+    } catch (error) {
+      this.logger.error('Error creating notification', error);
+      throw error;
+    }
+  }
+
+  async getNotifications(limit = 50): Promise<AdminNotification[]> {
+    try {
+      const db = this.firebaseService.db;
+      
+      const snapshot = await db.collection('notifications')
+        .orderBy('sentAt', 'desc')
+        .limit(limit)
+        .get();
+        
+      return snapshot.docs.map((doc) => doc.data() as AdminNotification);
+    } catch (error) {
+      this.logger.error('Error getting notifications', error);
+      throw error;
+    }
+  }
+
+  private async sendNotificationToAllDevices(
+    notification: AdminNotification,
+  ): Promise<void> {
+    try {
+      const db = this.firebaseService.db;
+      
+      // Get all user tokens - assuming users have an expoPushToken field
+      const usersSnapshot = await db.collection('users')
+        .where('expoPushToken', '!=', null)
+        .get();
+
+      const tokens = usersSnapshot.docs
+        .map((doc) => (doc.data() as any).expoPushToken)
+        .filter(Boolean);
+
+      if (tokens.length === 0) {
+        this.logger.log('No push tokens found to send notifications to');
+        return;
+      }
+
+      // Filter tokens based on receiver groups if specified
+      let filteredTokens = tokens;
+      if (notification.receiverGroups && notification.receiverGroups.length > 0) {
+        filteredTokens = await this.filterTokensByGroups(tokens, notification.receiverGroups);
+      }
+      
+      if (filteredTokens.length === 0) {
+        this.logger.log('No matching recipients found after filtering by groups');
+        return;
+      }
+
+      // Prepare notification message
+      const message: admin.messaging.MulticastMessage = {
+        notification: {
+          title: notification.title,
+          body: notification.body,
+        },
+        data: notification.data || {},
+        tokens: filteredTokens,
+        // For high priority notifications on Android
+        android: notification.priority === 'high' 
+          ? {
+              priority: 'high',
+            } 
+          : undefined,
+        // For iOS settings
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+            },
+          },
+        },
+      };
+
+      // Send the message
+      const response = await admin.messaging().sendEachForMulticast(message);
+
+      this.logger.log(
+        `Successfully sent messages: ${response.successCount}/${filteredTokens.length}`,
+      );
+
+      if (response.failureCount > 0) {
+        const failedTokens: FailedToken[] = [];
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            failedTokens.push({
+              token: filteredTokens[idx],
+              error: resp.error,
+            });
+          }
+        });
+        this.logger.error('List of tokens that caused failures:', failedTokens);
+
+        // You could implement logic here to remove invalid tokens
+        await this.cleanupInvalidTokens(failedTokens);
+      }
+    } catch (error) {
+      this.logger.error('Error sending notification to devices:', error);
+      throw error;
+    }
+  }
+  
+  private async filterTokensByGroups(
+    tokens: string[],
+    groups: string[],
+  ): Promise<string[]> {
+    try {
+      // Implementation depends on how you store user groups
+      const db = this.firebaseService.db;
+
+      const usersSnapshot = await db.collection('users')
+        .where('userGroup', 'in', groups)
+        .where('expoPushToken', '!=', null)
+        .get();
+
+      return usersSnapshot.docs
+        .map((doc) => (doc.data() as any).expoPushToken)
+        .filter(Boolean);
+    } catch (error) {
+      this.logger.error('Error filtering tokens by groups', error);
+      return []; // Return empty array on error to avoid notification failure
+    }
+  }
+  
+  private async cleanupInvalidTokens(failedTokens: FailedToken[]): Promise<void> {
+    try {
+      const db = this.firebaseService.db;
+
+      // Find tokens that need to be removed (e.g., tokens that are no longer valid)
+      const tokensToRemove = failedTokens
+        .filter(item =>
+          item.error?.code === 'messaging/invalid-registration-token' ||
+          item.error?.code === 'messaging/registration-token-not-registered')
+        .map(item => item.token);
+
+      if (tokensToRemove.length === 0) return;
+
+      // Find users with invalid tokens
+      const batch = db.batch();
+      const usersWithInvalidTokens = await db.collection('users')
+        .where('expoPushToken', 'in', tokensToRemove)
+        .get();
+
+      // Remove the tokens
+      usersWithInvalidTokens.docs.forEach(doc => {
+        batch.update(doc.ref, { expoPushToken: null });
+      });
+
+      await batch.commit();
+      this.logger.log(`Cleaned up ${usersWithInvalidTokens.size} invalid tokens`);
+    } catch (error) {
+      this.logger.error('Error cleaning up invalid tokens', error);
+      // Don't throw here, just log the error
+    }
+  }
+}

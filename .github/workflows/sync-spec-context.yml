@@ -1,0 +1,147 @@
+# Sync Spec Context to Central Repository
+#
+# This workflow extracts spec metadata from this repository and pushes it
+# to the central spec-kit-context repo for enterprise-wide visibility.
+#
+# Setup:
+# 1. Copy this file to .github/workflows/sync-spec-context.yml
+# 2. Ensure SPEC_KIT_CONTEXT_TOKEN org secret exists
+# 3. Merge to main - specs will sync automatically
+#
+# Documentation: https://github.com/rlerikse/spec-kit-context/blob/main/SETUP.md
+
+name: Sync Spec Context
+
+on:
+  push:
+    # Track ALL branches, not just main
+    # This enables discovery of work-in-progress specs in feature branches
+    branches: ['**']
+    paths:
+      - 'specs/**'
+  
+  # Also trigger on PR events to catch branch updates
+  pull_request:
+    paths:
+      - 'specs/**'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  sync-context:
+    name: Extract and Sync Spec Metadata
+    runs-on: ubuntu-latest
+    
+    # Only run if specs directory exists
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      
+      - name: Check for Specs Directory
+        id: check-specs
+        run: |
+          if [ -d "specs" ]; then
+            echo "has_specs=true" >> $GITHUB_OUTPUT
+            echo "✓ Found specs directory"
+          else
+            echo "has_specs=false" >> $GITHUB_OUTPUT
+            echo "⚠ No specs directory found - skipping sync"
+          fi
+      
+      - name: Extract Spec Metadata
+        if: steps.check-specs.outputs.has_specs == 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+            
+            const specsDir = './specs';
+            const specs = [];
+            
+            // Read each spec directory
+            const specDirs = fs.readdirSync(specsDir)
+              .filter(f => fs.statSync(path.join(specsDir, f)).isDirectory())
+              .sort();
+            
+            for (const dir of specDirs) {
+              const specPath = path.join(specsDir, dir, 'spec.md');
+              
+              if (!fs.existsSync(specPath)) {
+                console.log('⚠ No spec.md in ' + dir);
+                continue;
+              }
+              
+              const content = fs.readFileSync(specPath, 'utf8');
+              
+              // Extract title (first # heading)
+              const titleMatch = content.match(/^#\s+(.+)$/m);
+              
+              // Extract status
+              const statusMatch = content.match(/\*\*Status\*\*:\s*(\w+)/i);
+              
+              // Extract team (optional)
+              const teamMatch = content.match(/\*\*Team\*\*:\s*(.+)$/m);
+              
+              // Extract description (optional - first paragraph after title)
+              const descMatch = content.match(/^#\s+.+\n\n(.+?)(?:\n\n|\n#|\n\*\*)/s);
+              
+              specs.push({
+                id: dir,
+                title: titleMatch ? titleMatch[1].trim() : dir,
+                status: statusMatch ? statusMatch[1].trim() : 'Draft',
+                team: teamMatch ? teamMatch[1].trim() : null,
+                description: descMatch ? descMatch[1].trim().substring(0, 200) : null,
+                path: 'specs/' + dir,
+                branch: '${{ github.ref_name }}',
+                isMainBranch: '${{ github.ref_name }}' === 'main'
+              });
+              
+              console.log('✓ Extracted: ' + dir + ' (' + (statusMatch ? statusMatch[1] : 'Draft') + ')');
+            }
+            
+            const output = {
+              repo: '${{ github.repository }}',
+              branch: '${{ github.ref_name }}',
+              specs: specs,
+              updatedAt: new Date().toISOString(),
+              commitSha: '${{ github.sha }}',
+              commitMessage: process.env.COMMIT_MSG || ''
+            };
+            
+            fs.writeFileSync('spec-metadata.json', JSON.stringify(output, null, 2));
+            
+            console.log('');
+            console.log('📋 Extracted ' + specs.length + ' specs from ${{ github.repository }}');
+          "
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+      
+      - name: Display Extracted Metadata
+        if: steps.check-specs.outputs.has_specs == 'true'
+        run: cat spec-metadata.json
+      
+      - name: Push to Central Context Repository
+        if: steps.check-specs.outputs.has_specs == 'true'
+        uses: dmnemec/copy_file_to_another_repo_action@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}
+        with:
+          source_file: 'spec-metadata.json'
+          destination_repo: 'rlerikse/spec-kit-context'
+          destination_folder: 'repos/${{ github.event.repository.name }}/${{ github.ref_name }}'
+          destination_branch: 'main'
+          user_email: 'spec-kit-bot@ford.com'
+          user_name: 'Spec-Kit Bot'
+          commit_message: 'chore(context): Update specs from ${{ github.repository }}@${{ github.ref_name }} [${{ github.sha }}]'
+      
+      - name: Sync Complete
+        if: steps.check-specs.outputs.has_specs == 'true'
+        run: |
+          echo ""
+          echo "✅ Spec context synced to central repository!"
+          echo ""
+          echo "View in context repo:"
+          echo "https://github.com/rlerikse/spec-kit-context/tree/main/repos/${{ github.event.repository.name }}"

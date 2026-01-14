@@ -5,6 +5,8 @@ import { AppModule } from './app.module';
 import * as compression from 'compression';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { festivalConfig } from './config/festival.config';
 
 async function bootstrap() {
   // Create NestJS application
@@ -18,14 +20,26 @@ async function bootstrap() {
   const environment = configService.get<string>('NODE_ENV', 'production');
 
   // Set up logger
-  app.useLogger(app.get(Logger));
+  const logger = app.get(Logger);
+  app.useLogger(logger);
+  
+  // Log startup information
+  logger.log(`Starting application in ${environment} mode`);
+  if (environment !== 'production') {
+    logger.log(`API documentation available at /api/docs`);
+  }
 
   // Enable CORS for frontend
+  const corsOrigin = configService.get<string>('CORS_ORIGIN', '*');
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN', '*'),
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(o => o.trim()),
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
+
+  // Global error filter
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Enable request compression
   app.use(compression());
@@ -45,9 +59,9 @@ async function bootstrap() {
   // Set up Swagger documentation
   if (environment !== 'production') {
     const swaggerConfig = new DocumentBuilder()
-      .setTitle('Big Fam Festival API')
-      .setDescription('API for the Big Fam Festival App')
-      .setVersion('1.0')
+      .setTitle(festivalConfig.apiTitle)
+      .setDescription(festivalConfig.apiDescription)
+      .setVersion(festivalConfig.apiVersion)
       .addBearerAuth()
       .build();
 

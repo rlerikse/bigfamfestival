@@ -12,7 +12,8 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import MapScreen from '../screens/MapScreen';
-import MessagesScreen from '../screens/MessagesScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import AdminNotificationsScreen from '../screens/AdminNotificationsScreen'; // Import the new screen
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Profile: undefined;
   Settings: undefined;
   Debug: undefined;
+  AdminNotifications: undefined; // Add the new screen to types
 };
 
 export type AuthStackParamList = {
@@ -37,7 +39,7 @@ export type MainTabParamList = {
   Home: undefined;
   Schedule: undefined;
   Map: undefined;
-  Messages: undefined;
+  Notifications: undefined;
   Profile: undefined;
 };
 
@@ -124,12 +126,12 @@ function MainNavigator() {
           }}
         />
         <Tab.Screen
-          name="Messages"
-          component={MessagesScreen}
+          name="Notifications"
+          component={NotificationsScreen}
           options={{
             tabBarIcon: ({ color, size, focused }) => (
               <Ionicons
-                name={focused ? 'chatbubbles' : 'chatbubbles-outline'}
+                name={focused ? 'notifications' : 'notifications-outline'}
                 size={size}
                 color={color}
               />
@@ -213,11 +215,15 @@ function MainNavigator() {
 // Root navigation
 export default function Navigation() {
   const { user, isLoading } = useAuth();
+  const { theme } = useTheme();
 
   // Show loading screen if auth state is still loading
   if (isLoading) {
     return null;
   }
+
+  // Use theme background color if provided, otherwise fall back to white
+  const backgroundColor = theme?.background ?? '#ffffffff';
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -231,6 +237,7 @@ export default function Navigation() {
               headerShown: true,
               title: 'Profile',
               presentation: 'modal',
+              contentStyle: { backgroundColor }, // Use theme background color if available
             }}
           />
           <Stack.Screen
@@ -240,6 +247,17 @@ export default function Navigation() {
               headerShown: true,
               title: 'Settings',
               presentation: 'modal',
+              contentStyle: { backgroundColor },
+            }}
+          />
+          <Stack.Screen
+            name="AdminNotifications"
+            component={AdminNotificationsScreen}
+            options={{
+              headerShown: true,
+              title: 'Send Notifications',
+              presentation: 'modal',
+              contentStyle: { backgroundColor },
             }}
           />
           <Stack.Screen
@@ -248,6 +266,7 @@ export default function Navigation() {
             options={{
               headerShown: false,
               presentation: 'fullScreenModal',
+              contentStyle: { backgroundColor },
             }}
           />
         </>

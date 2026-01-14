@@ -3,6 +3,9 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { ScheduleEvent } from '../types/event';
+import { isLoggedInUser } from '../utils/userUtils';
+import { User } from '../contexts/AuthContext';
+import { scheduleEventNotification, cancelEventNotification } from './notificationService';
 
 /**
  * Get user's schedule
@@ -125,6 +128,12 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
     // Update local cache immediately for UI responsiveness
     await updateLocalScheduleCache(userId, eventId, 'add');
     
+    // Schedule notification
+    const event = (await getCachedSchedule(userId))?.find(e => e.id === eventId);
+    if (event) {
+      await scheduleEventNotification(event);
+    }
+
     // Wait for API response in background
     await apiPromise;
   } catch (error: unknown) {
@@ -181,6 +190,9 @@ export const removeFromSchedule = async (userId: string, eventId: string): Promi
       
       // Update local cache immediately for UI responsiveness
       await updateLocalScheduleCache(userId, eventId, 'remove');
+
+      // Cancel notification
+      await cancelEventNotification(eventId);
       
       // Wait for API response in background
       await apiPromise;
@@ -386,6 +398,42 @@ const getCachedSchedule = async (userId: string): Promise<ScheduleEvent[] | null
 
 /**
  * Check if an event is in the user's schedule
+ * 
+ * @param user The user object (from AuthContext)  
+ * @param eventId The event ID to check
+ * @returns Promise that resolves to true if the event is in the user's schedule, false otherwise
+ */
+export const isEventInUserSchedule = async (user: User | null, eventId: string): Promise<boolean> => {
+  if (!user || !isLoggedInUser(user)) {
+    return false; // Guest users don't have schedules
+  }
+  
+  try {
+    // Try to get the user's schedule (this will use cached data if offline)
+    const schedule = await getUserSchedule(user.id);
+    
+    // Check if the event is in the schedule
+    return schedule.some(event => event.id === eventId);
+  } catch (error) {
+    console.error('Error checking if event is in schedule:', error);
+    
+    // As a fallback, try to check the cached schedule directly
+    try {
+      const cachedSchedule = await getCachedSchedule(user.id);
+      if (cachedSchedule) {
+        return cachedSchedule.some(event => event.id === eventId);
+      }
+    } catch (cacheError) {
+      console.error('Error checking cached schedule:', cacheError);
+    }
+    
+    // If all else fails, return false
+    return false;
+  }
+};
+
+/**
+ * Check if an event is in the user's schedule (legacy function for backwards compatibility)
  * 
  * @param userId The user ID
  * @param eventId The event ID to check

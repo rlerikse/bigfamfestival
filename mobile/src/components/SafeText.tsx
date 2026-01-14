@@ -59,7 +59,7 @@ const SafeText: React.FC<SafeTextProps> = ({
     if (React.isValidElement(value)) {
       // If it's a Text component, extract its children
       if (value.type === Text) {
-        return convertToSafeText(value.props.children);
+        return convertToSafeText((value.props as any).children);
       }
       
       // For other React elements, convert to string representation

@@ -1,4 +1,4 @@
-// Commit: Add placeholder Messages screen for bottom navigation
+// Commit: Replace Messages screen with Notifications placeholder screen
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -6,27 +6,27 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 /**
- * Placeholder Messages screen for future messaging functionality
+ * Placeholder Notifications screen for future notifications functionality
  */
-const MessagesScreen: React.FC = () => {
+const NotificationsScreen: React.FC = () => {
   const { theme } = useTheme();
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.content}>
         <Ionicons 
-          name="chatbubbles-outline" 
+          name="notifications-outline" 
           size={80} 
           color={theme.muted || '#666666'} 
         />
         <Text style={[styles.title, { color: theme.text }]}>
-          Messages
+          Notifications
         </Text>
         <Text style={[styles.subtitle, { color: theme.muted }]}>
-          Coming Soon!
+          No new notifications
         </Text>
         <Text style={[styles.description, { color: theme.muted }]}>
-          Connect with other festival-goers, share your experience, and stay updated with announcements.
+          Stay updated with festival announcements, artist updates, and important information.
         </Text>
       </View>
     </SafeAreaView>
@@ -61,4 +61,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MessagesScreen;
+export default NotificationsScreen;

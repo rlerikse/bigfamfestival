@@ -37,6 +37,7 @@
       }
     },
     "android": {
+      "targetSdkVersion": 35,
       "adaptiveIcon": {
         "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#F5F5DC"
@@ -56,20 +57,19 @@
         "android.permission.VIBRATE"
       ],
       "googleServicesFile": "./google-services.json",
-      "notification": {
-        "androidMode": "default",
-        "androidCollapsedTitle": "Big Fam Festival Updates",
-        "color": "#2E4031",
-        "icon": "./src/assets/images/notification-icon.png"
+      "navigationBar": {
+        "visible": "immersive",
+        "backgroundColor": "#8B7355"
+      },
+      "statusBar": {
+        "backgroundColor": "transparent",
+        "translucent": true
       }
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"
     },
     "plugins": [
-      [
-        "@react-native-firebase/app"
-      ],
       [
         "expo-location",
         {
@@ -110,6 +110,7 @@
         "expo-build-properties",
         {
           "android": {
+            "targetSdkVersion": 35,
             "gradleVersion": "8.6",
             "usesCleartextTraffic": false
           },
@@ -117,7 +118,8 @@
             "useFrameworks": "static"
           }
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",

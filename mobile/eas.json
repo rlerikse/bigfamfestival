@@ -8,7 +8,8 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_API_URL": "http://localhost:3000/api/v1"
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -24,6 +25,7 @@
         "APP_ENV": "staging",
         "GRADLE_VERSION": "8.6"
       },
+      "envFiles": [".env.staging"],
       "ios": {
         "resourceClass": "m-medium",
         "simulator": true
@@ -39,6 +41,7 @@
         "APP_ENV": "production",
         "GRADLE_VERSION": "8.6"
       },
+      "envFiles": [".env.production"],
       "ios": {
         "resourceClass": "m-medium"
       },

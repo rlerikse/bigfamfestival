@@ -1,26 +1,67 @@
-import axios from 'axios';
-import Constants from 'expo-constants';
+import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
+import { Platform } from 'react-native';
 
-// ...existing code...
-const isProduction = !__DEV__;
-const PROD_API_URL = 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1';
-const DEV_API_URL = 'http://192.168.50.244:8080/api/v1';
+import { API_URL } from '../config/constants';
 
-// Fixed the logic: __DEV__ is true in development
-const isDevelopment = __DEV__;
-const API_URL = isDevelopment ? DEV_API_URL : PROD_API_URL;
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+// Helper function to delay execution
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to check if error is retryable
+const isRetryableError = (error: AxiosError): boolean => {
+  if (!error.response) {
+    // Network errors are retryable
+    return true;
+  }
+  
+  const status = error.response.status;
+  // Retry on 5xx errors and 429 (rate limit)
+  return status >= 500 || status === 429;
+};
+
+// Helper function to retry request
+const retryRequest = async (
+  config: InternalAxiosRequestConfig,
+  retryCount: number = 0
+): Promise<any> => {
+  try {
+    return await axios(config);
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    
+    if (retryCount < MAX_RETRIES && isRetryableError(axiosError)) {
+      const delayMs = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
+      await delay(delayMs);
+      return retryRequest(config, retryCount + 1);
+    }
+    
+    throw error;
+  }
+};
 
 // Create axios instance with default config
 export const api = axios.create({
-  baseURL: PROD_API_URL, // Use production for now since it's working
+  baseURL: API_URL, // Use the URL from constants.ts which takes care of dev/prod
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
 });
+
+// Log the API URL being used (development only)
+if (__DEV__) {
+  console.log('[API] ===========================================');
+  console.log('[API] Base URL configured:', API_URL);
+  console.log('[API] Platform:', Platform.OS);
+  console.log('[API] Development mode:', __DEV__);
+  console.log('[API] ===========================================');
+}
 
 // Request interceptor to handle offline state and add auth token
 api.interceptors.request.use(
@@ -32,11 +73,41 @@ api.interceptors.request.use(
       throw new Error('No internet connection. Please try again when you\'re online.');
     }
     
+    // Log request in development
+    if (__DEV__) {
+      const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+      console.log(`[API] → ${config.method?.toUpperCase()} ${fullUrl}`);
+    }
+    
     // Add auth token if available (except for auth endpoints)
     if (!config.url?.includes('/auth/')) {
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await SecureStore.getItemAsync('accessToken');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+        
+        // Debug logging for requests to notifications endpoints
+        if (__DEV__ && config.url?.includes('/notifications')) {
+          // eslint-disable-next-line no-console
+          console.log(`Setting Authorization header: Bearer ${token.substring(0, 10)}...`);
+          
+          try {
+            // Decode JWT to check user role
+            const tokenParts = token.split('.');
+            if (tokenParts.length === 3) {
+              const payload = JSON.parse(atob(tokenParts[1]));
+              // eslint-disable-next-line no-console
+              console.log('JWT payload:', payload);
+            }
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log('Error decoding JWT token:', err);
+          }
+        }
+      } else {
+        // Debug log if no token found
+        if (__DEV__ && config.url?.includes('/notifications')) {
+          console.warn('No auth token found for request to:', config.url);
+        }
       }
     }
     
@@ -50,54 +121,168 @@ api.interceptors.request.use(
 // Response interceptor to handle common errors
 api.interceptors.response.use(
   (response) => {
+    // Log successful responses in development
+    if (__DEV__) {
+      const fullUrl = `${response.config.baseURL || ''}${response.config.url || ''}`;
+      console.log(`[API] ← ${response.config.method?.toUpperCase()} ${fullUrl} [${response.status}]`);
+    }
+    
+    // Debug server responses for notifications
+    if (__DEV__ && response.config.url?.includes('/notifications')) {
+      // eslint-disable-next-line no-console
+      console.log(`Response from ${response.config.url}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data ? 'Data received' : 'No data',
+      });
+    }
     return response;
   },
-  async (error) => {
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    
     // Handle network errors
     if (!error.response) {
+      // Check network connectivity
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        const networkError = new Error('No internet connection. Please check your network and try again.');
+        (networkError as any).isNetworkError = true;
+        (networkError as any).isOffline = true;
+        return Promise.reject(networkError);
+      }
+      
       if (__DEV__) {
-        console.error('Network error details:', {
+        // eslint-disable-next-line no-console
+        console.error('[API] Network error details:', {
           message: error.message,
           baseURL: api.defaults.baseURL,
-          config: error.config,
+          url: error.config?.url,
+          fullURL: error.config ? `${error.config.baseURL}${error.config.url}` : 'unknown',
         });
       }
-      throw new Error(`Network error. Please check your internet connection. API: ${API_URL}`);
+      
+      // Create a more user-friendly error
+      const networkError = new Error(`Unable to connect to server at ${api.defaults.baseURL}. Please check your internet connection and try again.`);
+      (networkError as any).isNetworkError = true;
+      return Promise.reject(networkError);
+    }
+    
+    // Handle rate limiting (429)
+    if (error.response.status === 429) {
+      const retryAfter = error.response.headers['retry-after'];
+      const message = retryAfter 
+        ? `Too many requests. Please try again in ${retryAfter} seconds.`
+        : 'Too many requests. Please try again later.';
+      const rateLimitError = new Error(message);
+      (rateLimitError as any).isRateLimit = true;
+      (rateLimitError as any).retryAfter = retryAfter;
+      return Promise.reject(rateLimitError);
+    }
+    
+    // Detailed logging for notification endpoint errors
+    if (__DEV__ && originalRequest?.url?.includes('/notifications')) {
+      // eslint-disable-next-line no-console
+      console.error('Notification API error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: originalRequest.headers,
+        // Also log the request data for debugging
+        requestData: originalRequest.data ? JSON.parse(originalRequest.data) : null,
+      });
+      
+      // If it's a 401 or 403, check the token
+      if (error.response.status === 401 || error.response.status === 403) {
+        const token = await SecureStore.getItemAsync('accessToken');
+        if (token) {
+          try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            // eslint-disable-next-line no-console
+            console.log('Token payload:', JSON.parse(jsonPayload));
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.log('Error decoding token:', err);
+          }
+        }
+      }
     }
     
     // Handle authentication errors
     if (error.response.status === 401) {
+      // Clear tokens on unauthorized
       await SecureStore.deleteItemAsync('userToken');
+      await SecureStore.deleteItemAsync('accessToken');
+      
+      const authError = new Error('Your session has expired. Please log in again.');
+      (authError as any).isAuthError = true;
+      (authError as any).requiresLogin = true;
+      return Promise.reject(authError);
     }
     
-    return Promise.reject(error);
+    // Handle server errors (5xx) - these might be retryable
+    if (error.response.status >= 500) {
+      const responseData = error.response.data as { message?: string } | undefined;
+      const serverError = new Error(
+        responseData?.message || 
+        'Server error. Please try again later.'
+      );
+      (serverError as any).isServerError = true;
+      (serverError as any).statusCode = error.response.status;
+      return Promise.reject(serverError);
+    }
+    
+    // For other errors, include the error message from the response if available
+    const responseData = error.response.data as { message?: string } | undefined;
+    const errorMessage = responseData?.message || error.message || 'An error occurred';
+    const enhancedError = new Error(errorMessage);
+    (enhancedError as any).statusCode = error.response.status;
+    (enhancedError as any).responseData = error.response.data;
+    
+    return Promise.reject(enhancedError);
   }
 );
 
 // Updated function to check API health with correct endpoint
 export const checkApiHealth = async (): Promise<{isHealthy: boolean, message?: string}> => {
   try {
-    // ✅ Use the correct health endpoint
+    if (__DEV__) {
+      console.log('[API] Checking health at:', `${API_URL}/health`);
+    }
+    // Use the correct health endpoint
     const response = await api.get('/health');
-    return { 
+    const result = { 
       isHealthy: response.status === 200,
-      message: `API connected successfully to ${PROD_API_URL}`
+      message: `API connected successfully to ${API_URL}`
     };
+    if (__DEV__) {
+      console.log('[API] Health check successful:', result);
+    }
+    return result;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('API health check failed:', errorMessage);
+    const axiosError = error as AxiosError;
     
     if (__DEV__) {
-      console.info('API connection details:', {
-        url: PROD_API_URL,
-        isDevelopment: __DEV__,
-        timeoutMs: api.defaults.timeout
+      console.error('[API] Health check failed:', {
+        message: errorMessage,
+        url: `${API_URL}/health`,
+        response: axiosError.response?.status,
+        responseData: axiosError.response?.data,
       });
     }
     
+    // Return detailed error for debugging
     return { 
       isHealthy: false, 
-      message: `Connection failed: ${errorMessage}` 
+      message: `Connection failed to ${API_URL}: ${errorMessage}` 
     };
   }
 };

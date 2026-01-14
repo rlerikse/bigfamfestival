@@ -1,35 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { festivalConfig } from '../config/festival.config';
 
-// Colors based on festival branding (bf.jpg)
-const lightTheme = {
-  primary: '#2E4031',    // Dark Green (from trees/logo background)
-  secondary: '#6BBF59',  // Bright Green (accent from logo/grass)
-  background: '#F5F5DC',  // Cream/Off-White (for background)
-  card: '#FFFFFF',        // White for cards to stand out on cream
-  text: '#4A3B31',        // Dark Brown (for text)
-  border: '#D2B48C',      // Light Brown/Tan (for borders)
-  notification: '#6BBF59',// Bright Green for notifications
-  success: '#6BBF59',    // Bright Green for success
-  warning: '#FFA500',     // Orange for warning (standard)
-  error: '#D22B2B',       // Dark Red for error (standard)
-  muted: '#8A7967',       // Muted Brown/Gray
-};
-
-const darkTheme = {
-  primary: '#6BBF59',    // Bright Green (as primary on dark background)
-  secondary: '#2E4031',  // Dark Green (as secondary)
-  background: '#1C2B20',  // Very Dark Green/Brown (for background)
-  card: '#2E4031',        // Dark Green (for cards)
-  text: '#F5F5DC',        // Cream/Off-White (for text)
-  border: '#4A3B31',      // Dark Brown (for borders)
-  notification: '#6BBF59',// Bright Green for notifications
-  success: '#6BBF59',    // Bright Green for success
-  warning: '#FFA500',     // Orange for warning (standard)
-  error: '#FF6B6B',       // Lighter Red for error on dark background
-  muted: '#A89C8C',       // Muted Cream/Gray
-};
+// Colors loaded from festival configuration
+const lightTheme = festivalConfig.theme.light;
+const darkTheme = festivalConfig.theme.dark;
 
 export type Theme = typeof lightTheme;
 type ThemeMode = 'light' | 'dark' | 'system';

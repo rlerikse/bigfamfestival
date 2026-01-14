@@ -16,7 +16,6 @@ import {
   Text
 } from 'react-native';
 import { Image } from 'expo-image';
-// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -28,10 +27,12 @@ interface OptimizedImageProps {
   style?: ImageStyle;
   containerStyle?: ViewStyle;
   fallbackIcon?: keyof typeof Ionicons.glyphMap;
+  fallbackImage?: any; // require('...')
   showLoadingIndicator?: boolean;
   contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   priority?: 'low' | 'normal' | 'high';
-  placeholder?: React.ReactNode;
+  placeholder?: any; // ImageSource or blurred base64 string
+  customLoadingComponent?: React.ReactNode;
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -41,10 +42,12 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   style,
   containerStyle,
   fallbackIcon = 'image-outline',
+  fallbackImage,
   showLoadingIndicator = true,
   contentFit = 'cover',
   priority = 'high',
   placeholder,
+  customLoadingComponent,
   onLoad,
   onError,
 }) => {
@@ -124,11 +127,20 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   if (!optimizedUri) {
     return (
       <View style={combinedContainerStyle}>
-        <Ionicons 
-          name={fallbackIcon} 
-          size={24} 
-          color={theme.muted || '#666666'} 
-        />
+        {fallbackImage ? (
+          <Image
+            source={fallbackImage}
+            style={[styles.image, style]}
+            contentFit={contentFit}
+            resizeMode="contain"
+          />
+        ) : (
+          <Ionicons 
+            name={fallbackIcon} 
+            size={24} 
+            color={theme.muted || '#666666'} 
+          />
+        )}
       </View>
     );
   }
@@ -152,7 +164,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Loading state - only show for non-cached images */}
       {isLoading && showLoadingIndicator && !hasError && !isImageCached && (
         <View style={styles.overlay}>
-          {placeholder || (
+          {customLoadingComponent || (
             <ActivityIndicator 
               size="small" 
               color={theme.primary} 
@@ -164,11 +176,20 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       {/* Error state */}
       {hasError && (
         <View style={styles.overlay}>
-          <Ionicons 
-            name="image-outline" 
-            size={24} 
-            color={theme.muted || '#666666'} 
-          />
+          {fallbackImage ? (
+            <Image
+              source={fallbackImage}
+              style={[styles.image, style]}
+              contentFit={contentFit}
+              resizeMode="contain"
+            />
+          ) : (
+            <Ionicons 
+              name="image-outline" 
+              size={24} 
+              color={theme.muted || '#666666'} 
+            />
+          )}
           <Text style={[styles.errorText, { color: theme.muted }]}>
             Image unavailable
           </Text>

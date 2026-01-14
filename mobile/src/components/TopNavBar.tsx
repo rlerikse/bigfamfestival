@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
-  Image,
   TextInput,
   StyleSheet,
   TouchableOpacity,
   Animated,
   LayoutChangeEvent,
+  Platform,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Image as ExpoImage } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// @ts-expect-error - Temporary fix for Expo vector icons import
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface TopNavBarProps {
@@ -20,6 +22,7 @@ interface TopNavBarProps {
   onNotificationsPress?: () => void;
   onSettingsPress?: () => void;
   whiteIcons?: boolean;
+  unreadCount?: number; // optional external control for unread badge
 }
 
 const TopNavBar: React.FC<TopNavBarProps> = (props) => {
@@ -28,14 +31,40 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
     placeholder = 'Search artist, vendor...', 
     onNotificationsPress, 
     onSettingsPress,
-    whiteIcons = false
+    whiteIcons = false,
+    unreadCount,
   } = props;
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+  const route = useRoute();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [searchContainerWidth, setSearchContainerWidth] = useState(0);
   const searchAnimatedWidth = React.useRef(new Animated.Value(0)).current;
+  const [hasUnread, setHasUnread] = useState(false);
+
+  const refreshUnread = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem('visible_notifications_count');
+      const count = raw ? parseInt(raw, 10) : 0;
+      setHasUnread(Number.isFinite(count) && count > 0);
+    } catch {
+      setHasUnread(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshUnread();
+  }, [refreshUnread]);
+
+  // Refresh when the hosting screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      refreshUnread();
+      return undefined;
+    }, [refreshUnread])
+  );
 
   // Determine icon color based on whiteIcons prop or theme
   const getIconColor = () => {
@@ -79,23 +108,30 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
   const handleNotificationsPress = () => {
     if (onNotificationsPress) {
       onNotificationsPress();
+    } else {
+      // Navigate to Notifications screen
+      navigation.navigate('Notifications' as never);
     }
   };
 
   const handleSettingsPress = () => {
     if (onSettingsPress) {
       onSettingsPress();
+    } else {
+      // Navigate to Settings screen
+      navigation.navigate('Settings' as never);
     }
   };  return (
     <View style={[styles.container, { paddingTop: insets.top }]} pointerEvents="box-none">
       <View style={styles.content}>
         <View style={styles.logoContainer} pointerEvents='none'>
-          <Image
+          <ExpoImage
             source={require('../assets/images/bf-logo-trans.png')}
             style={styles.logo}
-            resizeMode="contain"
-            fadeDuration={0}
-            loadingIndicatorSource={undefined}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            transition={150}
+            accessibilityLabel="Big Fam Festival Logo"
           />
         </View>
         
@@ -108,14 +144,20 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               onPress={handleNotificationsPress} 
               style={styles.iconButton}
             >
-              <Ionicons
-                name="notifications-outline"
-                size={24}
-                color={getIconColor()}
-              />
+              <View>
+                <Ionicons
+                  name={route?.name === 'Notifications' ? 'notifications' : 'notifications-outline'}
+                  size={24}
+                  color={getIconColor()}
+                />
+                {(typeof unreadCount === 'number' ? unreadCount > 0 : hasUnread) ? (
+                  <View style={styles.redDot} accessibilityLabel="Unread notifications" />
+                ) : null}
+              </View>
             </TouchableOpacity>
           )}
 
+          {/* Search functionality - hidden until fully implemented
           <View style={[
             styles.searchArea,
             isSearchExpanded && styles.searchAreaExpanded
@@ -156,6 +198,7 @@ const TopNavBar: React.FC<TopNavBarProps> = (props) => {
               </TouchableOpacity>
             )}
           </View>
+          */}
           
           {!isSearchExpanded && (
             <TouchableOpacity 
@@ -184,7 +227,9 @@ const styles = StyleSheet.create({  container: {
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1001,
+    zIndex: 2000,
+    elevation: 12,
+    overflow: 'visible'
   },
   content: {
     flexDirection: 'row',
@@ -206,8 +251,9 @@ const styles = StyleSheet.create({  container: {
   logo: {
     width: 160,
     position: 'absolute',
-    top: -33,
-    height: 125
+    top: -20,
+    height: 110,
+    overflow: 'visible'
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -230,6 +276,15 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 20
+  },
+  redDot: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? -2 : 0,
+    right: Platform.OS === 'ios' ? -2 : 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF3B30',
   },
   expandedSearch: {
     flexDirection: 'row',

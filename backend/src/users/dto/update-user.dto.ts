@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  IsArray,
   IsBoolean,
   IsEmail,
   IsEnum,
@@ -81,4 +82,29 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   ticketType?: string;
+  @ApiProperty({
+    example: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',
+    description: "The Expo push notification token for this user's device",
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  expoPushToken?: string;
+  @ApiProperty({
+    example: true,
+    description: 'Whether the user has enabled push notifications',
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  notificationsEnabled?: boolean;
+  @ApiProperty({
+    example: ['vip', 'early-access'],
+    description: 'Groups the user belongs to (for targeted notifications)',
+    required: false,
+    type: [String],
+  })
+  @IsArray()
+  @IsOptional()
+  userGroups?: string[];
 }
