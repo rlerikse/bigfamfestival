@@ -133,8 +133,8 @@ jobs:
           destination_repo: 'rlerikse/spec-kit-context'
           destination_folder: 'repos/${{ github.event.repository.name }}/${{ github.ref_name }}'
           destination_branch: 'main'
-          user_email: 'spec-kit-bot@ford.com'
-          user_name: 'Spec-Kit Bot'
+          user_email: 'rlerikse@users.noreply.github.com'
+          user_name: 'rlerikse'
           commit_message: 'chore(context): Update specs from ${{ github.repository }}@${{ github.ref_name }} [${{ github.sha }}]'
       
       - name: Sync Complete
