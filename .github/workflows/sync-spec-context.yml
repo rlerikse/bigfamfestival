@@ -138,6 +138,7 @@ jobs:
           commit_message: 'chore(context): Update specs from ${{ github.repository }}@${{ github.ref_name }} [${{ github.sha }}]'
       
       - name: Push Spec Files to Central Repository
+        id: push-specs
         if: steps.check-specs.outputs.has_specs == 'true'
         run: |
           # Clone the central repo
@@ -161,11 +162,24 @@ jobs:
           
           if git diff --cached --quiet; then
             echo "ℹ️ No spec changes to push"
+            echo "pushed=false" >> $GITHUB_OUTPUT
           else
             git commit -m "chore(context): Sync spec files from ${{ github.repository }}"
             git push
             echo "✅ Spec files pushed to central repository"
+            echo "pushed=true" >> $GITHUB_OUTPUT
           fi
+      
+      - name: Trigger Aggregation Workflow
+        if: steps.push-specs.outputs.pushed == 'true'
+        run: |
+          echo "📡 Triggering aggregate workflow in spec-kit-context..."
+          curl -sL -X POST \
+            -H "Authorization: token ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/rlerikse/spec-kit-context/dispatches" \
+            -d '{"event_type":"specs-updated","client_payload":{"repo":"${{ github.repository }}"}}'
+          echo "✅ Aggregation triggered!"
       
       - name: Sync Complete
         if: steps.check-specs.outputs.has_specs == 'true'
