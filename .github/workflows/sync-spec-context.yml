@@ -137,6 +137,36 @@ jobs:
           user_name: 'rlerikse'
           commit_message: 'chore(context): Update specs from ${{ github.repository }}@${{ github.ref_name }} [${{ github.sha }}]'
       
+      - name: Push Spec Files to Central Repository
+        if: steps.check-specs.outputs.has_specs == 'true'
+        run: |
+          # Clone the central repo
+          git clone --depth 1 "https://x-access-token:${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}@github.com/rlerikse/spec-kit-context.git" central-repo
+          
+          # Create destination directory
+          DEST_DIR="central-repo/repos/${{ github.event.repository.name }}"
+          mkdir -p "$DEST_DIR"
+          
+          # Copy all specs
+          if [ -d "specs" ]; then
+            cp -r specs/* "$DEST_DIR/" 2>/dev/null || true
+            echo "✓ Copied specs to $DEST_DIR"
+          fi
+          
+          # Commit and push
+          cd central-repo
+          git config user.name 'rlerikse'
+          git config user.email 'rlerikse@users.noreply.github.com'
+          git add repos/
+          
+          if git diff --cached --quiet; then
+            echo "ℹ️ No spec changes to push"
+          else
+            git commit -m "chore(context): Sync spec files from ${{ github.repository }}"
+            git push
+            echo "✅ Spec files pushed to central repository"
+          fi
+      
       - name: Sync Complete
         if: steps.check-specs.outputs.has_specs == 'true'
         run: |

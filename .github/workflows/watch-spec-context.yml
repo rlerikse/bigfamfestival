@@ -1,18 +1,31 @@
-# Watch Spec Context - Pull Latest from Central Repository
+# Watch Spec Context - Sync Local and Remote Context
 #
-# This workflow pulls the latest aggregated spec context from the central
-# spec-kit-context repo to keep this repository's workspace context in sync.
+# This workflow keeps the workspace context in sync by:
+# 1. Updating local context when spec files change in this repo
+# 2. Pulling aggregated context from the central spec-kit-context repo
 #
 # Triggers:
-# 1. repository_dispatch - When spec-kit-context notifies us of updates
-# 2. schedule - Daily check for updates (fallback)
-# 3. workflow_dispatch - Manual trigger
+# 1. push - When specs change locally (update local context)
+# 2. repository_dispatch - When spec-kit-context notifies us of updates
+# 3. schedule - Daily check for remote updates (fallback)
+# 4. workflow_dispatch - Manual trigger
 #
-# This ensures all repos have visibility into the full workspace specs.
+# This ensures the workspace has visibility into both local and cross-repo specs.
 
 name: Watch Spec Context
 
 on:
+  # Local spec changes
+  push:
+    branches:
+      - main
+      - master
+      - 'feature/**'
+      - '[0-9]*-*'  # Feature branches like 001-feature-name
+    paths:
+      - 'specs/**'
+      - '.specify/**'
+  
   # Triggered by spec-kit-context after aggregation
   repository_dispatch:
     types: [spec-context-updated]
@@ -23,10 +36,15 @@ on:
   
   # Manual trigger
   workflow_dispatch:
+    inputs:
+      sync_remote:
+        description: 'Also pull from central repo'
+        type: boolean
+        default: true
 
 jobs:
-  pull-context:
-    name: Pull Latest Spec Context
+  sync-context:
+    name: Sync Spec Context
     runs-on: ubuntu-latest
     
     steps:
@@ -36,28 +54,109 @@ jobs:
           token: ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}
           fetch-depth: 1
       
+      - name: Determine Trigger Type
+        id: trigger
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "type=local" >> $GITHUB_OUTPUT
+            echo "📝 Triggered by local spec changes"
+          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            echo "type=remote" >> $GITHUB_OUTPUT
+            echo "📡 Triggered by central repo update"
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "type=scheduled" >> $GITHUB_OUTPUT
+            echo "⏰ Triggered by schedule"
+          else
+            echo "type=manual" >> $GITHUB_OUTPUT
+            echo "🔧 Triggered manually"
+          fi
+      
       - name: Create Context Directory
         run: mkdir -p .specify/workspace
       
-      - name: Download Latest Context from Central Repo
+      - name: Update Local Context
         run: |
-          echo "📥 Downloading latest spec context from central repository..."
+          echo "📊 Updating local workspace context..."
           
-          # Download all-specs.md
-          curl -sL \
+          # Count local specs
+          SPEC_COUNT=0
+          if [ -d "specs" ]; then
+            SPEC_COUNT=$(find specs -name "spec.md" 2>/dev/null | wc -l | tr -d ' ')
+          fi
+          
+          # Generate local repo index entry
+          REPO_NAME="${{ github.repository }}"
+          REPO_NAME="${REPO_NAME##*/}"
+          
+          echo "  Repository: $REPO_NAME"
+          echo "  Local Specs: $SPEC_COUNT"
+          
+          # Create/update local-specs.md with all local spec content
+          if [ "$SPEC_COUNT" -gt 0 ]; then
+            echo "# Local Specifications - $REPO_NAME" > .specify/workspace/local-specs.md
+            echo "" >> .specify/workspace/local-specs.md
+            echo "Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> .specify/workspace/local-specs.md
+            echo "Total Specs: $SPEC_COUNT" >> .specify/workspace/local-specs.md
+            echo "" >> .specify/workspace/local-specs.md
+            
+            for spec in $(find specs -name "spec.md" | sort); do
+              SPEC_DIR=$(dirname "$spec")
+              SPEC_NAME=$(basename "$SPEC_DIR")
+              echo "---" >> .specify/workspace/local-specs.md
+              echo "" >> .specify/workspace/local-specs.md
+              echo "## $SPEC_NAME" >> .specify/workspace/local-specs.md
+              echo "" >> .specify/workspace/local-specs.md
+              cat "$spec" >> .specify/workspace/local-specs.md
+              echo "" >> .specify/workspace/local-specs.md
+            done
+            
+            echo "  ✓ Generated local-specs.md"
+          else
+            echo "# No Local Specifications" > .specify/workspace/local-specs.md
+            echo "  ⚠ No specs found in specs/ directory"
+          fi
+      
+      - name: Pull Remote Context
+        if: |
+          github.event_name == 'repository_dispatch' || 
+          github.event_name == 'schedule' || 
+          (github.event_name == 'workflow_dispatch' && inputs.sync_remote == true) ||
+          github.event_name == 'push'
+        run: |
+          echo ""
+          echo "📥 Pulling latest context from central repository..."
+          
+          # Download all-specs.md (aggregated from all repos)
+          HTTP_CODE=$(curl -sL -w "%{http_code}" \
             -H "Authorization: token ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3.raw" \
             "https://api.github.com/repos/rlerikse/spec-kit-context/contents/context/all-specs.md" \
-            -o .specify/workspace/all-specs.md 2>/dev/null || echo "# No specs aggregated yet" > .specify/workspace/all-specs.md
+            -o .specify/workspace/all-specs.md.tmp 2>/dev/null)
+          
+          if [ "$HTTP_CODE" == "200" ] && [ -s ".specify/workspace/all-specs.md.tmp" ]; then
+            mv .specify/workspace/all-specs.md.tmp .specify/workspace/all-specs.md
+            echo "  ✓ Downloaded all-specs.md"
+          else
+            rm -f .specify/workspace/all-specs.md.tmp
+            echo "  ⚠ all-specs.md not available (aggregation may not have run yet)"
+          fi
           
           # Download repo-index.json
-          curl -sL \
+          HTTP_CODE=$(curl -sL -w "%{http_code}" \
             -H "Authorization: token ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3.raw" \
             "https://api.github.com/repos/rlerikse/spec-kit-context/contents/context/repo-index.json" \
-            -o .specify/workspace/repo-index.json 2>/dev/null || echo '{"repos":[],"totalSpecs":0}' > .specify/workspace/repo-index.json
+            -o .specify/workspace/repo-index.json.tmp 2>/dev/null)
           
-          echo "✓ Downloaded context files"
+          if [ "$HTTP_CODE" == "200" ] && [ -s ".specify/workspace/repo-index.json.tmp" ]; then
+            mv .specify/workspace/repo-index.json.tmp .specify/workspace/repo-index.json
+            echo "  ✓ Downloaded repo-index.json"
+          else
+            rm -f .specify/workspace/repo-index.json.tmp
+            echo "  ⚠ repo-index.json not available"
+          fi
       
       - name: Display Context Summary
         run: |
@@ -65,26 +164,35 @@ jobs:
           echo "📊 Workspace Context Summary:"
           echo "=============================="
           
+          # Local specs
+          if [ -f ".specify/workspace/local-specs.md" ]; then
+            LOCAL_SPECS=$(grep -c "^## " .specify/workspace/local-specs.md 2>/dev/null || echo "0")
+            echo "  Local Specs: $LOCAL_SPECS"
+          fi
+          
+          # Remote aggregated specs
           if [ -f ".specify/workspace/repo-index.json" ]; then
-            TOTAL_REPOS=$(cat .specify/workspace/repo-index.json | grep -o '"name"' | wc -l || echo "0")
-            TOTAL_SPECS=$(cat .specify/workspace/repo-index.json | grep -o '"totalSpecs"' | head -1 | grep -o '[0-9]*' || echo "0")
-            echo "  Repositories: $TOTAL_REPOS"
-            echo "  Total Specs: $TOTAL_SPECS"
-          else
-            echo "  No context data available"
+            TOTAL_REPOS=$(grep -o '"name"' .specify/workspace/repo-index.json 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+            echo "  Remote Repos: $TOTAL_REPOS"
+          fi
+          
+          if [ -f ".specify/workspace/all-specs.md" ]; then
+            REMOTE_SPECS=$(grep -c "^## " .specify/workspace/all-specs.md 2>/dev/null || echo "0")
+            echo "  Remote Specs: $REMOTE_SPECS"
           fi
           echo ""
       
       - name: Check for Changes
         id: changes
         run: |
-          if git diff --quiet .specify/workspace/; then
+          git add .specify/workspace/ 2>/dev/null || true
+          if git diff --cached --quiet .specify/workspace/; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "ℹ️ No changes to context files"
           else
             echo "has_changes=true" >> $GITHUB_OUTPUT
             echo "✓ Context files have been updated"
-            git diff --stat .specify/workspace/
+            git diff --cached --stat .specify/workspace/
           fi
       
       - name: Commit and Push Updates
@@ -92,19 +200,25 @@ jobs:
         run: |
           git config user.name 'rlerikse'
           git config user.email 'rlerikse@users.noreply.github.com'
-          git add .specify/workspace/
-          git commit -m "chore(context): sync workspace context from spec-kit-context"
+          git commit -m "chore(context): sync workspace context [trigger: ${{ steps.trigger.outputs.type }}]"
           git push
           echo ""
           echo "✅ Workspace context synced successfully!"
       
       - name: Summary
         run: |
-          echo ""
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Spec Context Sync Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ steps.trigger.outputs.type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           if [ "${{ steps.changes.outputs.has_changes }}" == "true" ]; then
-            echo "✅ Context updated from central repository" >> $GITHUB_STEP_SUMMARY
+            echo "✅ Context updated" >> $GITHUB_STEP_SUMMARY
           else
             echo "ℹ️ Already up to date" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Files" >> $GITHUB_STEP_SUMMARY
+          echo "- \`.specify/workspace/local-specs.md\` - This repo's specs" >> $GITHUB_STEP_SUMMARY
+          echo "- \`.specify/workspace/all-specs.md\` - Aggregated cross-repo specs" >> $GITHUB_STEP_SUMMARY
+          echo "- \`.specify/workspace/repo-index.json\` - Repo index" >> $GITHUB_STEP_SUMMARY
