@@ -1,9 +1,9 @@
 # Aggregated Specifications
 
-> **Generated**: 2026-02-10T06:55:37Z
+> **Generated**: 2026-02-10T07:51:16Z
 > **Source**: [es-spec-kit-context](https://github.com/rlerikse/es-spec-kit-context)
 
-This file contains **12 specifications** from **1 repositories** from connected repositories.
+This file contains **21 specifications** from **2 repositories** from connected repositories.
 
 ---
 
@@ -2368,5 +2368,2854 @@ mobile/src/
 ## Related Specifications
 
 - [BFF-5 User Management](../BFF-5-user-management/spec.md) - shareMyCampsite preference
+
+---
+
+## [detroitdubcollective] DDC-9-rewards-economy
+
+# DDC-9: DDC Points Rewards Economy - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [DDC-9](https://eriksensolutions.atlassian.net/browse/DDC-9)  
+**Created**: February 10, 2026
+
+---
+
+## Overview
+
+The DDC Points Rewards Economy is a loyalty system that incentivizes user engagement by allowing users to earn points through USD purchases and redeem them as an alternative payment method across the platform. This dual-currency approach creates a closed-loop economy that rewards repeat customers while maintaining USD payment options.
+
+### Key Capabilities
+
+- **Point Earning**: Users earn 10 DDC Points for every $1 USD spent via Stripe
+- **Point Spending**: 100 DDC Points = $1 USD purchasing power
+- **Dual Currency Display**: All products show both USD and Points pricing
+- **Real-time Balance**: User's DDC balance displayed prominently in navigation
+- **Transaction History**: Complete record of earning and spending activity
+- **Atomic Operations**: All balance changes use Firestore transactions for consistency
+
+---
+
+## User Stories
+
+### US-1: Earn Points on Purchase
+**As a** user making a USD purchase  
+**I want to** automatically earn DDC Points  
+**So that** I can redeem them for future purchases
+
+**Acceptance Criteria** (Verified):
+- [x] Points awarded after successful Stripe payment webhook
+- [x] Earn rate: 10 points per $1 USD spent
+- [x] Points added to user's `ddc_balance` atomically
+- [x] 'earn' transaction record created with `source: 'purchase'`
+- [x] Points awarded field recorded on purchase transaction
+
+**Implementation**: [stripeWebhook](functions/src/index.ts#L275-L467)
+
+---
+
+### US-2: View Points Balance
+**As a** logged-in user  
+**I want to** see my current DDC Points balance  
+**So that** I know how much I can spend
+
+**Acceptance Criteria** (Verified):
+- [x] Balance displayed in header navigation (desktop: gold badge, mobile: dropdown)
+- [x] Balance displayed on Profile page overview tab
+- [x] Balance formatted with thousands separator and ✪ symbol
+- [x] Balance updates immediately after transactions
+
+**Implementation**: 
+- [MainLayout.tsx](src/components/organisms/MainLayout.tsx#L263-L303)
+- [Profile.tsx](src/pages/Profile.tsx#L112-L113)
+
+---
+
+### US-3: Spend Points at Checkout
+**As a** user with sufficient points  
+**I want to** pay with DDC Points instead of USD  
+**So that** I can use my earned rewards
+
+**Acceptance Criteria** (Verified):
+- [x] Currency toggle available in cart and checkout
+- [x] Conversion rate: 100 points = $1 value
+- [x] Balance displayed in Points checkout view
+- [x] Insufficient balance shows error with difference needed
+- [x] Payment button disabled when balance insufficient
+- [x] Points deducted atomically on successful payment
+- [x] 'purchase' transaction record created with `currency: 'DDC'`
+
+**Implementation**: 
+- [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L191-L294)
+- [processPointsPayment](functions/src/index.ts#L125-L268)
+
+---
+
+### US-4: View Dual Pricing
+**As a** user browsing products  
+**I want to** see both USD and Points prices  
+**So that** I can compare payment options
+
+**Acceptance Criteria** (Verified):
+- [x] Product cards show primary price based on selected currency
+- [x] Alternative price shown as secondary
+- [x] Currency toggle persists across browsing session
+- [x] Cart shows totals in both currencies
+
+**Implementation**: 
+- [CartPanel.tsx](src/components/organisms/CartPanel.tsx#L143-L194)
+- [EventDetail.tsx](src/pages/EventDetail.tsx#L175-L199)
+
+---
+
+### US-5: View Transaction History
+**As a** user  
+**I want to** see my complete transaction history  
+**So that** I can track my earning and spending
+
+**Acceptance Criteria** (Verified):
+- [x] Transactions displayed on Profile page "Transactions" tab
+- [x] Each transaction shows: type badge (Earned/Spent), amount, date/time
+- [x] Earned transactions show positive amount in green
+- [x] Spent transactions show negative amount
+- [x] USD purchase transactions show "points awarded" detail
+- [x] Links to purchased items/events included
+
+**Implementation**: [TransactionsSection.tsx](src/components/molecules/TransactionsSection.tsx#L1-L171)
+
+---
+
+### US-6: Admin Transaction Monitoring
+**As an** admin  
+**I want to** view all platform transactions  
+**So that** I can monitor the points economy
+
+**Acceptance Criteria** (Verified):
+- [x] View last 100 transactions (newest first)
+- [x] Filter by type (all/purchase/earn)
+- [x] Filter by currency (all/USD/DDC)
+- [x] Show transaction type badge (Earned/Spent)
+- [x] Artists see only transactions involving their items
+
+**Implementation**: [AdminTransactions.tsx](src/components/organisms/AdminTransactions.tsx#L50-L100)
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Implementation |
+|----|-------------|----------------|
+| FR-1 | Points earned at 10 per $1 USD spent | [functions/src/index.ts](functions/src/index.ts#L24) `POINTS_REWARD_PER_DOLLAR = 10` |
+| FR-2 | Points spend rate 100 per $1 value | [constants.ts](src/lib/constants.ts#L10) `POINTS_PER_DOLLAR = 100` |
+| FR-3 | Balance stored in `User.ddc_balance` | [types/index.ts](src/types/index.ts#L35) |
+| FR-4 | Stripe webhook awards points on payment success | [functions/src/index.ts](functions/src/index.ts#L350-L467) |
+| FR-5 | Points payment uses atomic Firestore transaction | [functions/src/index.ts](functions/src/index.ts#L145-L268) |
+| FR-6 | Balance validated before points payment | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L224-L230) |
+| FR-7 | Dual transaction records for USD purchases (purchase + earn) | [functions/src/index.ts](functions/src/index.ts#L429-L457) |
+| FR-8 | Currency type enum: 'USD' \| 'DDC' | [types/index.ts](src/types/index.ts#L9) |
+| FR-9 | Transaction type enum: 'purchase' \| 'earn' | [types/index.ts](src/types/index.ts#L10) |
+| FR-10 | Transaction record includes `points_awarded` for USD purchases | [types/index.ts](src/types/index.ts#L151) |
+| FR-11 | Balance displayed with ✪ symbol | [MainLayout.tsx](src/components/organisms/MainLayout.tsx#L263) |
+| FR-12 | Insufficient balance error shows difference needed | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L786-L789) |
+
+---
+
+## Data Model
+
+### User Balance Field
+```typescript
+interface User {
+  uid: string
+  // ... other fields
+  ddc_balance: number  // Current points balance (default: 0)
+}
+```
+
+### Transaction Record
+```typescript
+interface Transaction {
+  id: string
+  user_id: string
+  amount: number                    // Points or USD amount
+  currency: 'USD' | 'DDC'          // Currency type
+  type: 'purchase' | 'earn'        // Transaction type
+  timestamp: number                 // Unix timestamp
+  description?: string              // Human-readable description
+  items?: Array<{                   // Purchased items
+    id: string
+    type: 'track' | 'merch'
+    quantity: number
+  }>
+  stripe_payment_intent_id?: string // For USD purchases
+  points_awarded?: number           // Points earned (USD purchases)
+  source?: string                   // 'purchase' for earned points
+  purchase_transaction_id?: string  // Links earn tx to purchase tx
+}
+```
+
+### Constants
+```typescript
+// Spending: 100 points = $1 USD value
+export const POINTS_PER_DOLLAR = 100
+
+// Earning: 10 points per $1 USD spent
+export const POINTS_REWARD_PER_DOLLAR = 10
+```
+
+---
+
+## Points Economy Flow
+
+### Earning Flow (USD Purchase)
+```
+User completes Stripe checkout ($10 USD)
+         ↓
+Stripe webhook: payment_intent.succeeded
+         ↓
+Calculate points: $10 × 10 = 100 points
+         ↓
+Firestore Transaction (atomic):
+  1. Update user.ddc_balance += 100
+  2. Add items to user.inventory
+  3. Create 'purchase' transaction (currency: 'USD', points_awarded: 100)
+  4. Create 'earn' transaction (currency: 'DDC', amount: 100, source: 'purchase')
+```
+
+### Spending Flow (Points Purchase)
+```
+User selects Points at checkout (need 1000 points)
+         ↓
+Client validates: user.ddc_balance >= 1000
+         ↓
+Client calls processPointsPayment Cloud Function
+         ↓
+Firestore Transaction (atomic):
+  1. Verify balance >= cost
+  2. Update user.ddc_balance -= 1000
+  3. Add items to user.inventory
+  4. Create 'purchase' transaction (currency: 'DDC')
+         ↓
+Return success with new balance
+```
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Handling | Location |
+|----------|----------|----------|
+| Insufficient points balance | Toast error with current vs required | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L224-L230) |
+| Points payment disabled if balance low | Button disabled state | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L798) |
+| User document not found | HttpsError thrown | [functions/src/index.ts](functions/src/index.ts#L160-L165) |
+| Concurrent balance modification | Firestore transaction rollback | [functions/src/index.ts](functions/src/index.ts#L145) |
+| No transactions found | Empty state with call-to-action | [TransactionsSection.tsx](src/components/molecules/TransactionsSection.tsx#L23-L34) |
+| Stripe webhook signature invalid | 400 error, payment not processed | [functions/src/index.ts](functions/src/index.ts#L335-L340) |
+
+---
+
+## Integration Points
+
+| System | Type | Purpose |
+|--------|------|---------|
+| Firebase Auth | Authentication | User identity for balance lookup |
+| Firestore | Database | User balance, transaction records |
+| Stripe | Payment Processing | USD payments, webhook for point awarding |
+| Cloud Functions | Backend | Secure point operations |
+| Zustand Auth Store | State | Real-time balance in UI |
+
+---
+
+## Component Architecture
+
+```
+Points Economy Components
+├── Display Layer
+│   ├── MainLayout.tsx          → Header balance badge
+│   ├── CartPanel.tsx           → Dual pricing display
+│   ├── CheckoutModal.tsx       → Currency selection, balance check
+│   ├── TransactionsSection.tsx → Transaction history
+│   └── Profile.tsx             → Balance + transaction tab
+├── Cloud Functions
+│   ├── processPointsPayment    → DDC point checkout
+│   └── stripeWebhook           → Point awarding on USD purchase
+├── Constants
+│   └── constants.ts            → Conversion rates
+└── Types
+    └── types/index.ts          → Transaction, Currency types
+```
+
+---
+
+## Related Specifications
+
+- [DDC-1: Authentication](../DDC-1-authentication/spec.md) - User profile with balance
+- [DDC-5: E-commerce](../DDC-5-ecommerce/spec.md) - Checkout with dual currency
+- [DDC-6: Admin Dashboard](../DDC-6-admin-dashboard/spec.md) - Transaction monitoring
+
+---
+
+**Version**: 1.0.0  
+**Last Updated**: February 10, 2026
+
+---
+
+## [detroitdubcollective] DDC-8-marketing-pages
+
+# DDC-8: Marketing Pages
+
+**Status:** ✅ Implemented (Retroactive Documentation)  
+**Jira:** [DDC-8](https://eriksensolutions.atlassian.net/browse/DDC-8)  
+**Created:** 2026-02-10
+
+---
+
+## Overview
+
+Static marketing and informational pages that communicate Detroit Dub Collective's identity, values, mission, and artist-first approach. These pages serve as the public-facing content that differentiates DDC from traditional record labels, explains the collective's philosophy, and provides information for prospective artists.
+
+### Purpose
+- Communicate DDC's mission and core values to visitors
+- Explain the artist-first cooperative model
+- Differentiate DDC from traditional record labels
+- Provide FAQs and detailed information for prospective artists
+- Establish brand identity through consistent messaging and design
+
+---
+
+## User Stories
+
+### US-1: View Homepage Welcome Message
+**As a** visitor  
+**I want to** see a welcoming introduction to DDC  
+**So that** I understand what the collective is about at a glance
+
+**Acceptance Criteria:**
+- [x] Display collective name prominently
+- [x] Show concise tagline describing DDC's mission
+- [x] Responsive layout for all screen sizes
+
+### US-2: Learn About DDC Background
+**As a** visitor  
+**I want to** understand the history and context of deep dubstep culture  
+**So that** I appreciate DDC's cultural roots and purpose
+
+**Acceptance Criteria:**
+- [x] Explain deep dubstep / 140 music origins
+- [x] Describe sound system culture significance
+- [x] Connect Detroit's identity to the collective's philosophy
+- [x] Reference influential artists and communities
+
+### US-3: Understand DDC Mission
+**As a** visitor  
+**I want to** read DDC's mission statement  
+**So that** I understand the collective's goals and vision
+
+**Acceptance Criteria:**
+- [x] Display mission statement with key principles emphasized
+- [x] Highlight artist empowerment, culture protection, and transparency
+- [x] Explain the cooperative, artist-first ecosystem model
+
+### US-4: Learn DDC Values
+**As a** visitor  
+**I want to** see the core values and principles  
+**So that** I understand what DDC stands for
+
+**Acceptance Criteria:**
+- [x] Display 7 core values with descriptions
+- [x] Values include: Artist Ownership, Transparency, Fair Compensation, Quality Over Quantity, Underground Integrity, Community-Driven Growth, Detroit Mentality
+- [x] Each value has explanatory text
+
+### US-5: Understand Why to Join DDC
+**As a** prospective artist  
+**I want to** understand the benefits of joining DDC  
+**So that** I can decide if it's right for me
+
+**Acceptance Criteria:**
+- [x] List key benefits for artists
+- [x] Explain ownership retention model
+- [x] Describe transparent revenue model
+- [x] Detail artist-favored merch economics
+- [x] Explain built-in tools and dashboards
+- [x] Emphasize collaborative culture
+
+### US-6: Compare DDC to Traditional Labels
+**As a** prospective artist  
+**I want to** see a direct comparison between DDC and traditional labels  
+**So that** I understand the concrete differences
+
+**Acceptance Criteria:**
+- [x] Display comparison table with 14 categories
+- [x] Show DDC advantages with checkmarks
+- [x] Show traditional label drawbacks with X marks
+- [x] Categories include: ownership, contracts, revenue, merch, creative control, exclusivity
+
+### US-7: View How DDC is Different
+**As a** visitor  
+**I want to** understand what sets DDC apart  
+**So that** I appreciate the unique value proposition
+
+**Acceptance Criteria:**
+- [x] Explain artist-favored economics
+- [x] Describe radical transparency approach
+- [x] Highlight no ownership traps policy
+- [x] Emphasize community over clout philosophy
+- [x] Connect to underground roots
+
+### US-8: Read Artist FAQ
+**As a** prospective artist  
+**I want to** find answers to common questions  
+**So that** I can address my concerns before joining
+
+**Acceptance Criteria:**
+- [x] Display 11 FAQ questions with detailed answers
+- [x] Cover topics: ownership, payouts, merch, shows, exclusivity, exit process
+- [x] Emphasize transparency and artist autonomy
+- [x] Provide clear, direct answers
+
+### US-9: Navigate Between Marketing Pages
+**As a** visitor  
+**I want to** easily navigate between all marketing pages  
+**So that** I can explore all information about DDC
+
+**Acceptance Criteria:**
+- [x] All pages accessible via "ABOUT" dropdown menu in navigation
+- [x] Dropdown available on desktop navigation
+- [x] Mobile navigation includes all marketing pages
+- [x] Consistent layout across all pages
+
+---
+
+## Functional Requirements
+
+| Requirement | Description | Implementation Reference |
+|-------------|-------------|-------------------------|
+| FR-1 | Homepage displays welcome message and tagline | [Home.tsx](src/pages/Home.tsx#L1-L13) |
+| FR-2 | Background page explains dubstep culture and DDC origins | [Background.tsx](src/pages/Background.tsx#L1-L47) |
+| FR-3 | Mission page displays mission statement with emphasis on key concepts | [Mission.tsx](src/pages/Mission.tsx#L1-L27) |
+| FR-4 | Values page displays 7 core values with descriptions | [Values.tsx](src/pages/Values.tsx#L1-L58) |
+| FR-5 | WhyJoin page lists benefits for artists with detailed explanations | [WhyJoin.tsx](src/pages/WhyJoin.tsx#L1-L88) |
+| FR-6 | DDCvsTraditional page shows comparison table with 14 categories | [DDCvsTraditional.tsx](src/pages/DDCvsTraditional.tsx#L3-L205) |
+| FR-7 | HowWereDifferent page explains DDC's unique approach | [HowWereDifferent.tsx](src/pages/HowWereDifferent.tsx#L1-L72) |
+| FR-8 | ArtistFAQ page displays 11 Q&A sections | [ArtistFAQ.tsx](src/pages/ArtistFAQ.tsx#L1-L175) |
+| FR-9 | Navigation dropdown provides access to all marketing pages | [MainLayout.tsx](src/components/organisms/MainLayout.tsx#L168-L214) |
+| FR-10 | All pages use lazy loading for performance | [App.tsx](src/App.tsx#L11-L18) |
+| FR-11 | Consistent container and typography styling across pages | All page files |
+
+---
+
+## Page Inventory
+
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/` | `Home.tsx` | Landing page with welcome message and collective tagline |
+| `/background` | `Background.tsx` | Deep dubstep culture history, sound system culture, Detroit connection |
+| `/mission` | `Mission.tsx` | Mission statement emphasizing artist empowerment and transparency |
+| `/values` | `Values.tsx` | 7 core values: Artist Ownership, Transparency, Fair Compensation, Quality Over Quantity, Underground Integrity, Community-Driven Growth, Detroit Mentality |
+| `/why-join` | `WhyJoin.tsx` | Benefits for artists: ownership retention, transparent money, merch profits, built-in tools, collaborative culture |
+| `/ddc-vs-traditional` | `DDCvsTraditional.tsx` | Side-by-side comparison table (14 categories) contrasting DDC with traditional labels |
+| `/how-were-different` | `HowWereDifferent.tsx` | Differentiators: artist-favored economics, radical transparency, no ownership traps, community focus |
+| `/artist-faq` | `ArtistFAQ.tsx` | 11 FAQ sections covering ownership, payouts, merch, shows, exclusivity, exit process, governance |
+
+---
+
+## Navigation Structure
+
+### Desktop Navigation
+- **ABOUT** dropdown menu in main header
+- Contains links to all 7 marketing pages
+- Dropdown appears on hover/click
+
+### Dropdown Menu Items
+1. Background
+2. Mission Statement
+3. How We're Different
+4. Values / Principles
+5. Why Join DDC?
+6. Artist FAQ
+7. DDC VS TRADITIONAL
+
+### Routing Configuration
+All marketing pages are:
+- Public (no authentication required)
+- Wrapped in `MainLayout` component
+- Lazy-loaded for performance optimization
+
+---
+
+## Content Themes
+
+### Key Messaging Pillars
+1. **Artist Ownership** - Artists retain control of music, name, and identity
+2. **Transparency** - Clear revenue splits, visible metrics, open communication
+3. **Fair Compensation** - Artist-favored economics, real value for work
+4. **Community** - Collaborative over competitive, collective growth
+5. **Underground Integrity** - Sound system culture roots, authenticity over trends
+6. **Detroit Mentality** - Gritty, honest, self-made, pressure creates diamonds
+
+### Visual Design
+- Dark theme consistent with main app (`bg-dub-black`)
+- Accent color: `neon-acid` for headings and emphasis
+- Typography: `font-display` for headings, `font-body` for content
+- Bold text (`<strong>`) used for emphasis on key concepts
+- Container max-width: `max-w-4xl` for readability
+
+---
+
+## File Structure
+
+```
+src/
+├── pages/
+│   ├── Home.tsx              # Landing page
+│   ├── Background.tsx        # Culture/history page
+│   ├── Mission.tsx           # Mission statement
+│   ├── Values.tsx            # Core values (7 items)
+│   ├── WhyJoin.tsx           # Artist benefits
+│   ├── HowWereDifferent.tsx  # Differentiators
+│   ├── DDCvsTraditional.tsx  # Comparison table
+│   └── ArtistFAQ.tsx         # FAQ (11 questions)
+├── components/
+│   └── organisms/
+│       └── MainLayout.tsx    # Navigation with ABOUT dropdown
+└── App.tsx                   # Route definitions
+```
+
+---
+
+## Technical Implementation
+
+### Lazy Loading
+All marketing pages are lazy-loaded using React's `lazy()`:
+```tsx
+const Home = lazy(() => import('./pages/Home'))
+const Background = lazy(() => import('./pages/Background'))
+const Mission = lazy(() => import('./pages/Mission'))
+// ... etc
+```
+
+### Styling Patterns
+- Container: `container mx-auto px-4 py-12`
+- Content wrapper: `max-w-4xl mx-auto`
+- Headings: `text-5xl font-display text-white mb-8 uppercase`
+- Section headings: `text-2xl font-display text-neon-acid mb-3 uppercase`
+- Body text: `text-text-primary font-body text-lg leading-relaxed`
+- Emphasis: `<strong className="font-bold">`
+
+### No External Dependencies
+Marketing pages are purely static React components with:
+- No API calls
+- No state management
+- No authentication requirements
+- No dynamic data fetching
+
+---
+
+## Related Specifications
+
+- [DDC-1: Authentication](../DDC-1-authentication/spec.md) - Login/SignUp pages use similar layout
+- [DDC-6: Admin Dashboard](../DDC-6-admin-dashboard/spec.md) - Protected routes contrast with public marketing pages
+
+---
+
+## Future Considerations
+
+1. **CMS Integration** - Content could be moved to a headless CMS for easier updates
+2. **SEO Optimization** - Add meta tags, structured data for better search visibility
+3. **Analytics** - Track page views and engagement metrics
+4. **Localization** - Multi-language support if DDC expands internationally
+5. **A/B Testing** - Test different messaging variations
+
+---
+
+*Generated by /speckit.retro --all*  
+*Version 1.0.0*
+
+---
+
+## [detroitdubcollective] DDC-7-analytics
+
+# DDC-7: Analytics & Tracking System
+
+## Metadata
+| Field | Value |
+|-------|-------|
+| **Status** | ✅ Implemented (Retroactive Documentation) |
+| **Priority** | High |
+| **Jira** | [DDC-7](https://eriksensolutions.atlassian.net/browse/DDC-7) |
+| **Created** | 2026-02-10 |
+| **Last Updated** | 2026-02-10 |
+
+---
+
+## 1. Overview
+
+The Analytics system provides comprehensive tracking for user interactions across the Detroit Dub Collective platform. It captures page views, track plays, user engagement events (likes, downloads, shares), and geographic location data. The system uses a dual-tracking approach: **Firebase Analytics** for general event tracking and **Firestore** for detailed track-specific analytics with real-time aggregation capabilities.
+
+### Key Capabilities
+- **Page View Tracking**: Automatic tracking on route changes
+- **Track Play Analytics**: Per-track play counts with user and location data
+- **User Engagement**: Likes, unlikes, downloads, comments, reposts
+- **Geographic Analytics**: City and country-level listener distribution
+- **Real-time Updates**: Live analytics dashboard via Firestore onSnapshot
+- **Data Export**: CSV and JSON export functionality
+- **Testing Tools**: Development panel for event verification
+
+---
+
+## 2. User Stories
+
+### US-7.1: Page View Tracking
+**As a** platform administrator  
+**I want** automatic page view tracking  
+**So that** I can analyze user navigation patterns
+
+**Acceptance Criteria:**
+- [x] Page views tracked automatically on route changes
+- [x] Page path and title captured with each view
+- [x] Duplicate tracking prevented for same pathname
+- [x] Works with dynamic routes (tracks, events, artists)
+
+### US-7.2: Track Play Analytics
+**As an** artist or administrator  
+**I want** to see detailed play statistics for tracks  
+**So that** I can understand listener engagement
+
+**Acceptance Criteria:**
+- [x] Play events logged when track starts playing
+- [x] Each play session tracked only once per track
+- [x] User ID associated with play events
+- [x] Geographic location captured (city, country)
+- [x] Monthly play aggregation available
+
+### US-7.3: Like/Unlike Tracking
+**As a** platform administrator  
+**I want** to track user favorites  
+**So that** I can measure content popularity
+
+**Acceptance Criteria:**
+- [x] Like events logged when user favorites a track
+- [x] Unlike events logged when favorite removed
+- [x] Net likes calculated (likes - unlikes)
+- [x] Location metadata attached to events
+
+### US-7.4: Download Tracking
+**As an** artist  
+**I want** to know when users download my tracks  
+**So that** I can understand content distribution
+
+**Acceptance Criteria:**
+- [x] Download events logged on track download
+- [x] Works from order confirmation page
+- [x] Works from order detail page
+- [x] User and track IDs captured
+
+### US-7.5: Real-time Analytics Dashboard
+**As an** administrator  
+**I want** live updating analytics  
+**So that** I can monitor engagement in real-time
+
+**Acceptance Criteria:**
+- [x] Dashboard updates automatically without refresh
+- [x] Toggle between real-time and cached data
+- [x] Date range filtering (today through all-time)
+- [x] Top listeners list with user details
+- [x] Top locations by city and country
+
+### US-7.6: Analytics Export
+**As an** administrator  
+**I want** to export analytics data  
+**So that** I can perform external analysis
+
+**Acceptance Criteria:**
+- [x] CSV export with summary, monthly, listener, and location data
+- [x] JSON export with complete analytics object
+- [x] Filename includes track title and export date
+- [x] Export includes date range context
+
+### US-7.7: Development Testing
+**As a** developer  
+**I want** a testing panel for analytics events  
+**So that** I can verify event tracking during development
+
+**Acceptance Criteria:**
+- [x] Test panel visible only in development mode
+- [x] Can fire all event types manually
+- [x] Console logging confirms event sent
+
+---
+
+## 3. Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-7.1 | Track page views on route changes | ✅ | [PageViewTracker.tsx](src/components/atoms/PageViewTracker.tsx#L1-L40) |
+| FR-7.2 | Prevent duplicate page tracking | ✅ | [PageViewTracker.tsx](src/components/atoms/PageViewTracker.tsx#L21-L26) |
+| FR-7.3 | Log play events with location | ✅ | [useAudio.ts](src/hooks/useAudio.ts#L92-L98) |
+| FR-7.4 | Log like/unlike events | ✅ | [firestore.ts](src/lib/firebase/firestore.ts#L1129-L1144) |
+| FR-7.5 | Log download events | ✅ | [OrderConfirmation.tsx](src/pages/OrderConfirmation.tsx#L92), [OrderDetail.tsx](src/pages/OrderDetail.tsx#L92) |
+| FR-7.6 | Aggregate track analytics | ✅ | [firestore.ts](src/lib/firebase/firestore.ts#L1270-L1300) |
+| FR-7.7 | Real-time analytics subscription | ✅ | [useRealtimeAnalytics.ts](src/hooks/useRealtimeAnalytics.ts#L40-L45) |
+| FR-7.8 | Geographic location detection | ✅ | [useLocation.ts](src/hooks/useLocation.ts#L19-L140) |
+| FR-7.9 | Dual tracking (Firebase + Firestore) | ✅ | [firestore.ts](src/lib/firebase/firestore.ts#L1196-L1210) |
+| FR-7.10 | Date range filtering | ✅ | [TrackAnalytics.tsx](src/components/organisms/TrackAnalytics.tsx#L24-L48) |
+| FR-7.11 | Export to CSV | ✅ | [TrackAnalytics.tsx](src/components/organisms/TrackAnalytics.tsx#L183-L240) |
+| FR-7.12 | Export to JSON | ✅ | [TrackAnalytics.tsx](src/components/organisms/TrackAnalytics.tsx#L168-L182) |
+| FR-7.13 | Error handling for analytics failures | ✅ | [useAnalytics.ts](src/hooks/useAnalytics.ts#L43-L60) |
+| FR-7.14 | Disable analytics on config errors | ✅ | [useAnalytics.ts](src/hooks/useAnalytics.ts#L48-L55) |
+| FR-7.15 | Development test panel | ✅ | [AnalyticsTestPanel.tsx](src/components/atoms/AnalyticsTestPanel.tsx#L1-L107) |
+
+---
+
+## 4. Data Model
+
+### 4.1 Analytics Event Types
+
+```typescript
+type AnalyticsEventType = 'play' | 'like' | 'unlike' | 'download' | 'comment' | 'repost'
+```
+
+### 4.2 TrackAnalyticsEvent (Firestore Document)
+
+```typescript
+interface TrackAnalyticsEvent {
+  id: string                    // Document ID (auto-generated)
+  track_id: string              // Reference to catalog item
+  user_id: string               // Reference to user
+  event_type: AnalyticsEventType
+  timestamp: number             // Unix timestamp
+  metadata?: {
+    location?: string           // Legacy: "Detroit, United States"
+    city?: string               // Structured: "Detroit"
+    region?: string             // Structured: "Michigan"
+    country?: string            // Structured: "United States"
+    countryCode?: string        // Structured: "US"
+    user_agent?: string
+    duration?: number           // For play events - time played
+  }
+}
+```
+
+**Firestore Collection**: `track_analytics`
+
+### 4.3 TrackAnalytics (Aggregated)
+
+```typescript
+interface TrackAnalytics {
+  track_id: string
+  total_plays: number
+  total_likes: number           // Net: likes - unlikes
+  total_downloads: number
+  total_comments: number
+  total_reposts: number
+  monthly_plays: Array<{
+    month: string               // "Jan", "Feb", etc.
+    year: number
+    plays: number
+  }>
+  top_listeners: Array<{
+    user_id: string
+    username?: string
+    avatar_url?: string
+    plays: number
+    followers?: number
+    tracks?: number
+  }>
+  top_locations: Array<{
+    location: string
+    flag?: string               // Emoji flag
+    plays: number
+  }>
+  top_cities?: Array<{
+    location: string
+    flag?: string
+    plays: number
+  }>
+  top_countries?: Array<{
+    location: string
+    flag?: string
+    plays: number
+  }>
+}
+```
+
+### 4.4 UserLocation
+
+```typescript
+interface UserLocation {
+  city?: string
+  region?: string
+  country?: string
+  countryCode?: string
+}
+```
+
+---
+
+## 5. Analytics Events
+
+| Event Name | Trigger | Data Captured | Storage |
+|------------|---------|---------------|---------|
+| `page_view` | Route change | `page_path`, `page_title` | Firebase Analytics |
+| `play` | Track starts playing | `track_id`, `user_id`, `location` | Firestore + Firebase |
+| `like` | User favorites track | `track_id`, `user_id`, `location` | Firestore + Firebase |
+| `unlike` | User unfavorites track | `track_id`, `user_id`, `location` | Firestore + Firebase |
+| `download` | User downloads track | `track_id`, `user_id`, `location` | Firestore + Firebase |
+| `comment` | User comments on track | `track_id`, `user_id` | Firestore |
+| `repost` | User reposts track | `track_id`, `user_id` | Firestore |
+| `sign_up` | User registration | `method` (email/google) | Firebase Analytics |
+| `login` | User login | `method` (email/google) | Firebase Analytics |
+| `purchase` | Checkout complete | `value`, `currency`, `items[]` | Firebase Analytics |
+| `add_to_cart` | Item added to cart | `item_id`, `item_name`, `price` | Firebase Analytics |
+| `search` | Search performed | `search_term` | Firebase Analytics |
+| `share` | Content shared | `content_type`, `item_id`, `method` | Firebase Analytics |
+| `file_download` | Track downloaded | `content_type`, `item_id`, `item_name` | Firebase Analytics |
+
+---
+
+## 6. Integration Points
+
+| System | Integration Type | Purpose | Configuration |
+|--------|-----------------|---------|---------------|
+| Firebase Analytics | SDK | General event tracking | `VITE_FIREBASE_*` env vars |
+| Firestore | SDK | Track-specific analytics storage | `track_analytics` collection |
+| BigDataCloud API | HTTP | Reverse geocoding (coordinates → location) | Public API, no auth |
+| ipapi.co | HTTP | IP-based geolocation fallback | Public API, no auth |
+| Browser Geolocation | API | Primary location detection | User permission required |
+
+---
+
+## 7. File Structure
+
+```
+src/
+├── hooks/
+│   ├── useAnalytics.ts          # Firebase Analytics hook (page views, general events)
+│   ├── useRealtimeAnalytics.ts  # Firestore real-time subscription hook
+│   ├── useLocation.ts           # Geographic location detection
+│   └── useFirestore.ts          # useTrackAnalytics query hook
+├── components/
+│   ├── atoms/
+│   │   ├── PageViewTracker.tsx      # Automatic page view tracking component
+│   │   └── AnalyticsTestPanel.tsx   # Development testing panel
+│   └── organisms/
+│       └── TrackAnalytics.tsx       # Analytics dashboard UI
+├── lib/
+│   └── firebase/
+│       ├── config.ts            # Firebase Analytics initialization
+│       └── firestore.ts         # logTrackAnalyticsEvent, getTrackAnalytics
+├── types/
+│   └── index.ts                 # TrackAnalytics, TrackAnalyticsEvent types
+└── pages/
+    ├── OrderConfirmation.tsx    # Download tracking on purchase
+    └── OrderDetail.tsx          # Download tracking from order history
+
+docs/
+├── ANALYTICS_TESTING.md         # Testing guide and verification checklist
+├── ANALYTICS_TROUBLESHOOTING.md # Error resolution guide
+└── VIEWING_ANALYTICS.md         # Firebase Console navigation guide
+```
+
+---
+
+## 8. Configuration
+
+### Environment Variables
+
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=detroitdubcollective-7228b
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_FIREBASE_MEASUREMENT_ID=G-707Z2FP033  # Optional, for explicit measurement ID
+```
+
+### Firestore Indexes Required
+
+```json
+{
+  "indexes": [
+    {
+      "collectionGroup": "track_analytics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "track_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 9. Error Handling
+
+| Scenario | Handling | Location |
+|----------|----------|----------|
+| Analytics not initialized | Skip event, log warning if ready | [useAnalytics.ts](src/hooks/useAnalytics.ts#L35-L41) |
+| Firebase config error (400) | Disable analytics, suppress future errors | [useAnalytics.ts](src/hooks/useAnalytics.ts#L48-L55) |
+| Firestore write failure | Log error, don't throw (non-blocking) | [firestore.ts](src/lib/firebase/firestore.ts#L1211-L1222) |
+| Location fetch failure | Silently fail, location is optional | [useLocation.ts](src/hooks/useLocation.ts#L121-L124) |
+| GA tracking failure | Silently fail, secondary to Firestore | [firestore.ts](src/lib/firebase/firestore.ts#L1257-L1259) |
+
+---
+
+## 10. Performance Considerations
+
+1. **Request Deduplication**: Location fetch uses global promise deduplication
+2. **Session Caching**: Location cached in sessionStorage for 24 hours
+3. **Play Tracking Debounce**: Uses ref to track played track ID per session
+4. **React Query Caching**: Analytics data cached with 10-minute stale time
+5. **Real-time Toggle**: User can disable real-time for reduced API calls
+6. **Non-blocking**: All analytics events fire without awaiting, using `.catch()`
+
+---
+
+## 11. Testing
+
+### Development Console Output
+
+```
+✅ Firebase Analytics initialized
+📊 Analytics event tracked: page_view {page_path: "/music", page_title: "Music | DDC"}
+📊 [Firestore] Logging analytics event... {trackId: "...", userId: "...", eventType: "play"}
+✅ [Firestore] Analytics event logged successfully
+```
+
+### Verification Checklist
+
+See [ANALYTICS_TESTING.md](docs/ANALYTICS_TESTING.md) for complete testing guide.
+
+---
+
+## 12. Future Enhancements
+
+- [ ] Heatmap visualization for location data
+- [ ] Artist-level analytics aggregation
+- [ ] Conversion funnel tracking
+- [ ] A/B testing integration
+- [ ] Custom event builder in admin
+
+---
+
+## 13. Related Specifications
+
+- [DDC-6: Admin Dashboard](../DDC-6-admin-dashboard/spec.md) - Analytics display in admin
+- [DDC-2: Music Player](../DDC-2-music-player/spec.md) - Play event triggering
+- [DDC-5: E-commerce](../DDC-5-ecommerce/spec.md) - Purchase tracking
+
+---
+
+<footer>
+
+**Generated by**: `/speckit.retro --all`  
+**Version**: 1.0.0  
+**Template**: `.specify/templates/spec-template.md`
+
+</footer>
+
+---
+
+## [detroitdubcollective] DDC-6-admin-dashboard
+
+# DDC-6: Admin Dashboard
+
+**Status:** ✅ Implemented (Retroactive Documentation)  
+**Jira:** [DDC-6](https://eriksensolutions.atlassian.net/browse/DDC-6)  
+**Created:** 2026-02-10
+
+---
+
+## 1. Overview
+
+The Admin Dashboard provides comprehensive administrative capabilities for managing the Detroit Dub Collective platform. It includes role-based access control with distinct views for administrators and artists, featuring content management, user administration, transaction monitoring, order fulfillment, and analytics visualization.
+
+### Key Capabilities
+
+- **Dashboard Overview**: Revenue metrics, analytics charts, KPIs
+- **User Management**: View users, modify roles (admin only)
+- **Content Management**: CRUD operations for artists, music, merch, events
+- **Transaction Monitoring**: View and filter all platform transactions
+- **Order Management**: Track orders, update statuses, add shipping info
+- **Role-Based Access**: Admins see all data; artists see only their content
+
+---
+
+## 2. User Stories
+
+### US-1: Admin Dashboard Access
+**As an** admin/artist  
+**I want to** access a dashboard with tabbed navigation  
+**So that** I can manage platform content and view metrics  
+
+**Acceptance Criteria:**
+- [x] Dashboard accessible at `/admin` route
+- [x] Shows "Admin Dashboard" for admins, "Artist Dashboard" for artists
+- [x] Tabbed navigation: Overview, Users (admin only), Content, Transactions, Orders
+- [x] Artists automatically redirected away from Users tab
+- [x] Double-check role authorization before rendering
+
+### US-2: Dashboard Overview Metrics
+**As an** admin/artist  
+**I want to** view key performance metrics  
+**So that** I can understand platform/personal revenue performance  
+
+**Acceptance Criteria:**
+- [x] Display total revenue in USD and DDC points
+- [x] Show points awarded from purchases
+- [x] Display total plays, favorites, comments, downloads
+- [x] Show live/scheduled events count
+- [x] Display total tracks and merch count
+- [x] Show open orders count (pending/processing/shipped)
+- [x] Time period filter: today, 7/30 days, 3/6/12 months, all time
+- [x] Artists see only their own metrics
+
+### US-3: Revenue Charts
+**As an** admin/artist  
+**I want to** visualize revenue over time  
+**So that** I can identify trends  
+
+**Acceptance Criteria:**
+- [x] Line chart showing cumulative revenue over time
+- [x] Admins see revenue by top 5 artists
+- [x] Artists see their own revenue with music/merch breakdown
+- [x] Charts use Recharts library with responsive containers
+
+### US-4: User Management
+**As an** admin  
+**I want to** view and manage users  
+**So that** I can administer platform access  
+
+**Acceptance Criteria:**
+- [x] Display list of all users with avatar, name, email
+- [x] Show user role, DDC balance, inventory count
+- [x] Inline role editing with dropdown (user/artist/admin)
+- [x] Save/Cancel buttons for role changes
+- [x] Loading and error states with retry option
+- [x] User management hidden from artist role
+
+### US-5: Content Management
+**As an** admin/artist  
+**I want to** manage platform content (artists, music, merch, events)  
+**So that** I can maintain the catalog  
+
+**Acceptance Criteria:**
+- [x] Sub-tabs for Artists (admin only), Music, Merch, Events
+- [x] Grid display with item cards showing image, title, artist
+- [x] Edit button opens modal for modifying items
+- [x] Delete button with two-step confirmation requiring name match
+- [x] "Add New" button creates new items
+- [x] Artists see only their own music/merch/events
+- [x] Navigate to detail pages on card click
+
+### US-6: Add Catalog Items
+**As an** admin/artist  
+**I want to** add new tracks or merchandise  
+**So that** I can expand the catalog  
+
+**Acceptance Criteria:**
+- [x] Modal with form fields: title, slug, description, artists
+- [x] Auto-generate slug from title
+- [x] Image upload with crop functionality
+- [x] Audio upload for tracks with drag-and-drop support
+- [x] Multi-track support for EPs/albums
+- [x] Price fields (USD and points with auto-calculation)
+- [x] Sale price support
+- [x] Visibility settings (public/private/scheduled)
+- [x] Stock quantity/size stock for merch
+- [x] Collection assignment for merch
+- [x] Release date picker
+
+### US-7: Edit Catalog Items
+**As an** admin/artist  
+**I want to** edit existing catalog items  
+**So that** I can update content details  
+
+**Acceptance Criteria:**
+- [x] Pre-populate form with existing item data
+- [x] Support changing all fields including slug
+- [x] Upload new images/audio while preserving existing
+- [x] Reorder tracks via drag-and-drop
+- [x] Remove individual tracks from multi-track releases
+- [x] Update sale status and pricing
+
+### US-8: Transaction Monitoring
+**As an** admin/artist  
+**I want to** view all transactions  
+**So that** I can monitor platform activity  
+
+**Acceptance Criteria:**
+- [x] Display last 100 transactions (newest first)
+- [x] Filter by type (all/purchase/earn)
+- [x] Filter by currency (all/USD/DDC)
+- [x] Show transaction type badge (Earned/Spent)
+- [x] Display user ID, description, date/time
+- [x] Show items involved in transaction
+- [x] Artists see only transactions involving their items
+
+### US-9: Order Management
+**As an** admin/artist  
+**I want to** manage orders  
+**So that** I can fulfill customer purchases  
+
+**Acceptance Criteria:**
+- [x] Display orders with status filter (all/pending/processing/shipped/delivered/cancelled/closed)
+- [x] Show order ID, status, user email, date, item count, total
+- [x] Inline status change dropdown
+- [x] Add/update tracking number and carrier
+- [x] Display shipping address and tracking info
+- [x] Preview order items (first 3) with images
+- [x] "View Details" link to order detail page
+- [x] Artists see only orders containing their items
+
+---
+
+## 3. Functional Requirements
+
+| ID | Requirement | Implementation | File Reference |
+|----|-------------|----------------|----------------|
+| FR-1 | Role-based dashboard access | Check user role (admin/artist) before rendering | [AdminDashboard.tsx](src/pages/AdminDashboard.tsx#L23-L25) |
+| FR-2 | Dynamic tab filtering | Artists don't see Users tab | [AdminDashboard.tsx](src/pages/AdminDashboard.tsx#L69-L72) |
+| FR-3 | Artist ID resolution | Auto-lookup artist_id by user_id if missing | [AdminDashboard.tsx](src/pages/AdminDashboard.tsx#L29-L62) |
+| FR-4 | Revenue metrics calculation | Filter transactions by artist items | [AdminOverview.tsx](src/components/organisms/AdminOverview.tsx#L162-L193) |
+| FR-5 | Time period filtering | Calculate date ranges for metric filtering | [AdminOverview.tsx](src/components/organisms/AdminOverview.tsx#L60-L77) |
+| FR-6 | Analytics event aggregation | Fetch and filter track_analytics collection | [AdminOverview.tsx](src/components/organisms/AdminOverview.tsx#L79-L106) |
+| FR-7 | User role updates | Update Firestore user document with new role | [AdminUsers.tsx](src/components/organisms/AdminUsers.tsx#L49-L56) |
+| FR-8 | Content CRUD operations | Create/update/delete via Firestore functions | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L76-L148) |
+| FR-9 | Two-step delete confirmation | Require name match before deletion | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L84-L109) |
+| FR-10 | Transaction filtering | Filter by type, currency, artist | [AdminTransactions.tsx](src/components/organisms/AdminTransactions.tsx#L50-L73) |
+| FR-11 | Order status management | Update order status and tracking info | [AdminOrders.tsx](src/components/organisms/AdminOrders.tsx#L73-L130) |
+| FR-12 | Image upload with cropping | Validate file, show crop UI, upload to Storage | [AddCatalogItemModal.tsx](src/components/molecules/AddCatalogItemModal.tsx#L186-L220) |
+| FR-13 | Audio upload with progress | Upload multiple tracks with progress tracking | [AddCatalogItemModal.tsx](src/components/molecules/AddCatalogItemModal.tsx#L62-L72) |
+| FR-14 | Slug auto-generation | Generate URL-friendly slug from title | [AddCatalogItemModal.tsx](src/components/molecules/AddCatalogItemModal.tsx#L96-L110) |
+| FR-15 | Points price calculation | Auto-calculate points from USD price | [AddCatalogItemModal.tsx](src/components/molecules/AddCatalogItemModal.tsx#L129-L136) |
+| FR-16 | Catalog item editing | Pre-populate form, update Firestore | [EditCatalogItemModal.tsx](src/components/molecules/EditCatalogItemModal.tsx#L88-L177) |
+| FR-17 | Artist-scoped content filtering | Query items by artist_id/artist_ids | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L52-L65) |
+| FR-18 | Order artist filtering | Filter orders containing artist's items | [AdminOrders.tsx](src/components/organisms/AdminOrders.tsx#L26-L38) |
+| FR-19 | Revenue chart visualization | Recharts LineChart with cumulative data | [AdminOverview.tsx](src/components/organisms/AdminOverview.tsx#L310-L400) |
+| FR-20 | Query cache invalidation | Invalidate React Query cache after mutations | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L99-L100) |
+
+---
+
+## 4. Data Model
+
+### User
+```typescript
+interface User {
+  uid: string
+  email: string
+  role: 'admin' | 'artist' | 'user'
+  ddc_balance: number
+  inventory: Map<string, number | { timestamp: number; quantity: number; size?: string }>
+  tickets: Map<string, TicketData>
+  favorites?: Map<string, number>
+  stripe_cust_id?: string
+  avatar_url?: string
+  display_name?: string
+  artist_id?: string  // Link to artist profile
+  saved_addresses?: ShippingAddress[]
+}
+```
+
+### Order
+```typescript
+interface Order {
+  id: string
+  user_id: string
+  user_email?: string
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'closed'
+  items: OrderItem[]
+  shipping_address?: ShippingAddress
+  subtotal_usd: number
+  subtotal_points: number
+  shipping_cost_usd?: number
+  shipping_cost_points?: number
+  total_usd: number
+  total_points: number
+  currency: 'USD' | 'DDC'
+  payment_method: 'stripe' | 'points'
+  stripe_payment_intent_id?: string
+  transaction_id?: string
+  tracking_number?: string
+  carrier?: string
+  shipped_at?: number
+  delivered_at?: number
+  created_at: number
+  updated_at: number
+  notes?: string
+  cancelled_at?: number
+  cancellation_reason?: string
+}
+```
+
+### Transaction
+```typescript
+interface Transaction {
+  id: string
+  user_id: string
+  amount: number
+  currency: 'USD' | 'DDC'
+  type: 'purchase' | 'earn'
+  timestamp: number
+  item_id?: string  // Legacy single item
+  items?: Array<{ id: string; type: 'track' | 'merch'; quantity: number }>
+  event_id?: string
+  description?: string
+  stripe_payment_intent_id?: string
+  points_awarded?: number
+  source?: string
+}
+```
+
+### CatalogItem (Admin-relevant fields)
+```typescript
+interface CatalogItem {
+  id: string
+  slug?: string
+  type: 'track' | 'merch'
+  title: string
+  description?: string
+  price_usd: number
+  price_points: number
+  sale_price_usd?: number
+  sale_price_points?: number
+  is_on_sale?: boolean
+  artist_id?: string  // Legacy
+  artist_ids?: string[]  // Multi-artist support
+  visibility?: 'public' | 'private' | 'scheduled'
+  scheduled_publish_date?: number
+  stock_qty?: number
+  size_stock?: { one_size?: number; s?: number; m?: number; l?: number; xl?: number; '2xl'?: number; '3xl'?: number; '4xl'?: number }
+  is_one_size?: boolean
+}
+```
+
+---
+
+## 5. Edge Cases & Error Handling
+
+| Scenario | Handling | File Reference |
+|----------|----------|----------------|
+| Artist missing artist_id | Auto-lookup by user_id, update user document | [AdminDashboard.tsx](src/pages/AdminDashboard.tsx#L29-L62) |
+| No artist found for lookup | Log warning, set resolvedArtistId to undefined | [AdminDashboard.tsx](src/pages/AdminDashboard.tsx#L51-L55) |
+| Artist accesses Users tab | Redirect to Overview tab | [AdminDashboard.tsx](src/pages/AdminDashboard.tsx#L77-L80) |
+| Delete confirmation mismatch | Show error toast, prevent deletion | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L91-L93) |
+| Transaction fetch error | Display error message with retry button | [AdminTransactions.tsx](src/components/organisms/AdminTransactions.tsx#L89-L100) |
+| User fetch error | Display error message with retry button | [AdminUsers.tsx](src/components/organisms/AdminUsers.tsx#L62-L73) |
+| Order update failure | Show error toast with message | [AdminOrders.tsx](src/components/organisms/AdminOrders.tsx#L95-L102) |
+| Image validation failure | Show error toast, reject upload | [AddCatalogItemModal.tsx](src/components/molecules/AddCatalogItemModal.tsx#L192-L199) |
+| Audio validation failure | Show error toast, reject upload | [AddCatalogItemModal.tsx](src/components/molecules/AddCatalogItemModal.tsx) |
+| Empty tracking number | Show error toast, prevent update | [AdminOrders.tsx](src/components/organisms/AdminOrders.tsx#L105-L112) |
+| No transactions found | Display "No transactions found" message | [AdminTransactions.tsx](src/components/organisms/AdminTransactions.tsx#L198-L202) |
+| No orders found | Display "No orders found" message | [AdminOrders.tsx](src/components/organisms/AdminOrders.tsx#L145-L147) |
+| Artist with no content | Display empty state messages | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L523-L541) |
+
+---
+
+## 6. Integration Points
+
+| Integration | Purpose | Files |
+|-------------|---------|-------|
+| Firebase Firestore | Data persistence for all entities | `src/lib/firebase/firestore.ts` |
+| Firebase Storage | Image and audio file uploads | `src/lib/firebase/storage.ts` |
+| React Query | Data fetching, caching, mutations | `src/hooks/useFirestore.ts` |
+| Zustand (useAuthStore) | Current user authentication state | `src/stores/useAuthStore.ts` |
+| Zustand (useToastStore) | Toast notifications for feedback | `src/stores/useToastStore.ts` |
+| Zustand (usePlayerStore) | Audio preview playback | `src/stores/usePlayerStore.ts` |
+| React Router | Navigation and routing | `AdminDashboard.tsx`, `AdminContent.tsx` |
+| Recharts | Revenue and analytics visualization | `AdminOverview.tsx` |
+| clsx | Conditional CSS class composition | All component files |
+| date-fns | Date formatting in transactions | `AdminTransactions.tsx` |
+
+---
+
+## 7. File Structure
+
+```
+src/
+├── pages/
+│   └── AdminDashboard.tsx          # Main dashboard page with tab navigation
+├── components/
+│   ├── organisms/
+│   │   ├── AdminOverview.tsx       # Metrics, charts, KPIs (2185 lines)
+│   │   ├── AdminUsers.tsx          # User management (admin only)
+│   │   ├── AdminContent.tsx        # Content CRUD (832 lines)
+│   │   ├── AdminTransactions.tsx   # Transaction monitoring
+│   │   └── AdminOrders.tsx         # Order management (387 lines)
+│   └── molecules/
+│       ├── AddCatalogItemModal.tsx # Create tracks/merch (2392 lines)
+│       ├── EditCatalogItemModal.tsx # Edit tracks/merch (2023 lines)
+│       ├── AddArtistModal.tsx      # Create artist profiles
+│       ├── EditArtistModal.tsx     # Edit artist profiles
+│       ├── AddEventModal.tsx       # Create events
+│       ├── EditEventModal.tsx      # Edit events
+│       ├── EditMusicModal.tsx      # Legacy track editing (533 lines)
+│       ├── EditMerchModal.tsx      # Legacy merch editing (227 lines)
+│       └── ImageCrop.tsx           # Image cropping utility
+├── types/
+│   └── index.ts                    # TypeScript interfaces (280 lines)
+├── hooks/
+│   └── useFirestore.ts             # React Query hooks for data fetching
+├── lib/
+│   └── firebase/
+│       ├── firestore.ts            # Firestore CRUD operations
+│       ├── storage.ts              # Storage upload/delete operations
+│       └── config.ts               # Firebase configuration
+└── stores/
+    ├── useAuthStore.ts             # Authentication state
+    └── useToastStore.ts            # Toast notification state
+```
+
+---
+
+## 8. Security Considerations
+
+### Role-Based Access Control
+| Feature | Admin | Artist | User |
+|---------|-------|--------|------|
+| Dashboard Access | ✅ | ✅ | ❌ |
+| Overview Metrics | All data | Own data only | ❌ |
+| User Management | ✅ | ❌ | ❌ |
+| Content CRUD | All content | Own content only | ❌ |
+| Transaction View | All transactions | Own item transactions | ❌ |
+| Order Management | All orders | Own item orders | ❌ |
+
+### Implementation Details
+- **Route Protection**: `RequireAuth` component wraps admin routes, checking `role === 'admin' || role === 'artist'`
+- **Double Authorization**: AdminDashboard re-validates role before rendering ([AdminDashboard.tsx#L23-L25](src/pages/AdminDashboard.tsx#L23-L25))
+- **Artist Data Isolation**: Artist ID filtering applied to all queries ([AdminContent.tsx#L52-L65](src/components/organisms/AdminContent.tsx#L52-L65))
+- **Tab Restriction**: Users tab programmatically hidden and redirected for artists ([AdminDashboard.tsx#L69-L80](src/pages/AdminDashboard.tsx#L69-L80))
+- **Firestore Rules**: Backend rules should validate user role for admin collections
+
+### Security Recommendations
+1. Ensure Firestore security rules enforce role-based access at database level
+2. Validate artist_id ownership in backend rules before allowing content modifications
+3. Consider rate limiting for admin API operations
+4. Audit logging for sensitive admin actions (role changes, deletions)
+
+---
+
+## 9. Related Specifications
+
+- [DDC-1: Authentication](../DDC-1-authentication/spec.md) - User authentication and role management
+- [DDC-5: E-Commerce](../DDC-5-ecommerce/spec.md) - Order and transaction processing
+- [DDC-7: Analytics](../DDC-7-analytics/spec.md) - Track analytics integration
+
+---
+
+**Generated by:** `/speckit.retro --all`  
+**Version:** 1.0.0
+
+---
+
+## [detroitdubcollective] DDC-5-ecommerce
+
+# DDC-5: E-commerce (Merchandise)
+
+**Status:** ✅ Implemented (Retroactive Documentation)  
+**Jira:** [DDC-5](https://eriksensolutions.atlassian.net/browse/DDC-5)  
+**Created:** 2026-02-10
+
+---
+
+## Overview
+
+The E-commerce feature provides a complete merchandise browsing, shopping cart, and checkout experience for the Detroit Dub Collective platform. Users can browse physical merchandise (apparel, accessories), add items to a persistent cart with size/quantity selection, and complete purchases using either USD (via Stripe) or DDC Points. The system supports order tracking, shipping address management, and integrates with the existing authentication and user inventory systems.
+
+### Key Capabilities
+
+- **Product Catalog:** Browse merchandise with images, descriptions, and dual pricing (USD/Points)
+- **Shopping Cart:** Persistent cart with quantity controls, size selection, and currency toggle
+- **Dual Payment:** Stripe integration for USD payments, DDC Points for loyalty program
+- **Order Management:** Track orders through pending → processing → shipped → delivered lifecycle
+- **Shipping:** Address collection, validation, and saved address management
+- **Digital Downloads:** Track purchases include immediate download access via order confirmation
+
+---
+
+## User Stories
+
+### US-1: Browse Merchandise
+**As a** visitor  
+**I want to** browse available merchandise  
+**So that** I can discover products I want to purchase
+
+**Acceptance Criteria:**
+- [x] Merchandise grid displays all merch items with images
+- [x] Each product card shows title, artist, and dual pricing (USD/Points)
+- [x] Loading state shows spinner while fetching data
+- [x] Error state displays message if fetch fails
+- [x] Empty state shows "No merchandise available" message
+
+### US-2: View Product Details
+**As a** visitor  
+**I want to** view detailed product information  
+**So that** I can make informed purchase decisions
+
+**Acceptance Criteria:**
+- [x] Product detail page shows full-size image with support images gallery
+- [x] Size selector appears for multi-size items (S, M, L, XL, 2XL, 3XL, 4XL)
+- [x] One-size items skip size selection
+- [x] Quantity selector with +/- buttons and direct input
+- [x] Stock validation prevents selecting unavailable sizes
+- [x] Sale pricing displays strikethrough original price
+- [x] Artist name links to artist profile page
+- [x] Back navigation returns to merch listing
+
+### US-3: Manage Shopping Cart
+**As a** customer  
+**I want to** add/remove items from my cart  
+**So that** I can build my order before checkout
+
+**Acceptance Criteria:**
+- [x] Add to cart button adds item with selected size/quantity
+- [x] Cart icon in header shows item count badge
+- [x] Cart panel slides in from right side
+- [x] Cart displays item image, title, size, quantity, and price
+- [x] Quantity can be adjusted with +/- buttons
+- [x] Remove button deletes item from cart
+- [x] Clear cart button removes all items
+- [x] Cart persists across page refreshes (localStorage)
+- [x] Toast notification confirms add/remove actions with undo option
+
+### US-4: Toggle Payment Currency
+**As a** customer  
+**I want to** choose between USD and Points  
+**So that** I can pay with my preferred method
+
+**Acceptance Criteria:**
+- [x] Currency toggle shows USD and Points options
+- [x] Selecting currency updates all displayed prices
+- [x] Cart total recalculates based on selected currency
+- [x] Alternative currency total shown for reference
+
+### US-5: Checkout with Stripe (USD)
+**As a** authenticated user  
+**I want to** pay with my credit card  
+**So that** I can complete my purchase with USD
+
+**Acceptance Criteria:**
+- [x] Checkout modal opens when clicking checkout button
+- [x] Stripe Payment Element renders with dark theme styling
+- [x] Card details collected securely via Stripe
+- [x] Processing state prevents double-submission
+- [x] Success redirects to order confirmation page
+- [x] Error displays user-friendly message
+- [x] Points reward earned on USD purchase (10 points per $1)
+
+### US-6: Checkout with DDC Points
+**As a** authenticated user with sufficient points  
+**I want to** pay with my DDC Points balance  
+**So that** I can redeem my loyalty rewards
+
+**Acceptance Criteria:**
+- [x] Points balance displayed in checkout
+- [x] Insufficient balance shows error message
+- [x] Points deducted from user balance on success
+- [x] Order created with payment_method: 'points'
+- [x] Success redirects to order confirmation page
+
+### US-7: Enter Shipping Address
+**As a** customer purchasing merchandise  
+**I want to** enter my shipping address  
+**So that** my order can be delivered
+
+**Acceptance Criteria:**
+- [x] Shipping address form appears for merch orders only
+- [x] Required fields: full name, address line 1, city, state, postal code, country
+- [x] Optional fields: address line 2, phone
+- [x] Address autocomplete via AddressAutocomplete component
+- [x] Validation prevents submission with missing required fields
+- [x] New addresses saved to user profile for future orders
+
+### US-8: Use Saved Addresses
+**As a** returning customer  
+**I want to** select from my saved addresses  
+**So that** I can checkout faster
+
+**Acceptance Criteria:**
+- [x] Dropdown shows saved addresses with summary
+- [x] Selecting address populates form fields
+- [x] "Add New Address" option shows fresh form
+- [x] "Use Saved Address" returns to dropdown
+
+### US-9: View Order Confirmation
+**As a** customer  
+**I want to** see my order confirmation  
+**So that** I know my purchase was successful
+
+**Acceptance Criteria:**
+- [x] Success checkmark animation displays
+- [x] Order ID shown with truncated format
+- [x] Order date and status displayed
+- [x] All purchased items listed with images
+- [x] Order total and payment method shown
+- [x] Shipping address displayed for merch orders
+- [x] Track purchases include download buttons
+- [x] Track-only orders auto-close status
+
+### US-10: View Order History
+**As a** authenticated user  
+**I want to** see my past orders  
+**So that** I can track and review my purchases
+
+**Acceptance Criteria:**
+- [x] Order list shows all user orders
+- [x] Each order displays ID, date, status, and total
+- [x] Preview shows first 3 items with "+X more" indicator
+- [x] Tracking number displayed when available
+- [x] Clicking order navigates to full detail page
+- [x] Download buttons available for track purchases
+
+### US-11: View Order Details
+**As a** authenticated user  
+**I want to** see full order details  
+**So that** I can track shipping and access digital purchases
+
+**Acceptance Criteria:**
+- [x] Full order information displayed
+- [x] Item list with images, sizes, quantities, and prices
+- [x] Status timeline shows order progress
+- [x] Shipping address editable for pending orders
+- [x] Download buttons for track items
+- [x] Admin can update order status and add tracking
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | File Reference |
+|----|-------------|----------------|
+| FR-1 | Fetch merchandise items from Firestore by type='merch' | [Merch.tsx](src/pages/Merch.tsx#L5) |
+| FR-2 | Display products in responsive grid (1/2/3 columns) | [ProductGrid.tsx](src/components/organisms/ProductGrid.tsx#L18-L21) |
+| FR-3 | Product card shows dual pricing (USD and Points) | [ProductCard.tsx](src/components/molecules/ProductCard.tsx#L1-L150) |
+| FR-4 | Fetch single item by slug for detail page | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L19) |
+| FR-5 | Size stock management with per-size inventory | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L33-L51) |
+| FR-6 | Cart state managed with Zustand + localStorage persistence | [useCartStore.ts](src/stores/useCartStore.ts#L34-L168) |
+| FR-7 | Cart items keyed by itemId:size for size variants | [useCartStore.ts](src/stores/useCartStore.ts#L13-L15) |
+| FR-8 | Stripe Payment Element integration | [StripeCheckoutForm.tsx](src/components/molecules/StripeCheckoutForm.tsx#L1-L125) |
+| FR-9 | Create PaymentIntent via Cloud Function | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L102-L123) |
+| FR-10 | Process points payment via Cloud Function | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L191-L230) |
+| FR-11 | Create order document in Firestore | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L232-L273) |
+| FR-12 | Shipping address validation with required fields | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L144-L180) |
+| FR-13 | Saved addresses stored in user document | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L303-L310) |
+| FR-14 | Order status lifecycle management | [OrderDetail.tsx](src/pages/OrderDetail.tsx#L315-L332) |
+| FR-15 | Digital download with progress and abort | [OrderConfirmation.tsx](src/pages/OrderConfirmation.tsx#L28-L150) |
+| FR-16 | Album downloads bundled as ZIP | [OrderHistory.tsx](src/components/molecules/OrderHistory.tsx#L97-L130) |
+| FR-17 | Order history query by user_id | [OrderHistory.tsx](src/components/molecules/OrderHistory.tsx#L195) |
+| FR-18 | Points balance validation before payment | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L200-L208) |
+| FR-19 | Sale price display with strikethrough | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L113-L116) |
+| FR-20 | One-size vs multi-size item handling | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L36-L38) |
+
+---
+
+## Data Model
+
+### CatalogItem (type: 'merch')
+
+```typescript
+interface CatalogItem {
+  id: string
+  slug?: string
+  type: 'track' | 'merch'
+  title: string
+  description?: string
+  price_usd: number
+  price_points: number
+  sale_price_usd?: number
+  sale_price_points?: number
+  is_on_sale?: boolean
+  artist_id?: string
+  artist_ids?: string[]
+  artist_name?: string
+  artist_names?: string[]
+  image_url?: string
+  image_filename?: string
+  support_images?: string[]
+  support_image_filenames?: string[]
+  stock_qty?: number  // Legacy - use size_stock
+  size_stock?: {
+    one_size?: number
+    s?: number
+    m?: number
+    l?: number
+    xl?: number
+    '2xl'?: number
+    '3xl'?: number
+    '4xl'?: number
+  }
+  is_one_size?: boolean
+  release_date?: number
+}
+```
+
+### CartItem (Client State)
+
+```typescript
+interface CartItem {
+  item: CatalogItem
+  quantity: number
+  size?: string  // For merch items with multiple sizes
+}
+```
+
+### ShippingAddress
+
+```typescript
+interface ShippingAddress {
+  full_name: string
+  address_line1: string
+  address_line2?: string
+  city: string
+  state: string
+  postal_code: string
+  country: string
+  phone?: string
+}
+```
+
+### OrderItem
+
+```typescript
+interface OrderItem {
+  item_id: string
+  item_type: 'track' | 'merch'
+  title: string
+  quantity: number
+  size?: string
+  price_usd: number
+  price_points: number
+  image_url?: string
+}
+```
+
+### Order
+
+```typescript
+interface Order {
+  id: string
+  user_id: string
+  user_email?: string
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'closed'
+  items: OrderItem[]
+  shipping_address?: ShippingAddress
+  subtotal_usd: number
+  subtotal_points: number
+  shipping_cost_usd?: number
+  shipping_cost_points?: number
+  total_usd: number
+  total_points: number
+  currency: 'USD' | 'DDC'
+  payment_method: 'stripe' | 'points'
+  stripe_payment_intent_id?: string
+  transaction_id?: string
+  tracking_number?: string
+  carrier?: string
+  shipped_at?: number
+  delivered_at?: number
+  created_at: number
+  updated_at: number
+  notes?: string
+  cancelled_at?: number
+  cancellation_reason?: string
+}
+```
+
+### Currency Type
+
+```typescript
+type Currency = 'USD' | 'DDC'
+```
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Handling | Location |
+|----------|----------|----------|
+| Item out of stock | Disable Add to Cart button, show "Sold Out" | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L395-L396) |
+| Size not selected | Toast error "Please select a size" | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L80-L87) |
+| Insufficient points balance | Toast error with current/required balance | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L200-L208) |
+| Stripe payment failed | Display error message, allow retry | [StripeCheckoutForm.tsx](src/components/molecules/StripeCheckoutForm.tsx#L83-L87) |
+| Missing required address field | Toast error for specific field | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L147-L179) |
+| Order not found | Display "Order not found" with back link | [OrderDetail.tsx](src/pages/OrderDetail.tsx#L363-L374) |
+| Firestore fetch error | Display error message with error details | [Merch.tsx](src/pages/Merch.tsx#L18-L25) |
+| Download aborted | Clear progress, reset state | [OrderHistory.tsx](src/components/molecules/OrderHistory.tsx#L32-L36) |
+| Download failed | Toast error, reset state, allow retry | [OrderHistory.tsx](src/components/molecules/OrderHistory.tsx#L143-L156) |
+| Empty cart | Show "Your cart is empty" message | [CartPanel.tsx](src/components/organisms/CartPanel.tsx#L63-L65) |
+| User not authenticated | Error "Please log in" on checkout attempt | [CheckoutModal.tsx](src/components/organisms/CheckoutModal.tsx#L184-L190) |
+| Invalid quantity input | Clamp to valid range (1 to maxQuantity) | [MerchDetail.tsx](src/pages/MerchDetail.tsx#L309-L318) |
+
+---
+
+## Integration Points
+
+| System | Integration Type | Details |
+|--------|-----------------|---------|
+| **Stripe** | Payment processing | PaymentIntent creation via Cloud Functions, Payment Element for secure card collection |
+| **Firebase Auth** | User authentication | Order ownership verification, protected checkout |
+| **Firestore** | Data persistence | CatalogItem, Order, User documents; real-time queries |
+| **Cloud Functions** | Server-side logic | `createPaymentIntent`, `processPointsPayment` |
+| **Firebase Storage** | File downloads | Track audio files download with abort support |
+| **TanStack Query** | Data fetching | Caching, invalidation, optimistic updates |
+| **Zustand** | State management | Cart state with localStorage persistence |
+| **JSZip** | File bundling | Album downloads as ZIP archives |
+
+---
+
+## File Structure
+
+```
+src/
+├── pages/
+│   ├── Merch.tsx                    # Merchandise listing page
+│   ├── MerchDetail.tsx              # Product detail page
+│   ├── OrderConfirmation.tsx        # Post-checkout confirmation
+│   └── OrderDetail.tsx              # Full order details page
+├── components/
+│   ├── atoms/
+│   │   └── CartIcon.tsx             # Cart icon with badge
+│   ├── molecules/
+│   │   ├── ProductCard.tsx          # Product card component
+│   │   ├── StripeCheckoutForm.tsx   # Stripe Payment Element form
+│   │   └── OrderHistory.tsx         # Order list component
+│   └── organisms/
+│       ├── ProductGrid.tsx          # Responsive product grid
+│       ├── CartPanel.tsx            # Slide-out cart panel
+│       └── CheckoutModal.tsx        # Checkout flow modal
+├── stores/
+│   └── useCartStore.ts              # Zustand cart state
+├── lib/
+│   ├── constants.ts                 # POINTS_PER_DOLLAR = 100
+│   ├── stripe/
+│   │   └── config.ts                # Stripe initialization
+│   └── firebase/
+│       ├── functions.ts             # Cloud Function calls
+│       └── firestore.ts             # Order CRUD operations
+└── types/
+    └── index.ts                     # TypeScript interfaces
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+```bash
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_... # or pk_live_... for production
+```
+
+### Constants
+
+```typescript
+// src/lib/constants.ts
+export const POINTS_PER_DOLLAR = 100      // 100 points = $1 USD (spending)
+export const POINTS_REWARD_PER_DOLLAR = 10 // Earn 10 points per $1 spent
+```
+
+### Stripe Theme
+
+```typescript
+// Dark theme configuration for Stripe Elements
+{
+  theme: 'night',
+  variables: {
+    colorPrimary: '#39FF14',      // neon-acid
+    colorBackground: '#0a0a0a',   // dub-black
+    colorText: '#ffffff',
+    colorDanger: '#FF2A2A',       // signal-red
+    fontFamily: 'Inter, system-ui, sans-serif',
+    borderRadius: '8px',
+  }
+}
+```
+
+---
+
+## Future Enhancements
+
+- [ ] Shipping cost calculation based on address
+- [ ] Discount/coupon code support
+- [ ] Wishlist functionality
+- [ ] Inventory low-stock alerts
+- [ ] Order email notifications
+- [ ] Tax calculation by region
+- [ ] International shipping support
+- [ ] Return/refund workflow
+
+---
+
+*Generated by /speckit.retro --all*  
+*Version 1.0.0*
+
+---
+
+## [detroitdubcollective] DDC-4-events-management
+
+# DDC-4: Events Management
+
+**Status:** ✅ Implemented (Retroactive Documentation)  
+**Jira:** [DDC-4](https://eriksensolutions.atlassian.net/browse/DDC-4)  
+**Created:** 2026-02-10
+
+---
+
+## Overview
+
+The Events Management feature enables the Detroit Dub Collective platform to showcase live and upcoming events. Users can browse events with status filtering, view event details with artist lineups and ticket pricing, and purchase tickets using USD (Stripe) or DDC Points. Admins can create, edit, and delete events through the Admin Dashboard content management interface.
+
+### Key Capabilities
+
+- **Public Event Browsing**: Users view events in a responsive grid with status badges (Live, Upcoming, Past)
+- **Event Filtering & Sorting**: Filter by status (All, Live, Scheduled, Ended) with smart sorting (Live first, then chronological)
+- **Event Detail View**: Full event information with artist lineup, pricing, and ticket purchase options
+- **Dual Currency Support**: Tickets purchasable in USD via Stripe or DDC Points
+- **Admin CRUD Operations**: Create, edit, and delete events with image upload and crop functionality
+- **Artist Relationship**: Events linked to multiple performing artists via artist_ids array
+
+---
+
+## User Stories
+
+### US-1: Browse Events
+**As a** visitor  
+**I want to** browse all events on the platform  
+**So that** I can discover upcoming live streams and performances
+
+**Acceptance Criteria:**
+- [x] Events page displays all events in a responsive grid layout
+- [x] Grid shows 1 column on mobile, 2 columns on tablet, 3 columns on desktop
+- [x] Each event card shows image, title, artists, date/time, and ticket prices
+- [x] Status badges display for Live (red, pulsing), Upcoming (green), Ended (gray)
+- [x] Loading spinner shown while events are fetching
+- [x] Error message displayed if events fail to load
+- [x] Empty state message shown when no events exist
+
+### US-2: Filter Events by Status
+**As a** user  
+**I want to** filter events by their status  
+**So that** I can find live streams or plan for upcoming events
+
+**Acceptance Criteria:**
+- [x] Filter buttons available for: All, Live, Upcoming (Scheduled), Past (Ended)
+- [x] Active filter button is visually highlighted
+- [x] Events automatically sorted: Live first, then Scheduled by date (ascending), then Ended by date (descending)
+- [x] Empty state shown when no events match the selected filter
+
+### US-3: View Event Details
+**As a** user  
+**I want to** view detailed information about an event  
+**So that** I can learn about the artists, timing, and ticket pricing
+
+**Acceptance Criteria:**
+- [x] Event detail page displays full event image with status badge overlay
+- [x] Event title, description, and date/time are prominently displayed
+- [x] Performing artists shown with links to their profiles
+- [x] Back navigation link to events list
+- [x] Redirects to events list if event not found
+
+### US-4: Purchase Event Tickets
+**As a** user  
+**I want to** purchase tickets for an event  
+**So that** I can access the live stream
+
+**Acceptance Criteria:**
+- [x] Currency toggle allows switching between USD and Points pricing
+- [x] Price displayed in both currencies with equivalent shown below
+- [x] "Buy Ticket" button for scheduled events
+- [x] "Join Live Stream" button for live events
+- [x] Processing state shown during ticket purchase
+- [x] Past events show "This event has ended" message instead of purchase button
+
+### US-5: Manage Events (Admin)
+**As an** admin  
+**I want to** create, edit, and delete events  
+**So that** I can manage the event calendar
+
+**Acceptance Criteria:**
+- [x] Events tab in Admin Dashboard Content Management section
+- [x] "Add New" button opens Add Event modal
+- [x] Event cards in admin show edit (pencil) and delete (trash) icons
+- [x] Edit modal pre-populates all event fields
+- [x] Delete requires two-step confirmation with name typing
+- [x] Toast notifications for success/error on all operations
+- [x] Query cache invalidated after mutations for immediate UI updates
+
+### US-6: Create Event with Image Upload
+**As an** admin  
+**I want to** upload and crop event images  
+**So that** events have consistent, properly-sized artwork
+
+**Acceptance Criteria:**
+- [x] Image upload accepts JPEG, PNG, WebP, GIF formats
+- [x] Image validation enforces file type and size limits
+- [x] Crop interface allows adjusting image before upload
+- [x] Image preview shown after cropping
+- [x] Ability to remove image and upload a different one
+- [x] Uploading indicator shown during image upload
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Implementation | File Reference |
+|----|-------------|----------------|----------------|
+| FR-1 | Display events in responsive grid (1/2/3 columns) | CSS Grid with Tailwind responsive classes | [EventGrid.tsx](src/components/organisms/EventGrid.tsx#L17-L20) |
+| FR-2 | Filter events by status | useMemo hook filters allEvents by status | [Events.tsx](src/pages/Events.tsx#L11-L14) |
+| FR-3 | Sort events (live first, then by date) | Custom sort algorithm in useMemo | [Events.tsx](src/pages/Events.tsx#L17-L32) |
+| FR-4 | Display status badges with appropriate styling | Conditional rendering with status-based classes | [EventCard.tsx](src/components/molecules/EventCard.tsx#L58-L75) |
+| FR-5 | Show event detail with full information | useEvent hook + artist resolution | [EventDetail.tsx](src/pages/EventDetail.tsx#L13-L22) |
+| FR-6 | Support dual currency pricing display | Currency toggle state with price calculation | [EventDetail.tsx](src/pages/EventDetail.tsx#L157-L187) |
+| FR-7 | Fetch all events from Firestore | React Query with useEvents hook | [useFirestore.ts](src/hooks/useFirestore.ts#L240-L247) |
+| FR-8 | Fetch single event by ID | getEvent function with document lookup | [firestore.ts](src/lib/firebase/firestore.ts#L878-L891) |
+| FR-9 | Create new event document | createEvent with Timestamp conversion | [firestore.ts](src/lib/firebase/firestore.ts#L910-L935) |
+| FR-10 | Update event document | updateEvent with partial data support | [firestore.ts](src/lib/firebase/firestore.ts#L974-L997) |
+| FR-11 | Delete event with image cleanup | deleteEvent with storage deletion | [firestore.ts](src/lib/firebase/firestore.ts#L941-L972) |
+| FR-12 | Admin event management interface | Events tab in AdminContent | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L437-L498) |
+| FR-13 | Image upload with crop functionality | ImageCrop component integration | [AddEventModal.tsx](src/components/molecules/AddEventModal.tsx#L68-L98) |
+| FR-14 | Two-step delete confirmation | confirmStep state with name verification | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L143-L172) |
+| FR-15 | Artist filtering for artist role | Filter events by artist_ids.includes() | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L77-L80) |
+
+---
+
+## Data Model
+
+### Event Type
+
+```typescript
+// src/types/index.ts
+
+export type EventStatus = 'scheduled' | 'live' | 'ended'
+
+export interface Event {
+  id: string                    // Firestore document ID
+  title: string                 // Event title (required)
+  description?: string          // Event description (optional)
+  date: number                  // Unix timestamp in milliseconds
+  is_live: boolean              // Whether event is currently streaming
+  status: EventStatus           // 'scheduled' | 'live' | 'ended'
+  hms_room_id?: string          // 100ms.live room ID for streaming
+  ticket_price_points: number   // Price in DDC Points (required)
+  ticket_price_usd?: number     // Price in USD (optional, falls back to points/100)
+  image_url?: string            // Event artwork URL
+  image_filename?: string       // Original uploaded filename
+  artist_ids: string[]          // Array of performing artist IDs
+}
+```
+
+### Firestore Collection
+
+- **Collection:** `events`
+- **Document ID:** Auto-generated
+- **Date Storage:** Stored as Firestore Timestamp, converted to/from milliseconds on read/write
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Behavior | Location |
+|----------|----------|----------|
+| Event not found | Redirect to /events with Navigate component | [EventDetail.tsx](src/pages/EventDetail.tsx#L33-L35) |
+| Events fetch error | Display error message with error details | [Events.tsx](src/pages/Events.tsx#L44-L52) |
+| No events in filter | Show "No events found" message | [EventGrid.tsx](src/components/organisms/EventGrid.tsx#L15-L19) |
+| Image upload fails | Toast error, cancel submission | [AddEventModal.tsx](src/components/molecules/AddEventModal.tsx#L112-L124) |
+| Invalid image file | Toast error with validation message | [AddEventModal.tsx](src/components/molecules/AddEventModal.tsx#L51-L59) |
+| Delete confirmation mismatch | Toast error "name does not match" | [AdminContent.tsx](src/components/organisms/AdminContent.tsx#L150-L152) |
+| Image deletion fails | Log warning, continue (document already deleted) | [firestore.ts](src/lib/firebase/firestore.ts#L963-L968) |
+| Missing USD price | Calculate from points ÷ 100 | [EventCard.tsx](src/components/molecules/EventCard.tsx#L93) |
+| No artists found for event | Display "Unknown Artists" | [EventCard.tsx](src/components/molecules/EventCard.tsx#L27) |
+| Past event | Disable ticket purchase, show "event has ended" | [EventDetail.tsx](src/pages/EventDetail.tsx#L217-L222) |
+
+---
+
+## Integration Points
+
+| System | Integration Type | Purpose | Reference |
+|--------|------------------|---------|-----------|
+| Firebase Firestore | Database | Event CRUD operations | [firestore.ts](src/lib/firebase/firestore.ts#L864-L997) |
+| Firebase Storage | File Storage | Event image upload/delete | [AddEventModal.tsx](src/components/molecules/AddEventModal.tsx#L107-L119) |
+| React Query | State Management | Caching and query invalidation | [useFirestore.ts](src/hooks/useFirestore.ts#L240-L268) |
+| 100ms.live | Streaming | Live event room integration (hms_room_id) | [types/index.ts](src/types/index.ts#L115) |
+| Stripe | Payments | USD ticket purchases | [EventDetail.tsx](src/pages/EventDetail.tsx#L49-L67) |
+| Artists Collection | Relationship | Event artist lineup resolution | [EventCard.tsx](src/components/molecules/EventCard.tsx#L20-L33) |
+| Toast Store | Notifications | Success/error feedback | [AddEventModal.tsx](src/components/molecules/AddEventModal.tsx#L141-L145) |
+| date-fns | Date Formatting | Event date display | [EventCard.tsx](src/components/molecules/EventCard.tsx#L6) |
+
+---
+
+## File Structure
+
+```
+src/
+├── pages/
+│   ├── Events.tsx              # Events listing page with filtering
+│   └── EventDetail.tsx         # Single event detail page
+├── components/
+│   ├── molecules/
+│   │   ├── EventCard.tsx       # Event card component
+│   │   ├── AddEventModal.tsx   # Create event modal (458 lines)
+│   │   └── EditEventModal.tsx  # Edit event modal (280 lines)
+│   └── organisms/
+│       ├── EventGrid.tsx       # Responsive event grid layout
+│       └── AdminContent.tsx    # Admin CRUD interface (events section)
+├── hooks/
+│   └── useFirestore.ts         # React Query hooks: useEvents, useEvent, useEventsByStatus
+├── lib/
+│   └── firebase/
+│       └── firestore.ts        # Firestore functions: getEvents, getEvent, createEvent, updateEvent, deleteEvent
+├── types/
+│   └── index.ts                # Event, EventStatus type definitions
+└── stores/
+    └── useCartStore.ts         # Currency selection state (selectedCurrency)
+```
+
+### Route Configuration
+
+```typescript
+// src/App.tsx
+<Route path="events" element={<Events />} />
+<Route path="events/:eventId" element={<EventDetail />} />
+```
+
+---
+
+## Query Keys
+
+```typescript
+// src/hooks/useFirestore.ts
+export const queryKeys = {
+  events: {
+    all: ['events'] as const,
+    item: (id: string) => ['events', id] as const,
+    byStatus: (status: string) => ['events', 'status', status] as const,
+  },
+}
+```
+
+---
+
+## UI Components
+
+### EventCard Props
+```typescript
+interface EventCardProps {
+  event: Event
+}
+```
+
+### EventGrid Props
+```typescript
+interface EventGridProps {
+  events: Event[]
+}
+```
+
+### AddEventModal Props
+```typescript
+interface AddEventModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSuccess?: () => void
+}
+```
+
+### EditEventModal Props
+```typescript
+interface EditEventModalProps {
+  event: Event | null
+  isOpen: boolean
+  onClose: () => void
+  onSuccess?: () => void
+}
+```
+
+---
+
+## Stale Time Configuration
+
+| Hook | Stale Time | Rationale |
+|------|------------|-----------|
+| useEvents | 2 minutes | Events change more frequently (status updates) |
+| useEvent | 2 minutes | Individual event details may update |
+| useEventsByStatus | 2 minutes | Status filtering needs fresh data |
+
+---
+
+## Related Specifications
+
+- [DDC-1: Authentication](../DDC-1-authentication/spec.md) - User roles for admin access
+- [DDC-3: Artists Management](../DDC-3-artists-management/spec.md) - Artist profiles linked to events
+- [DDC-5: E-Commerce](../DDC-5-ecommerce/spec.md) - Ticket purchase flow
+
+---
+
+*Generated by /speckit.retro --all*  
+*Version 1.0.0*
+
+---
+
+## [detroitdubcollective] DDC-3-artists-management
+
+# DDC-3: Artists Management
+
+**Status:** ✅ Implemented (Retroactive Documentation)  
+**Jira:** [DDC-3](https://eriksensolutions.atlassian.net/browse/DDC-3)  
+**Created:** 2026-02-10
+
+---
+
+## Overview
+
+The Artists Management feature provides comprehensive functionality for displaying, browsing, and managing artist profiles within the Detroit Dub Collective platform. The feature enables:
+
+- **Public Artist Directory**: A responsive grid display of all collective artists with images, bios, and track counts
+- **Artist Detail Pages**: Individual artist pages showing bio, profile image, music catalog, and merchandise
+- **Admin CRUD Operations**: Full create, read, update, and delete capabilities for artist profiles in the admin dashboard
+- **User-Artist Linking**: Association between user accounts and artist profiles for dashboard access
+- **Artist FAQ Page**: Informational page explaining collective membership, payouts, and artist benefits
+
+---
+
+## User Stories
+
+### US-1: Browse Artist Directory
+**As a** visitor  
+**I want to** browse all artists in the collective  
+**So that** I can discover new music and learn about the artists
+
+**Acceptance Criteria:**
+- [x] Artists are displayed in a responsive grid (1 column mobile, 2 tablet, 3 desktop)
+- [x] Each artist card shows image, name, bio preview, and track count
+- [x] Loading state shows spinner while fetching artists
+- [x] Empty state shows "No artists available yet" message
+- [x] Error state displays error message if fetch fails
+- [x] Clicking artist card navigates to artist detail page
+
+### US-2: View Artist Profile
+**As a** visitor  
+**I want to** view an artist's full profile  
+**So that** I can learn more about them and explore their catalog
+
+**Acceptance Criteria:**
+- [x] Artist profile shows name, bio, and image
+- [x] Music section displays all tracks by the artist
+- [x] Merchandise section displays all merch by the artist
+- [x] Track count and merch count stats are displayed
+- [x] Back navigation returns to artists directory
+- [x] Non-existent artist redirects to artists directory
+- [x] Loading state shown while fetching data
+
+### US-3: Create Artist Profile (Admin)
+**As an** admin  
+**I want to** create new artist profiles  
+**So that** new collective members appear on the platform
+
+**Acceptance Criteria:**
+- [x] Add Artist modal accessible from admin dashboard
+- [x] Form requires artist name and URL-friendly slug
+- [x] Bio field is optional
+- [x] Image upload with validation (type, size)
+- [x] Image cropping interface for uploaded images
+- [x] Optional user account association via search
+- [x] Slug auto-generates from name
+- [x] Duplicate slug validation prevents conflicts
+- [x] Success toast on creation
+- [x] Artist list auto-refreshes after creation
+
+### US-4: Edit Artist Profile (Admin)
+**As an** admin  
+**I want to** edit existing artist profiles  
+**So that** I can update artist information and images
+
+**Acceptance Criteria:**
+- [x] Edit modal pre-populates with existing data
+- [x] All fields (name, slug, bio, image) are editable
+- [x] Image can be replaced or removed
+- [x] Old image is deleted when replaced
+- [x] User association can be changed
+- [x] Success toast on update
+- [x] Artist list auto-refreshes after update
+
+### US-5: Delete Artist Profile (Admin)
+**As an** admin  
+**I want to** delete artist profiles  
+**So that** I can remove artists who leave the collective
+
+**Acceptance Criteria:**
+- [x] Delete requires two-step confirmation
+- [x] Second step requires typing artist name exactly
+- [x] Associated image is deleted from storage
+- [x] Success toast on deletion
+- [x] Artist list auto-refreshes after deletion
+- [x] Delete prevented while operation in progress
+
+### US-6: View Artist FAQ
+**As a** prospective artist  
+**I want to** read the Artist FAQ  
+**So that** I understand how the collective works
+
+**Acceptance Criteria:**
+- [x] FAQ page accessible at `/artist-faq` route
+- [x] Page explains ownership, payouts, merch, events
+- [x] Page explains non-exclusive membership
+- [x] Page explains governance and transparency
+
+---
+
+## Functional Requirements
+
+| Req ID | Requirement | Implementation | File Reference |
+|--------|-------------|----------------|----------------|
+| FR-01 | Display artists in responsive grid | ArtistGrid component with Tailwind responsive classes | [src/components/organisms/ArtistGrid.tsx](src/components/organisms/ArtistGrid.tsx#L14-L25) |
+| FR-02 | Show artist card with image, name, bio, stats | ArtistCard component with Image atom | [src/components/molecules/ArtistCard.tsx](src/components/molecules/ArtistCard.tsx#L14-L88) |
+| FR-03 | Fetch all artists from Firestore | getArtists() function with collection query | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L299-L318) |
+| FR-04 | Fetch single artist by ID | getArtist() function with doc reference | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L323-L349) |
+| FR-05 | Get artist by user_id reverse lookup | getArtistByUserId() query with where clause | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L351-L389) |
+| FR-06 | Create artist with slug as document ID | createArtist() with setDoc and validation | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L391-L423) |
+| FR-07 | Update artist partial data | updateArtist() with updateDoc | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L426-L445) |
+| FR-08 | Delete artist and cleanup image | deleteArtist() with deleteDoc and deleteImage | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L448-L480) |
+| FR-09 | React Query hooks for data fetching | useArtists() and useArtist() with staleTime config | [src/hooks/useFirestore.ts](src/hooks/useFirestore.ts#L302-L324) |
+| FR-10 | Display artist catalog items | useCatalogItemsByArtist() hook filtering by artist_id | [src/pages/ArtistDetail.tsx](src/pages/ArtistDetail.tsx#L9-L10) |
+| FR-11 | Image upload with cropping | AddArtistModal/EditArtistModal with ImageCrop component | [src/components/molecules/AddArtistModal.tsx](src/components/molecules/AddArtistModal.tsx#L130-L159) |
+| FR-12 | User search with debounce | searchUsers() with 300ms debounce timeout | [src/components/molecules/AddArtistModal.tsx](src/components/molecules/AddArtistModal.tsx#L57-L80) |
+| FR-13 | Auto-generate slug from name | useEffect watching name with regex transformation | [src/components/molecules/AddArtistModal.tsx](src/components/molecules/AddArtistModal.tsx#L45-L54) |
+| FR-14 | Two-step delete confirmation | confirmStep state with name matching verification | [src/components/organisms/AdminContent.tsx](src/components/organisms/AdminContent.tsx#L76-L107) |
+| FR-15 | Query cache invalidation on mutations | queryClient.invalidateQueries with queryKeys | [src/components/molecules/AddArtistModal.tsx](src/components/molecules/AddArtistModal.tsx#L213) |
+
+---
+
+## Data Model
+
+### Artist Interface
+
+```typescript
+// Source: src/types/index.ts (lines 15-24)
+
+/**
+ * Artist document from Firestore
+ * Represents an artist profile separate from user accounts
+ */
+export interface Artist {
+  id: string
+  slug: string // URL-friendly identifier, used as document ID
+  name: string
+  bio?: string
+  image_url?: string
+  image_filename?: string // Original filename of the uploaded image
+  user_id?: string // Optional link to user account
+}
+```
+
+### Firestore Collection Structure
+
+```
+artists/
+  └── {slug}  (document ID = slug)
+      ├── name: string (required)
+      ├── slug: string (required, matches doc ID)
+      ├── bio: string (optional)
+      ├── image_url: string (optional, Firebase Storage URL)
+      ├── image_filename: string (optional, for deletion reference)
+      └── user_id: string (optional, links to users/{uid})
+```
+
+### Storage Structure
+
+```
+artists/
+  └── {uuid}_{filename}.jpg  (uploaded artist images)
+```
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Behavior | Implementation |
+|----------|----------|----------------|
+| No artists in database | Shows "No artists available yet" message | [src/pages/Artists.tsx](src/pages/Artists.tsx#L30-L32) |
+| Artist not found (invalid ID) | Redirects to /artists with Navigate component | [src/pages/ArtistDetail.tsx](src/pages/ArtistDetail.tsx#L21-L23) |
+| Artist has no image | Shows initials fallback (first 2 chars of name) | [src/components/molecules/ArtistCard.tsx](src/components/molecules/ArtistCard.tsx#L45-L52) |
+| Artist has no tracks/merch | Shows "No items available" message | [src/pages/ArtistDetail.tsx](src/pages/ArtistDetail.tsx#L120-L125) |
+| Duplicate slug on create | Throws "An artist with this slug already exists" | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L401-L405) |
+| Image upload fails | Shows error toast, prevents form submission | [src/components/molecules/AddArtistModal.tsx](src/components/molecules/AddArtistModal.tsx#L193-L202) |
+| Invalid image file type/size | Shows validation error toast | [src/components/molecules/AddArtistModal.tsx](src/components/molecules/AddArtistModal.tsx#L115-L123) |
+| Delete confirmation name mismatch | Shows "Artist name does not match" toast | [src/components/organisms/AdminContent.tsx](src/components/organisms/AdminContent.tsx#L90-L93) |
+| Network error fetching artists | Shows error message with error.message | [src/pages/Artists.tsx](src/pages/Artists.tsx#L18-L24) |
+| Image deletion fails on artist delete | Logs warning, continues (document already deleted) | [src/lib/firebase/firestore.ts](src/lib/firebase/firestore.ts#L470-L476) |
+
+---
+
+## Integration Points
+
+| System | Integration | Description |
+|--------|-------------|-------------|
+| Firebase Firestore | Collection: `artists` | Stores all artist profile documents |
+| Firebase Storage | Folder: `artists/` | Stores artist profile images |
+| React Query | Cache keys: `['artists']`, `['artists', id]` | Client-side caching with 5-minute staleTime |
+| User Accounts | Field: `user_id` on Artist, `artist_id` on User | Bidirectional link for artist dashboard access |
+| Catalog Items | Field: `artist_id`, `artist_ids[]` on CatalogItem | Links tracks/merch to artists |
+| Events | Field: `artist_ids[]` on Event | Links events to performing artists |
+| Admin Dashboard | AdminContent organism | CRUD interface for artists (admin role only) |
+| Toast System | useToastStore | Success/error notifications |
+
+---
+
+## File Structure
+
+```
+src/
+├── pages/
+│   ├── Artists.tsx              # Artist directory page
+│   ├── ArtistDetail.tsx         # Individual artist profile page
+│   └── ArtistFAQ.tsx            # Artist FAQ informational page
+├── components/
+│   ├── molecules/
+│   │   ├── ArtistCard.tsx       # Artist card for grid display
+│   │   ├── AddArtistModal.tsx   # Create artist form modal
+│   │   └── EditArtistModal.tsx  # Edit artist form modal
+│   └── organisms/
+│       ├── ArtistGrid.tsx       # Responsive artist grid layout
+│       └── AdminContent.tsx     # Admin CRUD interface (includes artists)
+├── hooks/
+│   └── useFirestore.ts          # useArtists, useArtist hooks
+├── lib/
+│   └── firebase/
+│       ├── firestore.ts         # CRUD functions: getArtists, createArtist, etc.
+│       └── storage.ts           # uploadImage, deleteImage functions
+├── types/
+│   └── index.ts                 # Artist interface definition
+└── stores/
+    └── useToastStore.ts         # Toast notification state
+```
+
+---
+
+## Routes
+
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/artists` | Artists.tsx | Artist directory with grid |
+| `/artists/:artistId` | ArtistDetail.tsx | Individual artist profile |
+| `/artist-faq` | ArtistFAQ.tsx | Artist FAQ page |
+| `/admin` | AdminDashboard.tsx → AdminContent | Admin CRUD (artists tab) |
+
+---
+
+## Related Specifications
+
+- [DDC-2: Music Player](../DDC-2-music-player/spec.md) - Artists linked to tracks
+- [DDC-4: Events Management](../DDC-4-events-management/spec.md) - Artists linked to events
+- [DDC-6: Admin Dashboard](../DDC-6-admin-dashboard/spec.md) - Artist CRUD interface
+
+---
+
+*Generated by `/speckit.retro --all`*  
+*Version 1.0.0*
+
+---
+
+## [detroitdubcollective] DDC-2-music-player
+
+# Music Player - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [DDC-2](https://eriksensolutions.atlassian.net/browse/DDC-2)  
+**Created**: 2026-02-10  
+
+---
+
+## Overview
+
+The Music Player provides audio playback functionality for the Detroit Dub Collective platform, allowing users to browse, stream, and queue music from the collective's catalog. The player uses the HTML5 Audio API via a custom React hook, with state management handled by Zustand.
+
+---
+
+## User Stories
+
+### User Story 1 - Play Music (Priority: P1)
+
+**As a** visitor or member,  
+**I want to** play tracks from the music catalog,  
+**So that** I can listen to Detroit Dub Collective artists.
+
+**Acceptance Criteria** (Verified):
+- [x] User can click on a track to start playback
+- [x] Play/pause button toggles audio playback
+- [x] Progress bar shows current playback position
+- [x] Track title, artist, and artwork are displayed
+- [x] Playback continues across page navigation
+
+**Implementation**: [`src/components/organisms/MusicPlayer.tsx`](../../src/components/organisms/MusicPlayer.tsx)
+
+---
+
+### User Story 2 - Playback Controls (Priority: P1)
+
+**As a** listener,  
+**I want to** control audio playback (pause, skip, seek, volume),  
+**So that** I have full control over my listening experience.
+
+**Acceptance Criteria** (Verified):
+- [x] Play/pause toggle works correctly
+- [x] Skip to next track (from queue or random)
+- [x] Skip to previous track (from history)
+- [x] Click/drag on progress bar to seek
+- [x] Keyboard navigation for progress (arrow keys)
+- [x] Volume slider with mute toggle
+- [x] Time display shows current/total duration
+
+**Implementation**: [`src/hooks/useAudio.ts`](../../src/hooks/useAudio.ts)
+
+---
+
+### User Story 3 - Queue Management (Priority: P2)
+
+**As a** listener,  
+**I want to** manage a playback queue,  
+**So that** I can control what plays next.
+
+**Acceptance Criteria** (Verified):
+- [x] Add tracks to queue
+- [x] View current queue via modal
+- [x] Remove tracks from queue
+- [x] Reorder queue items via drag-and-drop
+- [x] Clear entire queue
+- [x] Auto-play random track when queue is empty
+
+**Implementation**: [`src/stores/usePlayerStore.ts`](../../src/stores/usePlayerStore.ts)
+
+---
+
+### User Story 4 - Browse Music (Priority: P1)
+
+**As a** visitor,  
+**I want to** browse the music catalog with filtering options,  
+**So that** I can discover tracks that interest me.
+
+**Acceptance Criteria** (Verified):
+- [x] Grid display of available tracks/releases
+- [x] Filter by album type (single, EP, album, mix)
+- [x] Filter by artist
+- [x] Option to show/hide unreleased tracks
+- [x] Click to navigate to track detail page
+
+**Implementation**: [`src/pages/Music.tsx`](../../src/pages/Music.tsx)
+
+---
+
+### User Story 5 - Track Detail (Priority: P2)
+
+**As a** listener,  
+**I want to** view detailed track/release information,  
+**So that** I can learn more about the music and artists.
+
+**Acceptance Criteria** (Verified):
+- [x] Display track artwork, title, and artist(s)
+- [x] Show release date and duration
+- [x] Track list for multi-track releases (EP/album)
+- [x] Play individual tracks from the list
+- [x] Add to queue functionality
+- [x] Purchase/add to cart option
+- [x] Countdown timer for scheduled releases
+
+**Implementation**: [`src/pages/TrackDetail.tsx`](../../src/pages/TrackDetail.tsx)
+
+---
+
+### User Story 6 - Favorites (Priority: P3)
+
+**As a** logged-in user,  
+**I want to** mark tracks as favorites,  
+**So that** I can easily find music I like.
+
+**Acceptance Criteria** (Verified):
+- [x] Heart icon to toggle favorite status
+- [x] Favorite state persists in user profile
+- [x] Analytics tracked for favorites
+
+**Implementation**: [`src/components/organisms/MusicPlayer.tsx:L107-L120`](../../src/components/organisms/MusicPlayer.tsx#L107-L120)
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Audio playback via HTML5 Audio API | ✅ | [`src/hooks/useAudio.ts:L54-L60`](../../src/hooks/useAudio.ts#L54-L60) |
+| FR-002 | Player state synchronized via Zustand | ✅ | [`src/stores/usePlayerStore.ts`](../../src/stores/usePlayerStore.ts) |
+| FR-003 | Time updates via requestAnimationFrame | ✅ | [`src/hooks/useAudio.ts:L28-L50`](../../src/hooks/useAudio.ts#L28-L50) |
+| FR-004 | Queue management with add/remove/reorder | ✅ | [`src/stores/usePlayerStore.ts:L73-L84`](../../src/stores/usePlayerStore.ts#L73-L84) |
+| FR-005 | Playback history for previous button | ✅ | [`src/stores/usePlayerStore.ts:L51-L66`](../../src/stores/usePlayerStore.ts#L51-L66) |
+| FR-006 | Random track selection (no repeats) | ✅ | [`src/stores/usePlayerStore.ts:L86-L110`](../../src/stores/usePlayerStore.ts#L86-L110) |
+| FR-007 | Volume control with mute toggle | ✅ | [`src/stores/usePlayerStore.ts`](../../src/stores/usePlayerStore.ts) |
+| FR-008 | Track analytics logging | ✅ | [`src/hooks/useAudio.ts:L84-L94`](../../src/hooks/useAudio.ts#L84-L94) |
+
+---
+
+## Data Model
+
+### CatalogItem (Track Type)
+
+```typescript
+interface CatalogItem {
+  id: string
+  slug?: string
+  type: 'track'
+  title: string
+  description?: string
+  price_usd: number
+  price_points: number
+  artist_id?: string
+  artist_ids?: string[]
+  artist_name?: string
+  artist_names?: string[]
+  image_url?: string
+  audio_url?: string // Legacy single track
+  audio_urls?: string[] // Multi-track releases
+  audio_filenames?: string[]
+  audio_preview_url?: string
+  album_type?: 'single' | 'EP' | 'album' | 'mix'
+  release_date?: number
+  duration?: number
+  visibility?: 'public' | 'private' | 'scheduled'
+  scheduled_publish_date?: number
+}
+```
+
+**Location**: [`src/types/index.ts:L56-L100`](../../src/types/index.ts#L56-L100)
+
+### PlayerState
+
+```typescript
+interface PlayerState {
+  isPlaying: boolean
+  currentTrack: CatalogItem | null
+  volume: number // 0-1
+  isMuted: boolean
+  queue: CatalogItem[]
+  history: CatalogItem[]
+  sessionHistory: Set<string>
+  allTracks: CatalogItem[]
+  currentTime: number
+  duration: number
+  // Actions omitted for brevity
+}
+```
+
+**Location**: [`src/stores/usePlayerStore.ts:L4-L33`](../../src/stores/usePlayerStore.ts#L4-L33)
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Handling | Location |
+|----------|----------|----------|
+| Audio load error | Skip to next track | [`src/hooks/useAudio.ts:L77-L81`](../../src/hooks/useAudio.ts#L77-L81) |
+| Track end | Auto-play next from queue or random | [`src/hooks/useAudio.ts:L72-L76`](../../src/hooks/useAudio.ts#L72-L76) |
+| Empty queue | Play random unplayed track | [`src/stores/usePlayerStore.ts:L112-L150`](../../src/stores/usePlayerStore.ts#L112-L150) |
+| All tracks played | Reset session history and continue | [`src/stores/usePlayerStore.ts:L99-L107`](../../src/stores/usePlayerStore.ts#L99-L107) |
+| No track selected | Player component not rendered | [`src/components/organisms/MusicPlayer.tsx:L122-L124`](../../src/components/organisms/MusicPlayer.tsx#L122-L124) |
+| Autoplay blocked | Wait for user interaction | Browser policy handling |
+| Scheduled track | Show countdown, block full playback | [`src/pages/TrackDetail.tsx:L82-L115`](../../src/pages/TrackDetail.tsx#L82-L115) |
+
+---
+
+## Integration Points
+
+| System | Type | Purpose |
+|--------|------|---------|
+| HTML5 Audio API | Browser API | Audio playback |
+| Zustand | State Management | Player state synchronization |
+| Firebase Firestore | Database | Track metadata and catalog |
+| TanStack Query | Data Fetching | Catalog data caching |
+| Firebase Analytics | Tracking | Play/favorite events |
+
+---
+
+## File Structure
+
+```
+src/
+├── pages/
+│   ├── Music.tsx           # Music catalog listing
+│   └── TrackDetail.tsx     # Individual track/release page
+├── hooks/
+│   ├── useAudio.ts         # HTML5 Audio wrapper hook
+│   └── useFirestore.ts     # Catalog data fetching
+├── stores/
+│   └── usePlayerStore.ts   # Zustand player state
+├── components/
+│   ├── molecules/
+│   │   ├── TrackListItem.tsx   # Track row in lists
+│   │   └── QueueModal.tsx      # Queue management modal
+│   └── organisms/
+│       └── MusicPlayer.tsx     # Fixed player bar
+└── types/
+    └── index.ts            # CatalogItem type
+```
+
+---
+
+## Analytics Events
+
+| Event | Trigger | Implementation |
+|-------|---------|----------------|
+| `track_play` | Track playback starts | [`src/hooks/useAudio.ts:L87-L93`](../../src/hooks/useAudio.ts#L87-L93) |
+| `track_favorite` | Track favorited | [`src/components/organisms/MusicPlayer.tsx:L107-L120`](../../src/components/organisms/MusicPlayer.tsx#L107-L120) |
+
+---
+
+## UI/UX Details
+
+- **Player Position**: Fixed to bottom of viewport
+- **Glassmorphism**: `backdrop-blur-xl bg-dub-black/25`
+- **Desktop Layout**: Track info (left), controls (center), queue/volume (right)
+- **Mobile Layout**: Compact with expandable controls
+- **Progress Bar**: Clickable with keyboard navigation (arrow keys ±5s)
+
+---
+
+**Generated by**: `/speckit.retro --all`  
+**Version**: 1.0.0
+
+---
+
+## [detroitdubcollective] DDC-1-authentication
+
+# Authentication System - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [DDC-1](https://eriksensolutions.atlassian.net/browse/DDC-1)  
+**Created**: 2026-02-10  
+
+---
+
+## Overview
+
+The Authentication System provides user account management for the Detroit Dub Collective platform using Firebase Authentication as the identity provider and Zustand for client-side state management. Users can create accounts, sign in with email/password, reset passwords, and manage their profiles.
+
+---
+
+## User Stories
+
+### User Story 1 - User Registration (Priority: P1)
+
+**As a** visitor,  
+**I want to** create an account with my email and password,  
+**So that** I can access member-only features and track my purchases.
+
+**Acceptance Criteria** (Verified):
+- [x] User can enter display name (optional), email, and password
+- [x] Password confirmation is required and validated
+- [x] Minimum password length of 6 characters is enforced
+- [x] User-friendly error messages are displayed for common issues
+- [x] User is redirected to home page after successful registration
+
+**Implementation**: [`src/pages/SignUp.tsx`](../../src/pages/SignUp.tsx)
+
+---
+
+### User Story 2 - User Login (Priority: P1)
+
+**As a** registered user,  
+**I want to** sign in with my email and password,  
+**So that** I can access my account and personalized features.
+
+**Acceptance Criteria** (Verified):
+- [x] User can enter email and password to sign in
+- [x] Loading state is shown during authentication
+- [x] User-friendly error messages for invalid credentials
+- [x] User is redirected to originally requested page after login
+- [x] Login state persists across page refreshes
+
+**Implementation**: [`src/pages/Login.tsx`](../../src/pages/Login.tsx)
+
+---
+
+### User Story 3 - Password Reset (Priority: P2)
+
+**As a** user who forgot their password,  
+**I want to** request a password reset email,  
+**So that** I can regain access to my account.
+
+**Acceptance Criteria** (Verified):
+- [x] Toggle between login and password reset modes
+- [x] Password reset email is sent via Firebase
+- [x] Confirmation message is displayed after sending
+
+**Implementation**: [`src/pages/Login.tsx:L30-L45`](../../src/pages/Login.tsx#L30-L45)
+
+---
+
+### User Story 4 - Profile Management (Priority: P2)
+
+**As a** logged-in user,  
+**I want to** view and manage my profile information,  
+**So that** I can see my account details, inventory, and order history.
+
+**Acceptance Criteria** (Verified):
+- [x] Profile page shows user avatar, name, and email
+- [x] Tabbed interface for overview, inventory, transactions, orders, addresses
+- [x] DDC balance is displayed prominently
+- [x] Deep-linking to specific tabs via URL parameter
+
+**Implementation**: [`src/pages/Profile.tsx`](../../src/pages/Profile.tsx)
+
+---
+
+### User Story 5 - Protected Routes (Priority: P1)
+
+**As a** site administrator,  
+**I want to** protect certain routes based on authentication and user roles,  
+**So that** only authorized users can access sensitive areas.
+
+**Acceptance Criteria** (Verified):
+- [x] Unauthenticated users are redirected to login page
+- [x] Original URL is preserved and restored after login
+- [x] Role-based access control (admin, artist, user roles)
+- [x] Unauthorized users are redirected to an unauthorized page
+- [x] Loading state is shown while checking authentication
+
+**Implementation**: [`src/components/organisms/RequireAuth.tsx`](../../src/components/organisms/RequireAuth.tsx)
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Users can create accounts with email/password | ✅ | [`src/lib/firebase/auth.ts:L24-L50`](../../src/lib/firebase/auth.ts#L24-L50) |
+| FR-002 | Users can sign in with email/password | ✅ | [`src/lib/firebase/auth.ts:L52-L98`](../../src/lib/firebase/auth.ts#L52-L98) |
+| FR-003 | Users can request password reset | ✅ | [`src/lib/firebase/auth.ts`](../../src/lib/firebase/auth.ts) |
+| FR-004 | Auth state persists across sessions | ✅ | [`src/stores/useAuthStore.ts:L45-L80`](../../src/stores/useAuthStore.ts#L45-L80) |
+| FR-005 | User document is synced from Firestore | ✅ | [`src/stores/useAuthStore.ts:L100-L130`](../../src/stores/useAuthStore.ts#L100-L130) |
+| FR-006 | Routes can require authentication | ✅ | [`src/components/organisms/RequireAuth.tsx`](../../src/components/organisms/RequireAuth.tsx) |
+| FR-007 | Routes can require specific roles | ✅ | [`src/components/organisms/RequireAuth.tsx:L31-L33`](../../src/components/organisms/RequireAuth.tsx#L31-L33) |
+
+---
+
+## Data Model
+
+### User Type
+
+```typescript
+interface User {
+  uid: string
+  email: string
+  role: 'admin' | 'artist' | 'user'
+  ddc_balance: number
+  inventory: Map<string, number | { timestamp: number; quantity: number; size?: string }>
+  tickets: Map<string, TicketData>
+  favorites?: Map<string, number>
+  stripe_cust_id?: string
+  avatar_url?: string
+  display_name?: string
+  artist_id?: string
+  saved_addresses?: ShippingAddress[]
+}
+```
+
+**Location**: [`src/types/index.ts:L30-L50`](../../src/types/index.ts#L30-L50)
+
+### Auth State
+
+```typescript
+interface AuthState {
+  firebaseUser: FirebaseUser | null
+  user: User | null
+  isLoading: boolean
+  isInitialized: boolean
+  error: string | null
+  userUnsubscribe: Unsubscribe | null
+  
+  // Actions
+  initialize: () => void
+  login: (email: string, password: string) => Promise<void>
+  register: (email: string, password: string, displayName?: string) => Promise<void>
+  logout: () => Promise<void>
+  sendPasswordReset: (email: string) => Promise<void>
+  setError: (error: string | null) => void
+}
+```
+
+**Location**: [`src/stores/useAuthStore.ts:L8-L23`](../../src/stores/useAuthStore.ts#L8-L23)
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Handling | Location |
+|----------|----------|----------|
+| Email already in use | Friendly error message displayed | [`src/lib/firebase/auth.ts:L37-L38`](../../src/lib/firebase/auth.ts#L37-L38) |
+| Invalid email format | Validation error shown | [`src/lib/firebase/auth.ts:L39-L40`](../../src/lib/firebase/auth.ts#L39-L40) |
+| Weak password | Prompt for stronger password | [`src/lib/firebase/auth.ts:L41-L42`](../../src/lib/firebase/auth.ts#L41-L42) |
+| Network failure | Network error message shown | [`src/lib/firebase/auth.ts:L45-L46`](../../src/lib/firebase/auth.ts#L45-L46) |
+| User not found on login | Suggest creating account | [`src/lib/firebase/auth.ts:L91`](../../src/lib/firebase/auth.ts#L91) |
+| Wrong password | Invalid credentials message | Firebase Auth built-in |
+| Auth timeout | 3s timeout with graceful fallback | [`src/stores/useAuthStore.ts:L65-L75`](../../src/stores/useAuthStore.ts#L65-L75) |
+| Password mismatch on signup | Client-side validation error | [`src/pages/SignUp.tsx:L22-L26`](../../src/pages/SignUp.tsx#L22-L26) |
+
+---
+
+## Integration Points
+
+| System | Type | Purpose |
+|--------|------|---------|
+| Firebase Auth | Identity Provider | User authentication and session management |
+| Firestore | Database | User profile data persistence |
+| Zustand | State Management | Client-side auth state synchronization |
+| React Router | Navigation | Protected routes and redirects |
+
+---
+
+## File Structure
+
+```
+src/
+├── pages/
+│   ├── Login.tsx           # Login page with password reset
+│   ├── SignUp.tsx          # User registration page
+│   ├── Profile.tsx         # User profile management
+│   └── Unauthorized.tsx    # Access denied page
+├── stores/
+│   └── useAuthStore.ts     # Zustand auth state store
+├── components/
+│   ├── atoms/
+│   │   └── UserAvatar.tsx  # User avatar display
+│   └── organisms/
+│       └── RequireAuth.tsx # Protected route wrapper
+├── lib/
+│   └── firebase/
+│       └── auth.ts         # Firebase Auth service functions
+└── types/
+    └── index.ts            # User and auth type definitions
+```
+
+---
+
+## Analytics Events
+
+| Event | Trigger | Implementation |
+|-------|---------|----------------|
+| `login` | Successful login | [`src/pages/Login.tsx:L45`](../../src/pages/Login.tsx#L45) |
+| `sign_up` | Successful registration | [`src/pages/SignUp.tsx:L35`](../../src/pages/SignUp.tsx#L35) |
+
+---
+
+## Security Considerations
+
+- Passwords are never stored client-side; Firebase Auth handles all credential management
+- Session tokens are managed by Firebase Auth SDK
+- Role-based access control is enforced client-side via RequireAuth component
+- User documents in Firestore are protected by Firestore Security Rules
+- Password requirements: minimum 6 characters (Firebase default)
+
+---
+
+**Generated by**: `/speckit.retro --all`  
+**Version**: 1.0.0
 
 ---
