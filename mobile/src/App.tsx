@@ -5,7 +5,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './navigation/navigationRef';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
-// import * as SecureStore from 'expo-secure-store';
 // Import our new notification listener component
 import NotificationListener from './components/NotificationListener';
 

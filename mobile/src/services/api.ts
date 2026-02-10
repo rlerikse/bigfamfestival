@@ -186,35 +186,18 @@ api.interceptors.response.use(
         requestData: originalRequest.data ? JSON.parse(originalRequest.data) : null,
       });
       
-      // If it's a 401 or 403, check the token
+      // If it's a 401 or 403, log for debugging
       if (error.response.status === 401 || error.response.status === 403) {
-        const token = await SecureStore.getItemAsync('accessToken');
-        if (token) {
-          try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-              atob(base64)
-                .split('')
-                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
-            );
-            // eslint-disable-next-line no-console
-            console.log('Token payload:', JSON.parse(jsonPayload));
-          } catch (err) {
-            // eslint-disable-next-line no-console
-            console.log('Error decoding token:', err);
-          }
+        const token = await getIdToken();
+        if (token && __DEV__) {
+          console.log('[API] Auth error with active Firebase token - token may be expired');
         }
       }
     }
     
     // Handle authentication errors
     if (error.response.status === 401) {
-      // Clear tokens on unauthorized
-      await SecureStore.deleteItemAsync('userToken');
-      await SecureStore.deleteItemAsync('accessToken');
-      
+      // Firebase Auth manages token lifecycle - token refresh is automatic
       const authError = new Error('Your session has expired. Please log in again.');
       (authError as any).isAuthError = true;
       (authError as any).requiresLogin = true;

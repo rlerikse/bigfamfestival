@@ -52,6 +52,7 @@ export class FirebaseAuthGuard implements CanActivate {
 
       // Attach user info to request (matches JWT payload structure)
       request.user = {
+        id: decodedToken.uid,
         sub: decodedToken.uid,
         uid: decodedToken.uid,
         email: decodedToken.email,

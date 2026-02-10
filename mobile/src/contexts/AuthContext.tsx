@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { UserRole } from '../types/user';
@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const isRegisteringRef = React.useRef(false);
 
   // Subscribe to Firebase auth state changes
   useEffect(() => {
@@ -62,9 +63,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(fbUser);
       
       if (fbUser) {
+        // Skip profile fetch during registration — register() will handle it
+        if (isRegisteringRef.current) {
+          setIsLoading(false);
+          return;
+        }
+
         try {
           // Get the ID token for API calls
-          const token = await fbUser.getIdToken();
+          const token = await getIdToken(true);
           
           // Fetch user profile from our backend (to get role, ticketType, etc.)
           const userData = await getUserProfile(token);
@@ -84,7 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         // Check if guest user
-        const guestUser = await SecureStore.getItemAsync('guestUser');
+        const guestUser = await AsyncStorage.getItem('guestUser');
         if (guestUser) {
           setUser(JSON.parse(guestUser));
         } else {
@@ -122,7 +129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Clear guest user if applicable
-      await SecureStore.deleteItemAsync('guestUser');
+      await AsyncStorage.removeItem('guestUser');
       
       setUser(null);
       setFirebaseUser(null);
@@ -142,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(true);
       
       // Clear any guest user
-      await SecureStore.deleteItemAsync('guestUser');
+      await AsyncStorage.removeItem('guestUser');
       
       // Sign in with Firebase
       await firebaseSignIn(email, password);
@@ -153,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert('Login Failed', error instanceof Error ? error.message : 'Please check your credentials');
       throw error;
     } finally {
       setIsLoading(false);
@@ -164,33 +170,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string, phone?: string) => {
     try {
       setIsLoading(true);
+      isRegisteringRef.current = true;
       
       // Clear any guest user
-      await SecureStore.deleteItemAsync('guestUser');
+      await AsyncStorage.removeItem('guestUser');
       
       // Create Firebase Auth user
       const credential = await firebaseSignUp(email, password, name);
       
-      // Create user profile in Firestore
+      // Create user profile in backend via API
       if (credential.user) {
-        const token = await credential.user.getIdToken();
-        await createUserProfile(token, {
-          name,
-          email,
-          phone,
-          role: UserRole.ATTENDEE,
-        });
+        const token = await getIdToken(true);
+        if (token) {
+          const profileData = await createUserProfile(token, {
+            name,
+            email,
+            phone,
+            role: UserRole.ATTENDEE,
+          });
+
+          // Set user immediately from the created profile
+          setUser(profileData);
+        }
       }
       
-      // onAuthStateChanged will handle setting the user
       if (__DEV__) {
         console.log('[AuthContext] Registration completed for:', email);
       }
     } catch (error) {
       console.error('Registration error:', error);
-      Alert.alert('Registration Failed', error instanceof Error ? error.message : 'Please try again later');
       throw error;
     } finally {
+      isRegisteringRef.current = false;
       setIsLoading(false);
     }
   };
@@ -198,21 +209,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Logout function
   const logout = async () => {
     try {
+      console.log('[AuthContext] Logging out...');
+      
       // Sign out from Firebase
       if (firebaseUser) {
+        console.log('[AuthContext] Signing out from Firebase...');
         await firebaseSignOut();
+        console.log('[AuthContext] Firebase sign out complete');
       }
       
       // Clear guest user
-      await SecureStore.deleteItemAsync('guestUser');
+      await AsyncStorage.removeItem('guestUser');
       
       setUser(null);
       setFirebaseUser(null);
+      console.log('[AuthContext] User state cleared');
       
       // Cancel all scheduled notifications
       await cancelAllUserEventsNotifications();
+      console.log('[AuthContext] Logout complete');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('[AuthContext] Logout error:', error);
+      throw error;
     }
   };
 
@@ -231,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       // Store guest user preference
-      await SecureStore.setItemAsync('guestUser', JSON.stringify(guestUserData));
+      await AsyncStorage.setItem('guestUser', JSON.stringify(guestUserData));
       
       setUser(guestUserData);
     } catch (error) {

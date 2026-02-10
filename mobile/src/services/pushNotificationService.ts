@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from './firebaseAuthService';
 import { api } from './api';
 
 /**
@@ -92,7 +92,7 @@ export const registerForPushNotifications = async (): Promise<string | null> => 
     
     // Register the token with our backend if authenticated; otherwise persist for later
     try {
-      const authToken = await SecureStore.getItemAsync('accessToken');
+      const authToken = await getIdToken();
       if (authToken) {
         await api.put('/users/push-token', { token });
         if (__DEV__) {
@@ -132,7 +132,7 @@ export const syncPendingPushToken = async (): Promise<boolean> => {
     const token = await AsyncStorage.getItem('expo_push_token');
     if (!token) return false;
 
-    const authToken = await SecureStore.getItemAsync('accessToken');
+    const authToken = await getIdToken();
     if (!authToken) return false;
 
     // If flagged pending then sync

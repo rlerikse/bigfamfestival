@@ -17,7 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DebugModule } from './debug/debug.module'; // Debug endpoints
 import * as Joi from 'joi';
 import { APP_GUARD } from '@nestjs/core';
-import { HybridAuthGuard } from './auth/guards/hybrid-auth.guard';
+import { FirebaseAuthGuard } from './auth/guards/firebase-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { ArtistsModule } from './artists/artists.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -32,8 +32,8 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().default(3000),
-        JWT_SECRET: Joi.string().required(),
-        JWT_EXPIRATION: Joi.string().default('1d'),
+        JWT_SECRET: Joi.string().optional(), // Legacy - kept for backward compatibility, Firebase Auth replaces JWT
+        JWT_EXPIRATION: Joi.string().optional(), // Legacy - kept for backward compatibility
         CORS_ORIGIN: Joi.string().default('*'),
         GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(), // Changed from .required()
         GOOGLE_PROJECT_ID: Joi.string().required(),
@@ -96,10 +96,10 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
   ],
   controllers: [],
   providers: [
-    // Global authentication guard (Firebase + legacy JWT during transition)
+    // Global authentication guard (Firebase Auth - BFF-50)
     {
       provide: APP_GUARD,
-      useClass: HybridAuthGuard,
+      useClass: FirebaseAuthGuard,
     },
     // Global roles guard
     {

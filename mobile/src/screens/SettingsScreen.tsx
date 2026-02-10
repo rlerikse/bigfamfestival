@@ -322,12 +322,15 @@ const SettingsScreen = () => {
         {item.hasToggle ? (
           <DarkModeToggle showLabel={false} size="small" />
         ) : item.hasSwitch ? (
-          <Switch
-            value={item.switchValue}
-            onValueChange={item.onSwitchToggle}
-            trackColor={{ false: theme.border, true: theme.primary }}
-            thumbColor={'#FFFFFF'}
-          />
+          <View style={{ width: 46, alignItems: 'center' }}>
+            <Switch
+              value={item.switchValue}
+              onValueChange={item.onSwitchToggle}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor={'#FFFFFF'}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
         ) : (
           <Ionicons 
             name="chevron-forward" 

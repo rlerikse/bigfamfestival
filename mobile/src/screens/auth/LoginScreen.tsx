@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,17 +34,39 @@ const LoginScreen = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+
+  const isValidEmail = (emailStr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+
+  // Clear error when user starts typing
+  const handleEmailChange = useCallback((text: string) => {
+    setEmail(text);
+    if (error) setError(null);
+  }, [error]);
+
+  const handlePasswordChange = useCallback((text: string) => {
+    setPassword(text);
+    if (error) setError(null);
+  }, [error]);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password.');
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      await login(email, password);
+      await login(email.trim(), password);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
       setError(errorMessage);
@@ -78,27 +101,43 @@ const LoginScreen = () => {
         {
           text: 'Send',
           onPress: async (inputEmail) => {
-            const emailToReset = inputEmail || email;
+            const emailToReset = (inputEmail || email || '').trim();
             if (!emailToReset) {
-              Alert.alert('Error', 'Please enter an email address.');
+              Alert.alert('Email Required', 'Please enter your email address to reset your password.');
+              return;
+            }
+            if (!isValidEmail(emailToReset)) {
+              Alert.alert('Invalid Email', 'Please enter a valid email address.');
               return;
             }
             try {
+              setIsForgotPasswordLoading(true);
               await resetPassword(emailToReset);
               Alert.alert(
-                'Email Sent',
-                'Check your inbox for a password reset link. It may take a few minutes to arrive.',
+                'Check Your Email',
+                `We've sent a password reset link to ${emailToReset}. It may take a few minutes to arrive. Check your spam folder if you don't see it.`,
                 [{ text: 'OK' }]
               );
             } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : 'Failed to send reset email.';
-              Alert.alert('Error', errorMessage);
+              const msg = err instanceof Error ? err.message : '';
+              if (msg.includes('No account found')) {
+                Alert.alert('Account Not Found', 'No account exists with that email address. Would you like to create one?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Sign Up', onPress: () => navigation.navigate('Register') },
+                ]);
+              } else if (msg.includes('Too many')) {
+                Alert.alert('Please Wait', 'Too many reset requests. Please wait a few minutes before trying again.');
+              } else {
+                Alert.alert('Reset Failed', msg || 'Unable to send reset email. Please try again later.');
+              }
+            } finally {
+              setIsForgotPasswordLoading(false);
             }
           },
         },
       ],
       'plain-text',
-      email // Pre-fill with email if already entered
+      email.trim()
     );
   };
 
@@ -125,7 +164,10 @@ const LoginScreen = () => {
           <Text style={[styles.headerText, { color: theme.text }]}>Login</Text>
           
           {error && (
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={[styles.errorBanner, { backgroundColor: `${theme.error || '#FF3B30'}15`, borderColor: `${theme.error || '#FF3B30'}40` }]}>
+              <Ionicons name="alert-circle" size={20} color={theme.error || '#FF3B30'} style={{ marginRight: 8 }} />
+              <Text style={[styles.errorText, { color: theme.error || '#FF3B30' }]}>{error}</Text>
+            </View>
           )}
 
           <View style={[styles.inputContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -135,7 +177,7 @@ const LoginScreen = () => {
               placeholder="Email"
               placeholderTextColor={theme.muted}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
               autoCapitalize="none"
               keyboardType="email-address"
               returnKeyType="next"
@@ -149,7 +191,7 @@ const LoginScreen = () => {
               placeholder="Password"
               placeholderTextColor={theme.muted}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
               secureTextEntry={!isPasswordVisible}
               returnKeyType="done"
             />
@@ -194,13 +236,24 @@ const LoginScreen = () => {
           
           <TouchableOpacity
             style={[styles.guestButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={() => loginAsGuest()}
+            onPress={handleGuestLogin}
             disabled={isLoading}
           >
             <Text style={[styles.guestButtonText, { color: theme.text }]}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <View style={[styles.loadingCard, { backgroundColor: theme.card }]}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.text }]}>
+              Signing in...
+            </Text>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -261,9 +314,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 24,
   },
-  errorText: {
-    color: '#FF0000',
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 16,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -305,6 +367,29 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  loadingCard: {
+    borderRadius: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

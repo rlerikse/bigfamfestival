@@ -20,6 +20,8 @@
     "seed:events": "ts-node -r tsconfig-paths/register scripts/seed-events.ts",
     "migrate:firebase": "ts-node -r tsconfig-paths/register scripts/migrate-to-firebase.ts",
     "migrate:firebase:dry": "ts-node -r tsconfig-paths/register scripts/migrate-to-firebase.ts --dry-run",
+    "cleanup:passwords": "ts-node -r tsconfig-paths/register scripts/remove-passwords-from-firestore.ts",
+    "cleanup:passwords:execute": "ts-node -r tsconfig-paths/register scripts/remove-passwords-from-firestore.ts --execute",
     "seed:events:api": "ts-node -r tsconfig-paths/register scripts/seed-events-api.ts"
   },
   "description": "API for the Big Fam Festival App",

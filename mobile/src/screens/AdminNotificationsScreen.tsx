@@ -13,7 +13,7 @@ import {
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from '../services/firebaseAuthService';
 import { api } from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -97,7 +97,7 @@ const AdminNotificationsScreen = () => {
       
       // Debug the auth token in dev mode
       if (__DEV__) {
-        const token = await SecureStore.getItemAsync('accessToken');
+        const token = await getIdToken();
         // eslint-disable-next-line no-console
         console.log(`Using auth token: ${token ? token.substring(0, 10) + '...' : 'none'}`);
       }

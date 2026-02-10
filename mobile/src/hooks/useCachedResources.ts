@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import * as Font from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
-import * as SecureStore from 'expo-secure-store';
+import { getCurrentUser } from '../services/firebaseAuthService';
 import NetInfo from '@react-native-community/netinfo';
 import { checkApiHealth } from '../services/api';
 import { Asset } from 'expo-asset';
@@ -46,15 +46,14 @@ export default function useCachedResources() {
         }
 
         // Verify token if exists
-        const token = await SecureStore.getItemAsync('userToken');
-        if (token) {
+        const currentUser = getCurrentUser();
+        if (currentUser) {
           try {
             // Validate token (optional)
             // You might want to implement a lightweight validation method
           } catch (error) {
             console.warn('Token validation failed:', error);
-            // Clear invalid tokens
-            await SecureStore.deleteItemAsync('userToken');
+            // Firebase Auth manages token lifecycle - no manual cleanup needed
           }
         }
 

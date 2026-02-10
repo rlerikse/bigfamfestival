@@ -5,7 +5,6 @@ import {
   Get,
   Delete,
   Request,
-  UseGuards,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -14,14 +13,13 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// Auth handled by global FirebaseAuthGuard
 import { CampsitesService } from './campsites.service';
 import { CreateCampsiteDto } from './dto/create-campsite.dto';
 import { Campsite } from './interfaces/campsite.interface';
 
 @ApiTags('campsites')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('campsites')
 export class CampsitesController {
   constructor(private readonly campsitesService: CampsitesService) {}

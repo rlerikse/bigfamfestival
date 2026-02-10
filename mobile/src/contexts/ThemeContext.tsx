@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { festivalConfig } from '../config/festival.config';
 
 // Colors loaded from festival configuration
@@ -40,14 +40,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const savedMode = await SecureStore.getItemAsync('themeMode');
+        const savedMode = await AsyncStorage.getItem('themeMode');
         if (savedMode && ['light', 'dark', 'system'].includes(savedMode)) {
           setMode(savedMode as ThemeMode);
         } else {
           // Default to light mode if no saved preference
           setMode('light');
         }
-        const savedPerformanceMode = await SecureStore.getItemAsync('performanceMode');
+        const savedPerformanceMode = await AsyncStorage.getItem('performanceMode');
         if (savedPerformanceMode) {
           setIsPerformanceMode(savedPerformanceMode === 'true');
         }
@@ -76,7 +76,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Save mode preference
       try {
-        await SecureStore.setItemAsync('themeMode', mode);
+        await AsyncStorage.setItem('themeMode', mode);
       } catch (error) {
         console.error('Error saving theme mode:', error);
       }
@@ -90,7 +90,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newPerformanceMode = !isPerformanceMode;
     setIsPerformanceMode(newPerformanceMode);
     try {
-      await SecureStore.setItemAsync('performanceMode', newPerformanceMode.toString());
+      await AsyncStorage.setItem('performanceMode', newPerformanceMode.toString());
     } catch (error) {
       console.error('Error saving performance mode:', error);
     }

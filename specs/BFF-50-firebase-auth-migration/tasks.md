@@ -245,7 +245,7 @@ Existing Big Fam users with passwords can log in after migration without resetti
 
 #### Testing Migration
 
-- [ ] T016 [D:T014] [US1] [M] Test migration with 5-user subset
+- [x] T016 [D:T014] [US1] [M] Test migration with 5-user subset
   - Run `npm run migrate:firebase -- --limit=5`
   - Verify users appear in Firebase Console
   - Test login with Firebase SDK
@@ -253,12 +253,13 @@ Existing Big Fam users with passwords can log in after migration without resetti
   - Branch: `feat/BFF-50-14_test-migration`
   - Copilot time: 30-45 min
 
-- [ ] T017 [D:T016] [US1] [L] Run full migration (150 users)
+- [x] T017 [D:T016] [US1] [L] Run full migration (150 users)
   - Run `npm run migrate:firebase`
   - Verify all 150 users in Firebase Console
   - Verify custom claims applied
   - Branch: `feat/BFF-50-15_full-migration`
   - Copilot time: 45-60 min
+  - **Result: 150 users imported successfully**
 
 - [ ] T018 [D:T017] [US1] [M] Verify login for 3 test accounts
   - Pick 3 users (different roles: attendee, staff, admin)
@@ -393,7 +394,7 @@ Existing Big Fam users with passwords can log in after migration without resetti
   - Branch: `feat/BFF-50-28_test-refresh`
   - Copilot time: 30-45 min
 
-- [ ] T031 [D:T024] [US2] [S] Remove deprecated `authService.ts` if exists
+- [x] T031 [D:T024] [US2] [S] Remove deprecated `authService.ts` if exists
   - Delete or rename old auth service
   - Update any remaining imports
   - Branch: `feat/BFF-50-29_cleanup-old-service`
@@ -462,19 +463,19 @@ Users who forgot their password can request a reset email and set a new password
 
 #### Backend Cleanup
 
-- [ ] T036 [D:T018,T030] [L] Remove `JwtStrategy` from `backend/src/auth/strategies/`
+- [x] T036 [D:T018,T030] [L] Remove `JwtStrategy` from `backend/src/auth/strategies/`
   - Delete `jwt.strategy.ts`
   - Update auth.module.ts providers
   - Branch: `feat/BFF-50-34_remove-jwt-strategy`
   - Copilot time: 30-45 min
 
-- [ ] T037 [D:T036] [M] Replace `HybridAuthGuard` with `FirebaseAuthGuard` everywhere
+- [x] T037 [D:T036] [M] Replace `HybridAuthGuard` with `FirebaseAuthGuard` everywhere
   - Update all controller guards
   - Remove HybridAuthGuard
   - Branch: `feat/BFF-50-35_firebase-only`
   - Copilot time: 30-45 min
 
-- [ ] T038 [D:T037] [M] Remove password-related code from `auth.service.ts`
+- [x] T038 [D:T037] [M] Remove password-related code from `auth.service.ts`
   - Remove hashPassword()
   - Remove comparePasswords()
   - Remove bcrypt import
@@ -485,13 +486,13 @@ Users who forgot their password can request a reset email and set a new password
 
 #### Data Model Cleanup
 
-- [ ] T039 [D:T017] [M] Remove `password` field from `user.interface.ts`
+- [x] T039 [D:T017] [M] Remove `password` field from `user.interface.ts`
   - Update `backend/src/users/interfaces/user.interface.ts`
   - Update any DTOs that reference password
   - Branch: `feat/BFF-50-37_remove-password-field`
   - Copilot time: 20-30 min
 
-- [ ] T040 [D:T039] [L] Create script to remove password fields from Firestore
+- [x] T040 [D:T039] [L] Create script to remove password fields from Firestore
   - Query all users
   - Use Firestore FieldValue.delete() for password field
   - Add confirmation prompt
@@ -500,12 +501,12 @@ Users who forgot their password can request a reset email and set a new password
 
 #### Mobile Cleanup
 
-- [ ] T041 [D:T031] [S] Remove SecureStore auth token code from `mobile/src/`
+- [x] T041 [D:T031] [S] Remove SecureStore auth token code from `mobile/src/`
   - Remove token storage/retrieval
   - Remove token refresh interceptors
   - Branch: `feat/BFF-50-39_remove-securestore`
 
-- [ ] T042 [D:T041] [S] Clean up unused imports across mobile
+- [x] T042 [D:T041] [S] Clean up unused imports across mobile
   - Remove expo-secure-store if no longer needed
   - Run lint to find unused imports
   - Branch: `feat/BFF-50-40_mobile-cleanup`

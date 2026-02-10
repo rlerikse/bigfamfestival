@@ -1,5 +1,5 @@
 import { api } from './api';
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import NetInfo from '@react-native-community/netinfo';
@@ -21,7 +21,7 @@ export const updateUserProfile = async (
   data: UpdateProfileParams
 ): Promise<User> => {
   try {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');
@@ -51,7 +51,7 @@ export const uploadProfilePicture = async (
   imageUri: string
 ): Promise<string> => {
   try {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');
@@ -109,7 +109,7 @@ export const markCampsite = async (
 ): Promise<void> => {
   try {
     // Check for token
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');
@@ -179,7 +179,7 @@ export const markCampsite = async (
 export const removeCampsite = async (userId: string): Promise<void> => {
   try {
     // Check for token
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');

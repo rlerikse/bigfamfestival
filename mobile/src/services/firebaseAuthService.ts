@@ -146,9 +146,11 @@ export function onIdTokenChanged(
  */
 export async function sendPasswordResetEmail(email: string): Promise<void> {
   try {
+    console.log('[FirebaseAuth] Sending password reset email to:', email);
     await auth().sendPasswordResetEmail(email);
+    console.log('[FirebaseAuth] Password reset email sent successfully');
   } catch (error: any) {
-    console.error('[FirebaseAuth] Password reset error:', error.code);
+    console.error('[FirebaseAuth] Password reset error:', error.code, error.message);
     throw new Error(getErrorMessage(error));
   }
 }

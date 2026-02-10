@@ -9,7 +9,6 @@ import {
   Query,
   Request,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -18,8 +17,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+// Auth handled by global FirebaseAuthGuard + RolesGuard
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { EventsService } from './events.service';
@@ -29,7 +27,6 @@ import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('events')
 @Controller('events')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 

@@ -5,11 +5,15 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsBoolean,
 } from 'class-validator';
 import { Role } from '../../auth/enums/role.enum';
 
-export class CreateUserDto {
+/**
+ * DTO for creating a user profile after Firebase registration.
+ * The Firebase UID comes from the authenticated request (req.user.id),
+ * not from the request body.
+ */
+export class CreateProfileDto {
   @ApiProperty({ example: 'John Doe', description: 'The name of the user' })
   @IsString()
   @IsNotEmpty()
@@ -39,32 +43,5 @@ export class CreateUserDto {
   })
   @IsEnum(Role)
   @IsOptional()
-  role: Role;
-
-  @ApiProperty({
-    example: false,
-    description: 'Whether to share campsite location',
-    default: false,
-  })
-  @IsBoolean()
-  @IsOptional()
-  shareMyCampsite: boolean;
-
-  @ApiProperty({
-    example: false,
-    description: 'Whether to share current location',
-    default: false,
-  })
-  @IsBoolean()
-  @IsOptional()
-  shareMyLocation: boolean;
-
-  @ApiProperty({
-    example: 'need-ticket',
-    description: 'The ticket type of the user',
-    default: 'need-ticket',
-  })
-  @IsString()
-  @IsOptional()
-  ticketType: string;
+  role?: Role;
 }

@@ -1,12 +1,13 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Get,
   Param,
+  Post,
   Put,
   Request,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -14,18 +15,37 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+// Auth handled by global FirebaseAuthGuard + RolesGuard
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { UsersService } from './users.service';
+import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('users')
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Post('profile')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create user profile after Firebase registration' })
+  @ApiResponse({ status: 201, description: 'User profile created' })
+  @ApiResponse({ status: 409, description: 'User profile already exists' })
+  async createProfile(@Request() req, @Body() createProfileDto: CreateProfileDto) {
+    // Check if user already exists
+    const existing = await this.usersService.findById(req.user.id).catch(() => null);
+    if (existing) {
+      throw new ConflictException('User profile already exists');
+    }
+
+    return this.usersService.createWithId(req.user.id, {
+      name: createProfileDto.name,
+      email: createProfileDto.email,
+      phone: createProfileDto.phone,
+      role: createProfileDto.role,
+    });
+  }
 
   @Get('profile')
   @ApiBearerAuth()

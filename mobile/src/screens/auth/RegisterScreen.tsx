@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -35,27 +35,48 @@ const RegisterScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isValidEmail = (emailStr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+
+  // Clear error when user starts typing
+  const clearError = useCallback(() => {
+    if (error) setError(null);
+  }, [error]);
+
   const handleRegister = async () => {
-    // Basic validation
-    if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all required fields');
+    // Step-by-step validation with specific messages
+    if (!name.trim()) {
+      setError('Please enter your name.');
       return;
     }
-
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please enter a password.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+    if (!confirmPassword) {
+      setError('Please confirm your password.');
+      return;
+    }
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters long');
+      setError('Passwords do not match.');
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      await register(name, email, password, phone || undefined);
+      await register(name.trim(), email.trim(), password, phone.trim() || undefined);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
       setError(errorMessage);
@@ -88,7 +109,10 @@ const RegisterScreen = () => {
 
         <View style={styles.formContainer}>
           {error && (
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={[styles.errorBanner, { backgroundColor: `${theme.error || '#FF3B30'}15`, borderColor: `${theme.error || '#FF3B30'}40` }]}>
+              <Ionicons name="alert-circle" size={20} color={theme.error || '#FF3B30'} style={{ marginRight: 8 }} />
+              <Text style={[styles.errorText, { color: theme.error || '#FF3B30' }]}>{error}</Text>
+            </View>
           )}
 
           <View style={[styles.inputContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -98,7 +122,7 @@ const RegisterScreen = () => {
               placeholder="Full Name"
               placeholderTextColor={theme.muted}
               value={name}
-              onChangeText={setName}
+              onChangeText={(t) => { setName(t); clearError(); }}
               returnKeyType="next"
             />
           </View>
@@ -110,7 +134,7 @@ const RegisterScreen = () => {
               placeholder="Email"
               placeholderTextColor={theme.muted}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => { setEmail(t); clearError(); }}
               autoCapitalize="none"
               keyboardType="email-address"
               returnKeyType="next"
@@ -124,7 +148,7 @@ const RegisterScreen = () => {
               placeholder="Phone (Optional)"
               placeholderTextColor={theme.muted}
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={(t) => { setPhone(t); clearError(); }}
               keyboardType="phone-pad"
               returnKeyType="next"
             />
@@ -137,7 +161,7 @@ const RegisterScreen = () => {
               placeholder="Password"
               placeholderTextColor={theme.muted}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => { setPassword(t); clearError(); }}
               secureTextEntry={!isPasswordVisible}
               returnKeyType="next"
             />
@@ -157,7 +181,7 @@ const RegisterScreen = () => {
               placeholder="Confirm Password"
               placeholderTextColor={theme.muted}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(t) => { setConfirmPassword(t); clearError(); }}
               secureTextEntry={!isPasswordVisible}
               returnKeyType="done"
             />
@@ -182,6 +206,17 @@ const RegisterScreen = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <View style={[styles.loadingCard, { backgroundColor: theme.card }]}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.text }]}>
+              Creating your account...
+            </Text>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -211,9 +246,18 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
   },
-  errorText: {
-    color: '#FF0000',
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 16,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -250,6 +294,29 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  loadingCard: {
+    borderRadius: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -6,17 +6,15 @@ import {
   Body,
   Param,
   Request,
-  UseGuards,
 } from '@nestjs/common';
 import { ScheduleService } from './schedule.service';
 import {
   CreateScheduleItemDto,
   RemoveScheduleItemDto,
 } from './interfaces/schedule.interface';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// Auth handled by global FirebaseAuthGuard
 
 @Controller('schedule')
-@UseGuards(JwtAuthGuard)
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
 

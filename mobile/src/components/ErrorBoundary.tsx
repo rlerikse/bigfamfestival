@@ -1,7 +1,16 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+
+// Fallback colors when ThemeProvider is not available
+const fallbackColors = {
+  background: '#1a1a2e',
+  card: '#16213e',
+  text: '#FFFFFF',
+  muted: '#A0AEC0',
+  error: '#E53E3E',
+  primary: '#4A90D9',
+};
 
 interface Props {
   children: ReactNode;
@@ -78,7 +87,8 @@ interface ErrorFallbackProps {
 }
 
 const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onReset }) => {
-  const { theme } = useTheme();
+  // Use hardcoded fallback colors since this may render outside ThemeProvider
+  const theme = fallbackColors;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>

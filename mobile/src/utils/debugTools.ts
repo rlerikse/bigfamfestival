@@ -3,7 +3,7 @@
  * These utilities should only be used during development and testing
  */
 
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from '../services/firebaseAuthService';
 import { Alert } from 'react-native';
 import { UserRole } from '../types/user';
 
@@ -38,10 +38,10 @@ export const showTokenDebugInfo = async (): Promise<void> => {
   }
 
   try {
-    const token = await SecureStore.getItemAsync('accessToken');
+    const token = await getIdToken();
     
     if (!token) {
-      Alert.alert('Debug Info', 'No access token found in secure storage');
+      Alert.alert('Debug Info', 'No access token found (not signed in)');
       return;
     }
     
@@ -76,7 +76,7 @@ export const compareRoles = async (currentUserRole: UserRole | undefined): Promi
   }
 
   try {
-    const token = await SecureStore.getItemAsync('accessToken');
+    const token = await getIdToken();
     
     if (!token) {
       Alert.alert('Role Comparison', 'No token found.\nCurrent user role: ' + (currentUserRole || 'none'));
