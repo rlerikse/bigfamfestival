@@ -119,30 +119,32 @@ All backend code MUST follow NestJS conventions:
 
 Rationale: Consistent NestJS patterns improve maintainability and enable proper testing.
 
-## VII. JWT Authentication & Authorization
+## VII. Firebase Authentication & Authorization
 
-Authentication MUST use JWT tokens with Passport.js:
+Authentication MUST use Firebase Authentication:
 
-**Token Structure**:
-- `sub`: User ID
+**Token Structure** (Firebase ID Token):
+- `uid`: User ID (matches Firestore document ID)
 - `email`: User email
-- `role`: User role (ADMIN, ATTENDEE)
+- Custom claims: `role` (ADMIN, ATTENDEE)
 
-**Token Storage (Mobile)**:
-- Access tokens MUST be stored in `expo-secure-store` (encrypted)
+**Token Management (Mobile)**:
+- Firebase SDK handles token storage and automatic refresh
+- ID tokens retrieved via `getIdToken()` are short-lived (1 hour, auto-refreshed)
 - Tokens MUST be sent via `Authorization: Bearer <token>` header
 
 **Route Protection**:
-- All routes are protected by default (`JwtAuthGuard` at controller level)
+- All routes are protected by default (`FirebaseAuthGuard` at controller level)
 - Public routes MUST use `@Public()` decorator explicitly
-- Admin routes MUST use `@Roles(Role.ADMIN)` decorator
+- Admin routes MUST use `@Roles(Role.ADMIN)` decorator with role from custom claims
 
 **Password Security**:
-- Passwords MUST be hashed with bcrypt (minimum 10 rounds)
-- Password validation MUST require minimum 8 characters
-- Failed login attempts SHOULD NOT reveal whether email exists
+- Passwords managed by Firebase Authentication
+- Password validation MUST require minimum 8 characters (enforced by Firebase)
+- Firebase handles password hashing and secure storage
+- Password reset via Firebase email flow
 
-Rationale: Secure authentication protects user data and prevents unauthorized access.
+Rationale: Firebase Authentication provides secure, managed authentication with built-in token refresh, reducing custom security code.
 
 ## VIII. Input Validation & Type Safety
 
@@ -364,7 +366,7 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 - Framework: NestJS 10.x
 - Language: TypeScript 5.x
 - Database: Google Cloud Firestore
-- Auth: Passport.js + JWT
+- Auth: Firebase Authentication (firebase-admin SDK)
 - Docs: Swagger/OpenAPI via @nestjs/swagger
 - Logging: Pino via nestjs-pino
 - Hosting: Google Cloud Run
@@ -375,7 +377,8 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 - Language: TypeScript 5.x
 - Navigation: React Navigation 6.x
 - State: TanStack React Query 5.x + React Context
-- Storage: AsyncStorage (cache) + SecureStore (tokens)
+- Auth: @react-native-firebase/auth
+- Storage: AsyncStorage (cache)
 
 **Cloud Functions**:
 - Runtime: Node.js 20

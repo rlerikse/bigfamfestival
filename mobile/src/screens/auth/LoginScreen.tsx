@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,7 +25,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, loginAsGuest } = useAuth();
+  const { login, loginAsGuest, resetPassword } = useAuth();
   const { theme, isDark } = useTheme();
   
   const [email, setEmail] = useState('');
@@ -43,8 +44,9 @@ const LoginScreen = () => {
       setIsLoading(true);
       setError(null);
       await login(email, password);
-    } catch (error) {
-      // Error is handled in AuthContext
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -55,8 +57,9 @@ const LoginScreen = () => {
       setIsLoading(true);
       setError(null);
       await loginAsGuest();
-    } catch (error) {
-      // Error is handled in AuthContext
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Guest login failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -64,6 +67,39 @@ const LoginScreen = () => {
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const handleForgotPassword = () => {
+    Alert.prompt(
+      'Reset Password',
+      'Enter your email address to receive a password reset link.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async (inputEmail) => {
+            const emailToReset = inputEmail || email;
+            if (!emailToReset) {
+              Alert.alert('Error', 'Please enter an email address.');
+              return;
+            }
+            try {
+              await resetPassword(emailToReset);
+              Alert.alert(
+                'Email Sent',
+                'Check your inbox for a password reset link. It may take a few minutes to arrive.',
+                [{ text: 'OK' }]
+              );
+            } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : 'Failed to send reset email.';
+              Alert.alert('Error', errorMessage);
+            }
+          },
+        },
+      ],
+      'plain-text',
+      email // Pre-fill with email if already entered
+    );
   };
 
   return (
@@ -136,6 +172,12 @@ const LoginScreen = () => {
             ) : (
               <Text style={styles.buttonText}>Login</Text>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleForgotPassword}>
+            <Text style={[styles.forgotPasswordText, { color: theme.muted }]}>
+              Forgot password?
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -248,12 +290,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
   },
   linkText: {
     fontSize: 14,

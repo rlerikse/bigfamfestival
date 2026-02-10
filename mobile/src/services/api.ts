@@ -1,9 +1,9 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 import { Platform } from 'react-native';
 
 import { API_URL } from '../config/constants';
+import { getIdToken } from './firebaseAuthService';
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -81,32 +81,26 @@ api.interceptors.request.use(
     
     // Add auth token if available (except for auth endpoints)
     if (!config.url?.includes('/auth/')) {
-      const token = await SecureStore.getItemAsync('accessToken');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
-        
-        // Debug logging for requests to notifications endpoints
-        if (__DEV__ && config.url?.includes('/notifications')) {
-          // eslint-disable-next-line no-console
-          console.log(`Setting Authorization header: Bearer ${token.substring(0, 10)}...`);
+      try {
+        const token = await getIdToken();
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
           
-          try {
-            // Decode JWT to check user role
-            const tokenParts = token.split('.');
-            if (tokenParts.length === 3) {
-              const payload = JSON.parse(atob(tokenParts[1]));
-              // eslint-disable-next-line no-console
-              console.log('JWT payload:', payload);
-            }
-          } catch (err) {
+          // Debug logging for requests to notifications endpoints
+          if (__DEV__ && config.url?.includes('/notifications')) {
             // eslint-disable-next-line no-console
-            console.log('Error decoding JWT token:', err);
+            console.log(`Setting Authorization header: Bearer ${token.substring(0, 10)}...`);
+          }
+        } else {
+          // Debug log if no token found
+          if (__DEV__ && config.url?.includes('/notifications')) {
+            console.warn('No Firebase auth token found for request to:', config.url);
           }
         }
-      } else {
-        // Debug log if no token found
-        if (__DEV__ && config.url?.includes('/notifications')) {
-          console.warn('No auth token found for request to:', config.url);
+      } catch (err) {
+        // User not authenticated, continue without token
+        if (__DEV__) {
+          console.log('[API] No authenticated user, proceeding without token');
         }
       }
     }

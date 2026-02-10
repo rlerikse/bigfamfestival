@@ -1,13 +1,16 @@
 {
   "feature": "BFF-50-firebase-auth-migration",
   "started_at": "2026-02-10T00:00:00Z",
-  "last_updated": "2026-02-10T00:30:00Z",
-  "current_phase": "Phase 3",
-  "completed_phases": ["Phase 0", "Phase 1", "Phase 2"],
-  "completed_tasks": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T009", "T010", "T011", "T012"],
+  "last_updated": "2026-02-10T01:30:00Z",
+  "current_phase": "Phase 6",
+  "completed_phases": ["Phase 0", "Phase 1", "Phase 2", "Phase 3", "Phase 4 (code)", "Phase 5 (code)"],
+  "completed_tasks": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T009", "T010", "T011", "T012", "T013", "T014", "T015", "T019", "T020", "T021", "T022", "T023", "T024", "T025", "T026", "T027", "T032", "T033", "T035", "T043", "T044"],
+  "pending_manual_tasks": ["T016", "T017", "T018", "T028", "T029", "T030", "T034"],
+  "pending_cleanup_tasks": ["T031", "T036", "T037", "T038", "T039", "T040", "T041", "T042"],
   "failed_tasks": [],
-  "files_created": [".checkpoint.json", "firebase-auth.guard.ts", "hybrid-auth.guard.ts", "guards/index.ts", "firebase-auth.guard.spec.ts", "hybrid-auth.guard.spec.ts"],
-  "files_modified": ["tasks.md", "mobile/package.json", "auth.module.ts", "auth.controller.ts", "app.module.ts"],
+  "files_created": [".checkpoint.json", "firebase-auth.guard.ts", "hybrid-auth.guard.ts", "guards/index.ts", "firebase-auth.guard.spec.ts", "hybrid-auth.guard.spec.ts", "migrate-to-firebase.ts", "firebaseAuthService.ts", "types/auth.ts"],
+  "files_modified": ["tasks.md", "mobile/package.json", "auth.module.ts", "auth.controller.ts", "app.module.ts", "backend/package.json", "AuthContext.tsx", "api.ts", "authService.ts", "LoginScreen.tsx", "RegisterScreen.tsx", "constitution.md", "SETUP_GUIDE.md"],
   "git_commit_before": "f7300df5f098eb016ff72b360ad66460f128c10e",
-  "last_checkpoint_commit": "7a1522f"
+  "last_checkpoint_commit": "3e4b33b",
+  "notes": "All implementation code complete. Remaining: 7 manual testing tasks and 8 cleanup tasks (post-migration verification)."
 }

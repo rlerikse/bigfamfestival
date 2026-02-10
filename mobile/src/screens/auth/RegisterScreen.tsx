@@ -56,8 +56,9 @@ const RegisterScreen = () => {
       setIsLoading(true);
       setError(null);
       await register(name, email, password, phone || undefined);
-    } catch (error) {
-      // Error is handled in AuthContext
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

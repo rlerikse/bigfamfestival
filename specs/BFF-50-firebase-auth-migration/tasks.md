@@ -297,20 +297,20 @@ Existing Big Fam users with passwords can log in after migration without resetti
 
 #### Firebase Configuration
 
-- [ ] T019 [P] [US2] [M] Install react-native-firebase packages in `mobile/`
+- [x] T019 [P] [US2] [M] Install react-native-firebase packages in `mobile/`
   - Run `cd mobile && npm install @react-native-firebase/app @react-native-firebase/auth`
   - Verify native config files exist: `google-services.json`, `GoogleService-Info.plist`
   - Branch: `feat/BFF-50-17_install-firebase`
   - Copilot time: 20-30 min
 
-- [ ] T020 [D:T019] [US2] [M] Configure iOS Firebase in `mobile/ios/`
+- [x] T020 [D:T019] [US2] [M] Configure iOS Firebase in `mobile/ios/`
   - Verify `GoogleService-Info.plist` in correct location
   - Update `Podfile` if needed
   - Run `cd ios && pod install`
   - Branch: `feat/BFF-50-18_ios-firebase`
   - Copilot time: 30-45 min
 
-- [ ] T021 [D:T019] [US2] [M] Configure Android Firebase in `mobile/android/`
+- [x] T021 [D:T019] [US2] [M] Configure Android Firebase in `mobile/android/`
   - Verify `google-services.json` in `android/app/`
   - Verify `build.gradle` has google-services plugin
   - Branch: `feat/BFF-50-19_android-firebase`
@@ -318,7 +318,7 @@ Existing Big Fam users with passwords can log in after migration without resetti
 
 #### Auth Service Refactor
 
-- [ ] T022 [D:T019] [US2] [L] Create `firebaseAuthService.ts` in `mobile/src/services/`
+- [x] T022 [D:T019] [US2] [L] Create `firebaseAuthService.ts` in `mobile/src/services/`
   - `signIn(email, password)` → Firebase signInWithEmailAndPassword
   - `signUp(email, password, name)` → Firebase createUserWithEmailAndPassword
   - `signOut()` → Firebase signOut
@@ -329,14 +329,14 @@ Existing Big Fam users with passwords can log in after migration without resetti
   - Branch: `feat/BFF-50-20_firebase-auth-service`
   - Copilot time: 60-90 min
 
-- [ ] T023 [D:T022] [US2] [S] Add TypeScript types for Firebase service in `mobile/src/types/auth.ts`
+- [x] T023 [D:T022] [US2] [S] Add TypeScript types for Firebase service in `mobile/src/types/auth.ts`
   - FirebaseAuthUser type
   - AuthError type
   - Branch: `feat/BFF-50-21_auth-types`
 
 #### AuthContext Refactor
 
-- [ ] T024 [D:T022] [US2] [XL] Refactor `AuthContext.tsx` in `mobile/src/contexts/`
+- [x] T024 [D:T022] [US2] [XL] Refactor `AuthContext.tsx` in `mobile/src/contexts/`
   - Replace JWT token storage with Firebase onAuthStateChanged
   - Remove SecureStore token operations
   - Update login() to use firebaseAuthService.signIn()
@@ -347,7 +347,7 @@ Existing Big Fam users with passwords can log in after migration without resetti
   - Branch: `feat/BFF-50-22_auth-context`
   - Copilot time: 90-120 min
 
-- [ ] T025 [D:T024] [US2] [M] Update API client to use Firebase ID token
+- [x] T025 [D:T024] [US2] [M] Update API client to use Firebase ID token
   - Modify `mobile/src/services/api.ts` or axios instance
   - Get token from Firebase: `auth().currentUser?.getIdToken()`
   - Remove custom token refresh interceptor
@@ -356,14 +356,14 @@ Existing Big Fam users with passwords can log in after migration without resetti
 
 #### Screen Updates
 
-- [ ] T026 [D:T024] [US2] [M] Update `LoginScreen.tsx` in `mobile/src/screens/`
+- [x] T026 [D:T024] [US2] [M] Update `LoginScreen.tsx` in `mobile/src/screens/`
   - Use auth context login() (which now uses Firebase)
   - Handle Firebase-specific errors
   - Update error messaging
   - Branch: `feat/BFF-50-24_login-screen`
   - Copilot time: 30-45 min
 
-- [ ] T027 [D:T024] [US5] [M] Update `RegisterScreen.tsx` in `mobile/src/screens/`
+- [x] T027 [D:T024] [US5] [M] Update `RegisterScreen.tsx` in `mobile/src/screens/`
   - Use auth context register() (which now uses Firebase)
   - Handle Firebase-specific errors (email-already-in-use, weak-password)
   - Update error messaging
@@ -421,13 +421,13 @@ Users who forgot their password can request a reset email and set a new password
 
 ### Implementation Tasks
 
-- [ ] T032 [D:T022] [US3] [M] Add `sendPasswordResetEmail()` to `firebaseAuthService.ts`
+- [x] T032 [D:T022] [US3] [M] Add `sendPasswordResetEmail()` to `firebaseAuthService.ts`
   - Use Firebase `sendPasswordResetEmail(email)`
   - Handle errors (user-not-found, invalid-email)
   - Branch: `feat/BFF-50-30_reset-service`
   - Copilot time: 20-30 min
 
-- [ ] T033 [D:T032] [US3] [M] Add forgot password UI to `LoginScreen.tsx`
+- [x] T033 [D:T032] [US3] [M] Add forgot password UI to `LoginScreen.tsx`
   - Add "Forgot password?" link
   - Show email input modal/form
   - Call sendPasswordResetEmail()
@@ -444,7 +444,7 @@ Users who forgot their password can request a reset email and set a new password
   - Branch: `feat/BFF-50-32_test-reset`
   - Copilot time: 30-45 min
 
-- [ ] T035 [D:T034] [US3] [S] Update AuthContext to expose reset function
+- [x] T035 [D:T034] [US3] [S] Update AuthContext to expose reset function
   - Add `resetPassword(email)` to AuthContext value
   - Branch: `feat/BFF-50-33_context-reset`
 
@@ -512,14 +512,14 @@ Users who forgot their password can request a reset email and set a new password
 
 #### Documentation & Constitution
 
-- [ ] T043 [D:T037] [M] Update constitution Section VII (Auth)
+- [x] T043 [D:T037] [M] Update constitution Section VII (Auth)
   - Change "Passport.js + JWT" to "Firebase Authentication"
   - Update auth patterns documentation
   - File: `.specify/memory/constitution.md`
   - Branch: `feat/BFF-50-41_update-constitution`
   - Copilot time: 20-30 min
 
-- [ ] T044 [D:T043] [S] Update `docs/SETUP_GUIDE.md` with Firebase Auth instructions
+- [x] T044 [D:T043] [S] Update `docs/SETUP_GUIDE.md` with Firebase Auth instructions
   - Document Firebase project setup
   - Document service account requirements
   - Branch: `feat/BFF-50-42_update-docs`

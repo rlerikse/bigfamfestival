@@ -83,3 +83,30 @@ export const getUserProfile = async (token?: string): Promise<User> => {
     );
   }
 };
+
+/**
+ * Create user profile in backend after Firebase registration
+ * This syncs the Firebase user with our backend database
+ */
+export const createUserProfile = async (
+  uid: string,
+  email: string,
+  name: string,
+  phone?: string
+): Promise<User> => {
+  try {
+    const response = await api.post<User>('/users/profile', {
+      uid,
+      email,
+      name,
+      phone,
+    });
+    return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error('Create profile error:', error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || 'Failed to create user profile'
+    );
+  }
+};
