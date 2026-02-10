@@ -1,6 +1,6 @@
 # Aggregated Specifications
 
-> **Generated**: 2026-02-10T15:33:51Z
+> **Generated**: 2026-02-10T15:35:10Z
 > **Source**: [es-spec-kit-context](https://github.com/rlerikse/es-spec-kit-context)
 
 This file contains **35 specifications** from **2 repositories** from connected repositories.
@@ -892,6 +892,353 @@ mobile/src/
 
 ---
 
+## [bigfamfestival] BFF-52-custom-smtp-email-deliverability
+
+# Feature Specification: Custom SMTP for Firebase Email Deliverability
+
+**Jira**: [BFF-52](https://eriksensolutions.atlassian.net/browse/BFF-52)  
+**Feature Branch**: `BFF-52-custom-smtp-email-deliverability`  
+**Created**: 2025-07-11  
+**Status**: Draft  
+
+---
+
+## Overview
+
+Configure a custom SMTP provider for Firebase Authentication emails to ensure password resets, email verifications, and other transactional emails land in users' inboxes rather than spam folders.
+
+### Current State
+- **Email Sender**: Default Firebase `noreply@*.firebaseapp.com`
+- **Deliverability**: Emails flagged as spam by Gmail, Outlook, Yahoo, iCloud
+- **Templates**: Generic Firebase branding, no customization
+- **DNS Auth**: No SPF, DKIM, or DMARC records for sender domain
+- **Impact**: Users requesting password resets may never see the email
+
+### Target State
+- **Email Sender**: Branded address (e.g., `noreply@bigfamfestival.com`)
+- **Deliverability**: Emails arrive in inbox for all major providers
+- **Templates**: Big Fam Festival branded email templates
+- **DNS Auth**: SPF, DKIM, and DMARC records configured and passing
+- **SMTP Provider**: SendGrid (free tier: 100 emails/day) or equivalent
+
+### Context
+
+Discovered during [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50) (Firebase Auth Migration) testing — the password reset flow works functionally, but emails go to spam with the default Firebase sender address.
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: SMTP credentials stored securely in Firebase Console (not in code)
+- [ ] **Observability**: Email delivery metrics available via SMTP provider dashboard
+- [ ] **Testing**: Verified delivery to Gmail, Outlook, Yahoo, and iCloud
+- [ ] **Documentation**: DNS record requirements and SMTP configuration documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Password Reset Email Delivery (Priority: P1)
+
+As a user who forgot my password, I want the reset email to arrive in my inbox (not spam), so that I can regain access to my account reliably.
+
+**Why this priority**: Core deliverability — if reset emails go to spam, users can't recover accounts without admin intervention.
+
+**Independent Test**: Trigger password reset for test accounts on Gmail, Outlook, Yahoo, and iCloud. Verify email arrives in inbox within 2 minutes.
+
+**Acceptance Criteria**:
+1. **Given** a user requests a password reset, **When** Firebase sends the email via custom SMTP, **Then** the email arrives in the user's inbox (not spam)
+2. **Given** a password reset email, **When** the user inspects the sender, **Then** it shows the branded domain (e.g., `noreply@bigfamfestival.com`)
+
+---
+
+### User Story 2 - Branded Email Templates (Priority: P2)
+
+As a user receiving emails from the app, I want them to look professional and match the festival branding, so that I trust the email is legitimate.
+
+**Why this priority**: Branding builds trust and reduces users marking emails as spam.
+
+**Independent Test**: Trigger each email type (password reset, email verification, email change) and verify branding matches Big Fam Festival design.
+
+**Acceptance Criteria**:
+1. **Given** any Firebase Auth email, **When** the user opens it, **Then** it displays Big Fam Festival branding (logo, colors, styling)
+2. **Given** a password reset email, **When** the user reads it, **Then** the copy is clear, branded, and includes festival-relevant messaging
+
+---
+
+### User Story 3 - DNS Authentication (Priority: P1)
+
+As a system administrator, I want proper DNS records configured, so that emails pass authentication checks and aren't flagged as spam.
+
+**Why this priority**: Without SPF/DKIM/DMARC, even custom SMTP emails may be flagged.
+
+**Independent Test**: Use mail-tester.com or MXToolbox to verify SPF, DKIM, and DMARC records pass for the sending domain.
+
+**Acceptance Criteria**:
+1. **Given** the sending domain, **When** checked via MXToolbox, **Then** SPF record passes validation
+2. **Given** the sending domain, **When** checked via MXToolbox, **Then** DKIM record passes validation
+3. **Given** the sending domain, **When** checked via MXToolbox, **Then** DMARC record passes validation
+
+---
+
+### Edge Cases
+
+- What happens if the SMTP provider (SendGrid) goes down? Firebase falls back to default sender.
+- What happens if the free tier sending limit (100/day) is exceeded? Emails may be delayed or rejected.
+- How does the system handle emails to addresses with strict corporate spam filters?
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST send all Firebase Auth emails via a custom SMTP provider
+- **FR-002**: System MUST use a branded sender address (e.g., `noreply@bigfamfestival.com`)
+- **FR-003**: System MUST have SPF, DKIM, and DMARC DNS records configured for the sender domain
+- **FR-004**: Email templates MUST be customized with Big Fam Festival branding
+- **FR-005**: Password reset emails MUST arrive in inbox (not spam) for Gmail, Outlook, Yahoo, and iCloud
+- **FR-006**: SMTP credentials MUST be configured only in Firebase Console (never in source code)
+
+### Implementation Tasks
+
+1. **Choose SMTP Provider**: SendGrid free tier (100 emails/day) recommended
+2. **Create SendGrid Account**: Sign up, verify sender domain, generate API key
+3. **Firebase Console → Authentication → Templates**: 
+   - Configure custom SMTP settings (host, port, username, password)
+   - Set custom sender name and email address
+4. **DNS Configuration** (via domain registrar):
+   - Add SPF record: `v=spf1 include:sendgrid.net ~all`
+   - Add DKIM record: CNAME records provided by SendGrid
+   - Add DMARC record: `v=DMARC1; p=quarantine; rua=mailto:dmarc@bigfamfestival.com`
+5. **Email Template Customization**:
+   - Password reset template
+   - Email address verification template
+   - Email address change template
+6. **Testing**: Verify delivery to major providers
+
+---
+
+## Success Criteria
+
+### Measurable Outcomes
+
+- **SC-001**: Password reset emails arrive in inbox (not spam) for 95%+ of recipients across Gmail, Outlook, Yahoo, iCloud
+- **SC-002**: Email sender shows branded domain in all Firebase Auth emails
+- **SC-003**: SPF, DKIM, and DMARC all pass validation on MXToolbox or mail-tester.com
+- **SC-004**: Zero support tickets related to "didn't receive password reset email" after implementation
+
+---
+
+## Related Resources
+
+**External References**:
+- **Jira Ticket**: [BFF-52](https://eriksensolutions.atlassian.net/browse/BFF-52) - Configure Custom SMTP for Firebase Email Deliverability
+- **Related Ticket**: [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50) - Firebase Auth Migration (where this issue was discovered)
+- **Firebase Docs**: [Customize email handler](https://firebase.google.com/docs/auth/custom-email-handler)
+- **Firebase Docs**: [Use custom SMTP server](https://firebase.google.com/docs/auth/email-custom-smtp)
+- **SendGrid**: [Free tier](https://sendgrid.com/pricing/) - 100 emails/day
+
+---
+
+## [bigfamfestival] BFF-50-firebase-auth-migration
+
+# Feature Specification: Firebase Auth Migration
+
+**Jira**: [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50)  
+**Feature Branch**: `BFF-50-firebase-auth-migration`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+
+---
+
+## Overview
+
+Migrate the Big Fam Festival app from custom NestJS JWT-based authentication to Firebase Authentication. This aligns with the Detroit Dub Collective (DDC) architecture pattern, reduces maintenance burden, and provides built-in features like password reset and automatic token refresh.
+
+### Current State
+- **Backend**: Custom auth (bcrypt + JWT) with NestJS Passport strategies
+- **Mobile**: React Context + SecureStore + axios interceptors for token refresh
+- **Users**: 151 total, 150 with bcrypt password hashes
+- **Code burden**: ~500+ lines across auth service, guards, strategies, interceptors
+
+### Target State
+- **Auth Provider**: Firebase Authentication (managed by Google)
+- **Backend**: Firebase Admin SDK for ID token verification
+- **Mobile**: Firebase Auth SDK via react-native-firebase
+- **Code reduction**: ~70% less auth code to maintain
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: Firebase Auth handles credential storage, token management
+- [ ] **Observability**: Authentication events logged via Firebase
+- [ ] **Testing**: Migration script tested with subset before full import
+- [ ] **Documentation**: Migration runbook and rollback procedure documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Existing User Login (Priority: P1)
+
+As an existing Big Fam user with a password, I want to log in after the migration without resetting my password, so that my experience is seamless.
+
+**Why this priority**: Core functionality - if existing users can't log in, migration fails.
+
+**Independent Test**: Import test user with bcrypt hash, verify login with original password works.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** existing users with bcrypt passwords, **When** imported to Firebase Auth, **Then** users can log in with existing credentials
+2. **Given** a migrated user attempts login, **When** they enter correct password, **Then** they are authenticated and receive a valid session
+
+---
+
+### User Story 2 - Automatic Token Refresh (Priority: P1)
+
+As a mobile app user, I want my session to persist without manual re-login, so that I have uninterrupted access to the app.
+
+**Why this priority**: Firebase Auth SDK handles this automatically - key benefit of migration.
+
+**Independent Test**: Let app remain open for 1 hour, verify API calls still work without 401s.
+
+**Acceptance Criteria**:
+1. **Given** a mobile app user, **When** they log in, **Then** Firebase handles token refresh automatically
+2. **Given** an expired access token, **When** the SDK detects it, **Then** it refreshes silently without user action
+
+---
+
+### User Story 3 - Password Reset (Priority: P2)
+
+As a user who forgot my password, I want to request a password reset email, so that I can regain access to my account.
+
+**Why this priority**: Built-in Firebase feature - enables support-free recovery.
+
+**Independent Test**: Request reset for test user, verify email arrives, use link to set new password, login with new password.
+
+**Acceptance Criteria**:
+1. **Given** a user who forgot password, **When** they request reset, **Then** Firebase sends reset email
+2. **Given** a reset email link, **When** user sets new password, **Then** they can login with new credentials
+
+---
+
+### User Story 4 - Backend Token Validation (Priority: P1)
+
+As a backend service, I want to validate Firebase ID tokens on protected endpoints, so that only authenticated users access sensitive data.
+
+**Why this priority**: Backend must trust Firebase tokens - core security requirement.
+
+**Independent Test**: Call protected endpoint with valid Firebase token (should succeed) and invalid token (should return 401).
+
+**Acceptance Criteria**:
+1. **Given** an API request with Firebase ID token, **When** backend validates, **Then** user is authenticated properly
+2. **Given** migration is complete, **When** old JWT tokens are used, **Then** they are rejected gracefully (401 with clear error)
+
+---
+
+### User Story 5 - New User Registration (Priority: P2)
+
+As a new user, I want to create an account with email and password, so that I can access the app features.
+
+**Why this priority**: Must work for new users after migration.
+
+**Independent Test**: Register new user, verify user appears in Firebase Console, verify login works.
+
+**Acceptance Criteria**:
+1. **Given** a new visitor, **When** they register with email/password, **Then** Firebase creates the account
+2. **Given** successful registration, **When** user logs in, **Then** they have access to protected features
+
+---
+
+### Edge Cases
+
+- What happens when user with duplicate email exists in Firestore but not Firebase Auth?
+  - Migration script should handle: import all users, flag duplicates for manual review
+- How does the app handle users mid-session during deployment?
+  - Rolling deployment: new code validates both JWT and Firebase tokens during transition
+- What if bcrypt hash format is incompatible?
+  - Firebase supports standard bcrypt, but verification pass should confirm before production
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: Migration script MUST import all 150 users with bcrypt hashes to Firebase Auth preserving UIDs
+- **FR-002**: Mobile app MUST replace custom AuthContext with Firebase Auth SDK integration
+- **FR-003**: Backend MUST replace JwtAuthGuard with Firebase token verification
+- **FR-004**: System MUST support password reset via Firebase's built-in flow
+- **FR-005**: API client MUST remove custom token refresh interceptors (Firebase SDK handles this)
+- **FR-006**: System MUST reject old JWT tokens with appropriate error messages post-migration
+- **FR-007**: Firestore user documents MUST remove password field after successful migration
+- **FR-008**: Backend MUST maintain backward compatibility during rolling deployment (accept both token types temporarily)
+
+### Key Entities
+
+- **Firebase User**: UID (same as Firestore doc ID), email, passwordHash (managed by Firebase)
+- **Firestore User Document**: id, email, name, phone, role, ticketType, shareMyCampsite, shareMyLocation, expoPushToken (password field removed)
+
+---
+
+## Success Criteria
+
+### Measurable Outcomes
+
+- **SC-001**: 100% of existing 150 users can log in with their current passwords after migration
+- **SC-002**: Zero password reset emails are required as part of migration
+- **SC-003**: Backend auth code reduced by at least 60% (from ~500 lines to <200)
+- **SC-004**: Token refresh happens automatically with no user-visible session expirations
+- **SC-005**: Password reset flow works end-to-end (email sent within 30 seconds, link valid, password updateable)
+- **SC-006**: Migration completes with zero downtime (rolling deployment)
+
+---
+
+## Out of Scope
+
+- Social login providers (Google, Apple) - future enhancement
+- Email verification enforcement - can be added later
+- Multi-factor authentication (MFA)
+- OTA updates during migration window
+- User profile updates (name change, avatar) - existing flows remain unchanged
+
+---
+
+## Assumptions
+
+1. Firebase Auth bcrypt import supports our hash format ($2b$ prefix)
+2. User UIDs in Firestore can be preserved as Firebase UIDs
+3. Mobile app can be updated before backend changes (ship new app version first)
+4. Rolling deployment is acceptable (brief window where both auth methods work)
+5. DDC implementation patterns are directly applicable
+
+---
+
+## Dependencies
+
+- Firebase project: `bigfamfestival` (already configured)
+- Firebase Admin SDK (already installed for Firestore)
+- react-native-firebase package for mobile
+- Service account with Firebase Auth admin permissions
+
+---
+
+## Related Specifications
+
+- [BFF-4 Authentication](../BFF-4-authentication/spec.md) - Current auth implementation (to be replaced)
+- [DDC-1 Authentication](https://github.com/rlerikse/es-spec-kit-context) - Reference implementation pattern
+
+---
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2026-02-10 | Spec-Kit | Initial specification |
+
+---
+
 ## [bigfamfestival] BFF-5-user-management
 
 # User Management - Retroactive Specification
@@ -1543,1178 +1890,6 @@ Automate mobile builds via GitHub Actions.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-10 | AI Assistant | Initial spec created from existing implementation |
-
----
-
-## [bigfamfestival] BFF-14-api-client-infrastructure
-
-# API Client Infrastructure - Retroactive Specification
-
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-14](https://eriksensolutions.atlassian.net/browse/BFF-14)  
-**Created**: 2026-02-09  
-
----
-
-## Overview
-
-API Client Infrastructure provides centralized HTTP client configuration for the mobile app, including base URL management, authentication header injection, request/response interceptors, and error handling standardization.
-
----
-
-## User Stories
-
-### User Story 1 - Centralized API Configuration
-**As a** mobile developer,  
-**I want** a centralized API client,  
-**So that** all API calls use consistent configuration.
-
-**Acceptance Criteria** (Verified):
-- [x] Single axios instance with base URL
-- [x] Default headers (Content-Type)
-- [x] Request timeout configuration
-
-**Implementation**: `mobile/src/services/apiClient.ts:L13-L19`
-
-### User Story 2 - Automatic Authentication
-**As a** mobile developer,  
-**I want** auth tokens automatically added to requests,  
-**So that** I don't have to manually add them.
-
-**Acceptance Criteria** (Verified):
-- [x] Request interceptor adds Bearer token
-- [x] Token retrieved from AsyncStorage
-- [x] Works for all authenticated endpoints
-
-**Implementation**: `mobile/src/services/apiClient.ts:L44-L53`
-
-### User Story 3 - Token Refresh
-**As a** user,  
-**I want** my session to refresh automatically,  
-**So that** I don't get logged out unexpectedly.
-
-**Acceptance Criteria** (Verified):
-- [x] 401 responses trigger token refresh
-- [x] Original request is retried with new token
-- [x] Only attempts refresh once per request
-
-**Implementation**: `mobile/src/services/apiClient.ts:L72-L95`
-
-### User Story 4 - Error Handling
-**As a** mobile developer,  
-**I want** standardized error handling,  
-**So that** errors are consistent across the app.
-
-**Acceptance Criteria** (Verified):
-- [x] Network errors return clean error object
-- [x] Response data is automatically unwrapped
-- [x] Errors include helpful messages
-
-**Implementation**: `mobile/src/services/apiClient.ts:L55-L100`
-
----
-
-## Functional Requirements
-
-| ID | Requirement | Status | Implementation |
-|----|-------------|--------|----------------|
-| FR-001 | Centralized axios instance | ✅ | `apiClient.ts:L13-L19` |
-| FR-002 | Auto-inject auth token | ✅ | `apiClient.ts:L44-L53` |
-| FR-003 | Response data unwrapping | ✅ | `apiClient.ts:L57-L59` |
-| FR-004 | Token refresh on 401 | ✅ | `apiClient.ts:L72-L95` |
-| FR-005 | Network error handling | ✅ | `apiClient.ts:L62-L70` |
-| FR-006 | Android emulator URL fix | ✅ | `apiClient.ts:L21-L38` |
-| FR-007 | Request timeout | ✅ | `apiClient.ts:L18` |
-
----
-
-## Configuration
-
-### Base URL
-```typescript
-const apiClient = axios.create({
-  baseURL: 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 15000, // 15 seconds
-});
-```
-
-### Android Emulator Fix
-For development, localhost needs to be replaced with `10.0.2.2` for Android emulator:
-
-```typescript
-if (Platform.OS === 'android' && API_URL.includes('localhost')) {
-  const newUrl = API_URL.replace('localhost', '10.0.2.2');
-  apiClient.defaults.baseURL = newUrl;
-}
-```
-
----
-
-## Interceptor Flow
-
-### Request Interceptor
-```
-┌──────────────┐     ┌─────────────────────┐     ┌──────────────┐
-│  API Call    │────▶│  Request Interceptor │────▶│   Server     │
-└──────────────┘     │  + Add Bearer Token  │     └──────────────┘
-                     └─────────────────────┘
-```
-
-### Response Interceptor (Success)
-```
-┌──────────────┐     ┌─────────────────────┐     ┌──────────────┐
-│   Server     │────▶│  Response Interceptor│────▶│  API Caller  │
-└──────────────┘     │  Unwrap response.data│     └──────────────┘
-```
-
-### Response Interceptor (401 Error)
-```
-┌──────────────┐     ┌─────────────────────┐     ┌──────────────┐
-│   Server     │────▶│  Response Interceptor│────▶│  Refresh     │
-│   (401)      │     │  Detect 401          │     │  Token       │
-└──────────────┘     └─────────────────────┘     └──────────────┘
-                                                        │
-                     ┌─────────────────────┐            │
-                     │  Retry Original     │◀───────────┘
-                     │  Request            │
-                     └─────────────────────┘
-```
-
----
-
-## Error Response Format
-
-### Network Error
-```typescript
-{
-  message: 'Unable to connect to the server. Please check your internet connection.',
-  isNetworkError: true,
-  originalError: AxiosError
-}
-```
-
-### API Error
-```typescript
-{
-  message: 'Error message from server',
-  status: 400,
-  data: { /* error details */ }
-}
-```
-
----
-
-## File Structure
-
-```
-mobile/src/services/
-├── apiClient.ts      # Axios instance and interceptors
-└── api.ts            # API endpoint definitions (optional)
-
-mobile/src/config/
-└── constants.ts      # API_URL and other constants
-```
-
----
-
-## Storage Keys Used
-
-| Key | Description |
-|-----|-------------|
-| `accessToken` | JWT access token |
-| `refreshToken` | Refresh token (if implemented) |
-
----
-
-## Related Specifications
-
-- [BFF-4 Authentication](../BFF-4-authentication/spec.md) - Token management
-- All API-consuming features depend on this infrastructure
-
----
-
-## [bigfamfestival] BFF-13-health-monitoring
-
-# Health Check & Monitoring - Retroactive Specification
-
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-13](https://eriksensolutions.atlassian.net/browse/BFF-13)  
-**Created**: 2026-02-09  
-
----
-
-## Overview
-
-Health Check & Monitoring provides endpoints for infrastructure monitoring, including API health status and Firestore connectivity checks. These endpoints support load balancer health checks and service observability.
-
----
-
-## User Stories
-
-### User Story 1 - Health Check Endpoint
-**As a** DevOps engineer,  
-**I want** a health check endpoint,  
-**So that** load balancers can verify service health.
-
-**Acceptance Criteria** (Verified):
-- [x] GET /health returns health status
-- [x] Includes Firestore connectivity check
-- [x] Returns graceful response even if Firestore fails
-
-**Implementation**: `backend/src/health/health.controller.ts:L15-L42`
-
-### User Story 2 - Readiness Check
-**As a** DevOps engineer,  
-**I want** a simple readiness endpoint,  
-**So that** I can check if the service is accepting requests.
-
-**Acceptance Criteria** (Verified):
-- [x] GET /health/ready returns basic status
-- [x] Does not depend on external services
-- [x] Includes uptime information
-
-**Implementation**: `backend/src/health/health.controller.ts:L44-L52`
-
----
-
-## Functional Requirements
-
-| ID | Requirement | Status | Implementation |
-|----|-------------|--------|----------------|
-| FR-001 | Health check endpoint | ✅ | `health.controller.ts:L15-L42` |
-| FR-002 | Firestore connectivity check | ✅ | `firestore.health.ts` |
-| FR-003 | Readiness endpoint | ✅ | `health.controller.ts:L44-L52` |
-| FR-004 | Graceful degradation | ✅ | Try-catch in health check |
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/health` | Public | Full health check with dependencies |
-| GET | `/health/ready` | Public | Simple readiness check |
-
-### Response Examples
-
-**GET /health** (Healthy)
-```json
-{
-  "status": "ok",
-  "info": {
-    "firestore": {
-      "status": "up"
-    }
-  },
-  "error": {},
-  "details": {
-    "firestore": {
-      "status": "up"
-    }
-  }
-}
-```
-
-**GET /health** (Degraded)
-```json
-{
-  "status": "ok",
-  "info": {
-    "firestore": {
-      "status": "down",
-      "message": "Firestore check failed but service is starting"
-    }
-  },
-  "error": {},
-  "details": {
-    "firestore": {
-      "status": "down",
-      "message": "Connection timeout"
-    }
-  }
-}
-```
-
-**GET /health/ready**
-```json
-{
-  "status": "ready",
-  "timestamp": "2026-02-09T15:30:00.000Z",
-  "uptime": 3600.5
-}
-```
-
----
-
-## Implementation Details
-
-### NestJS Terminus Integration
-Uses `@nestjs/terminus` for standardized health checks:
-
-```typescript
-@Controller('health')
-export class HealthController {
-  constructor(
-    private health: HealthCheckService,
-    private firestoreHealth: FirestoreHealthIndicator,
-  ) {}
-
-  @Get()
-  @HealthCheck()
-  check() {
-    return this.health.check([
-      () => this.firestoreHealth.isHealthy('firestore'),
-    ]);
-  }
-}
-```
-
-### Firestore Health Indicator
-```typescript
-@Injectable()
-export class FirestoreHealthIndicator extends HealthIndicator {
-  async isHealthy(key: string): Promise<HealthIndicatorResult> {
-    // Attempt a simple Firestore operation
-    // Return health status
-  }
-}
-```
-
----
-
-## File Structure
-
-```
-backend/src/health/
-├── health.controller.ts        # HTTP endpoints
-├── health.module.ts            # Module definition
-└── firestore.health.ts         # Firestore health indicator
-```
-
----
-
-## Infrastructure Integration
-
-### Cloud Run Health Checks
-```yaml
-# Configure in Cloud Run
-startupProbe:
-  httpGet:
-    path: /health/ready
-    port: 3000
-  initialDelaySeconds: 5
-  periodSeconds: 10
-
-livenessProbe:
-  httpGet:
-    path: /health
-    port: 3000
-  periodSeconds: 30
-```
-
----
-
-## Related Specifications
-
-- Infrastructure/Terraform configuration uses these endpoints
-
----
-
-## [bigfamfestival] BFF-12-app-settings-theme
-
-# App Settings & Theme - Retroactive Specification
-
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-12](https://eriksensolutions.atlassian.net/browse/BFF-12)  
-**Created**: 2026-02-09  
-
----
-
-## Overview
-
-App Settings & Theme provides user preference management including theme switching (light/dark mode), debug mode toggle, and persistent settings storage on the mobile device.
-
----
-
-## User Stories
-
-### User Story 1 - Toggle Dark Mode
-**As a** festival attendee,  
-**I want to** switch between light and dark themes,  
-**So that** I can use the app comfortably at night.
-
-**Acceptance Criteria** (Verified):
-- [x] User can toggle dark mode in settings
-- [x] Theme persists across app restarts
-- [x] All screens respect theme setting
-
-**Implementation**: `mobile/src/contexts/ThemeContext.tsx`
-
-### User Story 2 - Debug Mode Toggle
-**As a** developer,  
-**I want to** enable debug mode in the app,  
-**So that** I can see additional diagnostic information.
-
-**Acceptance Criteria** (Verified):
-- [x] Debug mode can be toggled in settings
-- [x] Debug mode shows additional UI/logs
-
-**Implementation**: `mobile/src/contexts/DebugContext.tsx`
-
-### User Story 3 - Persistent Settings
-**As a** user,  
-**I want** my settings to persist,  
-**So that** I don't have to reconfigure on each app launch.
-
-**Acceptance Criteria** (Verified):
-- [x] Settings are stored in AsyncStorage
-- [x] Settings are loaded on app start
-
-**Implementation**: `mobile/src/contexts/AppSettingsContext.tsx`
-
----
-
-## Functional Requirements
-
-| ID | Requirement | Status | Implementation |
-|----|-------------|--------|----------------|
-| FR-001 | Theme toggle (light/dark) | ✅ | `ThemeContext.tsx` |
-| FR-002 | Persist theme preference | ✅ | AsyncStorage |
-| FR-003 | Debug mode toggle | ✅ | `DebugContext.tsx` |
-| FR-004 | Settings screen UI | ✅ | `SettingsScreen.tsx` |
-
----
-
-## Data Model
-
-### App Settings
-```typescript
-interface AppSettings {
-  theme: 'light' | 'dark' | 'system';
-  debugMode: boolean;
-  // Future settings...
-}
-```
-
-### Theme Context
-```typescript
-interface ThemeContextType {
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
-  isDarkMode: boolean;
-}
-```
-
-### Debug Context
-```typescript
-interface DebugContextType {
-  isDebugMode: boolean;
-  toggleDebugMode: () => void;
-}
-```
-
----
-
-## Storage Keys
-
-| Key | Type | Description |
-|-----|------|-------------|
-| `@app_theme` | string | 'light' or 'dark' |
-| `@debug_mode` | boolean | Debug mode enabled |
-
----
-
-## File Structure
-
-```
-mobile/src/
-├── contexts/
-│   ├── AppSettingsContext.tsx   # Settings aggregation
-│   ├── ThemeContext.tsx         # Theme state management
-│   └── DebugContext.tsx         # Debug mode management
-└── screens/
-    └── SettingsScreen.tsx       # Settings UI
-```
-
----
-
-## Theme Colors
-
-### Light Theme
-```typescript
-const lightTheme = {
-  background: '#FFFFFF',
-  text: '#000000',
-  primary: '#6200EE',
-  // ...
-};
-```
-
-### Dark Theme
-```typescript
-const darkTheme = {
-  background: '#121212',
-  text: '#FFFFFF',
-  primary: '#BB86FC',
-  // ...
-};
-```
-
----
-
-## Related Specifications
-
-- No backend dependencies (mobile-only feature)
-
----
-
-## [bigfamfestival] BFF-11-admin-notifications
-
-# Admin Notifications Management - Retroactive Specification
-
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-11](https://eriksensolutions.atlassian.net/browse/BFF-11)  
-**Created**: 2026-02-09  
-
----
-
-## Overview
-
-Admin Notifications Management provides a UI and debugging tools for festival administrators to send and manage push notifications. This includes the AdminNotificationsScreen in the mobile app and debug endpoints for testing notification delivery.
-
----
-
-## User Stories
-
-### User Story 1 - Send Notification from Mobile
-**As an** admin using the mobile app,  
-**I want to** compose and send notifications,  
-**So that** I can quickly communicate with attendees from anywhere.
-
-**Acceptance Criteria** (Verified):
-- [x] Admin sees "Admin Notifications" screen in app
-- [x] Can compose notification title and body
-- [x] Can send notification to all users
-- [x] Shows confirmation of send status
-
-**Implementation**: `mobile/src/screens/AdminNotificationsScreen.tsx`
-
-### User Story 2 - Debug Notification Delivery
-**As a** developer,  
-**I want to** test notification delivery,  
-**So that** I can verify the push notification system works.
-
-**Acceptance Criteria** (Verified):
-- [x] Debug endpoint to check token count
-- [x] Debug endpoint to verify FCM configuration
-- [x] Debug endpoint to send test notification
-
-**Implementation**: `backend/src/debug/notifications-debug.controller.ts`
-
----
-
-## Functional Requirements
-
-| ID | Requirement | Status | Implementation |
-|----|-------------|--------|----------------|
-| FR-001 | Admin notification UI | ✅ | `AdminNotificationsScreen.tsx` |
-| FR-002 | Token count debug endpoint | ✅ | `notifications-debug.controller.ts` |
-| FR-003 | FCM status check | ✅ | `notifications.service.ts:verifyFcmConfig()` |
-| FR-004 | Test notification sending | ✅ | Debug controller |
-
----
-
-## API Endpoints (Debug)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/debug/notifications/token-count` | Public* | Get registered token count |
-| GET | `/debug/notifications/fcm-status` | Public* | Verify FCM configuration |
-| POST | `/debug/notifications/test` | Public* | Send test notification |
-
-*Debug endpoints - should be protected in production
-
----
-
-## Mobile Admin UI
-
-### AdminNotificationsScreen Features
-- Title input field
-- Body/message textarea
-- Priority selector (normal/high)
-- Send button
-- Status feedback (success/error)
-- Token count display
-
----
-
-## File Structure
-
-```
-backend/src/debug/
-├── debug.module.ts
-└── notifications-debug.controller.ts
-
-mobile/src/screens/
-└── AdminNotificationsScreen.tsx
-```
-
----
-
-## Security Considerations
-
-| Concern | Current State | Recommendation |
-|---------|--------------|----------------|
-| Debug endpoint access | Public | Should be protected or disabled in production |
-| Admin UI visibility | Role-based in app | Properly gated by role |
-
----
-
-## Related Specifications
-
-- [BFF-8 Push Notifications](../BFF-8-push-notifications/spec.md) - Core notification system
-
----
-
-## [bigfamfestival] BFF-10-campsite-location
-
-# Campsite Location - Retroactive Specification
-
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-10](https://eriksensolutions.atlassian.net/browse/BFF-10)  
-**Created**: 2026-02-09  
-
----
-
-## Overview
-
-Campsite Location allows festival attendees to save and retrieve the GPS coordinates of their campsite, making it easier to find their way back after exploring the festival grounds.
-
----
-
-## User Stories
-
-### User Story 1 - Save Campsite Location
-**As a** festival attendee,  
-**I want to** save my campsite's GPS location,  
-**So that** I can find my way back later.
-
-**Acceptance Criteria** (Verified):
-- [x] User can save/update location via POST /campsites
-- [x] Location includes latitude and longitude
-- [x] Optional name/description for the campsite
-- [x] Upsert behavior (create or update)
-
-**Implementation**: `backend/src/campsites/campsites.controller.ts:L22-L30`
-
-### User Story 2 - Retrieve Campsite Location
-**As a** festival attendee,  
-**I want to** retrieve my saved campsite location,  
-**So that** I can navigate back to it.
-
-**Acceptance Criteria** (Verified):
-- [x] User can get location via GET /campsites
-- [x] Returns 404 if no campsite saved
-
-**Implementation**: `backend/src/campsites/campsites.controller.ts:L32-L43`
-
-### User Story 3 - Delete Campsite Location
-**As a** festival attendee,  
-**I want to** delete my campsite location,  
-**So that** I can clear outdated information.
-
-**Acceptance Criteria** (Verified):
-- [x] User can delete via DELETE /campsites
-- [x] Returns 404 if no campsite exists
-
-**Implementation**: `backend/src/campsites/campsites.controller.ts:L45-L52`
-
----
-
-## Functional Requirements
-
-| ID | Requirement | Status | Implementation |
-|----|-------------|--------|----------------|
-| FR-001 | Create/update campsite location | ✅ | `campsites.service.ts:L13-L38` |
-| FR-002 | Get user's campsite | ✅ | `campsites.service.ts:L40-L55` |
-| FR-003 | Delete campsite | ✅ | `campsites.service.ts:L57-L68` |
-| FR-004 | Auto-generate timestamps | ✅ | `campsites.service.ts:L17-L25` |
-
----
-
-## API Endpoints
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/campsites` | JWT | Create/update campsite location |
-| GET | `/campsites` | JWT | Get current user's campsite |
-| DELETE | `/campsites` | JWT | Delete current user's campsite |
-
-### Request/Response Examples
-
-**POST /campsites**
-```json
-// Request
-{
-  "latitude": 41.8781,
-  "longitude": -87.6298,
-  "name": "Blue Tent near Food Court",
-  "notes": "Next to the big oak tree"
-}
-
-// Response
-{
-  "id": "user123",
-  "userId": "user123",
-  "latitude": 41.8781,
-  "longitude": -87.6298,
-  "name": "Blue Tent near Food Court",
-  "notes": "Next to the big oak tree",
-  "createdAt": "2026-06-15T10:30:00Z",
-  "updatedAt": "2026-06-15T10:30:00Z"
-}
-```
-
----
-
-## Data Model
-
-### Campsite Interface
-```typescript
-interface Campsite {
-  id: string;           // Same as userId
-  userId: string;
-  latitude: number;
-  longitude: number;
-  name?: string;
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-### CreateCampsiteDto
-```typescript
-interface CreateCampsiteDto {
-  latitude: number;
-  longitude: number;
-  name?: string;
-  notes?: string;
-}
-```
-
----
-
-## Firestore Data Structure
-
-### Collection: `campsites`
-- Document ID = User ID (one campsite per user)
-
-```javascript
-{
-  "userId": "user123",
-  "latitude": 41.8781,
-  "longitude": -87.6298,
-  "name": "Blue Tent near Food Court",
-  "notes": "Next to the big oak tree",
-  "createdAt": Timestamp,
-  "updatedAt": Timestamp
-}
-```
-
----
-
-## Edge Cases & Error Handling
-
-| Scenario | Handling | Location |
-|----------|----------|----------|
-| No campsite exists (GET) | NotFoundException (404) | `campsites.controller.ts:L39` |
-| No campsite exists (DELETE) | NotFoundException (404) | `campsites.service.ts:L62` |
-| Firestore error | InternalServerErrorException (500) | `campsites.service.ts` |
-
----
-
-## Mobile Integration
-
-### MapScreen
-- Displays map with campsite marker
-- Uses expo-location for GPS
-- Allows setting campsite on map tap
-
----
-
-## File Structure
-
-```
-backend/src/campsites/
-├── campsites.controller.ts    # HTTP endpoints
-├── campsites.module.ts        # Module definition
-├── campsites.service.ts       # Business logic
-├── dto/
-│   └── create-campsite.dto.ts
-└── interfaces/
-    └── campsite.interface.ts
-
-mobile/src/
-├── screens/MapScreen.tsx
-└── services/mapService.ts
-```
-
----
-
-## Related Specifications
-
-- [BFF-5 User Management](../BFF-5-user-management/spec.md) - shareMyCampsite preference
-
----
-
-## [bigfamfestival] BFF-52-custom-smtp-email-deliverability
-
-# Feature Specification: Custom SMTP for Firebase Email Deliverability
-
-**Jira**: [BFF-52](https://eriksensolutions.atlassian.net/browse/BFF-52)  
-**Feature Branch**: `BFF-52-custom-smtp-email-deliverability`  
-**Created**: 2025-07-11  
-**Status**: Draft  
-
----
-
-## Overview
-
-Configure a custom SMTP provider for Firebase Authentication emails to ensure password resets, email verifications, and other transactional emails land in users' inboxes rather than spam folders.
-
-### Current State
-- **Email Sender**: Default Firebase `noreply@*.firebaseapp.com`
-- **Deliverability**: Emails flagged as spam by Gmail, Outlook, Yahoo, iCloud
-- **Templates**: Generic Firebase branding, no customization
-- **DNS Auth**: No SPF, DKIM, or DMARC records for sender domain
-- **Impact**: Users requesting password resets may never see the email
-
-### Target State
-- **Email Sender**: Branded address (e.g., `noreply@bigfamfestival.com`)
-- **Deliverability**: Emails arrive in inbox for all major providers
-- **Templates**: Big Fam Festival branded email templates
-- **DNS Auth**: SPF, DKIM, and DMARC records configured and passing
-- **SMTP Provider**: SendGrid (free tier: 100 emails/day) or equivalent
-
-### Context
-
-Discovered during [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50) (Firebase Auth Migration) testing — the password reset flow works functionally, but emails go to spam with the default Firebase sender address.
-
----
-
-## Constitution Compliance Checklist
-
-- [ ] **Security**: SMTP credentials stored securely in Firebase Console (not in code)
-- [ ] **Observability**: Email delivery metrics available via SMTP provider dashboard
-- [ ] **Testing**: Verified delivery to Gmail, Outlook, Yahoo, and iCloud
-- [ ] **Documentation**: DNS record requirements and SMTP configuration documented
-
----
-
-## User Scenarios & Testing
-
-### User Story 1 - Password Reset Email Delivery (Priority: P1)
-
-As a user who forgot my password, I want the reset email to arrive in my inbox (not spam), so that I can regain access to my account reliably.
-
-**Why this priority**: Core deliverability — if reset emails go to spam, users can't recover accounts without admin intervention.
-
-**Independent Test**: Trigger password reset for test accounts on Gmail, Outlook, Yahoo, and iCloud. Verify email arrives in inbox within 2 minutes.
-
-**Acceptance Criteria**:
-1. **Given** a user requests a password reset, **When** Firebase sends the email via custom SMTP, **Then** the email arrives in the user's inbox (not spam)
-2. **Given** a password reset email, **When** the user inspects the sender, **Then** it shows the branded domain (e.g., `noreply@bigfamfestival.com`)
-
----
-
-### User Story 2 - Branded Email Templates (Priority: P2)
-
-As a user receiving emails from the app, I want them to look professional and match the festival branding, so that I trust the email is legitimate.
-
-**Why this priority**: Branding builds trust and reduces users marking emails as spam.
-
-**Independent Test**: Trigger each email type (password reset, email verification, email change) and verify branding matches Big Fam Festival design.
-
-**Acceptance Criteria**:
-1. **Given** any Firebase Auth email, **When** the user opens it, **Then** it displays Big Fam Festival branding (logo, colors, styling)
-2. **Given** a password reset email, **When** the user reads it, **Then** the copy is clear, branded, and includes festival-relevant messaging
-
----
-
-### User Story 3 - DNS Authentication (Priority: P1)
-
-As a system administrator, I want proper DNS records configured, so that emails pass authentication checks and aren't flagged as spam.
-
-**Why this priority**: Without SPF/DKIM/DMARC, even custom SMTP emails may be flagged.
-
-**Independent Test**: Use mail-tester.com or MXToolbox to verify SPF, DKIM, and DMARC records pass for the sending domain.
-
-**Acceptance Criteria**:
-1. **Given** the sending domain, **When** checked via MXToolbox, **Then** SPF record passes validation
-2. **Given** the sending domain, **When** checked via MXToolbox, **Then** DKIM record passes validation
-3. **Given** the sending domain, **When** checked via MXToolbox, **Then** DMARC record passes validation
-
----
-
-### Edge Cases
-
-- What happens if the SMTP provider (SendGrid) goes down? Firebase falls back to default sender.
-- What happens if the free tier sending limit (100/day) is exceeded? Emails may be delayed or rejected.
-- How does the system handle emails to addresses with strict corporate spam filters?
-
----
-
-## Requirements
-
-### Functional Requirements
-
-- **FR-001**: System MUST send all Firebase Auth emails via a custom SMTP provider
-- **FR-002**: System MUST use a branded sender address (e.g., `noreply@bigfamfestival.com`)
-- **FR-003**: System MUST have SPF, DKIM, and DMARC DNS records configured for the sender domain
-- **FR-004**: Email templates MUST be customized with Big Fam Festival branding
-- **FR-005**: Password reset emails MUST arrive in inbox (not spam) for Gmail, Outlook, Yahoo, and iCloud
-- **FR-006**: SMTP credentials MUST be configured only in Firebase Console (never in source code)
-
-### Implementation Tasks
-
-1. **Choose SMTP Provider**: SendGrid free tier (100 emails/day) recommended
-2. **Create SendGrid Account**: Sign up, verify sender domain, generate API key
-3. **Firebase Console → Authentication → Templates**: 
-   - Configure custom SMTP settings (host, port, username, password)
-   - Set custom sender name and email address
-4. **DNS Configuration** (via domain registrar):
-   - Add SPF record: `v=spf1 include:sendgrid.net ~all`
-   - Add DKIM record: CNAME records provided by SendGrid
-   - Add DMARC record: `v=DMARC1; p=quarantine; rua=mailto:dmarc@bigfamfestival.com`
-5. **Email Template Customization**:
-   - Password reset template
-   - Email address verification template
-   - Email address change template
-6. **Testing**: Verify delivery to major providers
-
----
-
-## Success Criteria
-
-### Measurable Outcomes
-
-- **SC-001**: Password reset emails arrive in inbox (not spam) for 95%+ of recipients across Gmail, Outlook, Yahoo, iCloud
-- **SC-002**: Email sender shows branded domain in all Firebase Auth emails
-- **SC-003**: SPF, DKIM, and DMARC all pass validation on MXToolbox or mail-tester.com
-- **SC-004**: Zero support tickets related to "didn't receive password reset email" after implementation
-
----
-
-## Related Resources
-
-**External References**:
-- **Jira Ticket**: [BFF-52](https://eriksensolutions.atlassian.net/browse/BFF-52) - Configure Custom SMTP for Firebase Email Deliverability
-- **Related Ticket**: [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50) - Firebase Auth Migration (where this issue was discovered)
-- **Firebase Docs**: [Customize email handler](https://firebase.google.com/docs/auth/custom-email-handler)
-- **Firebase Docs**: [Use custom SMTP server](https://firebase.google.com/docs/auth/email-custom-smtp)
-- **SendGrid**: [Free tier](https://sendgrid.com/pricing/) - 100 emails/day
-
----
-
-## [bigfamfestival] BFF-50-firebase-auth-migration
-
-# Feature Specification: Firebase Auth Migration
-
-**Jira**: [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50)  
-**Feature Branch**: `BFF-50-firebase-auth-migration`  
-**Created**: 2026-02-10  
-**Status**: Draft  
-
----
-
-## Overview
-
-Migrate the Big Fam Festival app from custom NestJS JWT-based authentication to Firebase Authentication. This aligns with the Detroit Dub Collective (DDC) architecture pattern, reduces maintenance burden, and provides built-in features like password reset and automatic token refresh.
-
-### Current State
-- **Backend**: Custom auth (bcrypt + JWT) with NestJS Passport strategies
-- **Mobile**: React Context + SecureStore + axios interceptors for token refresh
-- **Users**: 151 total, 150 with bcrypt password hashes
-- **Code burden**: ~500+ lines across auth service, guards, strategies, interceptors
-
-### Target State
-- **Auth Provider**: Firebase Authentication (managed by Google)
-- **Backend**: Firebase Admin SDK for ID token verification
-- **Mobile**: Firebase Auth SDK via react-native-firebase
-- **Code reduction**: ~70% less auth code to maintain
-
----
-
-## Constitution Compliance Checklist
-
-- [ ] **Security**: Firebase Auth handles credential storage, token management
-- [ ] **Observability**: Authentication events logged via Firebase
-- [ ] **Testing**: Migration script tested with subset before full import
-- [ ] **Documentation**: Migration runbook and rollback procedure documented
-
----
-
-## User Scenarios & Testing
-
-### User Story 1 - Existing User Login (Priority: P1)
-
-As an existing Big Fam user with a password, I want to log in after the migration without resetting my password, so that my experience is seamless.
-
-**Why this priority**: Core functionality - if existing users can't log in, migration fails.
-
-**Independent Test**: Import test user with bcrypt hash, verify login with original password works.
-
-**Acceptance Criteria** (from Jira):
-1. **Given** existing users with bcrypt passwords, **When** imported to Firebase Auth, **Then** users can log in with existing credentials
-2. **Given** a migrated user attempts login, **When** they enter correct password, **Then** they are authenticated and receive a valid session
-
----
-
-### User Story 2 - Automatic Token Refresh (Priority: P1)
-
-As a mobile app user, I want my session to persist without manual re-login, so that I have uninterrupted access to the app.
-
-**Why this priority**: Firebase Auth SDK handles this automatically - key benefit of migration.
-
-**Independent Test**: Let app remain open for 1 hour, verify API calls still work without 401s.
-
-**Acceptance Criteria**:
-1. **Given** a mobile app user, **When** they log in, **Then** Firebase handles token refresh automatically
-2. **Given** an expired access token, **When** the SDK detects it, **Then** it refreshes silently without user action
-
----
-
-### User Story 3 - Password Reset (Priority: P2)
-
-As a user who forgot my password, I want to request a password reset email, so that I can regain access to my account.
-
-**Why this priority**: Built-in Firebase feature - enables support-free recovery.
-
-**Independent Test**: Request reset for test user, verify email arrives, use link to set new password, login with new password.
-
-**Acceptance Criteria**:
-1. **Given** a user who forgot password, **When** they request reset, **Then** Firebase sends reset email
-2. **Given** a reset email link, **When** user sets new password, **Then** they can login with new credentials
-
----
-
-### User Story 4 - Backend Token Validation (Priority: P1)
-
-As a backend service, I want to validate Firebase ID tokens on protected endpoints, so that only authenticated users access sensitive data.
-
-**Why this priority**: Backend must trust Firebase tokens - core security requirement.
-
-**Independent Test**: Call protected endpoint with valid Firebase token (should succeed) and invalid token (should return 401).
-
-**Acceptance Criteria**:
-1. **Given** an API request with Firebase ID token, **When** backend validates, **Then** user is authenticated properly
-2. **Given** migration is complete, **When** old JWT tokens are used, **Then** they are rejected gracefully (401 with clear error)
-
----
-
-### User Story 5 - New User Registration (Priority: P2)
-
-As a new user, I want to create an account with email and password, so that I can access the app features.
-
-**Why this priority**: Must work for new users after migration.
-
-**Independent Test**: Register new user, verify user appears in Firebase Console, verify login works.
-
-**Acceptance Criteria**:
-1. **Given** a new visitor, **When** they register with email/password, **Then** Firebase creates the account
-2. **Given** successful registration, **When** user logs in, **Then** they have access to protected features
-
----
-
-### Edge Cases
-
-- What happens when user with duplicate email exists in Firestore but not Firebase Auth?
-  - Migration script should handle: import all users, flag duplicates for manual review
-- How does the app handle users mid-session during deployment?
-  - Rolling deployment: new code validates both JWT and Firebase tokens during transition
-- What if bcrypt hash format is incompatible?
-  - Firebase supports standard bcrypt, but verification pass should confirm before production
-
----
-
-## Requirements
-
-### Functional Requirements
-
-- **FR-001**: Migration script MUST import all 150 users with bcrypt hashes to Firebase Auth preserving UIDs
-- **FR-002**: Mobile app MUST replace custom AuthContext with Firebase Auth SDK integration
-- **FR-003**: Backend MUST replace JwtAuthGuard with Firebase token verification
-- **FR-004**: System MUST support password reset via Firebase's built-in flow
-- **FR-005**: API client MUST remove custom token refresh interceptors (Firebase SDK handles this)
-- **FR-006**: System MUST reject old JWT tokens with appropriate error messages post-migration
-- **FR-007**: Firestore user documents MUST remove password field after successful migration
-- **FR-008**: Backend MUST maintain backward compatibility during rolling deployment (accept both token types temporarily)
-
-### Key Entities
-
-- **Firebase User**: UID (same as Firestore doc ID), email, passwordHash (managed by Firebase)
-- **Firestore User Document**: id, email, name, phone, role, ticketType, shareMyCampsite, shareMyLocation, expoPushToken (password field removed)
-
----
-
-## Success Criteria
-
-### Measurable Outcomes
-
-- **SC-001**: 100% of existing 150 users can log in with their current passwords after migration
-- **SC-002**: Zero password reset emails are required as part of migration
-- **SC-003**: Backend auth code reduced by at least 60% (from ~500 lines to <200)
-- **SC-004**: Token refresh happens automatically with no user-visible session expirations
-- **SC-005**: Password reset flow works end-to-end (email sent within 30 seconds, link valid, password updateable)
-- **SC-006**: Migration completes with zero downtime (rolling deployment)
-
----
-
-## Out of Scope
-
-- Social login providers (Google, Apple) - future enhancement
-- Email verification enforcement - can be added later
-- Multi-factor authentication (MFA)
-- OTA updates during migration window
-- User profile updates (name change, avatar) - existing flows remain unchanged
-
----
-
-## Assumptions
-
-1. Firebase Auth bcrypt import supports our hash format ($2b$ prefix)
-2. User UIDs in Firestore can be preserved as Firebase UIDs
-3. Mobile app can be updated before backend changes (ship new app version first)
-4. Rolling deployment is acceptable (brief window where both auth methods work)
-5. DDC implementation patterns are directly applicable
-
----
-
-## Dependencies
-
-- Firebase project: `bigfamfestival` (already configured)
-- Firebase Admin SDK (already installed for Firestore)
-- react-native-firebase package for mobile
-- Service account with Firebase Auth admin permissions
-
----
-
-## Related Specifications
-
-- [BFF-4 Authentication](../BFF-4-authentication/spec.md) - Current auth implementation (to be replaced)
-- [DDC-1 Authentication](https://github.com/rlerikse/es-spec-kit-context) - Reference implementation pattern
-
----
-
-## Revision History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-02-10 | Spec-Kit | Initial specification |
 
 ---
 
@@ -4030,6 +3205,831 @@ As a user without cell signal at the venue, I want to access my ticket offline, 
 - **SC-001**: QR code displays within 1 second of opening TicketScreen
 - **SC-002**: 100% of valid tickets scan successfully at entry gates
 - **SC-003**: Offline access works for tickets loaded within last 30 days
+
+---
+
+## [bigfamfestival] BFF-14-api-client-infrastructure
+
+# API Client Infrastructure - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [BFF-14](https://eriksensolutions.atlassian.net/browse/BFF-14)  
+**Created**: 2026-02-09  
+
+---
+
+## Overview
+
+API Client Infrastructure provides centralized HTTP client configuration for the mobile app, including base URL management, authentication header injection, request/response interceptors, and error handling standardization.
+
+---
+
+## User Stories
+
+### User Story 1 - Centralized API Configuration
+**As a** mobile developer,  
+**I want** a centralized API client,  
+**So that** all API calls use consistent configuration.
+
+**Acceptance Criteria** (Verified):
+- [x] Single axios instance with base URL
+- [x] Default headers (Content-Type)
+- [x] Request timeout configuration
+
+**Implementation**: `mobile/src/services/apiClient.ts:L13-L19`
+
+### User Story 2 - Automatic Authentication
+**As a** mobile developer,  
+**I want** auth tokens automatically added to requests,  
+**So that** I don't have to manually add them.
+
+**Acceptance Criteria** (Verified):
+- [x] Request interceptor adds Bearer token
+- [x] Token retrieved from AsyncStorage
+- [x] Works for all authenticated endpoints
+
+**Implementation**: `mobile/src/services/apiClient.ts:L44-L53`
+
+### User Story 3 - Token Refresh
+**As a** user,  
+**I want** my session to refresh automatically,  
+**So that** I don't get logged out unexpectedly.
+
+**Acceptance Criteria** (Verified):
+- [x] 401 responses trigger token refresh
+- [x] Original request is retried with new token
+- [x] Only attempts refresh once per request
+
+**Implementation**: `mobile/src/services/apiClient.ts:L72-L95`
+
+### User Story 4 - Error Handling
+**As a** mobile developer,  
+**I want** standardized error handling,  
+**So that** errors are consistent across the app.
+
+**Acceptance Criteria** (Verified):
+- [x] Network errors return clean error object
+- [x] Response data is automatically unwrapped
+- [x] Errors include helpful messages
+
+**Implementation**: `mobile/src/services/apiClient.ts:L55-L100`
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Centralized axios instance | ✅ | `apiClient.ts:L13-L19` |
+| FR-002 | Auto-inject auth token | ✅ | `apiClient.ts:L44-L53` |
+| FR-003 | Response data unwrapping | ✅ | `apiClient.ts:L57-L59` |
+| FR-004 | Token refresh on 401 | ✅ | `apiClient.ts:L72-L95` |
+| FR-005 | Network error handling | ✅ | `apiClient.ts:L62-L70` |
+| FR-006 | Android emulator URL fix | ✅ | `apiClient.ts:L21-L38` |
+| FR-007 | Request timeout | ✅ | `apiClient.ts:L18` |
+
+---
+
+## Configuration
+
+### Base URL
+```typescript
+const apiClient = axios.create({
+  baseURL: 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 15000, // 15 seconds
+});
+```
+
+### Android Emulator Fix
+For development, localhost needs to be replaced with `10.0.2.2` for Android emulator:
+
+```typescript
+if (Platform.OS === 'android' && API_URL.includes('localhost')) {
+  const newUrl = API_URL.replace('localhost', '10.0.2.2');
+  apiClient.defaults.baseURL = newUrl;
+}
+```
+
+---
+
+## Interceptor Flow
+
+### Request Interceptor
+```
+┌──────────────┐     ┌─────────────────────┐     ┌──────────────┐
+│  API Call    │────▶│  Request Interceptor │────▶│   Server     │
+└──────────────┘     │  + Add Bearer Token  │     └──────────────┘
+                     └─────────────────────┘
+```
+
+### Response Interceptor (Success)
+```
+┌──────────────┐     ┌─────────────────────┐     ┌──────────────┐
+│   Server     │────▶│  Response Interceptor│────▶│  API Caller  │
+└──────────────┘     │  Unwrap response.data│     └──────────────┘
+```
+
+### Response Interceptor (401 Error)
+```
+┌──────────────┐     ┌─────────────────────┐     ┌──────────────┐
+│   Server     │────▶│  Response Interceptor│────▶│  Refresh     │
+│   (401)      │     │  Detect 401          │     │  Token       │
+└──────────────┘     └─────────────────────┘     └──────────────┘
+                                                        │
+                     ┌─────────────────────┐            │
+                     │  Retry Original     │◀───────────┘
+                     │  Request            │
+                     └─────────────────────┘
+```
+
+---
+
+## Error Response Format
+
+### Network Error
+```typescript
+{
+  message: 'Unable to connect to the server. Please check your internet connection.',
+  isNetworkError: true,
+  originalError: AxiosError
+}
+```
+
+### API Error
+```typescript
+{
+  message: 'Error message from server',
+  status: 400,
+  data: { /* error details */ }
+}
+```
+
+---
+
+## File Structure
+
+```
+mobile/src/services/
+├── apiClient.ts      # Axios instance and interceptors
+└── api.ts            # API endpoint definitions (optional)
+
+mobile/src/config/
+└── constants.ts      # API_URL and other constants
+```
+
+---
+
+## Storage Keys Used
+
+| Key | Description |
+|-----|-------------|
+| `accessToken` | JWT access token |
+| `refreshToken` | Refresh token (if implemented) |
+
+---
+
+## Related Specifications
+
+- [BFF-4 Authentication](../BFF-4-authentication/spec.md) - Token management
+- All API-consuming features depend on this infrastructure
+
+---
+
+## [bigfamfestival] BFF-13-health-monitoring
+
+# Health Check & Monitoring - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [BFF-13](https://eriksensolutions.atlassian.net/browse/BFF-13)  
+**Created**: 2026-02-09  
+
+---
+
+## Overview
+
+Health Check & Monitoring provides endpoints for infrastructure monitoring, including API health status and Firestore connectivity checks. These endpoints support load balancer health checks and service observability.
+
+---
+
+## User Stories
+
+### User Story 1 - Health Check Endpoint
+**As a** DevOps engineer,  
+**I want** a health check endpoint,  
+**So that** load balancers can verify service health.
+
+**Acceptance Criteria** (Verified):
+- [x] GET /health returns health status
+- [x] Includes Firestore connectivity check
+- [x] Returns graceful response even if Firestore fails
+
+**Implementation**: `backend/src/health/health.controller.ts:L15-L42`
+
+### User Story 2 - Readiness Check
+**As a** DevOps engineer,  
+**I want** a simple readiness endpoint,  
+**So that** I can check if the service is accepting requests.
+
+**Acceptance Criteria** (Verified):
+- [x] GET /health/ready returns basic status
+- [x] Does not depend on external services
+- [x] Includes uptime information
+
+**Implementation**: `backend/src/health/health.controller.ts:L44-L52`
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Health check endpoint | ✅ | `health.controller.ts:L15-L42` |
+| FR-002 | Firestore connectivity check | ✅ | `firestore.health.ts` |
+| FR-003 | Readiness endpoint | ✅ | `health.controller.ts:L44-L52` |
+| FR-004 | Graceful degradation | ✅ | Try-catch in health check |
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/health` | Public | Full health check with dependencies |
+| GET | `/health/ready` | Public | Simple readiness check |
+
+### Response Examples
+
+**GET /health** (Healthy)
+```json
+{
+  "status": "ok",
+  "info": {
+    "firestore": {
+      "status": "up"
+    }
+  },
+  "error": {},
+  "details": {
+    "firestore": {
+      "status": "up"
+    }
+  }
+}
+```
+
+**GET /health** (Degraded)
+```json
+{
+  "status": "ok",
+  "info": {
+    "firestore": {
+      "status": "down",
+      "message": "Firestore check failed but service is starting"
+    }
+  },
+  "error": {},
+  "details": {
+    "firestore": {
+      "status": "down",
+      "message": "Connection timeout"
+    }
+  }
+}
+```
+
+**GET /health/ready**
+```json
+{
+  "status": "ready",
+  "timestamp": "2026-02-09T15:30:00.000Z",
+  "uptime": 3600.5
+}
+```
+
+---
+
+## Implementation Details
+
+### NestJS Terminus Integration
+Uses `@nestjs/terminus` for standardized health checks:
+
+```typescript
+@Controller('health')
+export class HealthController {
+  constructor(
+    private health: HealthCheckService,
+    private firestoreHealth: FirestoreHealthIndicator,
+  ) {}
+
+  @Get()
+  @HealthCheck()
+  check() {
+    return this.health.check([
+      () => this.firestoreHealth.isHealthy('firestore'),
+    ]);
+  }
+}
+```
+
+### Firestore Health Indicator
+```typescript
+@Injectable()
+export class FirestoreHealthIndicator extends HealthIndicator {
+  async isHealthy(key: string): Promise<HealthIndicatorResult> {
+    // Attempt a simple Firestore operation
+    // Return health status
+  }
+}
+```
+
+---
+
+## File Structure
+
+```
+backend/src/health/
+├── health.controller.ts        # HTTP endpoints
+├── health.module.ts            # Module definition
+└── firestore.health.ts         # Firestore health indicator
+```
+
+---
+
+## Infrastructure Integration
+
+### Cloud Run Health Checks
+```yaml
+# Configure in Cloud Run
+startupProbe:
+  httpGet:
+    path: /health/ready
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  periodSeconds: 30
+```
+
+---
+
+## Related Specifications
+
+- Infrastructure/Terraform configuration uses these endpoints
+
+---
+
+## [bigfamfestival] BFF-12-app-settings-theme
+
+# App Settings & Theme - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [BFF-12](https://eriksensolutions.atlassian.net/browse/BFF-12)  
+**Created**: 2026-02-09  
+
+---
+
+## Overview
+
+App Settings & Theme provides user preference management including theme switching (light/dark mode), debug mode toggle, and persistent settings storage on the mobile device.
+
+---
+
+## User Stories
+
+### User Story 1 - Toggle Dark Mode
+**As a** festival attendee,  
+**I want to** switch between light and dark themes,  
+**So that** I can use the app comfortably at night.
+
+**Acceptance Criteria** (Verified):
+- [x] User can toggle dark mode in settings
+- [x] Theme persists across app restarts
+- [x] All screens respect theme setting
+
+**Implementation**: `mobile/src/contexts/ThemeContext.tsx`
+
+### User Story 2 - Debug Mode Toggle
+**As a** developer,  
+**I want to** enable debug mode in the app,  
+**So that** I can see additional diagnostic information.
+
+**Acceptance Criteria** (Verified):
+- [x] Debug mode can be toggled in settings
+- [x] Debug mode shows additional UI/logs
+
+**Implementation**: `mobile/src/contexts/DebugContext.tsx`
+
+### User Story 3 - Persistent Settings
+**As a** user,  
+**I want** my settings to persist,  
+**So that** I don't have to reconfigure on each app launch.
+
+**Acceptance Criteria** (Verified):
+- [x] Settings are stored in AsyncStorage
+- [x] Settings are loaded on app start
+
+**Implementation**: `mobile/src/contexts/AppSettingsContext.tsx`
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Theme toggle (light/dark) | ✅ | `ThemeContext.tsx` |
+| FR-002 | Persist theme preference | ✅ | AsyncStorage |
+| FR-003 | Debug mode toggle | ✅ | `DebugContext.tsx` |
+| FR-004 | Settings screen UI | ✅ | `SettingsScreen.tsx` |
+
+---
+
+## Data Model
+
+### App Settings
+```typescript
+interface AppSettings {
+  theme: 'light' | 'dark' | 'system';
+  debugMode: boolean;
+  // Future settings...
+}
+```
+
+### Theme Context
+```typescript
+interface ThemeContextType {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  isDarkMode: boolean;
+}
+```
+
+### Debug Context
+```typescript
+interface DebugContextType {
+  isDebugMode: boolean;
+  toggleDebugMode: () => void;
+}
+```
+
+---
+
+## Storage Keys
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `@app_theme` | string | 'light' or 'dark' |
+| `@debug_mode` | boolean | Debug mode enabled |
+
+---
+
+## File Structure
+
+```
+mobile/src/
+├── contexts/
+│   ├── AppSettingsContext.tsx   # Settings aggregation
+│   ├── ThemeContext.tsx         # Theme state management
+│   └── DebugContext.tsx         # Debug mode management
+└── screens/
+    └── SettingsScreen.tsx       # Settings UI
+```
+
+---
+
+## Theme Colors
+
+### Light Theme
+```typescript
+const lightTheme = {
+  background: '#FFFFFF',
+  text: '#000000',
+  primary: '#6200EE',
+  // ...
+};
+```
+
+### Dark Theme
+```typescript
+const darkTheme = {
+  background: '#121212',
+  text: '#FFFFFF',
+  primary: '#BB86FC',
+  // ...
+};
+```
+
+---
+
+## Related Specifications
+
+- No backend dependencies (mobile-only feature)
+
+---
+
+## [bigfamfestival] BFF-11-admin-notifications
+
+# Admin Notifications Management - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [BFF-11](https://eriksensolutions.atlassian.net/browse/BFF-11)  
+**Created**: 2026-02-09  
+
+---
+
+## Overview
+
+Admin Notifications Management provides a UI and debugging tools for festival administrators to send and manage push notifications. This includes the AdminNotificationsScreen in the mobile app and debug endpoints for testing notification delivery.
+
+---
+
+## User Stories
+
+### User Story 1 - Send Notification from Mobile
+**As an** admin using the mobile app,  
+**I want to** compose and send notifications,  
+**So that** I can quickly communicate with attendees from anywhere.
+
+**Acceptance Criteria** (Verified):
+- [x] Admin sees "Admin Notifications" screen in app
+- [x] Can compose notification title and body
+- [x] Can send notification to all users
+- [x] Shows confirmation of send status
+
+**Implementation**: `mobile/src/screens/AdminNotificationsScreen.tsx`
+
+### User Story 2 - Debug Notification Delivery
+**As a** developer,  
+**I want to** test notification delivery,  
+**So that** I can verify the push notification system works.
+
+**Acceptance Criteria** (Verified):
+- [x] Debug endpoint to check token count
+- [x] Debug endpoint to verify FCM configuration
+- [x] Debug endpoint to send test notification
+
+**Implementation**: `backend/src/debug/notifications-debug.controller.ts`
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Admin notification UI | ✅ | `AdminNotificationsScreen.tsx` |
+| FR-002 | Token count debug endpoint | ✅ | `notifications-debug.controller.ts` |
+| FR-003 | FCM status check | ✅ | `notifications.service.ts:verifyFcmConfig()` |
+| FR-004 | Test notification sending | ✅ | Debug controller |
+
+---
+
+## API Endpoints (Debug)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/debug/notifications/token-count` | Public* | Get registered token count |
+| GET | `/debug/notifications/fcm-status` | Public* | Verify FCM configuration |
+| POST | `/debug/notifications/test` | Public* | Send test notification |
+
+*Debug endpoints - should be protected in production
+
+---
+
+## Mobile Admin UI
+
+### AdminNotificationsScreen Features
+- Title input field
+- Body/message textarea
+- Priority selector (normal/high)
+- Send button
+- Status feedback (success/error)
+- Token count display
+
+---
+
+## File Structure
+
+```
+backend/src/debug/
+├── debug.module.ts
+└── notifications-debug.controller.ts
+
+mobile/src/screens/
+└── AdminNotificationsScreen.tsx
+```
+
+---
+
+## Security Considerations
+
+| Concern | Current State | Recommendation |
+|---------|--------------|----------------|
+| Debug endpoint access | Public | Should be protected or disabled in production |
+| Admin UI visibility | Role-based in app | Properly gated by role |
+
+---
+
+## Related Specifications
+
+- [BFF-8 Push Notifications](../BFF-8-push-notifications/spec.md) - Core notification system
+
+---
+
+## [bigfamfestival] BFF-10-campsite-location
+
+# Campsite Location - Retroactive Specification
+
+**Status**: ✅ Implemented (Retroactive Documentation)  
+**Jira**: [BFF-10](https://eriksensolutions.atlassian.net/browse/BFF-10)  
+**Created**: 2026-02-09  
+
+---
+
+## Overview
+
+Campsite Location allows festival attendees to save and retrieve the GPS coordinates of their campsite, making it easier to find their way back after exploring the festival grounds.
+
+---
+
+## User Stories
+
+### User Story 1 - Save Campsite Location
+**As a** festival attendee,  
+**I want to** save my campsite's GPS location,  
+**So that** I can find my way back later.
+
+**Acceptance Criteria** (Verified):
+- [x] User can save/update location via POST /campsites
+- [x] Location includes latitude and longitude
+- [x] Optional name/description for the campsite
+- [x] Upsert behavior (create or update)
+
+**Implementation**: `backend/src/campsites/campsites.controller.ts:L22-L30`
+
+### User Story 2 - Retrieve Campsite Location
+**As a** festival attendee,  
+**I want to** retrieve my saved campsite location,  
+**So that** I can navigate back to it.
+
+**Acceptance Criteria** (Verified):
+- [x] User can get location via GET /campsites
+- [x] Returns 404 if no campsite saved
+
+**Implementation**: `backend/src/campsites/campsites.controller.ts:L32-L43`
+
+### User Story 3 - Delete Campsite Location
+**As a** festival attendee,  
+**I want to** delete my campsite location,  
+**So that** I can clear outdated information.
+
+**Acceptance Criteria** (Verified):
+- [x] User can delete via DELETE /campsites
+- [x] Returns 404 if no campsite exists
+
+**Implementation**: `backend/src/campsites/campsites.controller.ts:L45-L52`
+
+---
+
+## Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-001 | Create/update campsite location | ✅ | `campsites.service.ts:L13-L38` |
+| FR-002 | Get user's campsite | ✅ | `campsites.service.ts:L40-L55` |
+| FR-003 | Delete campsite | ✅ | `campsites.service.ts:L57-L68` |
+| FR-004 | Auto-generate timestamps | ✅ | `campsites.service.ts:L17-L25` |
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/campsites` | JWT | Create/update campsite location |
+| GET | `/campsites` | JWT | Get current user's campsite |
+| DELETE | `/campsites` | JWT | Delete current user's campsite |
+
+### Request/Response Examples
+
+**POST /campsites**
+```json
+// Request
+{
+  "latitude": 41.8781,
+  "longitude": -87.6298,
+  "name": "Blue Tent near Food Court",
+  "notes": "Next to the big oak tree"
+}
+
+// Response
+{
+  "id": "user123",
+  "userId": "user123",
+  "latitude": 41.8781,
+  "longitude": -87.6298,
+  "name": "Blue Tent near Food Court",
+  "notes": "Next to the big oak tree",
+  "createdAt": "2026-06-15T10:30:00Z",
+  "updatedAt": "2026-06-15T10:30:00Z"
+}
+```
+
+---
+
+## Data Model
+
+### Campsite Interface
+```typescript
+interface Campsite {
+  id: string;           // Same as userId
+  userId: string;
+  latitude: number;
+  longitude: number;
+  name?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### CreateCampsiteDto
+```typescript
+interface CreateCampsiteDto {
+  latitude: number;
+  longitude: number;
+  name?: string;
+  notes?: string;
+}
+```
+
+---
+
+## Firestore Data Structure
+
+### Collection: `campsites`
+- Document ID = User ID (one campsite per user)
+
+```javascript
+{
+  "userId": "user123",
+  "latitude": 41.8781,
+  "longitude": -87.6298,
+  "name": "Blue Tent near Food Court",
+  "notes": "Next to the big oak tree",
+  "createdAt": Timestamp,
+  "updatedAt": Timestamp
+}
+```
+
+---
+
+## Edge Cases & Error Handling
+
+| Scenario | Handling | Location |
+|----------|----------|----------|
+| No campsite exists (GET) | NotFoundException (404) | `campsites.controller.ts:L39` |
+| No campsite exists (DELETE) | NotFoundException (404) | `campsites.service.ts:L62` |
+| Firestore error | InternalServerErrorException (500) | `campsites.service.ts` |
+
+---
+
+## Mobile Integration
+
+### MapScreen
+- Displays map with campsite marker
+- Uses expo-location for GPS
+- Allows setting campsite on map tap
+
+---
+
+## File Structure
+
+```
+backend/src/campsites/
+├── campsites.controller.ts    # HTTP endpoints
+├── campsites.module.ts        # Module definition
+├── campsites.service.ts       # Business logic
+├── dto/
+│   └── create-campsite.dto.ts
+└── interfaces/
+    └── campsite.interface.ts
+
+mobile/src/
+├── screens/MapScreen.tsx
+└── services/mapService.ts
+```
+
+---
+
+## Related Specifications
+
+- [BFF-5 User Management](../BFF-5-user-management/spec.md) - shareMyCampsite preference
 
 ---
 
