@@ -12,11 +12,83 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
-## Format: `[ID] [P?] [Story] Description`
+---
 
-- **[P]**: Can run in parallel (different files, no dependencies)
+## Multi-PR Strategy & Task Dependencies
+
+**Execution Approaches**:
+
+### Sequential (Traditional)
+- Tasks execute one at a time
+- Each task merges to `main` before next starts
+- Lower risk, slower velocity
+- Best for: Complex features with tight coupling
+
+### Stacked (Aggressive Velocity)
+- Tasks with dependencies branch from parent task branches
+- Multiple PRs in flight simultaneously
+- Higher velocity, requires rebase management
+- Best for: Well-defined features with clear task boundaries
+
+**Dependency Notation**:
+- `[D:T###]` - Depends on Task ###
+- `[P]` - Parallelizable (no dependencies)
+- `[B:T###]` - Blocks Task ### (this must complete first)
+
+**Example**:
+```markdown
+- [ ] T001 [P] Create database schema
+- [ ] T002 [P] Create Zod validation schemas
+- [ ] T003 [D:T001,T002] Implement service layer (depends on T001 and T002)
+- [ ] T004 [D:T003] Implement controller (depends on T003)
+```
+
+**Branch Strategy**:
+- **Independent tasks**: Branch from `main`
+  - `git checkout -b feat/JIRA-ID-1_task-name`
+- **Dependent tasks** (stacked): Branch from parent task
+  - `git checkout -b feat/JIRA-ID-2_task-name origin/feat/JIRA-ID-1_parent-task`
+
+**Merge Order**:
+1. Independent tasks merge first (any order)
+2. Dependent tasks merge after dependencies
+3. Stacked PRs rebase onto `main` after parent merges
+
+## Format: `[ID] [Flags] [Story] Description`
+
+**Flags**:
+- **[P]**: Parallelizable (no dependencies, can run simultaneously with other [P] tasks)
+- **[D:T###]**: Depends on Task ### (must wait for completion)
+- **[B:T###]**: Blocks Task ### (other tasks waiting on this)
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
+
+**Best Practices**:
 - Include exact file paths in descriptions
+- Mark all dependencies explicitly
+- Group by user story for independent delivery
+- Estimate Copilot time (30-60 min per task ideal)
+
+---
+
+## GitHub Copilot Integration
+
+**When creating GitHub issues from these tasks, include**:
+
+### Required Reading (in order):
+1. **Constitution**: `.specify/memory/constitution.md` (quality gates, PII handling)
+2. **Feature Spec**: `specs/[###-feature-name]/spec.md` (requirements, acceptance criteria)
+3. **Implementation Plan**: `specs/[###-feature-name]/plan.md` (architecture, tech stack)
+4. **This Task List**: `specs/[###-feature-name]/tasks.md` (specific task details)
+5. **API Contract** (SOURCE OF TRUTH): `specs/[###-feature-name]/contracts/*.yaml`
+6. **Data Model**: `specs/[###-feature-name]/data-model.md` (database schema)
+
+### Code Pattern References:
+Point Copilot to existing implementations as examples:
+- Controller pattern: `src/controllers/v1/*.controller.ts`
+- Service pattern: `src/services/*/*.service.ts`
+- Schema validation: `src/schemas/*.schema.ts`
+- Unit tests: `src/**/*.spec.ts`
+- E2E tests: `src/**/*.e2e-spec.ts`
 
 ## Path Conventions
 
@@ -52,23 +124,41 @@ description: "Task list template for feature implementation"
 
 ## Retry Logic
 
-- Only API calls require retry logic. Database interactions (Postgres) should not implement retry unless explicitly required for transactional integrity or error handling.
+- Only API calls require retry logic. Database interactions should not implement retry unless explicitly required for transactional integrity or error handling.
 
 
 ## Phase 0.1: Production Readiness Gates (Mandatory for Release)
 
-- [ ] T008 Contract Validation: API implementation matches OpenAPI contract exactly
-- [ ] T009 Audit Logging: All APIs must implement audit logging before release
-- [ ] T010 Distributed Tracing: All APIs must propagate the x-trace-id header before release
-- [ ] T011 42Crunch API security scan must be performed before release; minimum audit security score required: 80%.
+<!--
+  IMPORTANT: These gates should match your project's constitution.
+  The /speckit.tasks command will populate this section based on your constitution.
+-->
+
+- [ ] T003 Contract Validation: API implementation matches OpenAPI contract exactly
+- [ ] T004 Observability: [Logging/tracing requirements per your constitution]
+- [ ] T005 Security: [Security scan requirements per your constitution]
+- [ ] T006 [Project-Specific Gate]: [Add gates from your constitution]
 
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+**Dependencies**: None (all parallelizable)
+
+- [ ] T010 [P] Create project structure per implementation plan
+  - Branch: `feat/JIRA-ID-1_project-structure`
+  - Base: `main`
+  - Files: `src/`, `tests/`, `package.json`, `tsconfig.json`
+  
+- [ ] T011 [P] Initialize [language] project with [framework] dependencies
+  - Branch: `feat/JIRA-ID-2_dependencies`
+  - Base: `main`
+  - Files: `package.json`, `package-lock.json`
+  
+- [ ] T012 [P] Configure linting and formatting tools
+  - Branch: `feat/JIRA-ID-3_linting`
+  - Base: `main`
+  - Files: `eslint.config.js`, `.prettierrc`
 
 ---
 
@@ -78,16 +168,47 @@ description: "Task list template for feature implementation"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
+**Dependencies**: Depends on Phase 1 completion
+
+**Blocks**: All Phase 3+ tasks (user story implementation)
+
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T020 [D:T010] [B:T030,T040] Setup database schema and migrations framework
+  - Branch: `feat/JIRA-ID-4_database-schema`
+  - Base: `main` (if T010 merged) OR `feat/JIRA-ID-1_project-structure` (stacked)
+  - Files: `prisma/schema.prisma`, migrations
+  
+- [ ] T021 [P] [B:T030+] Implement authentication/authorization framework
+  - Branch: `feat/JIRA-ID-5_auth`
+  - Base: `main`
+  - Files: `src/middleware/auth.middleware.ts`
+  
+- [ ] T006 [P] [B:T010+] Setup API routing and middleware structure
+  - Branch: `feat/JIRA-ID-6_routing`
+  - Base: `main`
+  - Files: `src/routes/`, `src/middleware/`
+  
+- [ ] T007 [D:T004] [B:T010+] Create base models/entities that all stories depend on
+  - Branch: `feat/JIRA-ID-7_base-models`
+  - Base: `feat/JIRA-ID-4_database-schema` (stacked on T004)
+  - Files: `src/models/base.model.ts`
+  
+- [ ] T008 [P] [B:T010+] Configure error handling and logging infrastructure
+  - Branch: `feat/JIRA-ID-8_error-handling`
+  - Base: `main`
+  - Files: `src/middleware/error-handler.ts`, `src/utils/logger.ts`
+  
+- [ ] T009 [P] [B:T010+] Setup environment configuration management
+  - Branch: `feat/JIRA-ID-9_env-config`
+  - Base: `main`
+  - Files: `.env.example`, `src/config/`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+
+**Merge Strategy**: 
+- Sequential: Merge T004-T009 to `main` before starting Phase 3
+- Stacked: Create Phase 3 branches from Phase 2 branches, rebase after Phase 2 merges
 
 ---
 
@@ -97,23 +218,66 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
+**Dependencies**: Requires Phase 2 complete (T004-T009)
+
+**Blocks**: None (independent story)
+
 ### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [D:Phase2] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
+  - Branch: `feat/JIRA-ID-10_us1-contract-tests`
+  - Base: `main` (after Phase 2) OR `feat/JIRA-ID-6_routing` (stacked)
+  - Copilot time: 30-45 min
+  
+- [ ] T011 [P] [D:Phase2] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+  - Branch: `feat/JIRA-ID-11_us1-integration-tests`
+  - Base: `main` (after Phase 2) OR `feat/JIRA-ID-6_routing` (stacked)
+  - Copilot time: 30-45 min
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T012 [P] [D:Phase2] [B:T014] [US1] Create [Entity1] model in src/models/[entity1].py
+  - Branch: `feat/JIRA-ID-12_entity1-model`
+  - Base: `main` (after Phase 2) OR `feat/JIRA-ID-7_base-models` (stacked)
+  - Copilot time: 20-30 min
+  
+- [ ] T013 [P] [D:Phase2] [B:T014] [US1] Create [Entity2] model in src/models/[entity2].py
+  - Branch: `feat/JIRA-ID-13_entity2-model`
+  - Base: `main` (after Phase 2) OR `feat/JIRA-ID-7_base-models` (stacked)
+  - Copilot time: 20-30 min
+  
+- [ ] T014 [D:T012,T013] [B:T015] [US1] Implement [Service] in src/services/[service].py
+  - Branch: `feat/JIRA-ID-14_service`
+  - Base: `feat/JIRA-ID-12_entity1-model` (stacked on T012, assumes T013 merged)
+  - Copilot time: 45-60 min
+  
+- [ ] T015 [D:T014] [B:T016] [US1] Implement [endpoint/feature] in src/[location]/[file].py
+  - Branch: `feat/JIRA-ID-15_endpoint`
+  - Base: `feat/JIRA-ID-14_service` (stacked on T014)
+  - Copilot time: 30-45 min
+  
+- [ ] T016 [D:T015] [US1] Add validation and error handling
+  - Branch: `feat/JIRA-ID-16_validation`
+  - Base: `feat/JIRA-ID-15_endpoint` (stacked on T015)
+  - Copilot time: 20-30 min
+  
+- [ ] T017 [D:T015] [US1] Add logging for user story 1 operations
+  - Branch: `feat/JIRA-ID-17_logging`
+  - Base: `feat/JIRA-ID-15_endpoint` (stacked on T015, parallel with T016)
+  - Copilot time: 15-20 min
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
+
+**Stacked PR Strategy**:
+- T010, T011 can start immediately (parallel)
+- T012, T013 can start immediately (parallel)
+- T014 stacks on T012 (or wait for T012+T013 merge)
+- T015 stacks on T014
+- T016, T017 stack on T015 (parallel)
+
+**Merge Order**: T010→T011→T012→T013→T014→T015→(T016+T017 parallel)
 
 ---
 
@@ -268,17 +432,48 @@ With multiple developers:
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
 
-## Caching Strategy Clarification
+## Caching Strategy [OPTIONAL]
 
-- Which API endpoints or data should be cached to improve performance or reduce load?
+<!--
+  Include this section if the feature involves caching.
+  Remove if not applicable.
+-->
+
+- Which API endpoints or data should be cached?
 - What is the expected cache duration (TTL) for each cached item?
 - Are there any cache invalidation or refresh requirements?
-- Caching tool: Redis
+- Caching tool: [Per project conventions]
 
-## Retry Logic Clarification
+## Retry Logic [OPTIONAL]
+
+<!--
+  Include this section if the feature involves external API calls.
+  Remove if not applicable.
+-->
 
 - Which API endpoints or operations require retry logic?
 - What are the recommended retry parameters (max attempts, backoff strategy, delay)?
-- Suggested strategy: Use exponential backoff with a delay (e.g., start with 1-2 seconds, double each time, up to a max).
+- Suggested strategy: Exponential backoff (1s, 2s, 4s, max 3 retries)
 - Should retries be applied for specific error types only (e.g., network, 5xx, rate limit)?
 - Are there any idempotency or side-effect concerns with retries?
+
+---
+
+## Custom Checklists (Optional)
+
+Use this section for ad-hoc validation checklists generated by `/speckit.checklist`.
+
+**Note**: Checklists are "unit tests for requirements" - they validate spec quality, not implementation correctness.
+
+### [CHECKLIST TYPE] - [DATE]
+
+**Purpose**: [Brief description of what this checklist validates]
+
+| ID | Check | Status |
+|----|-------|--------|
+| CHK001 | [First checklist item with clear validation criteria] | [ ] |
+| CHK002 | [Second checklist item] | [ ] |
+| CHK003 | [Third checklist item] |
+
+**Compliance Notes**:
+- [Constitution requirements per your project]

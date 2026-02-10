@@ -1,0 +1,43 @@
+{
+  "version": "1.0",
+  "lastRunAt": "2026-02-09T22:00:00Z",
+  "gitCommitBefore": null,
+  "specsCreated": [
+    "specs/BFF-4-authentication/",
+    "specs/BFF-5-user-management/",
+    "specs/BFF-6-events-schedule/",
+    "specs/BFF-7-personal-schedule/",
+    "specs/BFF-8-push-notifications/",
+    "specs/BFF-9-artists-directory/",
+    "specs/BFF-10-campsite-location/",
+    "specs/BFF-11-admin-notifications/",
+    "specs/BFF-12-app-settings-theme/",
+    "specs/BFF-13-health-monitoring/",
+    "specs/BFF-14-api-client-infrastructure/"
+  ],
+  "conventionsCreated": [
+    ".specify/conventions/tech-stack.md",
+    ".specify/conventions/file-categories.md",
+    ".specify/conventions/architectural-domains.md",
+    ".specify/conventions/ai-instructions.md",
+    ".specify/conventions/style-guides/controllers.md",
+    ".specify/conventions/style-guides/services.md",
+    ".specify/conventions/style-guides/components.md",
+    ".specify/conventions/style-guides/hooks.md",
+    ".specify/conventions/style-guides/utils.md"
+  ],
+  "checkpointCommit": null,
+  "jiraTicketsCreated": [
+    "BFF-4",
+    "BFF-5",
+    "BFF-6",
+    "BFF-7",
+    "BFF-8",
+    "BFF-9",
+    "BFF-10",
+    "BFF-11",
+    "BFF-12",
+    "BFF-13",
+    "BFF-14"
+  ]
+}

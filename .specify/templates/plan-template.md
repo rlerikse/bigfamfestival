@@ -1,29 +1,40 @@
 # Implementation Plan: [FEATURE]
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]  
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command.
+
+---
 
 ## Summary
 
 [Extract from feature spec: primary requirement + technical approach from research]
 
+---
+
 ## Technical Context
 
 <!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
+  ACTION REQUIRED: Replace the placeholders below with your project's technical details.
+  Use NEEDS CLARIFICATION for any unclear items.
+-->
 
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+| Aspect | Value |
+|--------|-------|
+| **Primary Dependencies** | [e.g., FastAPI, React, NestJS or NEEDS CLARIFICATION] |
+| **Storage** | [e.g., PostgreSQL, MongoDB, Redis or N/A] |
+| **Testing Framework** | [e.g., Jest, pytest, JUnit or NEEDS CLARIFICATION] |
+| **Target Platform** | [e.g., Linux server, Web, iOS 15+ or NEEDS CLARIFICATION] |
+| **Project Type** | [single/web/mobile - determines source structure] |
 
-**Retry Logic**: Only API calls require retry logic. Database interactions (Postgres) should not implement retry unless explicitly required for transactional integrity or error handling.
+**Performance Goals**: [domain-specific, e.g., 1000 req/s, <200ms p95 or NEEDS CLARIFICATION]
+
+**Constraints**: [domain-specific, e.g., <100MB memory, offline-capable or NEEDS CLARIFICATION]
+
+**Scale/Scope**: [domain-specific, e.g., 10k users, 50 screens or NEEDS CLARIFICATION]
+
+---
 
 ## Constitution Check
 
@@ -31,24 +42,35 @@
 
 This plan MUST be checked against the repository constitution at `.specify/memory/constitution.md`.
 
+<!--
+  IMPORTANT: The checklist below should be populated based on YOUR project's constitution.
+  The /speckit.plan command will extract relevant gates from your constitution.
+  If generating manually, review your constitution and add applicable gates.
+-->
 
-At minimum, the following gates (derived from the constitution) MUST be verified and documented here:
+### Required Documentation Gates
 
-  - API contract (OpenAPI/Swagger spec) - implementation MUST match contract exactly
-  - Sequence diagram for major flows
-  - Data model definition (ERD or equivalent)
-  - Database migration scripts and rationale
-  - For features involving new or updated data storage, documentation MUST include explicit details for Postgres on GCP Cloud SQL (schema, migration plan, access patterns)
-[ ] Feature specification must be stored in `/features` folder in Gherkin format for automation.
-[ ] Contract Compliance: OpenAPI contract file exists and is the authoritative source for API design
-[ ] Audit Logging: All APIs must implement audit logging before release
+- [ ] API contract (OpenAPI/Swagger spec) exists - implementation MUST match contract exactly
+- [ ] Sequence diagram for major flows (if complex interactions)
+- [ ] Data model definition (ERD or equivalent) for features involving data
+- [ ] Database migration scripts and rationale (if schema changes)
 
-[ ] PII Data: PII MUST NOT be logged. If PII is required for audit, it MUST be sent to a dedicated audit table with documented access controls and rationale.
-[ ] Distributed Tracing: All APIs must propagate the x-trace-id header before release
-[Gates determined based on constitution file]
-[ ] 42Crunch API security scan must be performed before release; minimum audit security score required: 80%.
+### Constitution Compliance Gates
 
-[ ] Feature flags must be managed using Flagsmith; document flag usage and rollout strategy for each feature.
+<!--
+  These gates are derived from your project's constitution.
+  Run /speckit.constitution --audit to see your current gates.
+-->
+
+- [ ] **Contract Compliance**: OpenAPI contract file exists and is authoritative source
+- [ ] **Security**: [Security requirements per your constitution]
+- [ ] **Observability**: [Logging/tracing requirements per your constitution]
+- [ ] **PII Handling**: PII MUST NOT be logged; use dedicated audit mechanisms if needed
+- [ ] **[Project-Specific Gate]**: [Add gates from your constitution]
+
+> **Note**: Run `/speckit.analyze` before implementation to validate against constitution.
+
+---
 
 ## Project Structure
 
@@ -56,20 +78,20 @@ At minimum, the following gates (derived from the constitution) MUST be verified
 
 ```text
 specs/[###-feature]/
-├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
-├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
-├── contracts/           # Phase 1 output (/speckit.plan command)
-└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
+├── plan.md              # This file (/speckit.plan output)
+├── research.md          # Phase 0 output (alternatives analysis)
+├── data-model.md        # Phase 1 output (if data changes)
+├── quickstart.md        # Phase 1 output (local dev setup)
+├── contracts/           # Phase 1 output (OpenAPI specs)
+└── tasks.md             # Phase 2 output (/speckit.tasks - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
+
 <!--
   ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
   for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
+  real paths. The delivered plan must not include Option labels.
 -->
 
 ```text
@@ -77,15 +99,15 @@ specs/[###-feature]/
 src/
 ├── models/
 ├── services/
-├── cli/
-└── lib/
+├── controllers/
+└── utils/
 
 tests/
-├── contract/
+├── unit/
 ├── integration/
-└── unit/
+└── e2e/
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+# [REMOVE IF UNUSED] Option 2: Web application (frontend + backend)
 backend/
 ├── src/
 │   ├── models/
@@ -96,19 +118,20 @@ backend/
 frontend/
 ├── src/
 │   ├── components/
-│   ├── pages/
+│   └── pages/
 └── tests/
 
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+# [REMOVE IF UNUSED] Option 3: Mobile + API
 api/
 └── [same as backend above]
 
 ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+└── [platform-specific structure]
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: [Document the selected structure and reasoning]
+
+---
 
 ## Complexity Tracking
 
@@ -116,20 +139,86 @@ directories captured above]
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
+| [e.g., New database] | [specific need] | [why existing storage insufficient] |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
 
-## Caching Strategy Clarification
+---
 
-- Which API endpoints or data should be cached to improve performance or reduce load?
-- What is the expected cache duration (TTL) for each cached item?
-- Are there any cache invalidation or refresh requirements?
-- Caching tool: Redis
+## Caching Strategy [OPTIONAL]
 
-## Retry Logic Clarification
+<!--
+  Include this section if the feature involves caching.
+-->
 
-- Which API endpoints or operations require retry logic?
-- What are the recommended retry parameters (max attempts, backoff strategy, delay)?
-- Suggested strategy: Use exponential backoff with a delay (e.g., start with 1-2 seconds, double each time, up to a max).
-- Should retries be applied for specific error types only (e.g., network, 5xx, rate limit)?
-- Are there any idempotency or side-effect concerns with retries?
+| Endpoint/Data | Cache Duration (TTL) | Invalidation Strategy |
+|---------------|---------------------|----------------------|
+| [endpoint 1] | [e.g., 5 minutes] | [e.g., on update] |
+| [endpoint 2] | [e.g., 1 hour] | [e.g., scheduled] |
+
+**Caching Tool**: [Per project conventions - e.g., Redis, CDN, in-memory]
+
+---
+
+## Retry Logic [OPTIONAL]
+
+<!--
+  Include this section if the feature involves external API calls.
+-->
+
+| Operation | Max Attempts | Backoff Strategy | Retry On |
+|-----------|-------------|------------------|----------|
+| [API call 1] | 3 | Exponential (1s, 2s, 4s) | 5xx, network errors |
+| [API call 2] | 5 | Fixed (500ms) | 429 rate limit |
+
+**Idempotency Concerns**: [Document any operations that should NOT be retried]
+
+> **Note**: Database interactions typically should NOT implement retry unless explicitly required for transactional integrity.
+
+---
+
+## Architecture Decisions
+
+<!--
+  Document key technical decisions made during planning.
+  This helps future developers understand the "why" behind choices.
+-->
+
+### Decision 1: [Brief Title]
+
+**Context**: [What is the issue or situation requiring a decision?]
+
+**Decision**: [What was decided?]
+
+**Rationale**: [Why was this decision made?]
+
+**Alternatives Considered**: [What other options were evaluated?]
+
+---
+
+## Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| [Risk 1] | Low/Medium/High | Low/Medium/High | [Mitigation strategy] |
+| [Risk 2] | Low/Medium/High | Low/Medium/High | [Mitigation strategy] |
+
+---
+
+## Dependencies
+
+### External Dependencies
+
+- [Dependency 1]: [What it is, version, why needed]
+- [Dependency 2]: [What it is, version, why needed]
+
+### Internal Dependencies
+
+- [Other feature/service]: [How it's related, blocking or parallel]
+
+---
+
+## Next Steps
+
+1. Run `/speckit.tasks` to generate task breakdown
+2. Run `/speckit.analyze` to validate against constitution
+3. Begin implementation with `/speckit.implement`

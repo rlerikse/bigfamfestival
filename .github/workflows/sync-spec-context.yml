@@ -1,14 +1,19 @@
 # Sync Spec Context to Central Repository
 #
-# This workflow extracts spec metadata from this repository and pushes it
+# This workflow syncs COMPLETE spec directories (spec.md, plan.md, tasks.md, contracts/)
 # to the central spec-kit-context repo for enterprise-wide visibility.
+#
+# Why full sync? AI agents cannot authenticate to private GitHub URLs.
+# By syncing everything locally, agents have immediate access without auth barriers.
+#
+# Also generates spec-metadata.json for quick indexing/dashboards.
 #
 # Setup:
 # 1. Copy this file to .github/workflows/sync-spec-context.yml
 # 2. Ensure SPEC_KIT_CONTEXT_TOKEN org secret exists
 # 3. Merge to main - specs will sync automatically
 #
-# Documentation: https://github.com/rlerikse/spec-kit-context/blob/main/SETUP.md
+# Documentation: https://github.com/rlerikse/es-spec-kit-context
 
 name: Sync Spec Context
 
@@ -19,18 +24,20 @@ on:
     branches: ['**']
     paths:
       - 'specs/**'
+      - '.specify/conventions/**'
   
   # Also trigger on PR events to catch branch updates
   pull_request:
     paths:
       - 'specs/**'
+      - '.specify/conventions/**'
   
   # Allow manual trigger
   workflow_dispatch:
 
 jobs:
   sync-context:
-    name: Extract and Sync Spec Metadata
+    name: Sync Complete Spec Directories
     runs-on: ubuntu-latest
     
     # Only run if specs directory exists
@@ -51,7 +58,7 @@ jobs:
             echo "⚠ No specs directory found - skipping sync"
           fi
       
-      - name: Extract Spec Metadata
+      - name: Generate Spec Index (for dashboards)
         if: steps.check-specs.outputs.has_specs == 'true'
         run: |
           node -e "
@@ -123,25 +130,71 @@ jobs:
         if: steps.check-specs.outputs.has_specs == 'true'
         run: cat spec-metadata.json
       
-      - name: Push to Central Context Repository
+      - name: Sync Specs and Metadata to Central Repository
+        id: push-specs
         if: steps.check-specs.outputs.has_specs == 'true'
-        uses: dmnemec/copy_file_to_another_repo_action@main
-        env:
-          API_TOKEN_GITHUB: ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}
-        with:
-          source_file: 'spec-metadata.json'
-          destination_repo: 'rlerikse/spec-kit-context'
-          destination_folder: 'repos/${{ github.event.repository.name }}/${{ github.ref_name }}'
-          destination_branch: 'main'
-          user_email: 'spec-kit-bot@ford.com'
-          user_name: 'Spec-Kit Bot'
-          commit_message: 'chore(context): Update specs from ${{ github.repository }}@${{ github.ref_name }} [${{ github.sha }}]'
+        run: |
+          # Clone the central repo (sync branch - where aggregation happens)
+          git clone --depth 1 --branch sync "https://x-access-token:${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}@github.com/rlerikse/es-spec-kit-context.git" central-repo
+          
+          # Create destination directories
+          REPO_NAME="${{ github.event.repository.name }}"
+          BRANCH_NAME="${{ github.ref_name }}"
+          SPEC_DIR="central-repo/repos/${REPO_NAME}/${BRANCH_NAME}"
+          mkdir -p "$SPEC_DIR"
+          
+          # Copy spec-metadata.json (branch-specific)
+          cp spec-metadata.json "$SPEC_DIR/"
+          echo "✓ Synced spec-metadata.json to $SPEC_DIR/"
+          
+          # Copy ALL spec files (spec.md, plan.md, tasks.md, contracts/, etc.)
+          if [ -d "specs" ]; then
+            for spec_dir in specs/*/; do
+              if [ -d "$spec_dir" ]; then
+                spec_name=$(basename "$spec_dir")
+                mkdir -p "$SPEC_DIR/$spec_name"
+                cp -r "$spec_dir"* "$SPEC_DIR/$spec_name/" 2>/dev/null || true
+              fi
+            done
+            echo "✓ Synced complete spec directories to $SPEC_DIR/"
+          fi
+          
+          # Copy conventions if they exist
+          if [ -d ".specify/conventions" ]; then
+            mkdir -p "$SPEC_DIR/conventions"
+            cp -r .specify/conventions/* "$SPEC_DIR/conventions/" 2>/dev/null || true
+            echo "✓ Synced conventions to $SPEC_DIR/conventions/"
+          fi
+          
+          # Commit and push
+          cd central-repo
+          git config user.name 'spec-bot'
+          git config user.email 'spec-bot@users.noreply.github.com'
+          git add repos/
+          
+          if git diff --cached --quiet; then
+            echo "ℹ️ No spec changes to push"
+            echo "pushed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "chore(context): Update specs from ${{ github.repository }}@${BRANCH_NAME} [${{ github.sha }}]"
+            git push origin sync
+            echo "✅ Specs and metadata pushed to central repository (sync branch)"
+            echo "pushed=true" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Trigger Aggregation Workflow
+        if: steps.push-specs.outputs.pushed == 'true'
+        run: |
+          echo "📡 Triggering aggregate workflow in spec-kit-context..."
+          curl -sL -X POST \
+            -H "Authorization: token ${{ secrets.SPEC_KIT_CONTEXT_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/rlerikse/es-spec-kit-context/dispatches" \
+            -d '{"event_type":"specs-updated","client_payload":{"repo":"${{ github.repository }}"}}'
+          echo "✅ Aggregation triggered!"
       
       - name: Sync Complete
         if: steps.check-specs.outputs.has_specs == 'true'
         run: |
           echo ""
           echo "✅ Spec context synced to central repository!"
-          echo ""
-          echo "View in context repo:"
-          echo "https://github.com/rlerikse/spec-kit-context/tree/main/repos/${{ github.event.repository.name }}"

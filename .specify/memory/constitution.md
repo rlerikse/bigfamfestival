@@ -1,159 +1,313 @@
-# Big Fam Festival Platform Constitution
+# Big Fam Festival - Project Constitution
 
-**Version**: 1.0.0  
-**Last Updated**: January 14, 2026  
-**Scope**: Big Fam Festival API and Mobile Application  
-**Authority**: Non-negotiable principles for feature development
-
----
+<!-- 
+Version: 1.0.0
+Generated: 2026-02-09
+Last Audit: 2026-02-09
+Project: Big Fam Festival App (Backend API + Mobile App)
+-->
 
 ## I. Contract-First API Design
 
-All APIs MUST be designed according to OpenAPI/Swagger specifications. The NestJS Swagger module provides authoritative contract documentation.
+All APIs MUST be designed with Swagger/OpenAPI documentation using NestJS decorators. The API contract serves as the source of truth for:
 
-**Implementation MUST match contracts exactly**:
-- Endpoint paths and HTTP methods
-- Request/response schemas (DTOs)
-- Query parameters and validation rules
-- Error response formats and status codes
+- Endpoint paths and HTTP methods (`@Get()`, `@Post()`, etc.)
+- Request/response schemas via DTOs with `@ApiProperty()` decorators
+- Query parameters documented with `@ApiQuery()`
+- Error responses documented with `@ApiResponse()`
 
-**DTO Requirements**:
-- Use `class-validator` decorators for runtime validation
-- Use `class-transformer` for payload transformation
-- DTOs in `dto/` directories within each module
+All controllers MUST include complete Swagger decorators:
+```typescript
+@ApiTags('domain')
+@ApiOperation({ summary: 'Description' })
+@ApiResponse({ status: 200, description: 'Success' })
+@ApiResponse({ status: 404, description: 'Not found' })
+```
 
-**Rationale**: Contract-first design enables proper client generation and prevents implementation drift.
+Rationale: Contract-first design ensures API consistency, enables proper client generation, and provides self-documenting APIs via Swagger UI at `/api/docs`.
 
----
+## II. Observability & Logging
 
-## II. NestJS Module Architecture
+Services MUST emit structured logs using Pino (via `nestjs-pino`). All logs MUST:
 
-All backend features MUST follow NestJS conventions:
+- Use appropriate log levels (error, warn, info, debug)
+- Include contextual information (userId, requestId where available)
+- Be structured JSON in production
+- Use `pino-pretty` for development readability only
 
-- **Modules**: One module per domain (auth, events, artists, users)
-- **Controllers**: HTTP request handling, input validation
-- **Services**: Business logic, data transformation
-- **Interfaces**: TypeScript types for domain entities
+Health checks MUST be implemented via `@nestjs/terminus`:
+- `/health` endpoint for liveness checks
+- Firestore connectivity health indicator
+- All health checks MUST return within 5 seconds
+
+Console.log SHOULD NOT be used in production code. Use `Logger` from `@nestjs/common` or Pino.
+
+Rationale: Structured logging enables efficient debugging in production. Health checks enable proper orchestration and monitoring.
+
+## III. Firestore Data Safety & Access Patterns
+
+All Firestore operations MUST be encapsulated through `FirestoreService`. Direct Firestore SDK calls outside this service are PROHIBITED.
+
+Data access patterns:
+- Services MUST define collection names as class constants
+- All reads MUST handle document-not-found gracefully (throw `NotFoundException`)
+- All writes MUST validate data before persistence
+- Queries MUST avoid unbounded reads (use limits or pagination)
+
+Document schema changes:
+- NoSQL schema is flexible, but field additions SHOULD be backward-compatible
+- Field removals MUST ensure no code references the removed field
+- Data migrations SHOULD be handled via Cloud Functions or scripts, not inline
+
+Collection naming: lowercase, plural (e.g., `events`, `users`, `campsites`)
+
+Rationale: Centralized data access prevents inconsistent patterns and enables easier testing, caching, and audit logging.
+
+## IV. Documentation & Data Model Discipline
+
+All features and changes MUST be accompanied by up-to-date documentation:
+
+- New API endpoints MUST have Swagger documentation
+- New features MUST have a specification in `specs/` directory
+- Data models (interfaces) MUST include JSDoc comments describing each field
+- README files MUST be updated when setup steps change
+
+Specifications MUST follow the template structure in `.specify/templates/`.
+
+Rationale: Clear documentation ensures maintainability, onboarding, and safe evolution of the system.
+
+## V. PII Data Handling & Logging
+
+Personally Identifiable Information (PII) MUST NOT be logged:
+- Email addresses
+- Phone numbers
+- Passwords (even hashed)
+- Location data
+- Push notification tokens
+
+PII fields MUST be clearly identified in interfaces with comments.
+
+User data in Firestore MUST:
+- Store passwords only as bcrypt hashes (cost factor ≥ 10)
+- Be deletable upon user request (GDPR/CCPA compliance)
+
+Rationale: Logging PII risks privacy breaches and regulatory violations.
+
+## VI. NestJS Architecture Patterns
+
+All backend code MUST follow NestJS conventions:
 
 **Module Structure**:
-```
-src/
-├── [domain]/
-│   ├── [domain].module.ts
-│   ├── [domain].controller.ts
-│   ├── [domain].service.ts
-│   ├── dto/
-│   ├── interfaces/
-│   └── guards/ (if needed)
-```
+- One module per domain (`EventsModule`, `AuthModule`, etc.)
+- Modules MUST declare imports, controllers, providers, and exports explicitly
+- Cross-module dependencies MUST be through exported services
 
-**Rationale**: Consistent module structure improves discoverability and testability.
+**Dependency Injection**:
+- Services MUST use constructor injection with `private readonly`
+- Services MUST be decorated with `@Injectable()`
+- Circular dependencies are PROHIBITED
 
----
+**Controller Patterns**:
+- Controllers handle HTTP concerns ONLY (no business logic)
+- All business logic MUST be in services
+- Controllers MUST use appropriate HTTP status codes
 
-## III. Firestore Data Safety
+**Guard & Decorator Usage**:
+- `@Public()` decorator for unauthenticated routes
+- `@Roles(Role.ADMIN)` for admin-only routes
+- Guards applied at controller level, not method level (unless necessary)
 
-All Firestore operations MUST follow these principles:
+Rationale: Consistent NestJS patterns improve maintainability and enable proper testing.
 
-- **Firebase Admin SDK**: Server-side operations only
-- **Type Safety**: All documents MUST have TypeScript interfaces
-- **Transactions**: Use transactions for atomic operations
-- **Validation**: Validate data before writes
+## VII. JWT Authentication & Authorization
 
-**Protected Operations**:
-- User role changes MUST be admin-only
-- Ticket assignments MUST be transactional
-- Event modifications MUST be authorized
+Authentication MUST use JWT tokens with Passport.js:
 
-**Rationale**: Firestore operations require strict validation to prevent data corruption.
+**Token Structure**:
+- `sub`: User ID
+- `email`: User email
+- `role`: User role (ADMIN, ATTENDEE)
 
----
+**Token Storage (Mobile)**:
+- Access tokens MUST be stored in `expo-secure-store` (encrypted)
+- Tokens MUST be sent via `Authorization: Bearer <token>` header
 
-## IV. Authentication & Authorization
+**Route Protection**:
+- All routes are protected by default (`JwtAuthGuard` at controller level)
+- Public routes MUST use `@Public()` decorator explicitly
+- Admin routes MUST use `@Roles(Role.ADMIN)` decorator
 
-All protected routes MUST use proper guards:
+**Password Security**:
+- Passwords MUST be hashed with bcrypt (minimum 10 rounds)
+- Password validation MUST require minimum 8 characters
+- Failed login attempts SHOULD NOT reveal whether email exists
 
-- **JWT Authentication**: `@nestjs/jwt` with Passport strategies
-- **Guards**: Custom guards for route protection
-- **Decorators**: Custom decorators for user context
+Rationale: Secure authentication protects user data and prevents unauthorized access.
 
-**Auth Modules**:
-- `auth.module.ts`: JWT and local strategies
-- `guards/`: JWT and role-based guards
-- `strategies/`: Passport strategies
+## VIII. Input Validation & Type Safety
 
-**Rationale**: Festival apps handle sensitive user data requiring proper access control.
+All external data MUST be validated using `class-validator` decorators in DTOs:
 
----
+**DTO Requirements**:
+- All request bodies MUST have corresponding DTO classes
+- DTOs MUST use validation decorators (`@IsString()`, `@IsEmail()`, etc.)
+- DTOs MUST include `@ApiProperty()` for Swagger documentation
+- Optional fields MUST use `@IsOptional()` decorator
 
-## V. Observability & Logging
+**Validation Locations**:
+- API requests: Validated via NestJS ValidationPipe (global)
+- Environment variables: Validated at startup via Joi schema
+- Firestore responses: Type assertions with runtime checks for critical fields
 
-All services MUST implement proper logging:
+TypeScript strict mode is NOT currently enforced but SHOULD be enabled incrementally.
 
-- **Pino Logger**: Use `nestjs-pino` for structured logging
-- **Request Logging**: Log all HTTP requests with correlation IDs
-- **Error Logging**: Log errors with full context (no PII)
+Rationale: Runtime validation prevents type coercion bugs, injection attacks, and data corruption.
 
-**Never Log**:
-- Email addresses, phone numbers
-- Full names or addresses
-- Payment information
+## IX. Mobile Development Standards (React Native + Expo)
 
-**Rationale**: Structured logging enables debugging while protecting user privacy.
+Mobile code MUST follow these patterns:
 
----
+**Component Architecture**:
+- Screens are thin orchestrators (business logic in hooks/services)
+- Reusable components MUST use `React.memo` for performance
+- Event handlers MUST use `useCallback` to prevent re-renders
+- Styles MUST use `StyleSheet.create()` outside component body
 
-## VI. Mobile (Expo/React Native)
+**State Management**:
+- Server state: TanStack React Query
+- Client state: React Context (AuthContext, ThemeContext, etc.)
+- Local component state: `useState`
 
-Mobile app MUST follow these patterns:
+**Context Providers**:
+- Contexts MUST export both Provider and custom hook (`useAuth`, `useTheme`)
+- Custom hooks MUST throw if used outside provider
+- Providers MUST be composed at app root in `App.tsx`
 
-- **Expo Managed Workflow**: Use Expo SDK for cross-platform features
-- **Navigation**: React Navigation for screen management
-- **State**: React Query or Context for state management
-- **Offline Support**: Handle offline scenarios gracefully
+**Service Layer**:
+- API calls MUST be in service files (`*Service.ts`)
+- Services are pure functions (not classes)
+- Services handle token retrieval internally
 
-**Rationale**: Expo simplifies cross-platform development for festival attendees.
+Rationale: Consistent mobile patterns improve performance and maintainability.
 
----
+## X. Offline Support & Caching
 
-## VII. Testing Requirements
+Mobile app MUST handle offline scenarios gracefully:
 
-All features MUST include appropriate tests:
+**Network Detection**:
+- Use `@react-native-community/netinfo` for connectivity status
+- Display appropriate UI when offline
 
-- **Unit Tests**: Jest for service and controller logic
-- **Integration Tests**: Test API endpoints end-to-end
-- **Coverage**: Maintain reasonable test coverage
+**Data Caching**:
+- Critical data (schedule, events) MUST be cached in `AsyncStorage`
+- Cache MUST be refreshed when coming back online
+- Stale cache is acceptable for read operations when offline
 
-**Test Files**:
-- `*.spec.ts` for unit tests
-- `*.e2e-spec.ts` for integration tests
+**TanStack Query Configuration**:
+- `staleTime`: 5 minutes for most queries
+- `retry`: 2 attempts for failed requests
+- Automatic refetch on reconnection
 
-**Rationale**: Festival apps must be reliable during high-traffic events.
+Rationale: Festival attendees may have poor connectivity; offline support ensures app usability.
 
----
+## XI. Push Notifications
 
-## VIII. Infrastructure (Terraform)
+Push notifications MUST follow these patterns:
 
-All cloud resources MUST be managed via Terraform:
+**Backend (Expo Server SDK)**:
+- Notifications sent via `expo-server-sdk`
+- Push tokens stored in Firestore user documents
+- Failed sends MUST be logged but not retried indefinitely
 
-- **Google Cloud**: GCP as primary cloud provider
-- **Infrastructure as Code**: All resources in `infrastructure/terraform/`
-- **Environment Separation**: Dev, staging, production environments
+**Mobile (expo-notifications)**:
+- Permission MUST be requested before registering for push
+- Token registration MUST happen after successful login
+- Local notifications for schedule reminders
 
-**Rationale**: Infrastructure as Code ensures reproducible deployments.
+**Notification Types**:
+- Broadcast: Admin sends to all users
+- Targeted: Specific user notifications
+- Scheduled: Event reminders (local)
+
+Rationale: Push notifications are core to festival communication but must be implemented carefully to avoid spam and battery drain.
+
+## XII. Specification Requirements (Jira Integration)
+
+All specifications MUST be linked to a Jira ticket:
+
+- **No Ticket = No Spec**: Every spec MUST have a ticket ID
+- **Naming Convention**: `specs/{TICKET-ID}-{short-description}/`
+- **Project Key**: BFF (Big Fam Festival)
+- **Examples**: `specs/BFF-4-authentication/`, `specs/BFF-6-events-schedule/`
+
+Spec directories MUST contain:
+- `spec.md`: Feature specification
+- `plan.md`: Implementation plan
+
+Rationale: Traceability between tickets and specifications enables project management and audit trails.
 
 ---
 
 ## Additional Constraints
 
-- **Backend Language**: TypeScript (strict mode)
-- **Backend Framework**: NestJS 10
-- **Database**: Google Cloud Firestore
-- **Auth**: JWT with Passport.js
-- **Mobile**: Expo / React Native
-- **Cloud**: Google Cloud Platform
-- **IaC**: Terraform
+### Tech Stack (Enforced)
+
+**Backend**:
+- Runtime: Node.js 20.x
+- Framework: NestJS 10.x
+- Language: TypeScript 5.x
+- Database: Google Cloud Firestore
+- Auth: Passport.js + JWT
+- Docs: Swagger/OpenAPI via @nestjs/swagger
+- Logging: Pino via nestjs-pino
+- Hosting: Google Cloud Run
+
+**Mobile**:
+- Framework: React Native 0.81.x
+- Platform: Expo SDK 54
+- Language: TypeScript 5.x
+- Navigation: React Navigation 6.x
+- State: TanStack React Query 5.x + React Context
+- Storage: AsyncStorage (cache) + SecureStore (tokens)
+
+**Cloud Functions**:
+- Runtime: Node.js 20
+- Framework: Firebase Functions
+
+### Testing Requirements
+
+- Backend: Jest for unit and integration tests
+- Mobile: Jest + React Native Testing Library
+- Coverage threshold: Not strictly enforced (SHOULD aim for critical paths)
+- E2E tests: Not currently implemented
+
+### Security Requirements
+
+- HTTPS required for all API communication
+- JWT tokens expire (configurable)
+- Passwords hashed with bcrypt
+- No PII in logs
+- Rate limiting via @nestjs/throttler
 
 ---
 
-**Version**: 1.0.0 | **Ratified**: 2026-01-14
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |
+
+---
+
+## Governance
+
+### Amendment Process
+1. Propose change via PR to this file
+2. Run `/speckit.constitution --audit` to verify alignment
+3. Require maintainer approval
+4. Update version in header
+
+### Audit Schedule
+- Run `/speckit.constitution --audit` after major features
+- Run after dependency updates
+- Run quarterly at minimum
