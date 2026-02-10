@@ -130,7 +130,7 @@ Backend services must validate Firebase ID tokens on protected endpoints while m
 
 #### Guards
 
-- [ ] T005 [P] [US4] [M] Create `FirebaseAuthGuard` in `backend/src/auth/guards/firebase-auth.guard.ts`
+- [x] T005 [P] [US4] [M] Create `FirebaseAuthGuard` in `backend/src/auth/guards/firebase-auth.guard.ts`
   - Use `getAuth().verifyIdToken(token)` from firebase-admin
   - Extract uid, email from decoded token
   - Get role from custom claims
@@ -138,7 +138,7 @@ Backend services must validate Firebase ID tokens on protected endpoints while m
   - Branch: `feat/BFF-50-3_firebase-guard`
   - Copilot time: 30-45 min
 
-- [ ] T006 [P] [US4] [L] Create `HybridAuthGuard` in `backend/src/auth/guards/hybrid-auth.guard.ts`
+- [x] T006 [P] [US4] [L] Create `HybridAuthGuard` in `backend/src/auth/guards/hybrid-auth.guard.ts`
   - Try Firebase token verification first
   - Fall back to legacy JWT if Firebase fails
   - Log which method succeeded
@@ -146,21 +146,21 @@ Backend services must validate Firebase ID tokens on protected endpoints while m
   - Branch: `feat/BFF-50-4_hybrid-guard`
   - Copilot time: 45-60 min
 
-- [ ] T007 [D:T005] [US4] [S] Export new guards from `backend/src/auth/guards/index.ts`
+- [x] T007 [D:T005] [US4] [S] Export new guards from `backend/src/auth/guards/index.ts`
   - Create index file if not exists
   - Export FirebaseAuthGuard, HybridAuthGuard
   - Branch: `feat/BFF-50-5_guard-exports`
 
 #### Auth Module Updates
 
-- [ ] T008 [D:T005,T006] [US4] [M] Update `backend/src/auth/auth.module.ts` to register new guards
+- [x] T008 [D:T005,T006] [US4] [M] Update `backend/src/auth/auth.module.ts` to register new guards
   - Import FirebaseAuthGuard, HybridAuthGuard
   - Add to providers array
   - Ensure Firebase Admin is properly injected
   - Branch: `feat/BFF-50-6_auth-module`
   - Copilot time: 20-30 min
 
-- [ ] T009 [D:T008] [US4] [M] Replace `JwtAuthGuard` with `HybridAuthGuard` on protected routes
+- [x] T009 [D:T008] [US4] [M] Replace `JwtAuthGuard` with `HybridAuthGuard` on protected routes
   - Update `backend/src/users/users.controller.ts`
   - Update `backend/src/schedule/schedule.controller.ts`  
   - Update `backend/src/events/events.controller.ts`
@@ -171,7 +171,7 @@ Backend services must validate Firebase ID tokens on protected endpoints while m
 
 #### Verification Endpoint
 
-- [ ] T010 [D:T005] [US4] [S] Add `/auth/verify` endpoint per `contracts/auth.yaml`
+- [x] T010 [D:T005] [US4] [S] Add `/auth/verify` endpoint per `contracts/auth.yaml`
   - Returns decoded token info (uid, email, role)
   - Use `@UseGuards(FirebaseAuthGuard)` 
   - Add to `backend/src/auth/auth.controller.ts`
@@ -180,7 +180,7 @@ Backend services must validate Firebase ID tokens on protected endpoints while m
 
 #### Testing
 
-- [ ] T011 [D:T005] [US4] [M] Unit tests for FirebaseAuthGuard in `backend/src/auth/guards/firebase-auth.guard.spec.ts`
+- [x] T011 [D:T005] [US4] [M] Unit tests for FirebaseAuthGuard in `backend/src/auth/guards/firebase-auth.guard.spec.ts`
   - Test valid token
   - Test expired token
   - Test malformed token
@@ -189,7 +189,7 @@ Backend services must validate Firebase ID tokens on protected endpoints while m
   - Branch: `feat/BFF-50-9_guard-tests`
   - Copilot time: 30-45 min
 
-- [ ] T012 [D:T006] [US4] [M] Unit tests for HybridAuthGuard in `backend/src/auth/guards/hybrid-auth.guard.spec.ts`
+- [x] T012 [D:T006] [US4] [M] Unit tests for HybridAuthGuard in `backend/src/auth/guards/hybrid-auth.guard.spec.ts`
   - Test Firebase token accepted
   - Test legacy JWT accepted (fallback)
   - Test both invalid → 401

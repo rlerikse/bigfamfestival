@@ -17,7 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DebugModule } from './debug/debug.module'; // Debug endpoints
 import * as Joi from 'joi';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { HybridAuthGuard } from './auth/guards/hybrid-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { ArtistsModule } from './artists/artists.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -96,10 +96,10 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
   ],
   controllers: [],
   providers: [
-    // Global JWT authentication guard
+    // Global authentication guard (Firebase + legacy JWT during transition)
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: HybridAuthGuard,
     },
     // Global roles guard
     {

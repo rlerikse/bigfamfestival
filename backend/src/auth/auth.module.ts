@@ -9,10 +9,15 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UsersModule } from '../users/users.module';
 
+// Firebase Auth Guards (BFF-50)
+import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
+import { HybridAuthGuard } from './guards/hybrid-auth.guard';
+
 @Module({
   imports: [
     UsersModule,
     PassportModule,
+    ConfigModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -25,7 +30,14 @@ import { UsersModule } from '../users/users.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
-  exports: [AuthService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    LocalStrategy,
+    // Firebase Auth Guards (BFF-50)
+    FirebaseAuthGuard,
+    HybridAuthGuard,
+  ],
+  exports: [AuthService, FirebaseAuthGuard, HybridAuthGuard],
 })
 export class AuthModule {}
