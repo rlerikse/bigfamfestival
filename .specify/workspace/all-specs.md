@@ -1,9 +1,9 @@
 # Aggregated Specifications
 
-> **Generated**: 2026-02-10T13:31:39Z
+> **Generated**: 2026-02-10T14:31:52Z
 > **Source**: [es-spec-kit-context](https://github.com/rlerikse/es-spec-kit-context)
 
-This file contains **23 specifications** from **2 repositories** from connected repositories.
+This file contains **35 specifications** from **2 repositories** from connected repositories.
 
 ---
 
@@ -2715,6 +2715,1321 @@ As a new user, I want to create an account with email and password, so that I ca
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-10 | Spec-Kit | Initial specification |
+
+---
+
+## [bigfamfestival] BFF-38-qr-scanner-gate-entry
+
+# Feature Specification: QR Scanner for Gate Entry Staff
+
+**Jira**: [BFF-38](https://eriksensolutions.atlassian.net/browse/BFF-38)  
+**Feature Branch**: `BFF-38-qr-scanner-gate-entry`  
+**Created**: 2026-02-10  
+**Status**: On Hold  
+**Epic**: BFF-17 (Ticketing & Entry)
+
+---
+
+## Overview
+
+Staff-facing QR scanner for validating tickets at festival entry gates. Companion feature to BFF-27 (QR Code Ticket Display).
+
+### Current State
+- No in-app QR scanning for staff
+- External scanning hardware required
+
+### Target State
+- Camera-based QR scanning in staff app
+- Backend ticket validation
+- Valid/invalid status display with details
+- Audit trail for all scans
+- Offline validation with sync
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: Staff role required for scanner access
+- [ ] **Observability**: All scans logged for audit trail
+- [ ] **Offline**: Validation works offline with later sync
+- [ ] **Testing**: Scanning accuracy and validation flow tested
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Scan Ticket QR Code (Priority: P1)
+
+As gate staff, I want to scan attendee QR codes with my phone camera, so that I can validate tickets.
+
+**Why this priority**: Core functionality for gate entry.
+
+**Independent Test**: Display test QR, scan with staff app, verify validation result.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** staff opens scanner, **When** camera active, **Then** QR codes are detected
+2. **Given** QR detected, **When** scanned, **Then** ticket validated against backend
+
+---
+
+### User Story 2 - Display Validation Result (Priority: P1)
+
+As gate staff, I want to see clear valid/invalid status with details, so that I know whether to admit the attendee.
+
+**Acceptance Criteria**:
+1. **Given** ticket scanned, **When** valid, **Then** green checkmark with ticket details shown
+2. **Given** ticket scanned, **When** invalid, **Then** red X with reason shown
+
+---
+
+### User Story 3 - Audit Trail (Priority: P1)
+
+As festival management, I want all scans logged, so that I have a record for security and analytics.
+
+**Acceptance Criteria**:
+1. **Given** ticket scanned, **When** logged, **Then** includes: timestamp, staff ID, ticket ID, result
+2. **Given** audit log, **When** queried, **Then** all scans retrievable
+
+---
+
+### User Story 4 - Offline Validation (Priority: P2)
+
+As gate staff without cell signal, I want to continue scanning, so that entry isn't blocked by connectivity.
+
+**Acceptance Criteria**:
+1. **Given** offline, **When** scanning, **Then** validation uses cached ticket data
+2. **Given** connection restored, **When** syncing, **Then** offline scans uploaded
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST provide camera-based QR scanning
+- **FR-002**: System MUST validate ticket against backend
+- **FR-003**: System MUST show valid/invalid status with ticket details
+- **FR-004**: System MUST log all scans for audit trail
+- **FR-005**: System MUST support offline validation with sync
+- **FR-006**: System MUST require staff role to access scanner
+
+### Key Entities
+
+- **ScanLog**: id, ticketId, staffId, timestamp, result, syncStatus
+
+### Technical Notes (from Jira)
+
+- Package: expo-camera or react-native-camera
+- Backend: POST /api/tickets/validate
+- Staff role required
+- ScannerScreen.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: QR detection within 1 second
+- **SC-002**: Validation response within 2 seconds (online)
+- **SC-003**: 100% scan accuracy for valid QR codes
+- **SC-004**: Offline cache supports 10,000+ tickets
+
+---
+
+## [bigfamfestival] BFF-37-campsite-location-sharing
+
+# Feature Specification: Campsite Location Sharing with Friends
+
+**Jira**: [BFF-37](https://eriksensolutions.atlassian.net/browse/BFF-37)  
+**Feature Branch**: `BFF-37-campsite-location-sharing`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-25 (Friends & Campsite)
+
+---
+
+## Overview
+
+Allow users to share their campsite location with approved friends, making it easy to find each other at the festival.
+
+### Current State
+- Users can set their campsite location (BFF-10)
+- No sharing capability with friends
+- No visibility of friends' campsites
+
+### Target State
+- Toggle campsite visibility (private/friends)
+- View friends' campsites on map
+- Navigate to friend's campsite
+- Real-time location updates
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: Campsite location only visible to accepted friends
+- [ ] **Privacy**: Users control visibility via toggle
+- [ ] **Testing**: Permission model and real-time updates tested
+- [ ] **Documentation**: Privacy controls documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Set Campsite Visibility (Priority: P1)
+
+As a user, I want to control who can see my campsite location, so that I maintain privacy.
+
+**Why this priority**: Privacy foundation for feature.
+
+**Independent Test**: Toggle visibility, verify friends can/cannot see campsite.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** campsite set, **When** toggling visibility, **Then** can choose private or friends
+2. **Given** set to friends, **When** friend views map, **Then** campsite visible to them
+
+---
+
+### User Story 2 - View Friends' Campsites on Map (Priority: P1)
+
+As a user, I want to see my friends' campsites on the map, so that I can find them.
+
+**Acceptance Criteria**:
+1. **Given** friend shared campsite, **When** viewing map, **Then** friend's campsite marker shows
+2. **Given** multiple friends, **When** viewing map, **Then** all shared campsites display
+
+---
+
+### User Story 3 - Navigate to Friend's Campsite (Priority: P2)
+
+As a user, I want to navigate to a friend's campsite, so that I can find their location.
+
+**Acceptance Criteria**:
+1. **Given** friend's campsite marker, **When** tapping, **Then** can start navigation
+2. **Given** navigation started, **When** following, **Then** arrives at friend's campsite
+
+---
+
+### User Story 4 - Real-Time Location Updates (Priority: P3)
+
+As a user, I want friends' campsite locations to update in real-time (if they move), so that I have current info.
+
+**Acceptance Criteria**:
+1. **Given** friend updates campsite, **When** I view map, **Then** new location shows
+2. **Given** map open, **When** friend moves campsite, **Then** marker updates without refresh
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST allow toggling campsite visibility (private/friends)
+- **FR-002**: System MUST show friends' campsites on map when shared
+- **FR-003**: System MUST support navigation to friend's campsite
+- **FR-004**: System MUST update friend's campsite location in real-time
+- **FR-005**: System MUST show friend markers with profile pictures
+
+### Technical Notes (from Jira)
+
+- Extend campsites collection with visibility field
+- Backend: GET /api/campsites/friends
+- Show friend markers on MapScreen with profile pics
+
+---
+
+## Success Criteria
+
+- **SC-001**: Friends' campsite markers load within 3 seconds
+- **SC-002**: Location updates reflect within 30 seconds
+- **SC-003**: Navigation to campsite accurate within 10 meters
+
+---
+
+## [bigfamfestival] BFF-36-medical-emergency-request
+
+# Feature Specification: Medical Emergency Request System
+
+**Jira**: [BFF-36](https://eriksensolutions.atlassian.net/browse/BFF-36)  
+**Feature Branch**: `BFF-36-medical-emergency-request`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-15 (Role-Specific Panels)
+
+---
+
+## Overview
+
+Allow attendees to request medical assistance through the app, with automatic location sharing and priority levels.
+
+### Current State
+- No in-app medical assistance request
+- Attendees must find medical station or call staff
+
+### Target State
+- Emergency button on home screen
+- Location sent with request automatically
+- Priority levels (urgent/non-urgent)
+- Status tracking for requestor
+- Push notification to medical staff
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: Medical requests protected data, role-based access
+- [ ] **Observability**: All medical requests logged with full audit trail
+- [ ] **Reliability**: High availability required (critical feature)
+- [ ] **Testing**: End-to-end request flow tested including push notifications
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Request Medical Assistance (Priority: P1)
+
+As a festival attendee experiencing a medical issue, I want to request help through the app, so that medical staff can find me.
+
+**Why this priority**: Critical safety feature.
+
+**Independent Test**: Submit test request, verify request appears in medical staff queue.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user on home screen, **When** they tap emergency button, **Then** medical request form opens
+2. **Given** request submitted, **When** sent, **Then** medical staff notified via push
+
+---
+
+### User Story 2 - Automatic Location Sharing (Priority: P1)
+
+As a user requesting medical help, I want my location sent automatically, so that staff can find me quickly.
+
+**Acceptance Criteria**:
+1. **Given** request submitted, **When** sent, **Then** current GPS coordinates included
+2. **Given** location sent, **When** staff views request, **Then** location shows on their map
+
+---
+
+### User Story 3 - Priority Level Selection (Priority: P2)
+
+As a user, I want to indicate if my situation is urgent or non-urgent, so that staff can prioritize appropriately.
+
+**Acceptance Criteria**:
+1. **Given** request form open, **When** selecting priority, **Then** can choose urgent or non-urgent
+2. **Given** urgent selected, **When** submitted, **Then** request flagged as high priority
+
+---
+
+### User Story 4 - Status Tracking (Priority: P2)
+
+As a user who requested help, I want to see the status of my request, so that I know help is coming.
+
+**Acceptance Criteria**:
+1. **Given** request submitted, **When** viewing status, **Then** shows: pending, en route, arrived
+2. **Given** staff updates status, **When** viewed by user, **Then** new status displays
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST provide emergency button on home screen
+- **FR-002**: System MUST send current GPS location with request
+- **FR-003**: System MUST support priority levels: urgent, non-urgent
+- **FR-004**: System MUST track request status
+- **FR-005**: System MUST send push notification to medical staff
+- **FR-006**: System MUST log all medical requests for audit trail
+
+### Key Entities
+
+- **MedicalRequest**: id, userId, location, priority, status, description, createdAt, assignedStaffId
+
+### Technical Notes (from Jira)
+
+- MedicalRequests Firestore collection
+- Backend: POST /api/medical/request
+- Push notification to medical staff
+- MedicalRequestScreen.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: Medical staff notified within 10 seconds of request
+- **SC-002**: Location accuracy within 10 meters
+- **SC-003**: 99.9% uptime for medical request feature
+
+---
+
+## [bigfamfestival] BFF-35-mapbox-here-interactive-map
+
+# Feature Specification: Mapbox/HERE SDK Interactive Map
+
+**Jira**: [BFF-35](https://eriksensolutions.atlassian.net/browse/BFF-35)  
+**Feature Branch**: `BFF-35-mapbox-here-interactive-map`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-24 (Interactive Map & POI)
+
+---
+
+## Overview
+
+Integrate Mapbox/HERE SDK to replace static map image with an interactive, zoomable map of the festival grounds.
+
+### Current State
+- Static map image in MapScreen.tsx
+- No pan/zoom capability
+- No custom styling
+
+### Target State
+- Interactive map with Mapbox/HERE SDK
+- Pan and zoom functionality
+- Custom festival-themed map style
+- Map bounded to festival venue
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: API keys for Mapbox/HERE secured
+- [ ] **Performance**: Map tiles cached for offline use
+- [ ] **Testing**: Map rendering tested on iOS and Android
+- [ ] **Documentation**: Map style and bounds documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - View Interactive Map (Priority: P1)
+
+As a festival attendee, I want an interactive map of the grounds, so that I can explore and orient myself.
+
+**Why this priority**: Foundation for all map features.
+
+**Independent Test**: Open MapScreen, verify map loads with pan/zoom capability.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user opens map, **When** map loads, **Then** interactive map of festival grounds displays
+2. **Given** map displayed, **When** user zooms, **Then** map scales smoothly
+
+---
+
+### User Story 2 - Pan and Zoom (Priority: P1)
+
+As a user, I want to pan around the map and zoom in/out, so that I can view different areas at different detail levels.
+
+**Acceptance Criteria**:
+1. **Given** map displayed, **When** user drags, **Then** map pans in that direction
+2. **Given** map displayed, **When** user pinches, **Then** map zooms in/out
+
+---
+
+### User Story 3 - Festival Bounds (Priority: P2)
+
+As a user, I want the map bounded to the festival venue, so that I don't accidentally navigate away from relevant areas.
+
+**Acceptance Criteria**:
+1. **Given** map displayed, **When** user pans too far, **Then** map snaps back to venue bounds
+2. **Given** map zoomed out max, **When** displayed, **Then** entire venue visible
+
+---
+
+### User Story 4 - Custom Map Style (Priority: P2)
+
+As a user, I want the map to match the festival theme, so that the experience feels cohesive.
+
+**Acceptance Criteria**:
+1. **Given** map displayed, **When** viewed, **Then** custom festival colors and styling applied
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST use Mapbox or HERE SDK for map rendering
+- **FR-002**: System MUST support pan and zoom gestures
+- **FR-003**: System MUST bound map to festival venue coordinates
+- **FR-004**: System MUST apply custom map style matching festival theme
+- **FR-005**: System MUST initialize SDK with API key from festival config
+
+### Technical Notes (from Jira)
+
+- Decision 7 selected Mapbox/HERE hybrid approach
+- Package: `@rnmapbox/maps` or `react-native-here-explore`
+- Replace current static image in MapScreen.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: Map loads within 3 seconds on LTE connection
+- **SC-002**: Smooth 60fps pan/zoom performance
+- **SC-003**: Map renders correctly offline after initial load
+
+---
+
+## [bigfamfestival] BFF-34-social-login-sso
+
+# Feature Specification: Social Login (Google/Apple SSO)
+
+**Jira**: [BFF-34](https://eriksensolutions.atlassian.net/browse/BFF-34)  
+**Feature Branch**: `BFF-34-social-login-sso`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-22 (Auth & User Profile)
+
+---
+
+## Overview
+
+Support Google and Apple SSO for streamlined login, reducing friction for new users.
+
+### Current State
+- Email/password authentication only (via Firebase Auth)
+- Users must create and remember password
+
+### Target State
+- Sign in with Google option
+- Sign in with Apple option
+- Link existing accounts to social logins
+- First-time profile completion flow
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: Social provider tokens validated server-side
+- [ ] **Privacy**: Minimal data collected from social providers
+- [ ] **Platform Requirements**: Apple Sign-In required for iOS
+- [ ] **Testing**: Social login flows tested on iOS and Android
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Sign In with Google (Priority: P1)
+
+As a new user, I want to sign in with my Google account, so that I can quickly access the app.
+
+**Why this priority**: Most popular social login provider.
+
+**Independent Test**: Tap Google sign-in, complete OAuth flow, verify account created.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** login screen, **When** user taps Sign in with Google, **Then** Google OAuth flow starts
+2. **Given** Google auth complete, **When** returning to app, **Then** user is logged in
+
+---
+
+### User Story 2 - Sign In with Apple (Priority: P1)
+
+As an iOS user, I want to sign in with my Apple ID, so that I can use a familiar login method.
+
+**Why this priority**: Required for iOS app store compliance.
+
+**Acceptance Criteria**:
+1. **Given** login screen on iOS, **When** user taps Sign in with Apple, **Then** Apple OAuth flow starts
+2. **Given** Apple auth complete, **When** returning to app, **Then** user is logged in
+
+---
+
+### User Story 3 - Link Existing Account (Priority: P2)
+
+As an existing user, I want to link my Google/Apple account to my existing profile, so that I can use social login going forward.
+
+**Acceptance Criteria**:
+1. **Given** logged in user, **When** in settings, **Then** can link social account
+2. **Given** social account linked, **When** logging in later, **Then** can use either method
+
+---
+
+### User Story 4 - First-Time Profile Completion (Priority: P2)
+
+As a new user via social login, I want to complete my profile with additional info, so that I can use all app features.
+
+**Acceptance Criteria**:
+1. **Given** new social login user, **When** first login complete, **Then** profile completion screen shows
+2. **Given** profile completed, **When** submitting, **Then** account is fully set up
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST support Sign in with Google
+- **FR-002**: System MUST support Sign in with Apple (required for iOS)
+- **FR-003**: System MUST allow linking social accounts to existing email accounts
+- **FR-004**: System MUST prompt new social users to complete profile
+- **FR-005**: System MUST handle account linking conflicts gracefully
+
+### Technical Notes (from Jira)
+
+- Firebase Auth providers (Google, Apple)
+- Package: expo-auth-session or @react-native-google-signin/google-signin
+- Update AuthContext.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: Social login completes within 10 seconds
+- **SC-002**: 100% of iOS users see Apple Sign-In option
+- **SC-003**: Account linking conflicts handled without data loss
+
+---
+
+## [bigfamfestival] BFF-33-schedule-snapshot-sharing
+
+# Feature Specification: Schedule Snapshot Social Sharing
+
+**Jira**: [BFF-33](https://eriksensolutions.atlassian.net/browse/BFF-33)  
+**Feature Branch**: `BFF-33-schedule-snapshot-sharing`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-21 (Schedule Snapshot Sharing)
+
+---
+
+## Overview
+
+Generate shareable images of personal festival schedule for social media sharing.
+
+### Current State
+- Personal schedule viewable in-app only
+- No sharing capability
+
+### Target State
+- Generate branded schedule snapshot as image
+- Share to social media platforms
+- Option for full festival or single day
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: User schedule data only visible with their consent
+- [ ] **Branding**: Festival branding included in generated images
+- [ ] **Testing**: Image generation and share flow tested on iOS/Android
+- [ ] **Documentation**: Share template specifications documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Generate Schedule Snapshot (Priority: P1)
+
+As a user, I want to generate an image of my personal schedule, so that I can share it.
+
+**Why this priority**: Core functionality for social sharing.
+
+**Independent Test**: Create personal schedule, generate snapshot, verify image created.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user has personal schedule, **When** they tap share, **Then** schedule image is generated
+2. **Given** image generated, **When** displayed, **Then** includes festival branding
+
+---
+
+### User Story 2 - Share to Social Media (Priority: P1)
+
+As a user with schedule image, I want to share it to Instagram, Twitter, or Facebook, so that my friends know my plans.
+
+**Why this priority**: Primary use case for the feature.
+
+**Acceptance Criteria**:
+1. **Given** schedule image generated, **When** user taps share, **Then** native share sheet opens
+2. **Given** share sheet open, **When** user selects platform, **Then** image posts successfully
+
+---
+
+### User Story 3 - Select Day or Full Festival (Priority: P2)
+
+As a user, I want to choose whether to share one day or my full schedule, so that I control what I share.
+
+**Acceptance Criteria**:
+1. **Given** share initiated, **When** options shown, **Then** can select specific day or full festival
+2. **Given** day selected, **When** image generated, **Then** only that day's events included
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST generate schedule as shareable image
+- **FR-002**: System MUST include festival branding in generated image
+- **FR-003**: System MUST support sharing to Instagram, Twitter, Facebook
+- **FR-004**: System MUST allow selection of specific day or full festival
+- **FR-005**: System MUST use native OS share sheet
+
+### Technical Notes (from Jira)
+
+- Package: react-native-view-shot
+- Share API: react-native-share
+- Template component: ScheduleShareCard.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: Image generation completes within 3 seconds
+- **SC-002**: Share success rate > 95%
+- **SC-003**: Image displays correctly on all target platforms
+
+---
+
+## [bigfamfestival] BFF-32-what3words-navigation
+
+# Feature Specification: What3Words Navigation Integration
+
+**Jira**: [BFF-32](https://eriksensolutions.atlassian.net/browse/BFF-32)  
+**Feature Branch**: `BFF-32-what3words-navigation`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-26 (Navigation & Wayfinding)
+
+---
+
+## Overview
+
+Turn-by-turn navigation within festival grounds using What3Words for precise location addressing.
+
+### Current State
+- Basic map view without navigation
+- No precise location addressing for festival areas
+
+### Target State
+- Walking navigation from user location to any POI
+- What3Words address support for precise festival locations
+- Step-by-step walking directions with ETA
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: API keys for What3Words and navigation services secured
+- [ ] **Observability**: Navigation requests logged
+- [ ] **Testing**: Navigation accuracy tested on venue map
+- [ ] **Documentation**: What3Words zones documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Navigate to POI (Priority: P1)
+
+As a festival attendee, I want walking directions to a stage or vendor, so that I can find my way.
+
+**Why this priority**: Core navigation functionality.
+
+**Independent Test**: Request navigation to known POI, verify directions display.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user on map, **When** they select navigate to POI, **Then** walking directions display
+2. **Given** directions displayed, **When** user at destination, **Then** navigation completes
+
+---
+
+### User Story 2 - What3Words Address Support (Priority: P2)
+
+As a user, I want to enter a What3Words address to navigate to a specific spot, so that I can find exact locations like my campsite.
+
+**Acceptance Criteria**:
+1. **Given** user enters What3Words address, **When** resolved, **Then** location shown on map
+2. **Given** location resolved, **When** user starts navigation, **Then** directions to that spot display
+
+---
+
+### User Story 3 - ETA Display (Priority: P1)
+
+As a user navigating, I want to see my estimated arrival time, so that I know how long the walk will take.
+
+**Acceptance Criteria**:
+1. **Given** navigation active, **When** displayed, **Then** ETA shows based on walking speed
+2. **Given** user progresses, **When** ETA changes, **Then** display updates
+
+---
+
+### User Story 4 - Step-by-Step Instructions (Priority: P2)
+
+As a user navigating, I want step-by-step walking instructions, so that I know which turns to take.
+
+**Acceptance Criteria**:
+1. **Given** navigation active, **When** next turn approaches, **Then** instruction displayed
+2. **Given** user reaches turn point, **When** passed, **Then** next instruction shows
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST provide walking navigation from current location to selected POI
+- **FR-002**: System MUST resolve What3Words addresses to coordinates
+- **FR-003**: System MUST display ETA based on walking speed (~4 km/h)
+- **FR-004**: System MUST show step-by-step walking instructions
+- **FR-005**: System MUST NOT provide vehicle directions (walking only)
+
+### Technical Notes (from Jira)
+
+- Mapbox Navigation SDK or HERE Routing API
+- What3Words API for location conversion
+- NavigationView.tsx overlay
+
+---
+
+## Success Criteria
+
+- **SC-001**: What3Words address resolves within 2 seconds
+- **SC-002**: Navigation route calculates within 3 seconds
+- **SC-003**: ETA accuracy within 2 minutes for festival grounds
+
+---
+
+## [bigfamfestival] BFF-31-vendor-dashboard-panel
+
+# Feature Specification: Vendor Dashboard Panel
+
+**Jira**: [BFF-31](https://eriksensolutions.atlassian.net/browse/BFF-31)  
+**Feature Branch**: `BFF-31-vendor-dashboard-panel`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-15 (Role-Specific Panels)
+
+---
+
+## Overview
+
+Specialized panel for vendors to manage their booth operations and view sales insights at the festival.
+
+### Current State
+- No vendor-specific features
+- Vendors use same app interface as attendees
+
+### Target State
+- Dedicated vendor dashboard
+- Booth info and hours management
+- Menu/product display
+- Basic analytics (if POS integration available)
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Contract Compliance**: Vendor API endpoints documented in OpenAPI
+- [ ] **Security**: Vendor role required for dashboard access
+- [ ] **Testing**: Vendor dashboard screens and data flows tested
+- [ ] **Documentation**: Vendor data model documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - View Vendor Dashboard (Priority: P1)
+
+As a vendor, I want a dedicated dashboard, so that I can see all my booth-related information at a glance.
+
+**Why this priority**: Entry point to all vendor features.
+
+**Independent Test**: Log in as vendor role, verify dashboard displays booth info.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user has vendor role, **When** they open app, **Then** vendor dashboard is accessible
+2. **Given** vendor dashboard, **When** viewed, **Then** shows booth info, hours, menu
+
+---
+
+### User Story 2 - Manage Hours of Operation (Priority: P2)
+
+As a vendor, I want to update my booth hours, so that attendees know when I'm open.
+
+**Acceptance Criteria**:
+1. **Given** vendor on dashboard, **When** editing hours, **Then** can set open/close times per day
+2. **Given** hours updated, **When** attendees view booth, **Then** new hours display
+
+---
+
+### User Story 3 - Display Menu/Products (Priority: P2)
+
+As a vendor, I want to show my menu or product list, so that attendees know what I offer.
+
+**Acceptance Criteria**:
+1. **Given** vendor dashboard, **When** viewing menu section, **Then** product list displays
+2. **Given** product list, **When** vendor adds item, **Then** item appears in list
+
+---
+
+### User Story 4 - View Announcements (Priority: P3)
+
+As a vendor, I want to see festival announcements targeted at vendors, so that I stay informed.
+
+**Acceptance Criteria**:
+1. **Given** vendor dashboard, **When** announcement exists for vendors, **Then** it displays in feed
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST provide vendor dashboard for users with vendor role
+- **FR-002**: System MUST display booth information (name, location, description)
+- **FR-003**: System MUST allow vendors to manage hours of operation
+- **FR-004**: System MUST display menu/product list
+- **FR-005**: System MUST show vendor-targeted announcement feed
+- **FR-006**: System SHOULD show basic sales analytics if POS integrated
+
+### Key Entities
+
+- **Vendor**: userId, boothName, boothLocation, description, hoursOfOperation
+- **VendorProduct**: vendorId, name, description, price, category, isAvailable
+
+### Technical Notes (from Jira)
+
+- Vendor role in user model
+- VendorDashboardScreen.tsx
+- Backend: GET /api/vendor/profile, PUT /api/vendor/hours
+
+---
+
+## Success Criteria
+
+- **SC-001**: Vendor dashboard loads within 2 seconds
+- **SC-002**: Hours updates reflect within 30 seconds for attendees
+- **SC-003**: 90% of vendors successfully update their hours on first attempt
+
+---
+
+## [bigfamfestival] BFF-30-friend-request-system
+
+# Feature Specification: Friend Request System
+
+**Jira**: [BFF-30](https://eriksensolutions.atlassian.net/browse/BFF-30)  
+**Feature Branch**: `BFF-30-friend-request-system`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-25 (Friends & Campsite)
+
+---
+
+## Overview
+
+Allow users to send/accept friend requests and manage a friends list for social features at the festival.
+
+### Current State
+- No friend system in app
+- Users cannot connect with others in-app
+
+### Target State
+- User search and friend requests
+- Friends list management
+- Foundation for friend-based features (campsite sharing, etc.)
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Contract Compliance**: Friends API endpoints documented in OpenAPI
+- [ ] **Security**: Users can only view accepted friends' data
+- [ ] **Privacy**: Friend list visible only to the user
+- [ ] **Testing**: Request flow and edge cases tested
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Search and Send Friend Request (Priority: P1)
+
+As a user, I want to search for other users and send them a friend request, so that I can connect with people I know.
+
+**Why this priority**: Core functionality to initiate friendships.
+
+**Independent Test**: Search for test user, send request, verify request appears in their pending list.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user searches by username/name, **When** results appear, **Then** can send friend request
+2. **Given** request sent, **When** recipient views pending, **Then** request is visible
+
+---
+
+### User Story 2 - Accept/Decline Friend Request (Priority: P1)
+
+As a user with a pending request, I want to accept or decline it, so that I control my connections.
+
+**Why this priority**: Users must be able to respond to requests.
+
+**Acceptance Criteria**:
+1. **Given** pending request, **When** user accepts, **Then** both users are now friends
+2. **Given** pending request, **When** user declines, **Then** request is removed
+
+---
+
+### User Story 3 - View Friends List (Priority: P1)
+
+As a user, I want to see my friends list, so that I know who I'm connected with.
+
+**Acceptance Criteria**:
+1. **Given** user has friends, **When** opening friends list, **Then** all accepted friends display
+
+---
+
+### User Story 4 - Remove Friend (Priority: P2)
+
+As a user, I want to remove someone from my friends, so that I can manage my connections.
+
+**Acceptance Criteria**:
+1. **Given** friend in list, **When** user removes them, **Then** friendship is deleted for both users
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST allow searching users by username or name
+- **FR-002**: System MUST allow sending friend requests
+- **FR-003**: System MUST allow accepting/declining friend requests
+- **FR-004**: System MUST display friends list
+- **FR-005**: System MUST allow removing friends
+
+### Key Entities
+
+- **Friend**: id, userId, friendId, status (pending/accepted/blocked), createdAt
+
+### Technical Notes (from Jira)
+
+- Friends Firestore collection with status (pending/accepted/blocked)
+- Backend API: POST /api/friends/request, GET /api/friends, DELETE /api/friends/:id
+- FriendsScreen.tsx, AddFriendScreen.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: User search returns results within 2 seconds
+- **SC-002**: Friend request delivery within 5 seconds
+- **SC-003**: Friends list loads within 2 seconds
+
+---
+
+## [bigfamfestival] BFF-29-staff-volunteer-shift-management
+
+# Feature Specification: Staff/Volunteer Shift Management
+
+**Jira**: [BFF-29](https://eriksensolutions.atlassian.net/browse/BFF-29)  
+**Feature Branch**: `BFF-29-staff-volunteer-shift-management`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-15 (Role-Specific Panels)
+
+---
+
+## Overview
+
+Allow volunteers and staff to view and check-in to assigned shifts. Managers can assign shifts and track attendance.
+
+### Current State
+- No shift management in app
+- Staff coordination via external tools (spreadsheets, text messages)
+
+### Target State
+- In-app shift viewing for staff/volunteers
+- Location-verified check-in/check-out
+- Manager assignment and tracking
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Contract Compliance**: Shift API endpoints documented in OpenAPI
+- [ ] **Security**: Role-based access (staff, volunteer, manager roles)
+- [ ] **Observability**: Check-in events logged with location
+- [ ] **Testing**: Shift assignment and check-in flows tested
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - View Upcoming Shifts (Priority: P1)
+
+As a volunteer, I want to see my upcoming shifts, so that I know when and where to report.
+
+**Why this priority**: Basic shift visibility required before check-in.
+
+**Independent Test**: Assign shift to test user, verify it appears in shift list.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user is a volunteer, **When** they open shifts, **Then** upcoming shifts display
+2. **Given** shift exists, **When** viewed, **Then** shows date, time, location, role
+
+---
+
+### User Story 2 - Check-In to Shift (Priority: P1)
+
+As a volunteer at my shift location, I want to check in, so that my attendance is recorded.
+
+**Why this priority**: Core tracking functionality.
+
+**Acceptance Criteria**:
+1. **Given** shift start time approached, **When** user at location, **Then** check-in button enabled
+2. **Given** user checks in, **When** location verified, **Then** attendance recorded
+
+---
+
+### User Story 3 - Check-Out from Shift (Priority: P2)
+
+As a volunteer ending my shift, I want to check out, so that my hours are logged.
+
+**Acceptance Criteria**:
+1. **Given** user is checked in, **When** they check out, **Then** shift duration is logged
+
+---
+
+### User Story 4 - Manager Shift Assignment (Priority: P2)
+
+As a shift manager, I want to assign volunteers to shifts, so that coverage is ensured.
+
+**Acceptance Criteria**:
+1. **Given** manager role, **When** viewing shift, **Then** can assign volunteers
+2. **Given** volunteer assigned, **When** they view shifts, **Then** new shift appears
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST show upcoming shifts for staff/volunteers
+- **FR-002**: System MUST verify location for check-in (within 100m of shift location)
+- **FR-003**: System MUST record check-in and check-out timestamps
+- **FR-004**: System MUST allow managers to assign shifts
+- **FR-005**: System MUST show shift history
+
+### Key Entities
+
+- **Shift**: id, location, startTime, endTime, roleRequired, assignedUsers[]
+- **ShiftCheckin**: shiftId, userId, checkinTime, checkoutTime, locationCoords
+
+### Technical Notes (from Jira)
+
+- Shifts Firestore collection
+- Backend: GET /api/shifts, POST /api/shifts/checkin
+- ShiftManagementScreen.tsx
+
+---
+
+## Success Criteria
+
+- **SC-001**: Volunteers see shifts within 3 seconds of opening screen
+- **SC-002**: Check-in location verification completes within 5 seconds
+- **SC-003**: 95% of shift check-ins are within 5 minutes of shift start
+
+---
+
+## [bigfamfestival] BFF-28-poi-markers-festival-map
+
+# Feature Specification: POI Markers on Festival Map
+
+**Jira**: [BFF-28](https://eriksensolutions.atlassian.net/browse/BFF-28)  
+**Feature Branch**: `BFF-28-poi-markers-festival-map`  
+**Created**: 2026-02-10  
+**Status**: Draft  
+**Epic**: BFF-24 (Interactive Map & POI)
+
+---
+
+## Overview
+
+Add Points of Interest (POI) markers on the interactive festival map for stages, vendors, amenities, and other key locations.
+
+### Current State
+- Basic map view without POI markers
+- Users cannot easily locate amenities
+
+### Target State
+- Interactive POI markers for all key locations
+- Category filtering for easy navigation
+- Tap-to-view detail cards
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Contract Compliance**: POI API endpoints documented in OpenAPI
+- [ ] **Security**: POI data publicly accessible (no auth required for read)
+- [ ] **Testing**: POI marker rendering and filtering tested
+- [ ] **Documentation**: POI categories and icon specifications documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - View POI Markers (Priority: P1)
+
+As a festival attendee, I want to see markers for stages, food vendors, and amenities on the map, so that I can navigate the grounds.
+
+**Why this priority**: Core map functionality for wayfinding.
+
+**Independent Test**: Load map, verify markers appear for all POI categories.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** user opens map, **When** map loads, **Then** POI markers display for all categories
+2. **Given** POI marker exists, **When** tapped, **Then** detail card shows POI info
+
+---
+
+### User Story 2 - Filter by Category (Priority: P2)
+
+As a user looking for restrooms, I want to filter the map to show only restrooms, so that I can find one quickly.
+
+**Why this priority**: Important UX improvement for specific needs.
+
+**Acceptance Criteria**:
+1. **Given** map with all POIs, **When** user selects "Restrooms" filter, **Then** only restroom markers show
+2. **Given** filter applied, **When** user clears filter, **Then** all POIs return
+
+---
+
+### User Story 3 - Tap Marker Detail (Priority: P1)
+
+As a user, I want to tap a marker to see details about that location, so that I know what's there.
+
+**Why this priority**: Essential interaction pattern for maps.
+
+**Acceptance Criteria**:
+1. **Given** POI marker, **When** tapped, **Then** detail card displays name, category, description
+2. **Given** detail card open, **When** tapped outside, **Then** card dismisses
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST display POI markers for: Stages, Food, Restrooms, Medical, Info, Water, ATM
+- **FR-002**: System MUST support filtering POIs by category
+- **FR-003**: System MUST show detail card when marker is tapped
+- **FR-004**: System MUST use custom marker icons per category
+
+### Key Entities
+
+- **POI**: id, name, category, description, coordinates, iconType, isActive
+
+### Technical Notes (from Jira)
+
+- Create POI Firestore collection
+- Backend API: GET /api/pois, GET /api/pois/:id
+- Frontend: POI layer on Mapbox
+
+---
+
+## Success Criteria
+
+- **SC-001**: All 7 POI categories have custom icons
+- **SC-002**: Markers load within 2 seconds of map open
+- **SC-003**: Filter toggle responds within 200ms
+
+---
+
+## [bigfamfestival] BFF-27-qr-code-ticket-display
+
+# Feature Specification: QR Code Ticket Display
+
+**Jira**: [BFF-27](https://eriksensolutions.atlassian.net/browse/BFF-27)  
+**Feature Branch**: `BFF-27-qr-code-ticket-display`  
+**Created**: 2026-02-10  
+**Status**: On Hold  
+**Epic**: BFF-17 (Ticketing & Entry)
+
+---
+
+## Overview
+
+Display QR code for user's ticket for entry gate scanning. This enables digital ticket presentation at festival entry points.
+
+### Current State
+- No ticket QR code display in app
+- Users rely on external ticket provider PDFs
+
+### Target State
+- In-app QR code display on TicketScreen
+- Offline-capable with local ticket storage
+- Brightness boost for easier scanning
+
+---
+
+## Constitution Compliance Checklist
+
+- [ ] **Security**: Ticket data securely generated and stored
+- [ ] **Observability**: QR display events logged
+- [ ] **Testing**: QR generation and scanning validated
+- [ ] **Documentation**: Ticket data schema documented
+
+---
+
+## User Scenarios & Testing
+
+### User Story 1 - Display Ticket QR Code (Priority: P1)
+
+As a festival attendee, I want to view my ticket as a QR code in the app, so that I can scan in at entry gates.
+
+**Why this priority**: Core functionality - users need to enter the festival.
+
+**Independent Test**: Generate QR for test ticket, display on TicketScreen, scan with external scanner to verify data.
+
+**Acceptance Criteria** (from Jira):
+1. **Given** a user with valid ticket, **When** they open TicketScreen, **Then** QR code is generated from ticket data
+2. **Given** QR code displayed, **When** scanned at gate, **Then** ticket validates successfully
+
+---
+
+### User Story 2 - Brightness Boost (Priority: P2)
+
+As a user at the entry gate, I want the screen to brighten when showing my QR code, so that it scans reliably in various lighting.
+
+**Why this priority**: Improves scanning reliability in outdoor conditions.
+
+**Acceptance Criteria**:
+1. **Given** QR code screen is shown, **When** displayed, **Then** screen brightness increases temporarily
+
+---
+
+### User Story 3 - Offline Ticket Access (Priority: P1)
+
+As a user without cell signal at the venue, I want to access my ticket offline, so that I can still enter.
+
+**Why this priority**: Festival venues often have poor connectivity.
+
+**Acceptance Criteria**:
+1. **Given** ticket was previously loaded, **When** user is offline, **Then** QR code still displays from local storage
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+- **FR-001**: System MUST generate QR code from ticket data (userId, ticketType, validDates, uniqueId)
+- **FR-002**: System MUST link ticket to user's Firebase Auth UID
+- **FR-003**: System MUST store ticket locally for offline access
+- **FR-004**: System MUST increase screen brightness when QR is displayed
+
+### Technical Notes (from Jira)
+
+- Package: `react-native-qrcode-svg`
+- Ticket data includes: userId, ticketType, validDates, uniqueId
+- Link to user's Firebase Auth UID
+
+---
+
+## Success Criteria
+
+- **SC-001**: QR code displays within 1 second of opening TicketScreen
+- **SC-002**: 100% of valid tickets scan successfully at entry gates
+- **SC-003**: Offline access works for tickets loaded within last 30 days
 
 ---
 
