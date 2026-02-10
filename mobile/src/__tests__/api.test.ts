@@ -50,6 +50,7 @@ describe('API Service', () => {
 
   describe('Request Interceptor', () => {
     it('should add Firebase auth token to requests', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { getIdToken } = require('../services/firebaseAuthService');
       getIdToken.mockResolvedValue('firebase-test-token');
 

@@ -27,7 +27,7 @@ const isRetryableError = (error: AxiosError): boolean => {
 // Helper function to retry request
 const retryRequest = async (
   config: InternalAxiosRequestConfig,
-  retryCount: number = 0
+  retryCount = 0
 ): Promise<any> => {
   try {
     return await axios(config);

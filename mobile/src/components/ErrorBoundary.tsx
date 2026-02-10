@@ -96,7 +96,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onReset }) => {
         <Ionicons name="alert-circle" size={64} color={theme.error} />
         <Text style={[styles.title, { color: theme.text }]}>Something went wrong</Text>
         <Text style={[styles.message, { color: theme.muted }]}>
-          We're sorry, but something unexpected happened. Please try again.
+          We are sorry, but something unexpected happened. Please try again.
         </Text>
         {__DEV__ && error && (
           <View style={[styles.errorDetails, { backgroundColor: theme.background }]}>
