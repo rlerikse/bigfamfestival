@@ -100,7 +100,7 @@ const LoginScreen = () => {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Send',
-          onPress: async (inputEmail) => {
+          onPress: async (inputEmail: string | undefined) => {
             const emailToReset = (inputEmail || email || '').trim();
             if (!emailToReset) {
               Alert.alert('Email Required', 'Please enter your email address to reset your password.');

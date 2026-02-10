@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const token = await getIdToken(true);
           
           // Fetch user profile from our backend (to get role, ticketType, etc.)
-          const userData = await getUserProfile(token);
+          const userData = await getUserProfile(token ?? undefined);
           setUser(userData);
           
           // Schedule notifications for user's events

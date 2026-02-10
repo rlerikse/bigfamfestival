@@ -163,7 +163,7 @@ export const loadFestivalConfig = (): FestivalConfig => {
   const env = process.env;
   
   // Helper to get value from env, extra, or default
-  const getValue = <T>(key: string, envKey?: string, defaultValue: T): T => {
+  const getValue = <T>(key: string, envKey: string | undefined, defaultValue: T): T => {
     if (envKey && env[envKey]) {
       return env[envKey] as T;
     }

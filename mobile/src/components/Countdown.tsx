@@ -82,7 +82,7 @@ const useWeather = () => {
   const fetchWeather = React.useCallback(async (signal?: AbortSignal) => {
     try {
       setState(s => ({ ...s, isLoading: true, error: undefined }));
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${BROOKLYN_LAT}&longitude=${BROOKLYN_LON}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=${encodeURIComponent(FESTIVAL_TIMEZONE)}&forecast_days=7`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${FESTIVAL_LAT}&longitude=${FESTIVAL_LON}&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=${encodeURIComponent(FESTIVAL_TIMEZONE)}&forecast_days=7`;
       const res = await fetch(url, { signal });
       if (!res.ok) throw new Error('Bad response');
       const json = await res.json();
