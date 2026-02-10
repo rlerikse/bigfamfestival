@@ -1,0 +1,279 @@
+openapi: 3.0.3
+info:
+  title: Big Fam Festival Auth API
+  description: |
+    Authentication API for Big Fam Festival.
+    
+    **Post-Migration Flow:**
+    - Registration: Mobile app calls Firebase `createUserWithEmailAndPassword()` directly
+    - Login: Mobile app calls Firebase `signInWithEmailAndPassword()` directly
+    - Protected routes: Send Firebase ID token in Authorization header
+    
+    **Deprecated Endpoints (Legacy Support Only):**
+    - POST /auth/register - Use Firebase SDK instead
+    - POST /auth/login - Use Firebase SDK instead
+  version: 2.0.0
+  contact:
+    name: Big Fam Festival Dev Team
+
+servers:
+  - url: https://api.bigfamfestival.com
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Deprecated
+    description: Legacy endpoints (will be removed)
+
+paths:
+  /auth/profile:
+    get:
+      tags:
+        - Auth
+      summary: Get current user profile
+      description: |
+        Returns the authenticated user's profile.
+        Requires Firebase ID token in Authorization header.
+      operationId: getProfile
+      security:
+        - firebaseAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Invalid or missing Firebase token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/register:
+    post:
+      tags:
+        - Deprecated
+      summary: Register a new user (DEPRECATED)
+      description: |
+        **DEPRECATED**: Use Firebase SDK `createUserWithEmailAndPassword()` directly.
+        This endpoint exists only for backward compatibility during transition.
+      operationId: register
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: User with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Deprecated
+      summary: Login user (DEPRECATED)
+      description: |
+        **DEPRECATED**: Use Firebase SDK `signInWithEmailAndPassword()` directly.
+        This endpoint exists only for backward compatibility during transition.
+      operationId: login
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify:
+    post:
+      tags:
+        - Auth
+      summary: Verify Firebase token and get user info
+      description: |
+        Verifies a Firebase ID token and returns the decoded user information.
+        Useful for debugging or initial app setup.
+      operationId: verifyToken
+      security:
+        - firebaseAuth: []
+      responses:
+        '200':
+          description: Token verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenInfo'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Firebase ID Token
+      description: |
+        Firebase ID token obtained from Firebase Auth SDK.
+        Example: `Authorization: Bearer eyJhbGciOiJS...`
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          minLength: 8
+          example: "securePassword123"
+        phone:
+          type: string
+          example: "+1234567890"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          minLength: 8
+          example: "securePassword123"
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        token:
+          type: string
+          description: JWT or Firebase ID token
+          example: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User ID (matches Firebase UID)
+          example: "abc123xyz"
+        name:
+          type: string
+          example: "John Doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        phone:
+          type: string
+          example: "+1234567890"
+        role:
+          type: string
+          enum: [attendee, staff, admin]
+          example: "attendee"
+        profilePictureUrl:
+          type: string
+          format: uri
+          example: "https://storage.googleapis.com/..."
+        ticketType:
+          type: string
+          enum: [need-ticket, general, vip, rv]
+          example: "general"
+        shareMyCampsite:
+          type: boolean
+          example: false
+        shareMyLocation:
+          type: boolean
+          example: false
+        notificationsEnabled:
+          type: boolean
+          example: true
+
+    TokenInfo:
+      type: object
+      properties:
+        uid:
+          type: string
+          description: Firebase User ID
+          example: "abc123xyz"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        emailVerified:
+          type: boolean
+          example: true
+        role:
+          type: string
+          description: User role from custom claims
+          enum: [attendee, staff, admin]
+          example: "attendee"
+        issuedAt:
+          type: integer
+          description: Token issue timestamp (Unix)
+          example: 1707523200
+        expiresAt:
+          type: integer
+          description: Token expiration timestamp (Unix)
+          example: 1707526800
+
+    Error:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 401
+        message:
+          type: string
+          example: "Invalid or expired token"
+        error:
+          type: string
+          example: "Unauthorized"
