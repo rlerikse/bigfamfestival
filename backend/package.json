@@ -18,6 +18,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "seed:events": "ts-node -r tsconfig-paths/register scripts/seed-events.ts",
+    "migrate:firebase": "ts-node -r tsconfig-paths/register scripts/migrate-to-firebase.ts",
+    "migrate:firebase:dry": "ts-node -r tsconfig-paths/register scripts/migrate-to-firebase.ts --dry-run",
     "seed:events:api": "ts-node -r tsconfig-paths/register scripts/seed-events-api.ts"
   },
   "description": "API for the Big Fam Festival App",

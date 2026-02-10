@@ -221,7 +221,7 @@ Existing Big Fam users with passwords can log in after migration without resetti
 
 #### Migration Script
 
-- [ ] T013 [D:T008] [US1] [L] Create migration script `backend/scripts/migrate-to-firebase.ts`
+- [x] T013 [D:T008] [US1] [L] Create migration script `backend/scripts/migrate-to-firebase.ts`
   - Query all users from Firestore with password field
   - Build importUsers() payload with BCRYPT algorithm
   - Handle batch limits (max 1000 per call)
@@ -231,14 +231,14 @@ Existing Big Fam users with passwords can log in after migration without resetti
   - Branch: `feat/BFF-50-11_migration-script`
   - Copilot time: 60-90 min
 
-- [ ] T014 [D:T013] [US1] [M] Add custom claims application to migration script
+- [x] T014 [D:T013] [US1] [M] Add custom claims application to migration script
   - After user import, iterate and call setCustomUserClaims()
   - Set `{ role: user.role }` from Firestore
   - Add error handling for individual failures
   - Branch: `feat/BFF-50-12_custom-claims`
   - Copilot time: 30-45 min
 
-- [ ] T015 [D:T013] [US1] [S] Add npm script `migrate:firebase` to `backend/package.json`
+- [x] T015 [D:T013] [US1] [S] Add npm script `migrate:firebase` to `backend/package.json`
   - `"migrate:firebase": "ts-node scripts/migrate-to-firebase.ts"`
   - Add `"migrate:firebase:dry": "ts-node scripts/migrate-to-firebase.ts --dry-run"`
   - Branch: `feat/BFF-50-13_npm-scripts`
