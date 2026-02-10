@@ -88,7 +88,7 @@ Personally Identifiable Information (PII) MUST NOT be logged:
 PII fields MUST be clearly identified in interfaces with comments.
 
 User data in Firestore MUST:
-- Store passwords only as bcrypt hashes (cost factor ≥ 10)
+- NOT store passwords (Firebase Auth manages credentials externally)
 - Be deletable upon user request (GDPR/CCPA compliance)
 
 Rationale: Logging PII risks privacy breaches and regulatory violations.
@@ -394,8 +394,8 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 ### Security Requirements
 
 - HTTPS required for all API communication
-- JWT tokens expire (configurable)
-- Passwords hashed with bcrypt
+- Firebase Auth manages token lifecycle and expiry
+- Firebase Auth manages password hashing and storage
 - No PII in logs
 - Rate limiting via @nestjs/throttler
 

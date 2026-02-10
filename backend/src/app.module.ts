@@ -32,8 +32,6 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().default(3000),
-        JWT_SECRET: Joi.string().optional(), // Legacy - kept for backward compatibility, Firebase Auth replaces JWT
-        JWT_EXPIRATION: Joi.string().optional(), // Legacy - kept for backward compatibility
         CORS_ORIGIN: Joi.string().default('*'),
         GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(), // Changed from .required()
         GOOGLE_PROJECT_ID: Joi.string().required(),

@@ -55,7 +55,7 @@ export interface AuthError {
 /**
  * Auth provider types
  */
-export type AuthProvider = 'firebase' | 'jwt-legacy' | 'guest';
+export type AuthProvider = 'firebase' | 'guest';
 
 /**
  * Token info returned from backend verification

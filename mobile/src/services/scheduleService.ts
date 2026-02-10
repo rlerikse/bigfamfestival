@@ -38,7 +38,7 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
       throw new Error('Offline and no cached schedule available');
     }
       try {
-      // Fetch from API if online - backend uses JWT token to identify the user
+      // Fetch from API if online - backend uses Firebase token to identify the user
       const response = await api.get<ScheduleEvent[]>('/schedule', {
         headers: {
           Authorization: `Bearer ${token}`,

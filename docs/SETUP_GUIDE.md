@@ -34,8 +34,6 @@ npm install
 ```bash
 NODE_ENV=development
 PORT=3000
-JWT_SECRET=your-super-secret-jwt-key-change-this
-JWT_EXPIRATION=1d
 CORS_ORIGIN=*
 GOOGLE_PROJECT_ID=your-gcp-project-id
 STORAGE_BUCKET=your-storage-bucket-name

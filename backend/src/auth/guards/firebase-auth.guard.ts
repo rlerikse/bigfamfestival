@@ -50,7 +50,7 @@ export class FirebaseAuthGuard implements CanActivate {
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
 
-      // Attach user info to request (matches JWT payload structure)
+      // Attach decoded Firebase token info to request
       request.user = {
         id: decodedToken.uid,
         sub: decodedToken.uid,
