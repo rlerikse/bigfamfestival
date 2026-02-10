@@ -102,6 +102,7 @@ describe('FirebaseAuthGuard', () => {
 
       expect(result).toBe(true);
       expect(request.user).toEqual({
+        id: 'user123',
         sub: 'user123',
         uid: 'user123',
         email: 'test@example.com',

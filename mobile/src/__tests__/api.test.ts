@@ -1,11 +1,9 @@
 import { api, checkApiHealth } from '../services/api';
 import { API_URL } from '../config/constants';
-import axios from 'axios';
 import NetInfo from '@react-native-community/netinfo';
 
-// Mock dependencies
-jest.mock('axios');
-jest.mock('@react-native-community/netinfo');
+// Note: axios is mocked globally in jest.setup.js
+// The api instance from services/api uses axios.create()
 
 // Mock Firebase Auth for token retrieval
 jest.mock('../services/firebaseAuthService', () => ({
@@ -13,8 +11,8 @@ jest.mock('../services/firebaseAuthService', () => ({
   getCurrentUser: jest.fn().mockReturnValue({ uid: 'test-uid', email: 'test@example.com' }),
 }));
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedNetInfo = NetInfo as jest.Mocked<typeof NetInfo>;
+const mockedApi = api as jest.Mocked<typeof api>;
 
 describe('API Service', () => {
   beforeEach(() => {
@@ -27,7 +25,7 @@ describe('API Service', () => {
 
   describe('checkApiHealth', () => {
     it('should return healthy status when API is reachable', async () => {
-      mockedAxios.get.mockResolvedValue({
+      mockedApi.get.mockResolvedValue({
         status: 200,
         data: { status: 'ok' },
       });
@@ -35,11 +33,11 @@ describe('API Service', () => {
       const result = await checkApiHealth();
 
       expect(result.isHealthy).toBe(true);
-      expect(mockedAxios.get).toHaveBeenCalledWith('/health', expect.any(Object));
+      expect(mockedApi.get).toHaveBeenCalledWith('/health');
     });
 
     it('should return unhealthy status when API is unreachable', async () => {
-      mockedAxios.get.mockRejectedValue(new Error('Network error'));
+      mockedApi.get.mockRejectedValue(new Error('Network error'));
 
       const result = await checkApiHealth();
 
