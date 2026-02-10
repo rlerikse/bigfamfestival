@@ -1,9 +1,9 @@
 # Big Fam Festival - Project Constitution
 
 <!-- 
-Version: 1.0.0
+Version: 1.1.0
 Generated: 2026-02-09
-Last Audit: 2026-02-09
+Last Audit: 2026-02-10
 Project: Big Fam Festival App (Backend API + Mobile App)
 -->
 
@@ -246,6 +246,113 @@ Spec directories MUST contain:
 
 Rationale: Traceability between tickets and specifications enables project management and audit trails.
 
+## XIII. Infrastructure as Code (Terraform)
+
+All Google Cloud Platform infrastructure MUST be managed via Terraform:
+
+**Resource Management**:
+- All GCP resources (Cloud Run, Firestore, Storage, IAM) MUST be defined in Terraform
+- Terraform state MUST be stored remotely (GCS bucket recommended)
+- Resource changes MUST be reviewed via `terraform plan` before applying
+
+**File Organization** (`infrastructure/terraform/`):
+- `main.tf`: Provider configuration and core settings
+- `variables.tf`: Input variables with descriptions
+- `*.tf`: Resource-specific files (cloud-run.tf, firestore.tf, etc.)
+- `terraform.tfvars`: Environment-specific values (MUST NOT contain secrets)
+
+**Naming Conventions**:
+- Resources MUST include environment prefix (e.g., `bigfam-api-production`)
+- Variables MUST have descriptions and default values where sensible
+
+**Security**:
+- Secrets MUST NOT be stored in Terraform files
+- Use Google Secret Manager for sensitive values
+- Service account keys SHOULD be avoided; use workload identity where possible
+
+Rationale: Infrastructure as Code ensures reproducibility, version control, and audit trails for cloud resources.
+
+## XIV. CI/CD & GitHub Actions
+
+All automation MUST use GitHub Actions workflows in `.github/workflows/`:
+
+**Workflow Standards**:
+- Workflow files MUST have descriptive names (e.g., `backend-ci.yml`, `mobile-ci.yml`)
+- Each workflow MUST define clear trigger conditions (`on:` block)
+- Jobs MUST specify appropriate `runs-on` and timeout values
+- Sensitive values MUST use GitHub Secrets, never hardcoded
+
+**Required Workflows**:
+- `backend-ci.yml`: Lint, typecheck, and test backend on PR
+- `mobile-ci.yml`: Lint, typecheck, and test mobile on PR
+- `deploy-backend.yml`: Deploy backend to Cloud Run (manual or on release)
+
+**Best Practices**:
+- Use caching for `node_modules` to speed up builds
+- Run linting and type checking before tests
+- Use matrix builds for multiple Node versions only when needed
+- Keep workflows focused (one purpose per workflow)
+
+Rationale: Consistent CI/CD ensures code quality gates and reliable deployments.
+
+## XV. Mobile Deployment (EAS)
+
+Mobile app builds and submissions MUST use Expo Application Services (EAS):
+
+**Build Configuration** (`mobile/eas.json`):
+- `development`: Development client builds with hot reload
+- `preview`: Internal distribution builds (APK for Android, simulator for iOS)
+- `production`: App store builds with auto-incrementing version numbers
+
+**Build Requirements**:
+- Production builds MUST use `app-bundle` for Android (not APK)
+- iOS builds MUST use managed signing (EAS credentials)
+- Node version MUST be pinned to ensure reproducibility
+- Build profiles MUST specify explicit environment variables
+
+**Submission Workflow**:
+- iOS: Build via EAS, submit via Transporter or `eas submit`
+- Android: Build via EAS, submit via Play Console or `eas submit`
+- Both platforms MUST pass store review before production release
+
+**Credentials Management**:
+- EAS SHOULD manage iOS signing certificates and provisioning profiles
+- Android upload key SHOULD be managed by EAS
+- Google Play service account JSON MUST be gitignored if present
+
+**Documentation**:
+- Release process MUST be documented in `docs/MOBILE_RELEASE_GUIDE.md`
+- Pre-release checklist MUST be maintained in `docs/RELEASE_CHECKLIST.md`
+
+Rationale: Standardized mobile deployment ensures reliable, reproducible app releases.
+
+## XVI. Firebase Cloud Functions
+
+Firebase Cloud Functions MUST follow these patterns:
+
+**Project Structure** (`functions/`):
+- `src/index.ts`: Main exports for all functions
+- Functions SHOULD be organized by domain/feature
+- Shared utilities SHOULD be in separate modules
+
+**Function Patterns**:
+- Functions MUST have clear, descriptive names
+- HTTP functions MUST validate input
+- Scheduled functions MUST log execution start/end
+- All functions MUST handle errors gracefully
+
+**Deployment**:
+- Functions deploy via `firebase deploy --only functions`
+- CI/CD workflow (`deploy-functions.yml`) handles automated deployment
+- Function environment variables set via Firebase console or CLI
+
+**Integration with Backend**:
+- Functions complement (not replace) the NestJS backend
+- Use functions for: scheduled tasks, event triggers, lightweight webhooks
+- Use backend for: complex business logic, user-facing APIs
+
+Rationale: Firebase Functions provide serverless capabilities for event-driven and scheduled tasks.
+
 ---
 
 ## Additional Constraints
@@ -295,6 +402,7 @@ Rationale: Traceability between tickets and specifications enables project manag
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
 | 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |
 
 ---

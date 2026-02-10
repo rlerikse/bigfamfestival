@@ -73,8 +73,7 @@ export class EventsController {
         id: doc.id,
         tag: doc.tag,
       }));
-      // Log the request and result
-      console.log(`[EventsController] /genres requested. Returned:`, result);
+      // Debug logging removed - use Pino logger if needed
       return result;
     } catch (error) {
       console.error(`[EventsController] Error fetching genres:`, error);
