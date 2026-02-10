@@ -15,7 +15,7 @@
 ### Key Patterns
 1. **Backend**: Module/Controller/Service pattern (NestJS)
 2. **Mobile**: Context + Service + Component pattern
-3. **Auth**: JWT tokens stored in SecureStore
+3. **Auth**: Firebase Auth (tokens managed by Firebase SDK)
 4. **Data**: Firestore with offline caching
 
 ---
@@ -28,7 +28,7 @@
 // Use these decorators in order
 @ApiTags('{domain}')
 @Controller('{domain}')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(FirebaseAuthGuard, RolesGuard)
 export class {Domain}Controller {
   constructor(private readonly {domain}Service: {Domain}Service) {}
 
@@ -163,10 +163,12 @@ export default {Name};
 
 ```typescript
 export const get{Entity} = async (id: string): Promise<{Entity}> => {
-  const token = await SecureStore.getItemAsync('userToken');
+  const token = await auth().currentUser?.getIdToken();
   if (!token) throw new Error('Not authenticated');
 
-  const response = await api.get<{Entity}>(`/{entity}/${id}`);
+  const response = await api.get<{Entity}>(`/{entity}/${id}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
   return response.data;
 };
 ```
@@ -266,8 +268,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiProperty, ApiQuer
 // Validation
 import { IsString, IsNotEmpty, IsEmail, IsOptional, MinLength } from 'class-validator';
 
-// Auth
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// Auth (Firebase Auth - updated in BFF-50)
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
@@ -344,18 +346,19 @@ try {
 ### Backend - Protect Route
 
 ```typescript
-@UseGuards(JwtAuthGuard)  // At controller or method level
-@ApiBearerAuth()          // For Swagger
+@UseGuards(FirebaseAuthGuard)  // At controller or method level
+@ApiBearerAuth()               // For Swagger
 getProfile(@Request() req) {
-  const userId = req.user.sub;  // User ID from JWT
-  const role = req.user.role;   // Role from JWT
+  const userId = req.user.uid;   // User ID from Firebase token
+  const role = req.user.role;    // Role from Firestore user document
 }
 ```
 
 ### Mobile - Send Token
 
 ```typescript
-const token = await SecureStore.getItemAsync('userToken');
+// Firebase SDK manages tokens automatically
+const token = await auth().currentUser?.getIdToken();
 const response = await api.get('/protected', {
   headers: { Authorization: `Bearer ${token}` }
 });
@@ -416,7 +419,7 @@ export const getData = async (): Promise<Data[]> => {
 - [ ] Used `React.memo` for list item components
 - [ ] Used `useCallback` for event handlers
 - [ ] Added mounted flag in async effects
-- [ ] Used `SecureStore` for tokens
+- [ ] Used Firebase Auth for authentication (not SecureStore for tokens)
 - [ ] Handled offline scenario
 
 ---

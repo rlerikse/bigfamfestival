@@ -1,7 +1,7 @@
 # Big Fam Festival - Project Constitution
 
 <!-- 
-Version: 1.2.0
+Version: 1.3.0
 Generated: 2026-02-09
 Last Audit: 2026-02-10
 Project: Big Fam Festival App (Backend API + Mobile App)
@@ -125,7 +125,11 @@ The application supports multi-tenant (multi-festival) operation:
 
 - `TenantMiddleware` is applied globally to all routes (except `/health`)
 - Each request is scoped to a festival via `FESTIVAL_ID` configuration
-- Tenant context MUST be derived from configuration, not from user input
+- Tenant context MAY be derived from:
+  1. `X-Festival-Id` request header (for trusted clients/admin tools)
+  2. `?festivalId` query parameter (for debugging/testing)
+  3. `FESTIVAL_ID` environment variable (default, single-tenant mode)
+- Production deployments SHOULD default to environment variable for security
 - Health endpoints MUST remain tenant-agnostic for orchestrator probes
 
 ### HTTP Security Headers
@@ -414,7 +418,7 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 
 - Backend: Jest for unit and integration tests
 - Mobile: Jest + React Native Testing Library
-- Coverage threshold: Not strictly enforced (SHOULD aim for critical paths)
+- Coverage threshold: Backend enforces 50% minimum (branches, functions, lines, statements)
 - E2E tests: Scaffolded (`backend/test/`) but not yet comprehensive
 
 ### Security Requirements
@@ -432,7 +436,8 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 ## Version History
 
 | Version | Date | Changes |
-|---------|------|---------|| 1.2.0 | 2026-02-10 | Constitution audit: Added multi-tenancy, security headers, Sentry, strict mode status; updated CI/CD workflows, spec requirements, CORS policy || 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
+|---------|------|---------||
+| 1.3.0 | 2026-02-10 | Audit fix: Updated multi-tenancy rules to allow header/query-based tenant, documented 50% coverage threshold, CI upgraded to Node 20 || 1.2.0 | 2026-02-10 | Constitution audit: Added multi-tenancy, security headers, Sentry, strict mode status; updated CI/CD workflows, spec requirements, CORS policy || 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
 | 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |
 
 ---
