@@ -1,6 +1,6 @@
 # Aggregated Specifications
 
-> **Generated**: 2026-02-10T07:51:16Z
+> **Generated**: 2026-02-10T08:26:03Z
 > **Source**: [es-spec-kit-context](https://github.com/rlerikse/es-spec-kit-context)
 
 This file contains **21 specifications** from **2 repositories** from connected repositories.
