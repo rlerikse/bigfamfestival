@@ -5,13 +5,12 @@ import {
   Text,
   TouchableOpacity,
   Alert,
-  Platform, // Added Platform
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import Slider from '@react-native-community/slider';
+// Slider removed due to New Architecture incompatibility
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useDebug } from '../contexts/DebugContext';
@@ -92,22 +91,34 @@ const DebugScreen = () => {
             <Text style={[styles.sliderLabel, { color: theme.text }]}>
               Time of Day: {String(Math.floor(debugHour)).padStart(2, '0')}:00
             </Text>
-            <Slider
-              style={styles.slider}
-              minimumValue={0}
-              maximumValue={23}
-              value={debugHour}
-              onValueChange={(value) => {
-                if (isAnimating) setIsAnimating(false); // Stop animation if slider is manually moved
-                setDebugHour(value);
-              }}
-              step={1}
-              minimumTrackTintColor={theme.primary}
-              maximumTrackTintColor={theme.border}
-              {...(Platform.OS === 'ios' 
-                ? { thumbTintColor: theme.primary } 
-                : { thumbStyle: { backgroundColor: theme.primary, height: 20, width: 20, borderRadius: 10 } })}
-            />
+            {/* Time adjustment buttons (replaced Slider due to build issues) */}
+            <View style={styles.timeButtonsRow}>
+              <TouchableOpacity
+                style={[styles.timeButton, { backgroundColor: theme.primary }]}
+                onPress={() => {
+                  if (isAnimating) setIsAnimating(false);
+                  setDebugHour((debugHour - 1 + 24) % 24);
+                }}
+              >
+                <Ionicons name="remove" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={styles.timeDisplay}>
+                <Ionicons 
+                  name={debugHour >= 6 && debugHour < 18 ? "sunny" : "moon"} 
+                  size={32} 
+                  color={theme.primary} 
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.timeButton, { backgroundColor: theme.primary }]}
+                onPress={() => {
+                  if (isAnimating) setIsAnimating(false);
+                  setDebugHour((debugHour + 1) % 24);
+                }}
+              >
+                <Ionicons name="add" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
             <View style={styles.sliderLabels}>
               <Ionicons name="moon-outline" size={24} color={theme.muted} />
               <Ionicons name="partly-sunny-outline" size={24} color={theme.muted} />
@@ -198,9 +209,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: 'center',
   },
-  slider: {
-    width: '100%',
-    height: 40,
+  timeButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  timeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  timeDisplay: {
+    width: 80,
+    alignItems: 'center',
   },
   sliderLabels: {
     flexDirection: 'row',

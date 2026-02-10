@@ -34,10 +34,11 @@ This is a **polyglot** repository containing:
 ### Authentication & Security
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Passport.js | ^0.6.0 | Auth middleware |
-| Passport JWT | ^4.0.1 | JWT strategy |
-| NestJS JWT | ^10.1.0 | JWT module |
-| bcrypt | ^5.1.0 | Password hashing |
+| Firebase Admin | ^13.4.0 | Firebase Auth token verification |
+| Helmet | ^8.1.0 | Security headers |
+| @nestjs/throttler | ^6.4.0 | Rate limiting |
+
+> **Note**: As of BFF-50, authentication uses Firebase Auth. The backend validates Firebase ID tokens via `FirebaseAuthGuard`. Legacy Passport/JWT/bcrypt have been removed.
 
 ### API Documentation
 | Technology | Version | Purpose |
@@ -216,5 +217,5 @@ This is a **polyglot** repository containing:
 2. **Firestore over SQL**: Schemaless for flexibility, real-time capabilities
 3. **Expo over bare RN**: Simplified development, managed updates
 4. **TanStack Query over Redux**: Server-state focused, less boilerplate
-5. **JWT over sessions**: Stateless auth for mobile compatibility
+5. **Firebase Auth over custom JWT**: Managed auth service, automatic token refresh (BFF-50)
 6. **Pino over Winston**: Better performance, structured logging

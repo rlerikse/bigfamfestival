@@ -3,13 +3,13 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Put,
   Query,
   Request,
   UnauthorizedException,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -18,8 +18,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
+// Auth handled by global FirebaseAuthGuard + RolesGuard
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import { EventsService } from './events.service';
@@ -29,8 +28,9 @@ import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('events')
 @Controller('events')
-@UseGuards(JwtAuthGuard, RolesGuard)
 export class EventsController {
+  private readonly logger = new Logger(EventsController.name);
+
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
@@ -76,7 +76,7 @@ export class EventsController {
       // Debug logging removed - use Pino logger if needed
       return result;
     } catch (error) {
-      console.error(`[EventsController] Error fetching genres:`, error);
+      this.logger.error('Error fetching genres:', error);
       // Optionally, you can use NestJS's HttpException for more control
       throw new Error('Failed to fetch genres');
     }

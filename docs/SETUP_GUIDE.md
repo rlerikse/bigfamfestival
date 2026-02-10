@@ -34,8 +34,6 @@ npm install
 ```bash
 NODE_ENV=development
 PORT=3000
-JWT_SECRET=your-super-secret-jwt-key-change-this
-JWT_EXPIRATION=1d
 CORS_ORIGIN=*
 GOOGLE_PROJECT_ID=your-gcp-project-id
 STORAGE_BUCKET=your-storage-bucket-name
@@ -106,23 +104,79 @@ npm start
 
 ### Step 4: Firebase Setup
 
-1. **Create Firebase project:**
+#### 4.1 Create Firebase Project
 
-- Go to Firebase Console
-- Create new project
-- Enable Authentication, Firestore, Cloud Messaging
+1. Go to [Firebase Console](https://console.firebase.google.com)
+2. Create new project or select existing GCP project
+3. Enable the following services:
+   - **Authentication** (Email/Password provider)
+   - **Firestore Database**
+   - **Cloud Messaging** (for push notifications)
 
-2. **Get Firebase config:**
+#### 4.2 Configure Firebase Authentication
 
-- Project Settings > Your apps > Add app
-- Copy config values
-- Add to mobile app environment variables
+1. In Firebase Console → Authentication → Sign-in method
+2. Enable **Email/Password** provider
+3. Optionally configure password policy (Firebase default: 6+ chars, we recommend 8+)
+4. Configure email templates under Templates tab:
+   - Password reset email
+   - Email verification (optional)
 
-3. **Configure for backend:**
+#### 4.3 Backend Firebase Configuration
 
-- Create service account
-- Download JSON key
-- Set `GOOGLE_APPLICATION_CREDENTIALS` in backend `.env`
+1. **Create Service Account:**
+   - Firebase Console → Project Settings → Service Accounts
+   - Click "Generate new private key"
+   - Save JSON file securely (do NOT commit to git)
+
+2. **Configure Backend:**
+   ```bash
+   # In backend/.env
+   GOOGLE_APPLICATION_CREDENTIALS=./path/to/service-account-key.json
+   GOOGLE_PROJECT_ID=your-firebase-project-id
+   ```
+
+3. **Verify Firebase Admin SDK is initialized:**
+   The backend automatically initializes Firebase Admin in `app.module.ts` using the service account.
+
+#### 4.4 Mobile Firebase Configuration
+
+1. **Get Firebase config files:**
+   - Firebase Console → Project Settings → Your apps
+   - Add iOS app → Download `GoogleService-Info.plist`
+   - Add Android app → Download `google-services.json`
+
+2. **Place config files:**
+   ```
+   mobile/
+   ├── GoogleService-Info.plist  (root level for Expo)
+   └── google-services.json       (root level for Expo)
+   ```
+
+3. **iOS additional setup:**
+   ```bash
+   cd mobile/ios
+   pod install
+   ```
+
+4. **Verify Firebase packages:**
+   The app uses `@react-native-firebase/app` and `@react-native-firebase/auth` for authentication.
+
+#### 4.5 User Migration (Existing Festivals Only)
+
+If migrating from an older version with bcrypt password hashes:
+
+```bash
+cd backend
+
+# Dry run to test migration
+npm run migrate:firebase:dry
+
+# Run actual migration (imports users to Firebase Auth)
+npm run migrate:firebase
+```
+
+This preserves existing user UIDs and allows login with original passwords.
 
 ### Step 5: Testing
 

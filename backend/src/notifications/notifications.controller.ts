@@ -1,18 +1,9 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  UseGuards,
-  Logger,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Logger } from '@nestjs/common';
 import {
   NotificationsService,
   AdminNotification,
 } from './notifications.service';
-import { AuthGuard } from '@nestjs/passport';
-import { RolesGuard } from '../auth/guards/roles.guard';
+// Auth handled by global FirebaseAuthGuard + RolesGuard
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
 import {
@@ -98,7 +89,6 @@ export class NotificationsController {
   }
 
   @Get()
-  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Get recent notifications' })
   @ApiQuery({

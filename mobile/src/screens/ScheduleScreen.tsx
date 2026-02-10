@@ -27,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from '../services/firebaseAuthService';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
@@ -342,7 +342,7 @@ const ScheduleScreen = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await getIdToken();
       const response = await api.get<ScheduleEvent[]>(`/events`, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined
       });
@@ -440,7 +440,7 @@ const ScheduleScreen = () => {
   useEffect(() => {
     // Fetch genres only if user is logged in (token exists)
     const fetchData = async () => {
-      const token = await SecureStore.getItemAsync('userToken');
+      const token = await getIdToken();
       if (token) {
         fetchGenres();
       }

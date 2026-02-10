@@ -1,6 +1,6 @@
 import { api } from './api';
 import { AxiosError } from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
@@ -24,7 +24,7 @@ export interface POI {
 export const getPOIs = async (): Promise<POI[]> => {
   try {
     // Check for token
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
       if (!token) {
       // eslint-disable-next-line
       console.warn('No auth token found, returning mock data');
@@ -91,7 +91,7 @@ export const getPOIs = async (): Promise<POI[]> => {
  */
 export const getNavigation = async (destination: { lat: number; long: number }): Promise<unknown> => {
   try {
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');

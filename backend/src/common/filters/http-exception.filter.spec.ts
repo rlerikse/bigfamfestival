@@ -38,7 +38,7 @@ describe('HttpExceptionFilter', () => {
       expect.objectContaining({
         statusCode: HttpStatus.BAD_REQUEST,
         message: 'Test error',
-      })
+      }),
     );
   });
 
@@ -48,17 +48,22 @@ describe('HttpExceptionFilter', () => {
 
     filter.catch(exception, host);
 
-    expect(mockResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR);
+    expect(mockResponse.status).toHaveBeenCalledWith(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      })
+      }),
     );
   });
 
   it('should hide error details in production', () => {
     process.env.NODE_ENV = 'production';
-    const exception = new HttpException('Internal error', HttpStatus.INTERNAL_SERVER_ERROR);
+    const exception = new HttpException(
+      'Internal error',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
     const host = mockArgumentsHost as ArgumentsHost;
 
     filter.catch(exception, host);
@@ -66,10 +71,9 @@ describe('HttpExceptionFilter', () => {
     expect(mockResponse.json).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'Internal server error',
-      })
+      }),
     );
 
     process.env.NODE_ENV = 'test';
   });
 });
-

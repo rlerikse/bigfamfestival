@@ -34,7 +34,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -45,7 +45,7 @@ import { CreateEventDto } from '../auth/dto/create-event.dto';
 // 2. Class with decorators
 @ApiTags('events')
 @Controller('events')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(FirebaseAuthGuard, RolesGuard)
 export class EventsController {
   // 3. Constructor injection
   constructor(private readonly eventsService: EventsService) {}
@@ -61,9 +61,9 @@ export class EventsController {
 ### Class-Level Decorators
 
 ```typescript
-@ApiTags('events')                    // Swagger tag for grouping
-@Controller('events')                 // Route prefix
-@UseGuards(JwtAuthGuard, RolesGuard)  // Default guards
+@ApiTags('events')                        // Swagger tag for grouping
+@Controller('events')                     // Route prefix
+@UseGuards(FirebaseAuthGuard, RolesGuard) // Firebase Auth + Role guards
 export class EventsController {}
 ```
 
@@ -184,17 +184,17 @@ async delete(@Param('id') id: string) {
 @ApiBearerAuth()
 @ApiOperation({ summary: 'Get current user profile' })
 getProfile(@Request() req) {
-  return req.user;  // User from JWT payload
+  return req.user;  // User from Firebase token (uid, email, role)
 }
 ```
 
-### User ID from JWT
+### User ID from Firebase Token
 
 ```typescript
 @Get('my-schedule')
 @ApiBearerAuth()
 async getMySchedule(@Request() req) {
-  const userId = req.user.sub;  // 'sub' contains user ID
+  const userId = req.user.uid;  // Firebase UID from decoded token
   return this.scheduleService.findByUser(userId);
 }
 ```

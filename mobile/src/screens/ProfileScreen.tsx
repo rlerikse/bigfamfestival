@@ -112,7 +112,14 @@ const ProfileScreen = () => {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => logout() },
+        { text: 'Logout', style: 'destructive', onPress: async () => {
+          try {
+            await logout();
+          } catch (error) {
+            console.error('[ProfileScreen] Logout failed:', error);
+            Alert.alert('Error', 'Failed to logout. Please try again.');
+          }
+        }},
       ]
     );
   };
@@ -121,7 +128,7 @@ const ProfileScreen = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <TopNavBar whiteIcons={isDark} />
-  <ScrollView contentContainerStyle={[styles.content, { paddingTop: 100 }]}> 
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: 100 }]}>
 
         <View style={styles.profileImageContainer}>
           <View style={[styles.profileImageWrapper, { borderColor: theme.border }]}>
@@ -148,8 +155,8 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.infoContainer}>
-          <View style={[styles.infoSection, { borderColor: theme.border }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={[styles.infoSection, { borderColor: theme.border, backgroundColor: theme.card }]}>
+            <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Information</Text>
               <TouchableOpacity
                 style={[styles.editButton, isEditing && { backgroundColor: theme.primary }]}
@@ -159,10 +166,11 @@ const ProfileScreen = () => {
                 {isEditing ? (
                   <Text style={[styles.editButtonText, { color: '#FFFFFF' }]}>Save</Text>
                 ) : (
-                  <Ionicons name="pencil" size={22} color={isDark ? '#FFFFFF' : theme.primary} />
+                  <Ionicons name="pencil" size={20} color={isDark ? '#FFFFFF' : theme.primary} />
                 )}
               </TouchableOpacity>
             </View>
+            <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
             
             <View style={styles.field}>
               <Text style={[styles.fieldLabel, { color: theme.muted }]}>Name</Text>
@@ -213,42 +221,59 @@ const ProfileScreen = () => {
             </View>
           </View>
 
-          <View style={[styles.infoSection, { borderColor: theme.border }]}>
+          <View style={[styles.infoSection, { borderColor: theme.border, backgroundColor: theme.card }]}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Notification Preferences</Text>
+            <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
             {user && user.id !== 'guest-user' ? (
               <>
                 <View style={styles.switchField}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <Ionicons name="calendar-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
-                    <Text style={[styles.fieldLabel, { color: theme.text }]}>Schedule Notifications</Text>
+                  <View style={styles.switchLabelRow}>
+                    <View style={[styles.switchIcon, { backgroundColor: `${theme.primary}20` }]}>
+                      <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.switchLabel, { color: theme.text }]}>Schedule Notifications</Text>
+                      <Text style={[styles.switchDescription, { color: theme.muted }]}>
+                        Get notified 15 min before your events
+                      </Text>
+                    </View>
                   </View>
-                  <Switch
-                    value={scheduleNotificationsEnabled}
-                    onValueChange={toggleScheduleNotifications}
-                    trackColor={{ false: theme.border, true: theme.primary }}
-                    thumbColor={'#FFFFFF'}
-                  />
+                  <View style={{ width: 46, alignItems: 'center' }}>
+                    <Switch
+                      value={scheduleNotificationsEnabled}
+                      onValueChange={toggleScheduleNotifications}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                      thumbColor={'#FFFFFF'}
+                      style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                    />
+                  </View>
                 </View>
-                <Text style={[styles.switchDescription, { color: theme.muted }]}> 
-                  Get notified 15 minutes before events in your schedule
-                </Text>
+
+                <View style={[styles.switchDivider, { backgroundColor: theme.border }]} />
 
                 <View style={styles.switchField}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <Ionicons name="globe-outline" size={20} color={theme.primary} style={{ marginRight: 8 }} />
-                    <Text style={[styles.fieldLabel, { color: theme.text }]}>Global Notifications</Text>
+                  <View style={styles.switchLabelRow}>
+                    <View style={[styles.switchIcon, { backgroundColor: `${theme.primary}20` }]}>
+                      <Ionicons name="globe-outline" size={18} color={theme.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.switchLabel, { color: theme.text }]}>Global Notifications</Text>
+                      <Text style={[styles.switchDescription, { color: theme.muted }]}>
+                        Festival-wide announcements
+                      </Text>
+                    </View>
                   </View>
-                  <Switch
-                    value={globalNotificationsEnabled}
-                    onValueChange={toggleGlobalNotifications}
-                    trackColor={{ false: theme.border, true: theme.primary }}
-                    thumbColor={'#FFFFFF'}
-                  />
+                  <View style={{ width: 46, alignItems: 'center' }}>
+                    <Switch
+                      value={globalNotificationsEnabled}
+                      onValueChange={toggleGlobalNotifications}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                      thumbColor={'#FFFFFF'}
+                      style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                    />
+                  </View>
                 </View>
-                <Text style={[styles.switchDescription, { color: theme.muted }]}> 
-                  Enable to receive public festival-wide notifications and announcements
-                </Text>
               </>
             ) : (
               <Text style={[styles.switchDescription, { color: theme.muted }]}> 
@@ -294,10 +319,11 @@ const ProfileScreen = () => {
           */}
 
           <TouchableOpacity
-            style={[styles.logoutButton, { borderColor: theme.border }]}
+            style={[styles.logoutButton, { borderColor: `${theme.error}40`, backgroundColor: `${theme.error}12` }]}
             onPress={handleLogout}
+            activeOpacity={0.7}
           >
-            <Ionicons name="log-out-outline" size={22} color={theme.error} />
+            <Ionicons name="log-out-outline" size={20} color={theme.error} />
             <Text style={[styles.logoutButtonText, { color: theme.error }]}>Logout</Text>
           </TouchableOpacity>
         </View>
@@ -378,24 +404,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   infoContainer: {
-    width: '100%',
   },
   infoSection: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  sectionDivider: {
+    height: 1,
+    marginTop: 12,
     marginBottom: 16,
+    marginHorizontal: -4,
+    opacity: 0.5,
   },
   field: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
   fieldValue: {
@@ -404,32 +444,58 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 16,
   },
   switchField: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  switchLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  switchIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  switchLabel: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   switchDescription: {
-    fontSize: 13,
-    marginBottom: 16,
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  switchDivider: {
+    height: 1,
+    marginVertical: 10,
+    marginLeft: 46,
+    opacity: 0.3,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginTop: 8,
   },
   logoutButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
   },

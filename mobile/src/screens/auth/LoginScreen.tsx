@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -10,6 +10,8 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -24,7 +26,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, loginAsGuest } = useAuth();
+  const { login, loginAsGuest, resetPassword } = useAuth();
   const { theme, isDark } = useTheme();
   
   const [email, setEmail] = useState('');
@@ -32,19 +34,42 @@ const LoginScreen = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+
+  const isValidEmail = (emailStr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+
+  // Clear error when user starts typing
+  const handleEmailChange = useCallback((text: string) => {
+    setEmail(text);
+    if (error) setError(null);
+  }, [error]);
+
+  const handlePasswordChange = useCallback((text: string) => {
+    setPassword(text);
+    if (error) setError(null);
+  }, [error]);
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!isValidEmail(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password.');
       return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
-      await login(email, password);
-    } catch (error) {
-      // Error is handled in AuthContext
+      await login(email.trim(), password);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -55,8 +80,9 @@ const LoginScreen = () => {
       setIsLoading(true);
       setError(null);
       await loginAsGuest();
-    } catch (error) {
-      // Error is handled in AuthContext
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Guest login failed. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -64,6 +90,55 @@ const LoginScreen = () => {
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const handleForgotPassword = () => {
+    Alert.prompt(
+      'Reset Password',
+      'Enter your email address to receive a password reset link.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Send',
+          onPress: async (inputEmail: string | undefined) => {
+            const emailToReset = (inputEmail || email || '').trim();
+            if (!emailToReset) {
+              Alert.alert('Email Required', 'Please enter your email address to reset your password.');
+              return;
+            }
+            if (!isValidEmail(emailToReset)) {
+              Alert.alert('Invalid Email', 'Please enter a valid email address.');
+              return;
+            }
+            try {
+              setIsForgotPasswordLoading(true);
+              await resetPassword(emailToReset);
+              Alert.alert(
+                'Check Your Email',
+                `We've sent a password reset link to ${emailToReset}. It may take a few minutes to arrive. Check your spam folder if you don't see it.`,
+                [{ text: 'OK' }]
+              );
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : '';
+              if (msg.includes('No account found')) {
+                Alert.alert('Account Not Found', 'No account exists with that email address. Would you like to create one?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Sign Up', onPress: () => navigation.navigate('Register') },
+                ]);
+              } else if (msg.includes('Too many')) {
+                Alert.alert('Please Wait', 'Too many reset requests. Please wait a few minutes before trying again.');
+              } else {
+                Alert.alert('Reset Failed', msg || 'Unable to send reset email. Please try again later.');
+              }
+            } finally {
+              setIsForgotPasswordLoading(false);
+            }
+          },
+        },
+      ],
+      'plain-text',
+      email.trim()
+    );
   };
 
   return (
@@ -89,7 +164,10 @@ const LoginScreen = () => {
           <Text style={[styles.headerText, { color: theme.text }]}>Login</Text>
           
           {error && (
-            <Text style={styles.errorText}>{error}</Text>
+            <View style={[styles.errorBanner, { backgroundColor: `${theme.error || '#FF3B30'}15`, borderColor: `${theme.error || '#FF3B30'}40` }]}>
+              <Ionicons name="alert-circle" size={20} color={theme.error || '#FF3B30'} style={{ marginRight: 8 }} />
+              <Text style={[styles.errorText, { color: theme.error || '#FF3B30' }]}>{error}</Text>
+            </View>
           )}
 
           <View style={[styles.inputContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -99,7 +177,7 @@ const LoginScreen = () => {
               placeholder="Email"
               placeholderTextColor={theme.muted}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={handleEmailChange}
               autoCapitalize="none"
               keyboardType="email-address"
               returnKeyType="next"
@@ -113,7 +191,7 @@ const LoginScreen = () => {
               placeholder="Password"
               placeholderTextColor={theme.muted}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={handlePasswordChange}
               secureTextEntry={!isPasswordVisible}
               returnKeyType="done"
             />
@@ -138,6 +216,12 @@ const LoginScreen = () => {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={handleForgotPassword}>
+            <Text style={[styles.forgotPasswordText, { color: theme.muted }]}>
+              Forgot password?
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={[styles.linkText, { color: theme.primary }]}>
               Don&apos;t have an account? Sign up
@@ -152,13 +236,24 @@ const LoginScreen = () => {
           
           <TouchableOpacity
             style={[styles.guestButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={() => loginAsGuest()}
+            onPress={handleGuestLogin}
             disabled={isLoading}
           >
             <Text style={[styles.guestButtonText, { color: theme.text }]}>Continue as Guest</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <View style={[styles.loadingCard, { backgroundColor: theme.card }]}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.text }]}>
+              Signing in...
+            </Text>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -219,9 +314,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 24,
   },
-  errorText: {
-    color: '#FF0000',
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
     marginBottom: 16,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -248,16 +352,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  forgotPasswordText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
   linkText: {
     fontSize: 14,
     textAlign: 'center',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  loadingCard: {
+    borderRadius: 16,
+    paddingVertical: 32,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

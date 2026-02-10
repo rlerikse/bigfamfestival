@@ -1,5 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsLatitude, IsLongitude, IsNotEmpty } from 'class-validator';
+import {
+  IsBoolean,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+} from 'class-validator';
 
 export class CreateCampsiteDto {
   @ApiProperty({
@@ -12,7 +17,7 @@ export class CreateCampsiteDto {
 
   @ApiProperty({
     description: 'Longitude of the campsite location',
-    example: -74.0060,
+    example: -74.006,
   })
   @IsNotEmpty()
   @IsLongitude()

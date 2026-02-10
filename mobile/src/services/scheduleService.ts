@@ -1,5 +1,5 @@
 import { api } from './api';
-import * as SecureStore from 'expo-secure-store';
+import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { ScheduleEvent } from '../types/event';
@@ -16,7 +16,7 @@ import { scheduleEventNotification, cancelEventNotification } from './notificati
 export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> => {
   try {
     // Check for token
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
       if (!token) {
       // eslint-disable-next-line no-console
       console.warn('No auth token found, cannot fetch schedule.');
@@ -38,7 +38,7 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
       throw new Error('Offline and no cached schedule available');
     }
       try {
-      // Fetch from API if online - backend uses JWT token to identify the user
+      // Fetch from API if online - backend uses Firebase token to identify the user
       const response = await api.get<ScheduleEvent[]>('/schedule', {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -99,7 +99,7 @@ export const getUserSchedule = async (userId: string): Promise<ScheduleEvent[]> 
 export const addToSchedule = async (userId: string, eventId: string): Promise<void> => {
   try {
     // Check for token
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');
@@ -163,7 +163,7 @@ export const addToSchedule = async (userId: string, eventId: string): Promise<vo
 export const removeFromSchedule = async (userId: string, eventId: string): Promise<void> => {
   try {
     // Check for token
-    const token = await SecureStore.getItemAsync('userToken');
+    const token = await getIdToken();
     
     if (!token) {
       throw new Error('Authentication token not found');
@@ -241,7 +241,7 @@ const updateLocalScheduleCache = async (
       
       if (!eventExists) {
         // Fetch the event details from the API
-        const token = await SecureStore.getItemAsync('userToken');
+        const token = await getIdToken();
         if (!token) {
           console.error('No token found, cannot fetch event details for cache');
           return;

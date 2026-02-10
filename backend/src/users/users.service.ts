@@ -23,6 +23,25 @@ export class UsersService {
   }
 
   /**
+   * Create a user with a specific ID (e.g., Firebase UID)
+   */
+  async createWithId(id: string, userData: Partial<User>): Promise<User> {
+    const now = new Date();
+    const data = {
+      ...userData,
+      shareMyCampsite: userData.shareMyCampsite ?? false,
+      shareMyLocation: userData.shareMyLocation ?? false,
+      ticketType: userData.ticketType ?? 'need-ticket',
+      notificationsEnabled: userData.notificationsEnabled ?? true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.firestoreService.set(this.collection, id, data);
+    return { id, ...data } as User;
+  }
+
+  /**
    * Find a user by ID
    */
   async findById(id: string): Promise<User | null> {

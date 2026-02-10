@@ -17,7 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { DebugModule } from './debug/debug.module'; // Debug endpoints
 import * as Joi from 'joi';
 import { APP_GUARD } from '@nestjs/core';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { FirebaseAuthGuard } from './auth/guards/firebase-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { ArtistsModule } from './artists/artists.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -32,8 +32,6 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().default(3000),
-        JWT_SECRET: Joi.string().required(),
-        JWT_EXPIRATION: Joi.string().default('1d'),
         CORS_ORIGIN: Joi.string().default('*'),
         GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(), // Changed from .required()
         GOOGLE_PROJECT_ID: Joi.string().required(),
@@ -50,10 +48,12 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         return {
-          throttlers: [{
-            ttl: configService.get<number>('THROTTLE_TTL', 60) * 1000, // Convert to milliseconds
-            limit: configService.get<number>('THROTTLE_LIMIT', 100),
-          }],
+          throttlers: [
+            {
+              ttl: configService.get<number>('THROTTLE_TTL', 60) * 1000, // Convert to milliseconds
+              limit: configService.get<number>('THROTTLE_LIMIT', 100),
+            },
+          ],
         };
       },
     }),
@@ -96,10 +96,10 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
   ],
   controllers: [],
   providers: [
-    // Global JWT authentication guard
+    // Global authentication guard (Firebase Auth - BFF-50)
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: FirebaseAuthGuard,
     },
     // Global roles guard
     {
@@ -116,9 +116,6 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply tenant middleware to all routes except health check
-    consumer
-      .apply(TenantMiddleware)
-      .exclude('api/v1/health')
-      .forRoutes('*');
+    consumer.apply(TenantMiddleware).exclude('api/v1/health').forRoutes('*');
   }
 }

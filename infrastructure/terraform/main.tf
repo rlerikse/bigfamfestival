@@ -76,16 +76,6 @@ resource "google_project_iam_binding" "firestore_access" {
   depends_on = [google_service_account.cloud_run_sa]
 }
 
-# IAM binding for service account to access Secret Manager
-resource "google_secret_manager_secret_iam_binding" "jwt_secret_access" {
-  secret_id = "jwt-secret"
-  role      = "roles/secretmanager.secretAccessor"
-  members = [
-    "serviceAccount:${google_service_account.cloud_run_sa.email}",
-  ]
-  depends_on = [google_service_account.cloud_run_sa]
-}
-
 resource "google_project_iam_binding" "storage_access" {
   project = var.project_id
   role    = "roles/storage.objectAdmin"

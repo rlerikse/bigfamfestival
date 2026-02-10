@@ -24,7 +24,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
-      
+
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
         error = exceptionResponse;
@@ -48,7 +48,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
 
     if (status >= 500) {
-      this.logger.error(errorLog, exception instanceof Error ? exception.stack : '');
+      this.logger.error(
+        errorLog,
+        exception instanceof Error ? exception.stack : '',
+      );
     } else {
       this.logger.warn(errorLog);
     }
@@ -59,7 +62,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: isProduction && status >= 500 ? 'Internal server error' : message,
+      message:
+        isProduction && status >= 500 ? 'Internal server error' : message,
     };
 
     // Include error details in non-production environments
@@ -70,4 +74,3 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json(responseBody);
   }
 }
-

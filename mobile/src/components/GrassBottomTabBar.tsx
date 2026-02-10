@@ -38,9 +38,9 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
   const { user, logout } = useAuth(); // Get user and logout function from auth context
   
   return (
-    <View style={[styles.container, { paddingBottom: bottomPadding }]}>
+    <View style={[styles.container, { paddingBottom: bottomPadding }]} pointerEvents="box-none">
       {/* This View acts as a clipping mask for the Image */}
-      <View style={[styles.imageContainer, { height: EFFECTIVE_GRASS_VISIBLE_HEIGHT + NAVBAR_HEIGHT + bottomPadding }]}>
+      <View style={[styles.imageContainer, { height: EFFECTIVE_GRASS_VISIBLE_HEIGHT + NAVBAR_HEIGHT + bottomPadding }]} pointerEvents="none">
         <Image
           source={require('../assets/images/grass-seamless.png')}
           style={[
@@ -184,7 +184,7 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
 
 const styles = StyleSheet.create({  container: {
     width: '100%',
-    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 20 , 
+    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 52 , 
     // paddingBottom will be applied dynamically
     backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
     position: 'absolute', // Ensure the grass overlays the content
@@ -227,6 +227,7 @@ const styles = StyleSheet.create({  container: {
     height: NAVBAR_HEIGHT,
     backgroundColor: 'transparent', // Crucial for the dirt part of image to show
     zIndex: 1, // Above backgroundImageStyle
+    justifyContent: 'flex-end',
   },
   tabItem: {
     flex: 1,
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: Platform.OS === 'ios' ? 20 : 30, // iOS stays at 20, Android adjusted to 30 to compensate for moved grass
+    marginTop: Platform.OS === 'ios' ? 50 : 30,
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',

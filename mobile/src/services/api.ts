@@ -1,9 +1,9 @@
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 import { Platform } from 'react-native';
 
 import { API_URL } from '../config/constants';
+import { getIdToken } from './firebaseAuthService';
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -27,7 +27,7 @@ const isRetryableError = (error: AxiosError): boolean => {
 // Helper function to retry request
 const retryRequest = async (
   config: InternalAxiosRequestConfig,
-  retryCount: number = 0
+  retryCount = 0
 ): Promise<any> => {
   try {
     return await axios(config);
@@ -81,32 +81,26 @@ api.interceptors.request.use(
     
     // Add auth token if available (except for auth endpoints)
     if (!config.url?.includes('/auth/')) {
-      const token = await SecureStore.getItemAsync('accessToken');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
-        
-        // Debug logging for requests to notifications endpoints
-        if (__DEV__ && config.url?.includes('/notifications')) {
-          // eslint-disable-next-line no-console
-          console.log(`Setting Authorization header: Bearer ${token.substring(0, 10)}...`);
+      try {
+        const token = await getIdToken();
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
           
-          try {
-            // Decode JWT to check user role
-            const tokenParts = token.split('.');
-            if (tokenParts.length === 3) {
-              const payload = JSON.parse(atob(tokenParts[1]));
-              // eslint-disable-next-line no-console
-              console.log('JWT payload:', payload);
-            }
-          } catch (err) {
+          // Debug logging for requests to notifications endpoints
+          if (__DEV__ && config.url?.includes('/notifications')) {
             // eslint-disable-next-line no-console
-            console.log('Error decoding JWT token:', err);
+            console.log(`Setting Authorization header: Bearer ${token.substring(0, 10)}...`);
+          }
+        } else {
+          // Debug log if no token found
+          if (__DEV__ && config.url?.includes('/notifications')) {
+            console.warn('No Firebase auth token found for request to:', config.url);
           }
         }
-      } else {
-        // Debug log if no token found
-        if (__DEV__ && config.url?.includes('/notifications')) {
-          console.warn('No auth token found for request to:', config.url);
+      } catch (err) {
+        // User not authenticated, continue without token
+        if (__DEV__) {
+          console.log('[API] No authenticated user, proceeding without token');
         }
       }
     }
@@ -192,35 +186,18 @@ api.interceptors.response.use(
         requestData: originalRequest.data ? JSON.parse(originalRequest.data) : null,
       });
       
-      // If it's a 401 or 403, check the token
+      // If it's a 401 or 403, log for debugging
       if (error.response.status === 401 || error.response.status === 403) {
-        const token = await SecureStore.getItemAsync('accessToken');
-        if (token) {
-          try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(
-              atob(base64)
-                .split('')
-                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                .join('')
-            );
-            // eslint-disable-next-line no-console
-            console.log('Token payload:', JSON.parse(jsonPayload));
-          } catch (err) {
-            // eslint-disable-next-line no-console
-            console.log('Error decoding token:', err);
-          }
+        const token = await getIdToken();
+        if (token && __DEV__) {
+          console.log('[API] Auth error with active Firebase token - token may be expired');
         }
       }
     }
     
     // Handle authentication errors
     if (error.response.status === 401) {
-      // Clear tokens on unauthorized
-      await SecureStore.deleteItemAsync('userToken');
-      await SecureStore.deleteItemAsync('accessToken');
-      
+      // Firebase Auth manages token lifecycle - token refresh is automatic
       const authError = new Error('Your session has expired. Please log in again.');
       (authError as any).isAuthError = true;
       (authError as any).requiresLogin = true;

@@ -28,7 +28,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: 'backend/package-lock.json'
       
@@ -111,7 +111,6 @@ jobs:
             GOOGLE_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
             STORAGE_BUCKET=${{ secrets.STORAGE_BUCKET }}
           secrets: |
-            JWT_SECRET=jwt-secret:latest
             GOOGLE_APPLICATION_CREDENTIALS=google-application-credentials:latest
       
       - name: Output service URL

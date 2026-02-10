@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "lastRunAt": "2026-02-09T22:00:00Z",
+  "lastRunAt": "2026-02-10T12:00:00Z",
   "gitCommitBefore": null,
   "specsCreated": [
     "specs/BFF-4-authentication/",
@@ -25,6 +25,23 @@
     ".specify/conventions/style-guides/components.md",
     ".specify/conventions/style-guides/hooks.md",
     ".specify/conventions/style-guides/utils.md"
+  ],
+  "conventionsUpdated": [
+    {
+      "file": ".specify/conventions/tech-stack.md",
+      "reason": "Updated for Firebase Auth migration (BFF-50)",
+      "updatedAt": "2026-02-10T12:00:00Z"
+    },
+    {
+      "file": ".specify/conventions/style-guides/controllers.md",
+      "reason": "Updated guards from JwtAuthGuard to FirebaseAuthGuard (BFF-50)",
+      "updatedAt": "2026-02-10T12:00:00Z"
+    },
+    {
+      "file": ".specify/conventions/ai-instructions.md",
+      "reason": "Updated all auth patterns for Firebase Auth (BFF-50)",
+      "updatedAt": "2026-02-10T12:00:00Z"
+    }
   ],
   "checkpointCommit": null,
   "jiraTicketsCreated": [

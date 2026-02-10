@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Animated, Dimensions, Image, Text } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { View, Animated, Dimensions, Image, Text, TouchableOpacity } from 'react-native';
+// Slider removed due to New Architecture incompatibility
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line } from 'react-native-svg'; // Removed unused Circle and Path
 
@@ -824,7 +824,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         />
       </Animated.View>
 
-      {/* Debug Slider */}
+      {/* Debug Controls */}
       {debugMode && (
         <View style={{
           position: 'absolute',
@@ -840,17 +840,23 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
           <Text style={{ color: 'white', textAlign: 'center', marginBottom: 5 }}>
             {`Time: ${Math.floor(debugHourValue).toString().padStart(2, '0')}:${Math.round((debugHourValue - Math.floor(debugHourValue)) * 60).toString().padStart(2, '0')}`}
           </Text>
-          <Slider
-            style={{ width: '100%', height: 40 }}
-            minimumValue={0}
-            maximumValue={23.99}
-            step={0.01}
-            value={debugHourValue}
-            onValueChange={setDebugHourValue}
-            minimumTrackTintColor="#FFFFFF"
-            maximumTrackTintColor="#000000"
-            thumbTintColor="#FFD700"
-          />
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={{ backgroundColor: '#FFD700', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginHorizontal: 10 }}
+              onPress={() => setDebugHourValue((prev) => (prev - 1 + 24) % 24)}
+            >
+              <Text style={{ fontSize: 20, fontWeight: 'bold' }}>-</Text>
+            </TouchableOpacity>
+            <Text style={{ color: 'white', fontSize: 18, minWidth: 50, textAlign: 'center' }}>
+              {Math.floor(debugHourValue)}h
+            </Text>
+            <TouchableOpacity
+              style={{ backgroundColor: '#FFD700', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginHorizontal: 10 }}
+              onPress={() => setDebugHourValue((prev) => (prev + 1) % 24)}
+            >
+              <Text style={{ fontSize: 20, fontWeight: 'bold' }}>+</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>

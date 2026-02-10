@@ -5,7 +5,6 @@ import {
   Get,
   Delete,
   Request,
-  UseGuards,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -14,21 +13,24 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+// Auth handled by global FirebaseAuthGuard
 import { CampsitesService } from './campsites.service';
 import { CreateCampsiteDto } from './dto/create-campsite.dto';
 import { Campsite } from './interfaces/campsite.interface';
 
 @ApiTags('campsites')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('campsites')
 export class CampsitesController {
   constructor(private readonly campsitesService: CampsitesService) {}
 
   @Post()
   @ApiOperation({ summary: 'Create or update user campsite location' })
-  @ApiResponse({ status: 201, description: 'Campsite created/updated successfully.', type: CreateCampsiteDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Campsite created/updated successfully.',
+    type: CreateCampsiteDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid data.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async upsertCampsite(
@@ -41,7 +43,11 @@ export class CampsitesController {
 
   @Get()
   @ApiOperation({ summary: 'Get user campsite location' })
-  @ApiResponse({ status: 200, description: 'Returns the user campsite.', type: CreateCampsiteDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the user campsite.',
+    type: CreateCampsiteDto,
+  })
   @ApiResponse({ status: 404, description: 'Campsite not found.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async getCampsite(@Request() req): Promise<Campsite> {

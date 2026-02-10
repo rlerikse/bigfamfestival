@@ -6,7 +6,7 @@ mobile/.expo/README.md
 mobile/@eriksensolutions__bigfam-festival.jks
 mobile/google-services.json.base64
 backend/.env
-backend/bigfamfestival-d50c655eb421.json
+backend/bigfamfestival-*.json
 /backend/dist
 /mobile/android
 mobile/package-lock.backup.json

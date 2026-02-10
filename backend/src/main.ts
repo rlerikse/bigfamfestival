@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as compression from 'compression';
+import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -22,7 +23,7 @@ async function bootstrap() {
   // Set up logger
   const logger = app.get(Logger);
   app.useLogger(logger);
-  
+
   // Log startup information
   logger.log(`Starting application in ${environment} mode`);
   if (environment !== 'production') {
@@ -32,7 +33,8 @@ async function bootstrap() {
   // Enable CORS for frontend
   const corsOrigin = configService.get<string>('CORS_ORIGIN', '*');
   app.enableCors({
-    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(o => o.trim()),
+    origin:
+      corsOrigin === '*' ? true : corsOrigin.split(',').map((o) => o.trim()),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -43,6 +45,9 @@ async function bootstrap() {
 
   // Enable request compression
   app.use(compression());
+
+  // Security headers
+  app.use(helmet());
 
   // Set global validation pipe
   app.useGlobalPipes(

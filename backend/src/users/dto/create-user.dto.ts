@@ -23,11 +23,6 @@ export class CreateUserDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ description: 'The password of the user' })
-  @IsString()
-  @IsNotEmpty()
-  password: string;
-
   @ApiProperty({
     example: '555-123-4567',
     description: 'The phone number of the user',

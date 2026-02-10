@@ -7,10 +7,10 @@ export interface ScheduleItem {
 
 export interface CreateScheduleItemDto {
   event_id: string;
-  userId?: string; // Optional - will be ignored in favor of JWT token
+  userId?: string; // Optional - will be ignored in favor of Firebase auth token
 }
 
 export interface RemoveScheduleItemDto {
   event_id: string;
-  userId?: string; // Optional - will be ignored in favor of JWT token
+  userId?: string; // Optional - will be ignored in favor of Firebase auth token
 }

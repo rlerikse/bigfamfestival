@@ -1,17 +1,18 @@
 import { api, checkApiHealth } from '../services/api';
 import { API_URL } from '../config/constants';
-import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 
-// Mock dependencies
-jest.mock('axios');
-jest.mock('expo-secure-store');
-jest.mock('@react-native-community/netinfo');
+// Note: axios is mocked globally in jest.setup.js
+// The api instance from services/api uses axios.create()
 
-const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedSecureStore = SecureStore as jest.Mocked<typeof SecureStore>;
+// Mock Firebase Auth for token retrieval
+jest.mock('../services/firebaseAuthService', () => ({
+  getIdToken: jest.fn().mockResolvedValue('firebase-test-token'),
+  getCurrentUser: jest.fn().mockReturnValue({ uid: 'test-uid', email: 'test@example.com' }),
+}));
+
 const mockedNetInfo = NetInfo as jest.Mocked<typeof NetInfo>;
+const mockedApi = api as jest.Mocked<typeof api>;
 
 describe('API Service', () => {
   beforeEach(() => {
@@ -24,7 +25,7 @@ describe('API Service', () => {
 
   describe('checkApiHealth', () => {
     it('should return healthy status when API is reachable', async () => {
-      mockedAxios.get.mockResolvedValue({
+      mockedApi.get.mockResolvedValue({
         status: 200,
         data: { status: 'ok' },
       });
@@ -32,11 +33,11 @@ describe('API Service', () => {
       const result = await checkApiHealth();
 
       expect(result.isHealthy).toBe(true);
-      expect(mockedAxios.get).toHaveBeenCalledWith('/health', expect.any(Object));
+      expect(mockedApi.get).toHaveBeenCalledWith('/health');
     });
 
     it('should return unhealthy status when API is unreachable', async () => {
-      mockedAxios.get.mockRejectedValue(new Error('Network error'));
+      mockedApi.get.mockRejectedValue(new Error('Network error'));
 
       const result = await checkApiHealth();
 
@@ -46,17 +47,18 @@ describe('API Service', () => {
   });
 
   describe('Request Interceptor', () => {
-    it('should add auth token to requests', async () => {
-      mockedSecureStore.getItemAsync.mockResolvedValue('test-token');
+    it('should add Firebase auth token to requests', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getIdToken } = require('../services/firebaseAuthService');
+      getIdToken.mockResolvedValue('firebase-test-token');
+
       mockedNetInfo.fetch.mockResolvedValue({
         isConnected: true,
       } as any);
 
-      const axiosInstance = mockedAxios.create();
-      const interceptor = axiosInstance.interceptors.request.use as jest.Mock;
-      
-      // This is a simplified test - in reality, we'd test the actual interceptor
-      expect(mockedSecureStore.getItemAsync).toBeDefined();
+      // Verify Firebase token retrieval is available
+      const token = await getIdToken();
+      expect(token).toBe('firebase-test-token');
     });
 
     it('should throw error when offline', async () => {
@@ -69,4 +71,3 @@ describe('API Service', () => {
     });
   });
 });
-

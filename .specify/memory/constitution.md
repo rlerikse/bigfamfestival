@@ -1,7 +1,7 @@
 # Big Fam Festival - Project Constitution
 
 <!-- 
-Version: 1.1.0
+Version: 1.3.0
 Generated: 2026-02-09
 Last Audit: 2026-02-10
 Project: Big Fam Festival App (Backend API + Mobile App)
@@ -88,7 +88,7 @@ Personally Identifiable Information (PII) MUST NOT be logged:
 PII fields MUST be clearly identified in interfaces with comments.
 
 User data in Firestore MUST:
-- Store passwords only as bcrypt hashes (cost factor ≥ 10)
+- NOT store passwords (Firebase Auth manages credentials externally)
 - Be deletable upon user request (GDPR/CCPA compliance)
 
 Rationale: Logging PII risks privacy breaches and regulatory violations.
@@ -119,30 +119,53 @@ All backend code MUST follow NestJS conventions:
 
 Rationale: Consistent NestJS patterns improve maintainability and enable proper testing.
 
-## VII. JWT Authentication & Authorization
+### Multi-Tenancy
 
-Authentication MUST use JWT tokens with Passport.js:
+The application supports multi-tenant (multi-festival) operation:
 
-**Token Structure**:
-- `sub`: User ID
+- `TenantMiddleware` is applied globally to all routes (except `/health`)
+- Each request is scoped to a festival via `FESTIVAL_ID` configuration
+- Tenant context MAY be derived from:
+  1. `X-Festival-Id` request header (for trusted clients/admin tools)
+  2. `?festivalId` query parameter (for debugging/testing)
+  3. `FESTIVAL_ID` environment variable (default, single-tenant mode)
+- Production deployments SHOULD default to environment variable for security
+- Health endpoints MUST remain tenant-agnostic for orchestrator probes
+
+### HTTP Security Headers
+
+All backend deployments MUST use `helmet` middleware for HTTP security headers:
+
+- `helmet()` MUST be applied globally in `main.ts`
+- Default helmet configuration provides: X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, X-XSS-Protection, and more
+- Custom CSP rules MAY be added as needed for specific endpoints
+
+## VII. Firebase Authentication & Authorization
+
+Authentication MUST use Firebase Authentication:
+
+**Token Structure** (Firebase ID Token):
+- `uid`: User ID (matches Firestore document ID)
 - `email`: User email
-- `role`: User role (ADMIN, ATTENDEE)
+- Custom claims: `role` (ADMIN, ATTENDEE)
 
-**Token Storage (Mobile)**:
-- Access tokens MUST be stored in `expo-secure-store` (encrypted)
+**Token Management (Mobile)**:
+- Firebase SDK handles token storage and automatic refresh
+- ID tokens retrieved via `getIdToken()` are short-lived (1 hour, auto-refreshed)
 - Tokens MUST be sent via `Authorization: Bearer <token>` header
 
 **Route Protection**:
-- All routes are protected by default (`JwtAuthGuard` at controller level)
+- All routes are protected by default (`FirebaseAuthGuard` at controller level)
 - Public routes MUST use `@Public()` decorator explicitly
-- Admin routes MUST use `@Roles(Role.ADMIN)` decorator
+- Admin routes MUST use `@Roles(Role.ADMIN)` decorator with role from custom claims
 
 **Password Security**:
-- Passwords MUST be hashed with bcrypt (minimum 10 rounds)
-- Password validation MUST require minimum 8 characters
-- Failed login attempts SHOULD NOT reveal whether email exists
+- Passwords managed by Firebase Authentication
+- Password validation MUST require minimum 8 characters (enforced by Firebase)
+- Firebase handles password hashing and secure storage
+- Password reset via Firebase email flow
 
-Rationale: Secure authentication protects user data and prevents unauthorized access.
+Rationale: Firebase Authentication provides secure, managed authentication with built-in token refresh, reducing custom security code.
 
 ## VIII. Input Validation & Type Safety
 
@@ -159,7 +182,10 @@ All external data MUST be validated using `class-validator` decorators in DTOs:
 - Environment variables: Validated at startup via Joi schema
 - Firestore responses: Type assertions with runtime checks for critical fields
 
-TypeScript strict mode is NOT currently enforced but SHOULD be enabled incrementally.
+TypeScript strict mode status:
+- Mobile (`mobile/tsconfig.json`): `"strict": true` ✅
+- Functions (`functions/tsconfig.json`): `"strict": true` ✅
+- Backend (`backend/tsconfig.json`): Non-strict (`strictNullChecks: false`, `noImplicitAny: false`). SHOULD be enabled incrementally.
 
 Rationale: Runtime validation prevents type coercion bugs, injection attacks, and data corruption.
 
@@ -187,6 +213,12 @@ Mobile code MUST follow these patterns:
 - API calls MUST be in service files (`*Service.ts`)
 - Services are pure functions (not classes)
 - Services handle token retrieval internally
+- The canonical API client is `services/api.ts` (with retry/backoff)
+
+**Error Tracking**:
+- Production builds MUST include Sentry for crash and error reporting
+- Sentry is initialized at app startup via `initSentry()`
+- PII MUST NOT be included in Sentry events (consistent with §V)
 
 Rationale: Consistent mobile patterns improve performance and maintainability.
 
@@ -241,8 +273,8 @@ All specifications MUST be linked to a Jira ticket:
 - **Examples**: `specs/BFF-4-authentication/`, `specs/BFF-6-events-schedule/`
 
 Spec directories MUST contain:
-- `spec.md`: Feature specification
-- `plan.md`: Implementation plan
+- `spec.md`: Feature specification (REQUIRED)
+- `plan.md`: Implementation plan (REQUIRED for features entering development; MAY be absent for specs in early discovery or deferred state)
 
 Rationale: Traceability between tickets and specifications enables project management and audit trails.
 
@@ -283,9 +315,9 @@ All automation MUST use GitHub Actions workflows in `.github/workflows/`:
 - Sensitive values MUST use GitHub Secrets, never hardcoded
 
 **Required Workflows**:
-- `backend-ci.yml`: Lint, typecheck, and test backend on PR
-- `mobile-ci.yml`: Lint, typecheck, and test mobile on PR
-- `deploy-backend.yml`: Deploy backend to Cloud Run (manual or on release)
+- `backend-ci.yml`: Lint, typecheck, test backend on PR; build Docker image and deploy to Cloud Run on merge to main
+- `mobile-ci.yml`: Lint, typecheck, test mobile on PR; trigger EAS build on merge
+- `sync-spec-context.yml`: Sync specification context to central repo
 
 **Best Practices**:
 - Use caching for `node_modules` to speed up builds
@@ -364,7 +396,7 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 - Framework: NestJS 10.x
 - Language: TypeScript 5.x
 - Database: Google Cloud Firestore
-- Auth: Passport.js + JWT
+- Auth: Firebase Authentication (firebase-admin SDK)
 - Docs: Swagger/OpenAPI via @nestjs/swagger
 - Logging: Pino via nestjs-pino
 - Hosting: Google Cloud Run
@@ -375,7 +407,8 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 - Language: TypeScript 5.x
 - Navigation: React Navigation 6.x
 - State: TanStack React Query 5.x + React Context
-- Storage: AsyncStorage (cache) + SecureStore (tokens)
+- Auth: @react-native-firebase/auth
+- Storage: AsyncStorage (cache)
 
 **Cloud Functions**:
 - Runtime: Node.js 20
@@ -385,24 +418,26 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 
 - Backend: Jest for unit and integration tests
 - Mobile: Jest + React Native Testing Library
-- Coverage threshold: Not strictly enforced (SHOULD aim for critical paths)
-- E2E tests: Not currently implemented
+- Coverage threshold: Backend enforces 50% minimum (branches, functions, lines, statements)
+- E2E tests: Scaffolded (`backend/test/`) but not yet comprehensive
 
 ### Security Requirements
 
 - HTTPS required for all API communication
-- JWT tokens expire (configurable)
-- Passwords hashed with bcrypt
+- HTTP security headers enforced via `helmet` middleware
+- Firebase Auth manages token lifecycle and expiry
+- Firebase Auth manages password hashing and storage
 - No PII in logs
 - Rate limiting via @nestjs/throttler
+- CORS MUST be restricted to known origins in production (not `*`)
 
 ---
 
 ## Version History
 
 | Version | Date | Changes |
-|---------|------|---------|
-| 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
+|---------|------|---------||
+| 1.3.0 | 2026-02-10 | Audit fix: Updated multi-tenancy rules to allow header/query-based tenant, documented 50% coverage threshold, CI upgraded to Node 20 || 1.2.0 | 2026-02-10 | Constitution audit: Added multi-tenancy, security headers, Sentry, strict mode status; updated CI/CD workflows, spec requirements, CORS policy || 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
 | 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |
 
 ---

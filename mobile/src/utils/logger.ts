@@ -35,8 +35,8 @@ class Logger {
       console.warn(this.formatMessage('WARN', message, context));
     }
     // In production, send to Sentry as warning
-    if (!this.isDevelopment && typeof global !== 'undefined' && (global as any).Sentry) {
-      (global as any).Sentry.captureMessage(message, {
+    if (!this.isDevelopment && typeof globalThis !== 'undefined' && (globalThis as any).Sentry) {
+      (globalThis as any).Sentry.captureMessage(message, {
         level: 'warning',
         extra: context,
       });
@@ -51,8 +51,8 @@ class Logger {
     }
 
     // In production, send to Sentry
-    if (!this.isDevelopment && typeof global !== 'undefined' && (global as any).Sentry) {
-      (global as any).Sentry.captureException(errorObj, {
+    if (!this.isDevelopment && typeof globalThis !== 'undefined' && (globalThis as any).Sentry) {
+      (globalThis as any).Sentry.captureException(errorObj, {
         level: 'error',
         extra: {
           message,

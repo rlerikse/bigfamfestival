@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
 import { EventsService } from '../events/events.service';
 import {
@@ -11,6 +11,7 @@ import { Event } from '../events/event.interface';
 @Injectable()
 export class ScheduleService {
   private readonly collectionName = 'schedules';
+  private readonly logger = new Logger(ScheduleService.name);
 
   constructor(
     private readonly firestoreService: FirestoreService,
@@ -113,7 +114,7 @@ export class ScheduleService {
         return await this.eventsService.findById(id);
       } catch (error) {
         // Log the missing event but don't fail the entire request
-        console.warn(
+        this.logger.warn(
           `Event with ID ${id} not found in events collection, removing from user schedule`,
         );
         // Optionally, clean up the invalid reference from the user's schedule
@@ -125,7 +126,7 @@ export class ScheduleService {
             .doc(id);
           await itemDocRef.delete();
         } catch (cleanupError) {
-          console.error(
+          this.logger.error(
             `Failed to clean up invalid event reference ${id}:`,
             cleanupError,
           );

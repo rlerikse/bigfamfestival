@@ -21,7 +21,6 @@ export const initSentry = async () => {
     
     Sentry.init({
       dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || undefined,
-      enableInExpoDevelopment: false,
       debug: false,
       environment: process.env.EXPO_PUBLIC_APP_ENV || 'production',
       tracesSampleRate: 0.1, // 10% of transactions
