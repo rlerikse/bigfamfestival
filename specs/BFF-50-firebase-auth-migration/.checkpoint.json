@@ -1,0 +1,13 @@
+{
+  "feature": "BFF-50-firebase-auth-migration",
+  "started_at": "2026-02-10T00:00:00Z",
+  "last_updated": "2026-02-10T00:00:00Z",
+  "current_phase": "Phase 0",
+  "completed_phases": [],
+  "completed_tasks": [],
+  "failed_tasks": [],
+  "files_created": [],
+  "files_modified": [],
+  "git_commit_before": "f7300df5f098eb016ff72b360ad66460f128c10e",
+  "last_checkpoint_commit": null
+}

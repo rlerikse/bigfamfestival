@@ -84,8 +84,8 @@
 
 ## Phase 0: Documentation & Constitution Compliance
 
-- [ ] T001 [S] Verify OpenAPI contract exists at `specs/BFF-50-firebase-auth-migration/contracts/auth.yaml`
-- [ ] T002 [S] Review constitution Section VII (JWT Auth) - note amendment needed
+- [x] T001 [S] Verify OpenAPI contract exists at `specs/BFF-50-firebase-auth-migration/contracts/auth.yaml`
+- [x] T002 [S] Review constitution Section VII (JWT Auth) - note amendment needed
 
 ---
 
@@ -95,11 +95,11 @@
 
 **Dependencies**: None (all parallelizable)
 
-- [ ] T003 [P] [S] Add `@react-native-firebase/app` and `@react-native-firebase/auth` to `mobile/package.json`
+- [x] T003 [P] [S] Add `@react-native-firebase/app` and `@react-native-firebase/auth` to `mobile/package.json`
   - Branch: `feat/BFF-50-1_mobile-firebase-deps`
   - Base: `BFF-50-firebase-auth-migration`
 
-- [ ] T004 [P] [M] Verify Firebase Admin SDK initialization in backend
+- [x] T004 [P] [M] Verify Firebase Admin SDK initialization in backend
   - Check `backend/src/config/firebase.config.ts` exists
   - Ensure `getAuth()` from firebase-admin is available
   - Branch: `feat/BFF-50-2_verify-admin-sdk`
