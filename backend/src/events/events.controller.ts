@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Put,
@@ -28,6 +29,8 @@ import { Public } from '../auth/decorators/public.decorator';
 @ApiTags('events')
 @Controller('events')
 export class EventsController {
+  private readonly logger = new Logger(EventsController.name);
+
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
@@ -73,7 +76,7 @@ export class EventsController {
       // Debug logging removed - use Pino logger if needed
       return result;
     } catch (error) {
-      console.error(`[EventsController] Error fetching genres:`, error);
+      this.logger.error('Error fetching genres:', error);
       // Optionally, you can use NestJS's HttpException for more control
       throw new Error('Failed to fetch genres');
     }

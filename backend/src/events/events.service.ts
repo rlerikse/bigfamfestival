@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
 import { CreateEventDto } from '../auth/dto/create-event.dto';
 import { UpdateEventDto } from '../auth/dto/update-event.dto';
@@ -7,6 +7,7 @@ import { Event } from './event.interface';
 @Injectable()
 export class EventsService {
   private readonly collection = 'events';
+  private readonly logger = new Logger(EventsService.name);
 
   constructor(private readonly firestoreService: FirestoreService) {}
 
@@ -104,7 +105,7 @@ export class EventsService {
         // If same date, compare by start time
         return startTimeA.localeCompare(startTimeB);
       } catch (error) {
-        console.error('Error sorting events:', error, { eventA: a, eventB: b });
+        this.logger.error('Error sorting events:', error);
         return 0; // Keep original order if sorting fails
       }
     });

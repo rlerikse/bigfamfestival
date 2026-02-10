@@ -111,7 +111,6 @@ jobs:
             GOOGLE_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
             STORAGE_BUCKET=${{ secrets.STORAGE_BUCKET }}
           secrets: |
-            JWT_SECRET=jwt-secret:latest
             GOOGLE_APPLICATION_CREDENTIALS=google-application-credentials:latest
       
       - name: Output service URL

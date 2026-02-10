@@ -34,11 +34,11 @@ export const sendPushNotifications = functions.firestore
       const notificationData = snapshot.data() as NotificationDocument;
       const notificationId = context.params.notificationId;
 
-      console.log(`Processing notification ${notificationId}: ${notificationData.title}`);
+      functions.logger.info(`Processing notification ${notificationId}: ${notificationData.title}`);
       
       // Skip if no title or body
       if (!notificationData.title || !notificationData.body) {
-        console.log(`Notification ${notificationId} has no title or body, skipping`);
+        functions.logger.info(`Notification ${notificationId} has no title or body, skipping`);
         return null;
       }
 
@@ -49,7 +49,7 @@ export const sendPushNotifications = functions.firestore
         .get();
 
       if (usersSnapshot.empty) {
-        console.log('No users with push tokens found');
+        functions.logger.info('No users with push tokens found');
         return null;
       }
 
@@ -72,10 +72,10 @@ export const sendPushNotifications = functions.firestore
         }
       });
 
-      console.log(`Found ${userTokens.length} valid push tokens to notify`);
+      functions.logger.info(`Found ${userTokens.length} valid push tokens to notify`);
       
       if (userTokens.length === 0) {
-        console.log('No valid push tokens found, skipping notification send');
+        functions.logger.info('No valid push tokens found, skipping notification send');
         return null;
       }
 
@@ -118,9 +118,9 @@ export const sendPushNotifications = functions.firestore
         try {
           const ticketChunk = await expo.sendPushNotificationsAsync(chunk);
           tickets.push(...ticketChunk);
-          console.log(`Sent ${ticketChunk.length} notifications`);
+          functions.logger.info(`Sent ${ticketChunk.length} notifications`);
         } catch (error) {
-          console.error('Error sending chunk of notifications:', error);
+          functions.logger.error('Error sending chunk of notifications:', error);
         }
       }
 
@@ -139,10 +139,10 @@ export const sendPushNotifications = functions.firestore
         }
       });
 
-      console.log(`Successfully sent ${receiptIds.length} notifications`);
+      functions.logger.info(`Successfully sent ${receiptIds.length} notifications`);
       
       if (failedTokens.length > 0) {
-        console.log(`Failed to send ${failedTokens.length} notifications`);
+        functions.logger.info(`Failed to send ${failedTokens.length} notifications`);
         
         // Cleanup invalid tokens
         const batch = admin.firestore().batch();
@@ -164,7 +164,7 @@ export const sendPushNotifications = functions.firestore
         
         if (batchOperationsCount > 0) {
           await batch.commit();
-          console.log(`Cleaned up ${batchOperationsCount} invalid tokens`);
+          functions.logger.info(`Cleaned up ${batchOperationsCount} invalid tokens`);
         }
       }
 
@@ -174,7 +174,7 @@ export const sendPushNotifications = functions.firestore
         failed: failedTokens.length,
       };
     } catch (error) {
-      console.error('Error in sendPushNotifications function:', error);
+      functions.logger.error('Error in sendPushNotifications function:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       return { success: false, error: errorMessage };
     }
@@ -199,7 +199,7 @@ export const checkNotificationReceipts = functions.pubsub
         .get();
       
       if (notificationsSnapshot.empty) {
-        console.log('No pending notification receipts to check');
+        functions.logger.info('No pending notification receipts to check');
         return null;
       }
       
@@ -216,7 +216,7 @@ export const checkNotificationReceipts = functions.pubsub
       });
       
       if (receiptIds.length === 0) {
-        console.log('No receipt IDs found to check');
+        functions.logger.info('No receipt IDs found to check');
         return null;
       }
       
@@ -269,14 +269,14 @@ export const checkNotificationReceipts = functions.pubsub
             }
           }
         } catch (error) {
-          console.error('Error checking receipt chunk:', error);
+          functions.logger.error('Error checking receipt chunk:', error);
         }
       }
       
       // Commit all updates
       if (batchOperationsCount > 0) {
         await batch.commit();
-        console.log(`Updated ${batchOperationsCount} notification receipts`);
+        functions.logger.info(`Updated ${batchOperationsCount} notification receipts`);
       }
       
       return {
@@ -284,7 +284,7 @@ export const checkNotificationReceipts = functions.pubsub
         processed: receiptIds.length
       };
     } catch (error) {
-      console.error('Error in checkNotificationReceipts function:', error);
+      functions.logger.error('Error in checkNotificationReceipts function:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });

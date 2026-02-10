@@ -1,7 +1,7 @@
 # Big Fam Festival - Project Constitution
 
 <!-- 
-Version: 1.1.0
+Version: 1.2.0
 Generated: 2026-02-09
 Last Audit: 2026-02-10
 Project: Big Fam Festival App (Backend API + Mobile App)
@@ -119,6 +119,23 @@ All backend code MUST follow NestJS conventions:
 
 Rationale: Consistent NestJS patterns improve maintainability and enable proper testing.
 
+### Multi-Tenancy
+
+The application supports multi-tenant (multi-festival) operation:
+
+- `TenantMiddleware` is applied globally to all routes (except `/health`)
+- Each request is scoped to a festival via `FESTIVAL_ID` configuration
+- Tenant context MUST be derived from configuration, not from user input
+- Health endpoints MUST remain tenant-agnostic for orchestrator probes
+
+### HTTP Security Headers
+
+All backend deployments MUST use `helmet` middleware for HTTP security headers:
+
+- `helmet()` MUST be applied globally in `main.ts`
+- Default helmet configuration provides: X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, X-XSS-Protection, and more
+- Custom CSP rules MAY be added as needed for specific endpoints
+
 ## VII. Firebase Authentication & Authorization
 
 Authentication MUST use Firebase Authentication:
@@ -161,7 +178,10 @@ All external data MUST be validated using `class-validator` decorators in DTOs:
 - Environment variables: Validated at startup via Joi schema
 - Firestore responses: Type assertions with runtime checks for critical fields
 
-TypeScript strict mode is NOT currently enforced but SHOULD be enabled incrementally.
+TypeScript strict mode status:
+- Mobile (`mobile/tsconfig.json`): `"strict": true` ✅
+- Functions (`functions/tsconfig.json`): `"strict": true` ✅
+- Backend (`backend/tsconfig.json`): Non-strict (`strictNullChecks: false`, `noImplicitAny: false`). SHOULD be enabled incrementally.
 
 Rationale: Runtime validation prevents type coercion bugs, injection attacks, and data corruption.
 
@@ -189,6 +209,12 @@ Mobile code MUST follow these patterns:
 - API calls MUST be in service files (`*Service.ts`)
 - Services are pure functions (not classes)
 - Services handle token retrieval internally
+- The canonical API client is `services/api.ts` (with retry/backoff)
+
+**Error Tracking**:
+- Production builds MUST include Sentry for crash and error reporting
+- Sentry is initialized at app startup via `initSentry()`
+- PII MUST NOT be included in Sentry events (consistent with §V)
 
 Rationale: Consistent mobile patterns improve performance and maintainability.
 
@@ -243,8 +269,8 @@ All specifications MUST be linked to a Jira ticket:
 - **Examples**: `specs/BFF-4-authentication/`, `specs/BFF-6-events-schedule/`
 
 Spec directories MUST contain:
-- `spec.md`: Feature specification
-- `plan.md`: Implementation plan
+- `spec.md`: Feature specification (REQUIRED)
+- `plan.md`: Implementation plan (REQUIRED for features entering development; MAY be absent for specs in early discovery or deferred state)
 
 Rationale: Traceability between tickets and specifications enables project management and audit trails.
 
@@ -285,9 +311,9 @@ All automation MUST use GitHub Actions workflows in `.github/workflows/`:
 - Sensitive values MUST use GitHub Secrets, never hardcoded
 
 **Required Workflows**:
-- `backend-ci.yml`: Lint, typecheck, and test backend on PR
-- `mobile-ci.yml`: Lint, typecheck, and test mobile on PR
-- `deploy-backend.yml`: Deploy backend to Cloud Run (manual or on release)
+- `backend-ci.yml`: Lint, typecheck, test backend on PR; build Docker image and deploy to Cloud Run on merge to main
+- `mobile-ci.yml`: Lint, typecheck, test mobile on PR; trigger EAS build on merge
+- `sync-spec-context.yml`: Sync specification context to central repo
 
 **Best Practices**:
 - Use caching for `node_modules` to speed up builds
@@ -389,23 +415,24 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 - Backend: Jest for unit and integration tests
 - Mobile: Jest + React Native Testing Library
 - Coverage threshold: Not strictly enforced (SHOULD aim for critical paths)
-- E2E tests: Not currently implemented
+- E2E tests: Scaffolded (`backend/test/`) but not yet comprehensive
 
 ### Security Requirements
 
 - HTTPS required for all API communication
+- HTTP security headers enforced via `helmet` middleware
 - Firebase Auth manages token lifecycle and expiry
 - Firebase Auth manages password hashing and storage
 - No PII in logs
 - Rate limiting via @nestjs/throttler
+- CORS MUST be restricted to known origins in production (not `*`)
 
 ---
 
 ## Version History
 
 | Version | Date | Changes |
-|---------|------|---------|
-| 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
+|---------|------|---------|| 1.2.0 | 2026-02-10 | Constitution audit: Added multi-tenancy, security headers, Sentry, strict mode status; updated CI/CD workflows, spec requirements, CORS policy || 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
 | 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |
 
 ---

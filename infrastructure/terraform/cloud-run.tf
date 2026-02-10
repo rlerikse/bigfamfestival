@@ -46,17 +46,6 @@ resource "google_cloud_run_service" "bigfam-api" {
           name  = "STORAGE_BUCKET"
           value = "${var.project_id}.appspot.com"
         }
-        
-        # Secrets (should be managed separately and referred here)
-        env {
-          name = "JWT_SECRET"
-          value_from {
-            secret_key_ref {
-              name = "jwt-secret"
-              key  = "latest"
-            }
-          }
-        }
 
         # Optional: Add Google Application Credentials if needed
         # env {
