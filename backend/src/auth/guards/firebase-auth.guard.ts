@@ -61,14 +61,10 @@ export class FirebaseAuthGuard implements CanActivate {
         authProvider: 'firebase',
       };
 
-      this.logger.debug(
-        `Firebase token verified for user ${decodedToken.uid}`,
-      );
+      this.logger.debug(`Firebase token verified for user ${decodedToken.uid}`);
       return true;
     } catch (error) {
-      this.logger.debug(
-        `Firebase token verification failed: ${error.message}`,
-      );
+      this.logger.debug(`Firebase token verification failed: ${error.message}`);
 
       // Provide specific error messages without leaking sensitive info
       if (error.code === 'auth/id-token-expired') {

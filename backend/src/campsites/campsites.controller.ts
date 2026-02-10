@@ -26,7 +26,11 @@ export class CampsitesController {
 
   @Post()
   @ApiOperation({ summary: 'Create or update user campsite location' })
-  @ApiResponse({ status: 201, description: 'Campsite created/updated successfully.', type: CreateCampsiteDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Campsite created/updated successfully.',
+    type: CreateCampsiteDto,
+  })
   @ApiResponse({ status: 400, description: 'Invalid data.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async upsertCampsite(
@@ -39,7 +43,11 @@ export class CampsitesController {
 
   @Get()
   @ApiOperation({ summary: 'Get user campsite location' })
-  @ApiResponse({ status: 200, description: 'Returns the user campsite.', type: CreateCampsiteDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the user campsite.',
+    type: CreateCampsiteDto,
+  })
   @ApiResponse({ status: 404, description: 'Campsite not found.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   async getCampsite(@Request() req): Promise<Campsite> {

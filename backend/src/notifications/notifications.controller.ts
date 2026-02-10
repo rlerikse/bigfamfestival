@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  Logger,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Logger } from '@nestjs/common';
 import {
   NotificationsService,
   AdminNotification,

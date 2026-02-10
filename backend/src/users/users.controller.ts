@@ -32,9 +32,14 @@ export class UsersController {
   @ApiOperation({ summary: 'Create user profile after Firebase registration' })
   @ApiResponse({ status: 201, description: 'User profile created' })
   @ApiResponse({ status: 409, description: 'User profile already exists' })
-  async createProfile(@Request() req, @Body() createProfileDto: CreateProfileDto) {
+  async createProfile(
+    @Request() req,
+    @Body() createProfileDto: CreateProfileDto,
+  ) {
     // Check if user already exists
-    const existing = await this.usersService.findById(req.user.id).catch(() => null);
+    const existing = await this.usersService
+      .findById(req.user.id)
+      .catch(() => null);
     if (existing) {
       throw new ConflictException('User profile already exists');
     }

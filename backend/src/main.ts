@@ -23,7 +23,7 @@ async function bootstrap() {
   // Set up logger
   const logger = app.get(Logger);
   app.useLogger(logger);
-  
+
   // Log startup information
   logger.log(`Starting application in ${environment} mode`);
   if (environment !== 'production') {
@@ -33,7 +33,8 @@ async function bootstrap() {
   // Enable CORS for frontend
   const corsOrigin = configService.get<string>('CORS_ORIGIN', '*');
   app.enableCors({
-    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(o => o.trim()),
+    origin:
+      corsOrigin === '*' ? true : corsOrigin.split(',').map((o) => o.trim()),
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization'],

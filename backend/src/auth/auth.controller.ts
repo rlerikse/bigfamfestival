@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, Request } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -42,8 +37,14 @@ export class AuthController {
         uid: { type: 'string', description: 'User ID' },
         email: { type: 'string', description: 'User email' },
         role: { type: 'string', description: 'User role (ADMIN, ATTENDEE)' },
-        emailVerified: { type: 'boolean', description: 'Email verification status' },
-        authProvider: { type: 'string', description: 'Authentication provider' },
+        emailVerified: {
+          type: 'boolean',
+          description: 'Email verification status',
+        },
+        authProvider: {
+          type: 'string',
+          description: 'Authentication provider',
+        },
       },
     },
   })

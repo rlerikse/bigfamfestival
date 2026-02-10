@@ -48,10 +48,12 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         return {
-          throttlers: [{
-            ttl: configService.get<number>('THROTTLE_TTL', 60) * 1000, // Convert to milliseconds
-            limit: configService.get<number>('THROTTLE_LIMIT', 100),
-          }],
+          throttlers: [
+            {
+              ttl: configService.get<number>('THROTTLE_TTL', 60) * 1000, // Convert to milliseconds
+              limit: configService.get<number>('THROTTLE_LIMIT', 100),
+            },
+          ],
         };
       },
     }),
@@ -114,9 +116,6 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     // Apply tenant middleware to all routes except health check
-    consumer
-      .apply(TenantMiddleware)
-      .exclude('api/v1/health')
-      .forRoutes('*');
+    consumer.apply(TenantMiddleware).exclude('api/v1/health').forRoutes('*');
   }
 }

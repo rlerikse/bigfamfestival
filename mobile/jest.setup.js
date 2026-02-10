@@ -1,3 +1,5 @@
+/* eslint-env jest */
+/* eslint-disable @typescript-eslint/no-empty-function, @typescript-eslint/no-var-requires */
 /**
  * Jest setup file - runs before all tests
  * Mocks native modules that aren't available in the test environment

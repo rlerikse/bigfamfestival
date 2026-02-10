@@ -9,15 +9,9 @@ import { UsersModule } from '../users/users.module';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
 
 @Module({
-  imports: [
-    UsersModule,
-    ConfigModule,
-  ],
+  imports: [UsersModule, ConfigModule],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    FirebaseAuthGuard,
-  ],
+  providers: [AuthService, FirebaseAuthGuard],
   exports: [AuthService, FirebaseAuthGuard],
 })
 export class AuthModule {}
