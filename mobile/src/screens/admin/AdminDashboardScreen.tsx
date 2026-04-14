@@ -17,17 +17,6 @@ export const AdminDashboardScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // RBAC guard
-  if (user?.role !== 'admin') {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <Text style={[styles.denied, { color: theme.error ?? '#ef4444' }]}>
-          🚫 Admin access required
-        </Text>
-      </View>
-    );
-  }
-
   const fetchStats = useCallback(async () => {
     try {
       const data = await getAdminStats();
@@ -43,6 +32,17 @@ export const AdminDashboardScreen: React.FC = () => {
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
   const onRefresh = () => { setRefreshing(true); fetchStats(); };
+
+  // RBAC guard — after all hooks
+  if (user?.role !== 'admin') {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.background }]}>
+        <Text style={[styles.denied, { color: theme.error ?? '#ef4444' }]}>
+          🚫 Admin access required
+        </Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return (

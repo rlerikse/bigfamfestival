@@ -4,8 +4,7 @@ import {
   TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { api } from '../../services/api';
-import { getIdToken } from '../../services/firebaseAuthService';
+import { sendAdminNotification } from '../../services/adminService';
 
 const USER_GROUPS = ['all', 'attendee', 'staff', 'artist', 'director', 'vendor', 'volunteer', 'admin'];
 
@@ -32,16 +31,11 @@ export const AdminNotificationsScreen: React.FC = () => {
           onPress: async () => {
             setSending(true);
             try {
-              const token = await getIdToken();
-              await api.post(
-                '/notifications/send',
-                {
-                  title: title.trim(),
-                  body: body.trim(),
-                  targetGroup: selectedGroup === 'all' ? undefined : selectedGroup,
-                },
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
+              await sendAdminNotification({
+                title: title.trim(),
+                body: body.trim(),
+                targetGroup: selectedGroup === 'all' ? undefined : selectedGroup,
+              });
               setLastSent({ title: title.trim(), group: selectedGroup, at: new Date().toLocaleTimeString() });
               setTitle('');
               setBody('');

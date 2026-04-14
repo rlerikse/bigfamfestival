@@ -5,9 +5,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { deleteAdminEvent, AdminEvent } from '../../services/adminService';
+import { deleteAdminEvent, listAdminEvents, AdminEvent } from '../../services/adminService';
 import { AdminSearchBar } from '../../components/admin/AdminSearchBar';
-import { fetchEvents as fetchEventsFromService } from "../../services/eventsService";
 
 export const AdminEventsScreen: React.FC = () => {
   const { theme } = useTheme();
@@ -20,7 +19,7 @@ export const AdminEventsScreen: React.FC = () => {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const { events: data } = await fetchEventsFromService();
+      const data = await listAdminEvents();
       setEvents(data as any);
       setFiltered(data as any);
     } catch (e: any) {

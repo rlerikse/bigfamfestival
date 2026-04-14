@@ -109,6 +109,12 @@ export const updateAdminUser = async (
 
 // ── Events ─────────────────────────────────────────────────────────────────
 
+export const listAdminEvents = async (): Promise<AdminEvent[]> => {
+  const headers = await authHeaders();
+  const res = await api.get('/events', { headers });
+  return res.data;
+};
+
 export const createAdminEvent = async (
   dto: Omit<AdminEvent, 'id' | 'createdBy'>
 ): Promise<AdminEvent> => {
@@ -162,6 +168,17 @@ export const updateAdminShift = async (
 export const deleteAdminShift = async (id: string): Promise<void> => {
   const headers = await authHeaders();
   await api.delete(`/admin/shifts/${id}`, { headers });
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────
+
+export const sendAdminNotification = async (params: {
+  title: string;
+  body: string;
+  targetGroup?: string;
+}): Promise<void> => {
+  const headers = await authHeaders();
+  await api.post('/notifications/send', params, { headers });
 };
 
 // ── Schedule (admin bypass) ────────────────────────────────────────────────
