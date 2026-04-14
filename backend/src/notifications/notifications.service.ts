@@ -476,35 +476,60 @@ export class NotificationsService {
 
     return result;
   }
+  /**
+   * Filter push tokens to only those belonging to users in the specified groups.
+   *
+   * NOTE: Firestore does not support compound queries with two inequality/`in`
+   * filters without a composite index. We query by group first, then filter
+   * for token existence in-process to avoid index requirements.
+   *
+   * Required Firestore index: users(userGroups, expoPushToken) — see firestore.indexes.json
+   */
   private async filterTokensByGroups(
-    tokens: string[],
+    _tokens: string[], // unused — we re-fetch from Firestore scoped to groups
     groups: string[],
   ): Promise<string[]> {
     try {
-      // Implementation depends on how you store user groups
       const db = this.firebaseService.db;
 
-      const usersSnapshot = await db
-        .collection('users')
-        .where('userGroup', 'in', groups)
-        .where('expoPushToken', '!=', null)
-        .get();
+      // Firestore `in` is limited to 30 values per query — chunk if needed
+      const CHUNK_SIZE = 30;
+      const allTokens: string[] = [];
 
-      return usersSnapshot.docs
-        .map((doc) => (doc.data() as any).expoPushToken)
-        .filter(Boolean);
+      for (let i = 0; i < groups.length; i += CHUNK_SIZE) {
+        const chunk = groups.slice(i, i + CHUNK_SIZE);
+        // Query users whose userGroups array contains any of the target groups
+        const snapshot = await db
+          .collection('users')
+          .where('userGroups', 'array-contains-any', chunk)
+          .get();
+
+        const chunkTokens = snapshot.docs
+          .map((doc) => (doc.data() as any).expoPushToken)
+          .filter(Boolean) as string[];
+
+        allTokens.push(...chunkTokens);
+      }
+
+      return allTokens;
     } catch (error) {
       this.logger.error('Error filtering tokens by groups', error);
-      return []; // Return empty array on error to avoid notification failure
+      return [];
     }
   }
+
+  /**
+   * Remove invalid push tokens from user records.
+   *
+   * Firestore `in` queries are limited to 30 values — we chunk to handle
+   * cases where many tokens fail simultaneously (e.g., mass reinstall).
+   */
   private async cleanupInvalidTokens(
     failedTokens: FailedToken[],
   ): Promise<void> {
     try {
       const db = this.firebaseService.db;
 
-      // Find tokens that need to be removed (e.g., tokens that are no longer valid)
       const tokensToRemove = failedTokens
         .filter(
           (item) =>
@@ -515,25 +540,31 @@ export class NotificationsService {
 
       if (tokensToRemove.length === 0) return;
 
-      // Find users with invalid tokens
-      const batch = db.batch();
-      const usersWithInvalidTokens = await db
-        .collection('users')
-        .where('expoPushToken', 'in', tokensToRemove)
-        .get();
+      // Firestore `in` is limited to 30 — chunk the cleanup
+      const CHUNK_SIZE = 30;
+      let totalCleaned = 0;
 
-      // Remove the tokens
-      usersWithInvalidTokens.docs.forEach((doc) => {
-        batch.update(doc.ref, { expoPushToken: null });
-      });
+      for (let i = 0; i < tokensToRemove.length; i += CHUNK_SIZE) {
+        const chunk = tokensToRemove.slice(i, i + CHUNK_SIZE);
+        const usersWithInvalidTokens = await db
+          .collection('users')
+          .where('expoPushToken', 'in', chunk)
+          .get();
 
-      await batch.commit();
-      this.logger.log(
-        `Cleaned up ${usersWithInvalidTokens.size} invalid tokens`,
-      );
+        if (usersWithInvalidTokens.empty) continue;
+
+        const batch = db.batch();
+        usersWithInvalidTokens.docs.forEach((doc) => {
+          batch.update(doc.ref, { expoPushToken: null });
+        });
+        await batch.commit();
+        totalCleaned += usersWithInvalidTokens.size;
+      }
+
+      this.logger.log(`Cleaned up ${totalCleaned} invalid push tokens`);
     } catch (error) {
       this.logger.error('Error cleaning up invalid tokens', error);
-      // Don't throw here, just log the error
+      // Don't throw — cleanup failure must not break notification delivery
     }
   }
 }
