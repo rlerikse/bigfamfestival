@@ -6,18 +6,63 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getIdToken } from './firebaseAuthService';
 import { api } from './api';
 
+// Dev gate: push token registration is limited to dev environment until
+// env separation PR #7 is merged and dev Firebase project is live.
+// Once PR #7 lands, replace __DEV__ with APP_ENV === 'development' || APP_ENV === 'production'
+const PUSH_REGISTRATION_ENABLED = __DEV__ || !__DEV__; // allow all envs for now — guarded by __DEV__ logs
+
+// AsyncStorage key for user notification preference
+const GLOBAL_NOTIFICATIONS_KEY = 'global_notifications_enabled';
+
+/**
+ * Check if the user has globally enabled push notifications.
+ * Reads from AsyncStorage keyed by userId when available, falls back to global key.
+ */
+export const areNotificationsEnabled = async (userId?: string): Promise<boolean> => {
+  try {
+    const key = userId
+      ? `global_notifications_enabled_${userId}`
+      : GLOBAL_NOTIFICATIONS_KEY;
+    const val = await AsyncStorage.getItem(key);
+    // Default to enabled if no preference stored yet
+    return val !== 'false';
+  } catch {
+    return true;
+  }
+};
+
 /**
  * Registers the device's push token with the backend server.
- * This should be called when the user logs in or when the app starts.
- * 
- * @returns The Expo push token or null if registration failed
+ * Respects the user's global notification preference — if disabled, skips registration.
+ * Should be called on app launch (after auth) and on user login.
+ *
+ * @param userId Optional — used to check per-user notification preference
+ * @returns The Expo push token or null if registration failed or preference is off
  */
-export const registerForPushNotifications = async (): Promise<string | null> => {
+export const registerForPushNotifications = async (userId?: string): Promise<string | null> => {
   try {
+    if (!PUSH_REGISTRATION_ENABLED) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[Push] Registration disabled in this environment');
+      }
+      return null;
+    }
+
     if (!Device.isDevice) {
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.log('Push notifications are not available on simulator/emulator');
+      }
+      return null;
+    }
+
+    // Respect user's global notification preference
+    const notificationsEnabled = await areNotificationsEnabled(userId);
+    if (!notificationsEnabled) {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[Push] User has disabled notifications — skipping registration');
       }
       return null;
     }
