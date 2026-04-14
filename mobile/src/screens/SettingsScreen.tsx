@@ -161,6 +161,12 @@ const SettingsScreen = () => {
             title: 'Admin',
             items: [
               {
+                icon: 'grid-outline',
+                label: 'Admin Control Panel',
+                onPress: () => navigation.navigate('AdminPanel'),
+                description: 'Manage users, events, shifts, and schedule',
+              },
+              {
                 icon: 'megaphone-outline',
                 label: 'Send Notification to All Users',
                 onPress: () => navigation.navigate('AdminNotifications'),
