@@ -8,8 +8,11 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "APP_ENV": "development",
-        "EXPO_PUBLIC_API_URL": "http://localhost:3000/api/v1"
+        "APP_ENV": "development"
+        // EXPO_PUBLIC_API_URL is intentionally omitted here.
+        // The app.config.js default (localhost:8080) is used for simulator builds.
+        // For physical device testing, set EXPO_PUBLIC_API_URL to your machine's LAN IP
+        // before running: APP_ENV=development EXPO_PUBLIC_API_URL=http://192.168.x.x:8080/api/v1 npx expo start
       },
       "ios": {
         "resourceClass": "m-medium"
@@ -22,7 +25,7 @@
       "distribution": "internal",
       "node": "20.19.4",
       "env": {
-        "APP_ENV": "staging",
+        "APP_ENV": "preview",
         "GRADLE_VERSION": "8.6"
       },
       "ios": {
