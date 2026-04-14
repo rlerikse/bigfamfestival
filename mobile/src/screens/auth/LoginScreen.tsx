@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,7 +26,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, loginAsGuest, googleLogin, appleLogin, resetPassword } = useAuth();
+  const { login, loginAsGuest, resetPassword } = useAuth();
   const { theme, isDark } = useTheme();
   
   const [email, setEmail] = useState('');
@@ -33,7 +34,6 @@ const LoginScreen = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSsoLoading, setIsSsoLoading] = useState(false);
   const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
 
   const isValidEmail = (emailStr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
@@ -85,36 +85,6 @@ const LoginScreen = () => {
       setError(errorMessage);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      setIsSsoLoading(true);
-      setError(null);
-      await googleLogin();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Google Sign-In failed. Please try again.';
-      if (!msg.includes('cancelled')) {
-        setError(msg);
-      }
-    } finally {
-      setIsSsoLoading(false);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    try {
-      setIsSsoLoading(true);
-      setError(null);
-      await appleLogin();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Apple Sign-In failed. Please try again.';
-      if (!msg.includes('cancelled')) {
-        setError(msg);
-      }
-    } finally {
-      setIsSsoLoading(false);
     }
   };
 
@@ -237,7 +207,7 @@ const LoginScreen = () => {
           <TouchableOpacity
             style={[styles.button, { backgroundColor: theme.primary }]}
             onPress={handleLogin}
-            disabled={isLoading || isSsoLoading}
+            disabled={isLoading}
           >
             {isLoading ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -252,38 +222,12 @@ const LoginScreen = () => {
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.dividerContainer}>
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <Text style={[styles.dividerText, { color: theme.muted }]}>OR</Text>
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.ssoButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={handleGoogleLogin}
-            disabled={isLoading || isSsoLoading}
-          >
-            <Ionicons name="logo-google" size={20} color="#DB4437" style={styles.ssoIcon} />
-            <Text style={[styles.ssoButtonText, { color: theme.text }]}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {Platform.OS === 'ios' && (
-            <TouchableOpacity
-              style={[styles.ssoButton, { backgroundColor: theme.card, borderColor: theme.border }]}
-              onPress={handleAppleLogin}
-              disabled={isLoading || isSsoLoading}
-            >
-              <Ionicons name="logo-apple" size={20} color={theme.text} style={styles.ssoIcon} />
-              <Text style={[styles.ssoButtonText, { color: theme.text }]}>Continue with Apple</Text>
-            </TouchableOpacity>
-          )}
-
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <Text style={[styles.linkText, { color: theme.primary }]}>
               Don&apos;t have an account? Sign up
             </Text>
           </TouchableOpacity>
-
+          
           <View style={styles.dividerContainer}>
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
             <Text style={[styles.dividerText, { color: theme.muted }]}>OR</Text>
@@ -300,7 +244,7 @@ const LoginScreen = () => {
         </View>
       </ScrollView>
 
-      {(isLoading || isSsoLoading) && (
+      {isLoading && (
         <View style={styles.loadingOverlay}>
           <View style={[styles.loadingCard, { backgroundColor: theme.card }]}>
             <ActivityIndicator size="large" color={theme.primary} />
@@ -423,23 +367,6 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: 8,
-  },
-  ssoButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 50,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  ssoIcon: {
-    marginRight: 10,
-  },
-  ssoButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
