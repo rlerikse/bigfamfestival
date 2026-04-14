@@ -9,6 +9,7 @@ export interface User {
   profilePictureUrl?: string;
   shareMyCampsite: boolean;
   shareMyLocation: boolean;
+  shareMySchedule: boolean;  // Whether schedule is visible to other users (default: true)
   ticketType: string; // Allowed values: "ga", "vip", "rv", default: "need-ticket"
   expoPushToken?: string; // The push notification token for this user's device
   notificationsEnabled?: boolean; // Whether the user has enabled push notifications

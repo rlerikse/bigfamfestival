@@ -71,6 +71,15 @@ export class UpdateUserDto {
   shareMyLocation?: boolean;
 
   @ApiProperty({
+    example: true,
+    description: 'Whether schedule is visible to other users (default: true)',
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  shareMySchedule?: boolean;
+
+  @ApiProperty({
     example: 'vip',
     description: 'The ticket type of the user',
     required: false,
