@@ -42,8 +42,7 @@
       "distribution": "store",
       "env": {
         "APP_ENV": "beta",
-        "GRADLE_VERSION": "8.6",
-        "EXPO_PUBLIC_SENTRY_DSN": ""
+        "GRADLE_VERSION": "8.6"
       },
       "ios": {
         "resourceClass": "m-medium"
