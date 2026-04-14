@@ -13,6 +13,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import Constants from 'expo-constants';
@@ -62,6 +63,7 @@ const firebaseConfig = getFirebaseConfig();
 // Initialize Firebase (guard against double-init in dev fast-refresh)
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
+const storage = getStorage(app);
 
 // Also initialize the compat version (needed for AsyncStorage persistence)
 if (!firebase.apps.length) {
@@ -72,4 +74,4 @@ firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
 const auth = getAuth(app);
 
-export { firestore, auth, app };
+export { firestore, auth, app, storage };

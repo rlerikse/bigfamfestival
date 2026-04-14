@@ -1,9 +1,10 @@
 import { api } from './api';
 import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
+import { storage } from '../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface UpdateProfileParams {
   name?: string;
@@ -43,8 +44,14 @@ export const updateUserProfile = async (
   }
 };
 
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
 /**
- * Upload profile picture
+ * Upload profile picture directly to Firebase Storage, then update user profile with the URL.
+ * Does not require a backend upload-url endpoint.
+ *
+ * Validates file size (max 5 MB) and type (jpeg/png/webp) before uploading.
  */
 export const uploadProfilePicture = async (
   userId: string,
@@ -52,43 +59,40 @@ export const uploadProfilePicture = async (
 ): Promise<string> => {
   try {
     const token = await getIdToken();
-    
     if (!token) {
       throw new Error('Authentication token not found');
     }
-    
-    // First, get the signed URL for upload
-    const getUploadUrlResponse = await api.get('/storage/upload-url', {
-      params: {
-        contentType: 'image/jpeg',
-        extension: 'jpg',
-        directory: 'profile-pictures',
-      },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    
-    const { uploadUrl, fileUrl } = getUploadUrlResponse.data;
-    
-    // Upload the image to the signed URL
-    await FileSystem.uploadAsync(uploadUrl, imageUri, {
-      httpMethod: 'PUT',
-      headers: {
-        'Content-Type': 'image/jpeg',
-      },
-    });
-    
-    // Update the user profile with the new image URL
-    await updateUserProfile(userId, { profilePictureUrl: fileUrl });
-    
-    return fileUrl;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+    // Read the image as a blob
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    // Validate file size
+    if (blob.size > MAX_AVATAR_SIZE_BYTES) {
+      throw new Error('Image is too large. Please choose a photo under 5 MB.');
+    }
+
+    // Validate file type
+    const mimeType = blob.type || 'image/jpeg';
+    if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
+      throw new Error('Unsupported image format. Please use JPEG, PNG, or WebP.');
+    }
+
+    // Upload to Firebase Storage: profile-pictures/<userId>.jpg
+    const storageRef = ref(storage, `profile-pictures/${userId}.jpg`);
+    await uploadBytes(storageRef, blob, { contentType: mimeType });
+
+    // Get the public download URL
+    const downloadUrl = await getDownloadURL(storageRef);
+
+    // Persist the URL to the backend user profile
+    await updateUserProfile(userId, { profilePictureUrl: downloadUrl });
+
+    return downloadUrl;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error('Upload profile picture error:', error.response?.data || error.message);
-    throw new Error(
-      error.response?.data?.message || 'Failed to upload profile picture'
-    );
+    console.error('Upload profile picture error:', error.message);
+    throw new Error(error.message || 'Failed to upload profile picture');
   }
 };
 
