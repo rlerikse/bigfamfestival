@@ -99,6 +99,20 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
+      - name: Write Google Play service account key
+        if: steps.profile.outputs.profile == 'beta' || steps.profile.outputs.profile == 'production'
+        run: |
+          printf '%s' '${{ secrets.GOOGLE_PLAY_SA_KEY }}' > google-play-service-account.json
+        env:
+          GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
+
+      - name: Submit Android to Google Play (${{ steps.profile.outputs.profile }})
+        if: steps.profile.outputs.profile == 'beta' || steps.profile.outputs.profile == 'production'
+        run: eas submit --platform android --profile ${{ steps.profile.outputs.profile }} --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
+
       # iOS build — requires Apple Developer certs + provisioning profiles
       # TODO(BFF-S3-xx): enable once Apple certs are configured in EAS
       # - name: Build iOS (${{ steps.profile.outputs.profile }})
