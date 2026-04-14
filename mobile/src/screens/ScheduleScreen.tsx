@@ -27,11 +27,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
+import { fetchEvents as fetchEventsFromService } from '../services/eventsService';
 import { getIdToken } from '../services/firebaseAuthService';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
-import { api } from '../services/api';
 import EventDetailsModal from '../components/EventDetailsModal';
 import TopNavBar from '../components/TopNavBar';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
@@ -40,7 +40,6 @@ import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
 import firestore, { collection, getDocs } from '../utils/firebaseCompat';
-import genreService from '../services/genreService';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -238,6 +237,7 @@ const ScheduleScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eventsFromCache, setEventsFromCache] = useState(false);
   const [userSchedule, setUserSchedule] = useState<Record<string, boolean>>({});
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -342,19 +342,12 @@ const ScheduleScreen = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const token = await getIdToken();
-      const response = await api.get<ScheduleEvent[]>(`/events`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined
-      });
-      
-      // Populate genres for the events
-      const eventsWithGenres = await genreService.populateEventGenres(response.data);
-      
-      setEvents(eventsWithGenres);
-      setEvents(eventsWithGenres);
+      const { events: fetchedEvents, fromCache } = await fetchEventsFromService();
+      setEvents(fetchedEvents);
+      setEventsFromCache(fromCache);
     } catch (err) {
       console.error('❌ Error fetching events:', err);
-      setError('Could not load events. Please try again later.');
+      setError('Could not load events. Check your connection and try again.');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -830,6 +823,19 @@ const ScheduleScreen = () => {
   {/* Main content container */}
   {/* Account for TopNavBar height, platform-specific padding */}
   <View style={{ flex: 1, flexDirection: 'column', paddingTop: Platform.OS === 'ios' ? 55 : 85 }}>
+        {/* Stale cache banner */}
+        {eventsFromCache && (
+          <View style={{
+            backgroundColor: '#3d2b00',
+            paddingHorizontal: 16,
+            paddingVertical: 6,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <Ionicons name="cloud-offline-outline" size={14} color="#e3b341" style={{ marginRight: 6 }} />
+            <Text style={{ color: '#e3b341', fontSize: 12 }}>You&apos;re offline — showing cached schedule</Text>
+          </View>
+        )}
         {/* Fixed header container for filter rows - align flush with nav bar bottom */}
         <View
           style={{

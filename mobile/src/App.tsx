@@ -1,12 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './navigation/navigationRef';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 // Import our new notification listener component
 import NotificationListener from './components/NotificationListener';
+import { processScheduleOfflineQueue } from './services/scheduleService';
 
 // Firebase initialization
 // import initializeNativeFirebase from './config/nativeFirebase';
@@ -36,7 +38,21 @@ SplashScreen.preventAutoHideAsync();
 
 export default function App() {
   const isLoadingComplete = useCachedResources();
-  // Removed old notification setup code
+  const wasOfflineRef = useRef(false);
+
+  // Reconnect listener: process queued offline schedule changes when connectivity is restored
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
+      if (state.isConnected && wasOfflineRef.current) {
+        if (__DEV__) console.log('[App] Reconnected — processing offline schedule queue');
+        processScheduleOfflineQueue().catch(err =>
+          console.warn('[App] Failed to process offline queue:', err)
+        );
+      }
+      wasOfflineRef.current = !state.isConnected;
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Initialize services and hide splash screen once resources are loaded

@@ -10,6 +10,11 @@ import {
 } from 'class-validator';
 import { Role } from '../../auth/enums/role.enum';
 
+/**
+ * DTO for a user updating their own profile.
+ * Role is intentionally excluded — users cannot promote themselves.
+ * Use AdminUpdateUserDto for admin routes that need role changes.
+ */
 export class UpdateUserDto {
   @ApiProperty({
     example: 'John Doe',
@@ -37,15 +42,6 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   phone?: string;
-
-  @ApiProperty({
-    enum: Role,
-    description: 'The role of the user',
-    required: false,
-  })
-  @IsEnum(Role)
-  @IsOptional()
-  role?: Role;
 
   @ApiProperty({
     example: 'https://example.com/avatar.jpg',
