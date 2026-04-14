@@ -126,7 +126,7 @@ describe('FirebaseAuthGuard', () => {
 
       await guard.canActivate(context);
 
-      expect(request.user.role).toBe('ATTENDEE');
+      expect(request.user.role).toBe('attendee');
     });
 
     it('should reject expired token with specific error', async () => {
