@@ -13,7 +13,14 @@ import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import MapScreen from '../screens/MapScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
-import AdminNotificationsScreen from '../screens/AdminNotificationsScreen'; // Import the new screen
+import AdminNotificationsScreen from '../screens/admin/AdminNotificationsScreen';
+import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
+import { AdminUsersScreen } from '../screens/admin/AdminUsersScreen';
+import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
+import { AdminEventsScreen } from '../screens/admin/AdminEventsScreen';
+import { AdminEventEditScreen } from '../screens/admin/AdminEventEditScreen';
+import { AdminShiftsScreen } from '../screens/admin/AdminShiftsScreen';
+import { AdminScheduleScreen } from '../screens/admin/AdminScheduleScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -27,7 +34,15 @@ export type RootStackParamList = {
   Profile: undefined;
   Settings: undefined;
   Debug: undefined;
-  AdminNotifications: undefined; // Add the new screen to types
+  // Admin panel
+  AdminNotifications: undefined;
+  AdminPanel: undefined;
+  AdminUsers: undefined;
+  AdminUserDetail: { userId: string };
+  AdminEvents: undefined;
+  AdminEventEdit: { eventId?: string };
+  AdminShifts: undefined;
+  AdminSchedule: undefined;
 };
 
 export type AuthStackParamList = {
@@ -253,12 +268,42 @@ export default function Navigation() {
           <Stack.Screen
             name="AdminNotifications"
             component={AdminNotificationsScreen}
-            options={{
-              headerShown: true,
-              title: 'Send Notifications',
-              presentation: 'modal',
-              contentStyle: { backgroundColor },
-            }}
+            options={{ headerShown: true, title: 'Send Notification', presentation: 'modal', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminPanel"
+            component={AdminDashboardScreen}
+            options={{ headerShown: true, title: '⚙️ Admin Panel', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminUsers"
+            component={AdminUsersScreen}
+            options={{ headerShown: true, title: 'Users', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminUserDetail"
+            component={AdminUserDetailScreen}
+            options={{ headerShown: true, title: 'User Detail', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminEvents"
+            component={AdminEventsScreen}
+            options={{ headerShown: true, title: 'Events', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminEventEdit"
+            component={AdminEventEditScreen}
+            options={{ headerShown: true, title: 'Edit Event', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminShifts"
+            component={AdminShiftsScreen}
+            options={{ headerShown: true, title: 'Shifts', contentStyle: { backgroundColor } }}
+          />
+          <Stack.Screen
+            name="AdminSchedule"
+            component={AdminScheduleScreen}
+            options={{ headerShown: true, title: 'Schedule Editor', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="Debug"
