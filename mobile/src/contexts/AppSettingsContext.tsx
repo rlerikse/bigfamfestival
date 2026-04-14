@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { scheduleAllUserEventsNotifications, cancelAllUserEventsNotifications } from '../services/notificationService';
+import { registerForPushNotifications } from '../services/pushNotificationService';
 
 export type SupportedLanguage = 'en' | 'es' | 'fr';
 
@@ -114,6 +115,13 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         const newValue = !globalNotificationsEnabled;
         setGlobalNotificationsEnabled(newValue);
         await AsyncStorage.setItem(`global_notifications_enabled_${user.id}`, newValue ? 'true' : 'false');
+        // If re-enabling, re-register push token with backend
+        if (newValue) {
+          await registerForPushNotifications(user.id);
+        }
+        // If disabling, the token remains registered on the backend (server handles delivery
+        // gating via the user preference). Local scheduled notifications are still managed
+        // independently via scheduleNotificationsEnabled.
       } catch (error) {
         console.error('Error toggling global notifications:', error);
       }

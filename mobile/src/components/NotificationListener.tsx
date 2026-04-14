@@ -3,6 +3,8 @@ import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { registerForPushNotifications, syncPendingPushToken } from '../services/pushNotificationService';
+import { api } from '../services/api';
+import { getIdToken } from '../services/firebaseAuthService';
 import { goToNotificationsSafe } from '../navigation/navigationRef';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,6 +26,7 @@ Notifications.setNotificationHandler({
 const NotificationListener: React.FC = () => {
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
+  const tokenRefreshListener = useRef<Notifications.Subscription | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -115,6 +118,30 @@ const NotificationListener: React.FC = () => {
       });
     }
 
+    // Token refresh listener — re-register with backend when Expo push token rotates
+    tokenRefreshListener.current = Notifications.addPushTokenListener(async (tokenData) => {
+      if (__DEV__) {
+        // eslint-disable-next-line no-console
+        console.log('[Push] Token refreshed, re-registering with backend:', tokenData.data);
+      }
+      try {
+        const authToken = await getIdToken();
+        if (authToken) {
+          await api.put('/users/push-token', { token: tokenData.data });
+          if (__DEV__) {
+            // eslint-disable-next-line no-console
+            console.log('[Push] Refreshed token registered with backend');
+          }
+        } else {
+          // Not authenticated yet — store as pending for sync after login
+          await AsyncStorage.setItem('expo_push_token', tokenData.data);
+          await AsyncStorage.setItem('expo_push_token_pending', '1');
+        }
+      } catch (error) {
+        console.error('[Push] Failed to register refreshed token:', error);
+      }
+    });
+
     // Clean up the listeners when the component unmounts
     return () => {
       if (notificationListener.current) {
@@ -122,6 +149,9 @@ const NotificationListener: React.FC = () => {
       }
       if (responseListener.current) {
         responseListener.current.remove();
+      }
+      if (tokenRefreshListener.current) {
+        tokenRefreshListener.current.remove();
       }
     };
     // Handle cold start: if the app was opened by tapping a notification, handle it here
@@ -140,14 +170,15 @@ const NotificationListener: React.FC = () => {
 
   }, []);
 
-  // When a user logs in later, re-register to sync the token with backend
+  // When a user logs in later, re-register to sync the token with backend.
+  // Pass userId so registerForPushNotifications can check their notification preference.
   useEffect(() => {
     if (user) {
       (async () => {
         try {
           const synced = await syncPendingPushToken();
           if (!synced) {
-            await registerForPushNotifications();
+            await registerForPushNotifications(user.id);
           }
         } catch (error) {
           console.error('Failed to sync/register push notifications after login:', error);
