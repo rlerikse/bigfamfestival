@@ -20,6 +20,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { FirebaseAuthGuard } from './auth/guards/firebase-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { ArtistsModule } from './artists/artists.module';
+import { ShiftsModule } from './shifts/shifts.module';
+import { AdminModule } from './admin/admin.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 
 @Module({
@@ -90,6 +92,8 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
     CampsitesModule,
     ArtistsModule,
     NotificationsModule,
+    ShiftsModule,
+    AdminModule,
 
     // Debug modules (non-production only)
     ...(process.env.NODE_ENV !== 'production' ? [DebugModule] : []),

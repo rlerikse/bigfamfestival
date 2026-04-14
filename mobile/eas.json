@@ -36,6 +36,21 @@
         "buildType": "apk"
       }
     },
+    "beta": {
+      "autoIncrement": true,
+      "node": "20.19.4",
+      "distribution": "store",
+      "env": {
+        "APP_ENV": "beta",
+        "GRADLE_VERSION": "8.6"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "node": "20.19.4",
@@ -61,6 +76,12 @@
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
         "track": "production"
+      }
+    },
+    "beta": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
       }
     }
   }

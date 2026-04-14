@@ -1,0 +1,78 @@
+name: Android Deploy — Closed Testing
+
+# Triggers after a successful EAS build on dev branch.
+# Submits the latest build to Google Play internal/closed testing track.
+#
+# Required secrets (set in GitHub repo settings):
+#   EXPO_TOKEN              — Expo access token (create at expo.dev/accounts/[user]/settings/access-tokens)
+#   GOOGLE_PLAY_SA_KEY      — Google Play service account JSON key (base64-encoded)
+#                             Created by Atlas (BFF-S3-02). Needs these Play Console permissions:
+#                             - Release manager on the app
+#                             - View app information
+#
+# This workflow only runs on push to dev (not PRs, not main).
+# Production deployments go through the manual release process.
+
+on:
+  workflow_run:
+    workflows: ["Mobile CI"]
+    types: [completed]
+    branches: [dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel in-flight deploys
+
+jobs:
+  deploy-to-closed-testing:
+    name: Deploy to Google Play — Closed Testing
+    runs-on: ubuntu-latest
+    # Only run if the triggering CI workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'mobile/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mobile
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Write Google Play service account key
+        # Decode base64-encoded SA key from secret and write to disk
+        # Atlas creates this key (BFF-S3-02) and stores it as GOOGLE_PLAY_SA_KEY secret
+        run: |
+          echo "${{ secrets.GOOGLE_PLAY_SA_KEY }}" | base64 --decode > mobile/google-play-service-account.json
+        shell: bash
+
+      - name: Submit to Google Play — internal track
+        run: eas submit --platform android --profile beta --latest --non-interactive
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Clean up service account key
+        if: always()
+        run: rm -f mobile/google-play-service-account.json
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Build submitted to Google Play closed testing track (internal)"
+          echo "Beta testers will receive an update notification shortly."

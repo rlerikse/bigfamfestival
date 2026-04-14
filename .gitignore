@@ -27,3 +27,5 @@ backend/scripts/import-artists-from-csv.ts
 assets/customers/*.csv
 assets/customers/*.xlsx
 backend/email-blast-failures.txt
+backend/bigfam-serviceaccount.json
+BFF-S1-01-notification-backend-audit.md
