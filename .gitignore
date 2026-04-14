@@ -6,7 +6,14 @@ mobile/.expo/README.md
 mobile/@eriksensolutions__bigfam-festival.jks
 mobile/google-services.json.base64
 backend/.env
+backend/.env.development
+backend/.env.production
 backend/bigfamfestival-*.json
+backend/bigfam-*-serviceaccount.json
+backend/bigfam-dev-serviceaccount.json
+# Dev Firebase credentials (never commit)
+mobile/GoogleService-Info.dev.plist
+mobile/google-services-dev.json
 /backend/dist
 /mobile/android
 mobile/package-lock.backup.json
