@@ -20,6 +20,9 @@
       "bundleIdentifier": "com.eriksensolutions.bigfam",
       "buildNumber": "1",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"]
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
         "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
@@ -119,7 +122,8 @@
           }
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "@react-native-google-signin/google-signin"
     ],
     "extra": {
       "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",
