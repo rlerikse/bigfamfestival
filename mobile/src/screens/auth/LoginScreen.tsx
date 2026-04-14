@@ -26,7 +26,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, '
 
 const LoginScreen = () => {
   const navigation = useNavigation<LoginScreenNavigationProp>();
-  const { login, loginAsGuest, resetPassword } = useAuth();
+  const { login, loginAsGuest, googleLogin, appleLogin, resetPassword } = useAuth();
   const { theme, isDark } = useTheme();
   
   const [email, setEmail] = useState('');
@@ -35,6 +35,7 @@ const LoginScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+  const [isSsoLoading, setIsSsoLoading] = useState(false);
 
   const isValidEmail = (emailStr: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
 
@@ -90,6 +91,32 @@ const LoginScreen = () => {
 
   const togglePasswordVisibility = () => {
     setIsPasswordVisible(!isPasswordVisible);
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setIsSsoLoading(true);
+      setError(null);
+      await googleLogin();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google Sign-In failed.';
+      if (!msg.toLowerCase().includes('cancel')) setError(msg);
+    } finally {
+      setIsSsoLoading(false);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    try {
+      setIsSsoLoading(true);
+      setError(null);
+      await appleLogin();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Apple Sign-In failed.';
+      if (!msg.toLowerCase().includes('cancel')) setError(msg);
+    } finally {
+      setIsSsoLoading(false);
+    }
   };
 
   const handleForgotPassword = () => {
@@ -236,8 +263,26 @@ const LoginScreen = () => {
           
           <TouchableOpacity
             style={[styles.guestButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={handleGoogleLogin}
+            disabled={isLoading || isSsoLoading}
+          >
+            <Text style={[styles.guestButtonText, { color: theme.text }]}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity
+              style={[styles.guestButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={handleAppleLogin}
+              disabled={isLoading || isSsoLoading}
+            >
+              <Text style={[styles.guestButtonText, { color: theme.text }]}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={[styles.guestButton, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={handleGuestLogin}
-            disabled={isLoading}
+            disabled={isLoading || isSsoLoading}
           >
             <Text style={[styles.guestButtonText, { color: theme.text }]}>Continue as Guest</Text>
           </TouchableOpacity>

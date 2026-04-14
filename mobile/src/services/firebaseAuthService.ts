@@ -8,6 +8,15 @@
  */
 
 import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { appleAuth } from '@invertase/react-native-apple-authentication';
+import { Platform } from 'react-native';
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+  webClientId: '292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com',
+  iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
+});
 
 // Error code to user-friendly message mapping
 const ERROR_MESSAGES: Record<string, string> = {
@@ -197,3 +206,60 @@ export function mapFirebaseUser(firebaseUser: FirebaseAuthTypes.User): FirebaseA
 
 // Export the auth instance for direct access if needed
 export { auth };
+
+/**
+ * Sign in with Google
+ */
+export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredential> {
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const signInResult = await GoogleSignin.signIn();
+    const idToken = signInResult.data?.idToken;
+    if (!idToken) {
+      throw new Error('Google Sign-In failed: no ID token returned.');
+    }
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    return await auth().signInWithCredential(googleCredential);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error('[FirebaseAuth] Google sign-in error:', error.code || error.message);
+    if (error.code === 'SIGN_IN_CANCELLED' || error.code === '12501') {
+      throw new Error('Google Sign-In was cancelled.');
+    }
+    if (error.code === 'IN_PROGRESS') {
+      throw new Error('Google Sign-In is already in progress.');
+    }
+    if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
+      throw new Error('Google Play Services is not available on this device.');
+    }
+    throw new Error(getErrorMessage(error));
+  }
+}
+
+/**
+ * Sign in with Apple (iOS only)
+ */
+export async function signInWithApple(): Promise<FirebaseAuthTypes.UserCredential> {
+  if (Platform.OS !== 'ios') {
+    throw new Error('Apple Sign-In is only available on iOS.');
+  }
+  try {
+    const appleAuthRequestResponse = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.FULL_NAME, appleAuth.Scope.EMAIL],
+    });
+    if (!appleAuthRequestResponse.identityToken) {
+      throw new Error('Apple Sign-In failed: no identity token returned.');
+    }
+    const { identityToken, nonce } = appleAuthRequestResponse;
+    const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
+    return await auth().signInWithCredential(appleCredential);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error('[FirebaseAuth] Apple sign-in error:', error.code || error.message);
+    if (error.code === appleAuth.Error.CANCELED) {
+      throw new Error('Apple Sign-In was cancelled.');
+    }
+    throw new Error(getErrorMessage(error));
+  }
+}

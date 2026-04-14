@@ -10,6 +10,8 @@ import {
   signIn as firebaseSignIn,
   signUp as firebaseSignUp,
   signOut as firebaseSignOut,
+  signInWithGoogle as firebaseSignInWithGoogle,
+  signInWithApple as firebaseSignInWithApple,
   onAuthStateChanged,
   getIdToken,
   sendPasswordResetEmail,
@@ -31,6 +33,8 @@ export interface AuthContextProps {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
+  googleLogin: () => Promise<void>;
+  appleLogin: () => Promise<void>;
   loginAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => void;
@@ -160,6 +164,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // SSO login helper — creates backend profile if this is the user's first sign-in
+  const handleSsoLogin = async (credential: { user: { uid: string; email: string | null; displayName: string | null } }) => {
+    const fbUser = credential.user;
+    const token = await getIdToken(true);
+    if (token) {
+      try {
+        // Try to fetch existing profile first
+        const userData = await getUserProfile(token);
+        setUser(userData);
+      } catch (err: any) {
+        // Only create a new profile if the backend returned 404 (profile doesn't exist yet)
+        // Re-throw on network errors, 500s, or any other failure to avoid duplicate creation
+        const status = err?.response?.status ?? err?.statusCode;
+        if (status !== 404) {
+          throw err;
+        }
+        const profileData = await createUserProfile(token, {
+          name: fbUser.displayName || 'User',
+          email: fbUser.email || '',
+          role: UserRole.ATTENDEE,
+        });
+        setUser(profileData);
+      }
+    }
+  };
+
+  // Google Sign-In
+  const googleLogin = async () => {
+    try {
+      setIsLoading(true);
+      await AsyncStorage.removeItem('guestUser');
+      const credential = await firebaseSignInWithGoogle();
+      await handleSsoLogin(credential);
+      if (__DEV__) {
+        console.log('[AuthContext] Google login completed');
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Apple Sign-In
+  const appleLogin = async () => {
+    try {
+      setIsLoading(true);
+      await AsyncStorage.removeItem('guestUser');
+      const credential = await firebaseSignInWithApple();
+      await handleSsoLogin(credential);
+      if (__DEV__) {
+        console.log('[AuthContext] Apple login completed');
+      }
+    } catch (error) {
+      console.error('Apple login error:', error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -309,13 +375,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      register, 
-      logout, 
-      loginAsGuest, 
+    <AuthContext.Provider value={{
+      user,
+      isLoading,
+      login,
+      register,
+      googleLogin,
+      appleLogin,
+      logout,
+      loginAsGuest,
       updateUser,
       isGuestUser,
       redirectToLogin,
