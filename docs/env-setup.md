@@ -52,17 +52,20 @@ Replace `192.168.x.x` with your machine's LAN IP.
 
 ## Creating the Dev Firebase Project
 
-> ⚠️ Requires Robert's approval (billing/infra action)
+> ✅ Dev Firebase project already exists: `bigfam-test-ok6ox7`
+> Robert approved on 2026-04-14. Service account key generated.
 
-1. Go to [Firebase Console](https://console.firebase.google.com)
-2. Create project: `bigfamfestival-dev`
-3. Enable: Firestore, Authentication, Cloud Messaging, Storage
-4. Download service account JSON → `backend/bigfam-dev-serviceaccount.json`
-5. Download `GoogleService-Info.plist` → `mobile/GoogleService-Info.dev.plist`
-6. Download `google-services.json` → `mobile/google-services-dev.json`
-7. Update `backend/.env` `GOOGLE_PROJECT_ID` and `GOOGLE_APPLICATION_CREDENTIALS`
+**Dev project details:**
+- Project ID: `bigfam-test-ok6ox7`
+- Auth domain: `bigfam-test-ok6ox7.firebaseapp.com`
+- Messaging sender ID: `151198250953`
+- Service account: `firebase-adminsdk-mjq1q@bigfam-test-ok6ox7.iam.gserviceaccount.com`
 
-The `app.config.js` will automatically pick up the dev Firebase files when `APP_ENV=development`.
+**Still needed (one-time, per-machine setup):**
+1. Get `google-services.json` for Android dev from Firebase Console → Project Settings → Your apps → Android
+2. Get `GoogleService-Info.plist` for iOS dev from Firebase Console → Project Settings → Your apps → iOS
+3. Place them at `mobile/google-services-dev.json` and `mobile/GoogleService-Info.dev.plist` (gitignored)
+4. `backend/bigfam-dev-serviceaccount.json` — generated via `gcloud iam service-accounts keys create`
 
 ---
 

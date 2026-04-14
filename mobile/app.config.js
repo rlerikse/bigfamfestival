@@ -35,16 +35,15 @@ const PROD_FIREBASE = {
   measurementId:     'G-VZ06GV8DGT',
 };
 
-// Dev Firebase — replace with actual dev project values once created
-// See: docs/env-setup.md for instructions on creating the dev project
+// Dev Firebase — project: bigfam-test-ok6ox7
 const DEV_FIREBASE = {
-  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY            || 'REPLACE_WITH_DEV_API_KEY',
-  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN        || 'REPLACE_WITH_DEV_AUTH_DOMAIN',
+  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY            || 'AIzaSyDOA3xbWSFJM8QEz20PcNgd5WncydA0oBw',
+  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN        || 'bigfam-test-ok6ox7.firebaseapp.com',
   databaseURL:       process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL       || '',
-  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID         || 'REPLACE_WITH_DEV_PROJECT_ID',
-  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET     || 'REPLACE_WITH_DEV_STORAGE_BUCKET',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || 'REPLACE_WITH_DEV_SENDER_ID',
-  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID             || 'REPLACE_WITH_DEV_APP_ID',
+  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID         || 'bigfam-test-ok6ox7',
+  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET     || 'bigfam-test-ok6ox7.appspot.com',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '151198250953',
+  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID             || '1:151198250953:web:70ee9f2189f0b554735a18',
   measurementId:     process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID     || '',
 };
 
