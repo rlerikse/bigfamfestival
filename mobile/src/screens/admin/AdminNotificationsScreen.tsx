@@ -117,7 +117,7 @@ export const AdminNotificationsScreen: React.FC = () => {
       {lastSent && (
         <View style={[styles.sentBanner, { backgroundColor: '#10b981' + '22', borderColor: '#10b981' }]}>
           <Text style={[styles.sentText, { color: '#10b981' }]}>
-            ✓ Sent "{lastSent.title}" → {lastSent.group} at {lastSent.at}
+            ✓ Sent &quot;{lastSent.title}&quot; → {lastSent.group} at {lastSent.at}
           </Text>
         </View>
       )}
