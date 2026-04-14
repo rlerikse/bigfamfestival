@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import * as admin from 'firebase-admin';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { Role } from '../enums/role.enum';
 
 /**
  * Guard that validates Firebase ID tokens for authentication.
@@ -48,7 +49,7 @@ export class FirebaseAuthGuard implements CanActivate {
     }
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token);
+      const decodedToken = await admin.auth().verifyIdToken(token, true);
 
       // Attach decoded Firebase token info to request
       request.user = {
@@ -56,7 +57,7 @@ export class FirebaseAuthGuard implements CanActivate {
         sub: decodedToken.uid,
         uid: decodedToken.uid,
         email: decodedToken.email,
-        role: decodedToken.role || 'ATTENDEE', // Custom claim for role
+        role: decodedToken.role || Role.ATTENDEE, // Custom claim for role
         emailVerified: decodedToken.email_verified,
         authProvider: 'firebase',
       };
