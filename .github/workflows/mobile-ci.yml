@@ -2,18 +2,22 @@ name: Mobile CI
 
 on:
   push:
-    branches: [ main, develop, dev ]
+    branches: [ main, dev ]
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-ci.yml'
   pull_request:
-    branches: [ main, develop, dev ]
+    branches: [ main, dev ]
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-ci.yml'
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:
@@ -26,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -51,7 +55,7 @@ jobs:
     name: Expo Build
     runs-on: ubuntu-latest
     needs: lint-and-test
-    # Run on push to main, develop, or dev (not on PRs)
+    # Run on push only (not on PRs)
     if: github.event_name == 'push'
 
     defaults:
@@ -60,10 +64,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -95,7 +99,8 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      # iOS build — uncomment when Apple certificates are configured
+      # iOS build — requires Apple Developer certs + provisioning profiles
+      # TODO(BFF-S3-xx): enable once Apple certs are configured in EAS
       # - name: Build iOS (${{ steps.profile.outputs.profile }})
       #   run: eas build --platform ios --profile ${{ steps.profile.outputs.profile }} --non-interactive
       #   env:

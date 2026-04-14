@@ -39,8 +39,9 @@
     "beta": {
       "autoIncrement": true,
       "node": "20.19.4",
+      "distribution": "store",
       "env": {
-        "APP_ENV": "production",
+        "APP_ENV": "beta",
         "GRADLE_VERSION": "8.6",
         "EXPO_PUBLIC_SENTRY_DSN": ""
       },

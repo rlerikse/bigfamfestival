@@ -22,6 +22,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel in-flight deploys
+
 jobs:
   deploy-to-closed-testing:
     name: Deploy to Google Play — Closed Testing
