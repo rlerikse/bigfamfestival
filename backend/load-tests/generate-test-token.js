@@ -42,12 +42,17 @@ async function main() {
     });
 
     // Exchange custom token for an ID token via Firebase REST API
-    const projectId = admin.app().options.projectId || 
-      JSON.parse(fs.readFileSync(credPath, 'utf8')).project_id;
+    const apiKey = process.env.FIREBASE_WEB_API_KEY;
+    if (!apiKey) {
+      console.error('FIREBASE_WEB_API_KEY not set (find it in Firebase Console → Project Settings → Web API Key).');
+      console.error('Outputting custom token instead. Use this with a Firebase client SDK to get an ID token.');
+      process.stdout.write(customToken);
+      process.exit(0);
+    }
 
     const fetch = globalThis.fetch || (await import('node-fetch')).default;
     const res = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=AIzaSyDummy`,
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,11 +64,9 @@ async function main() {
     );
 
     if (!res.ok) {
-      // Custom tokens can't be used directly with k6 — output the custom token
-      // and note that the test user needs to exist in Firebase Auth
-      console.error('Note: Custom token generated but ID token exchange requires a valid API key.');
-      console.error('For load testing, consider using a real user ID token from Firebase.');
-      console.error('Custom token (use with Firebase client SDK to get ID token):');
+      const errBody = await res.text();
+      console.error(`ID token exchange failed (HTTP ${res.status}): ${errBody}`);
+      console.error('Falling back to custom token output.');
       process.stdout.write(customToken);
       process.exit(0);
     }

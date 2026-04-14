@@ -59,6 +59,7 @@ export default function () {
   sleep(0.5 + Math.random());
 
   // 2. Browse events — the #1 traffic endpoint at a festival
+  let eventIds = [];
   {
     const res = http.get(`${BASE_URL}/events`, { headers: publicHeaders() });
     check(res, {
@@ -68,6 +69,7 @@ export default function () {
       },
     }) || errorRate.add(1);
     eventListDuration.add(res.timings.duration);
+    try { eventIds = JSON.parse(res.body).map(e => e.id); } catch {}
   }
 
   sleep(0.5 + Math.random());
@@ -89,20 +91,11 @@ export default function () {
 
   sleep(0.3 + Math.random() * 0.5);
 
-  // 5. View a single event (simulate tapping on one)
-  {
-    // First get the list, then pick a random event
-    const listRes = http.get(`${BASE_URL}/events`, { headers: publicHeaders() });
-    try {
-      const events = JSON.parse(listRes.body);
-      if (events.length > 0) {
-        const event = events[Math.floor(Math.random() * events.length)];
-        const res = http.get(`${BASE_URL}/events/${event.id}`, { headers: publicHeaders() });
-        check(res, { 'event detail: status 200': (r) => r.status === 200 }) || errorRate.add(1);
-      }
-    } catch {
-      errorRate.add(1);
-    }
+  // 5. View a single event (simulate tapping on one — reuse IDs from step 2)
+  if (eventIds.length > 0) {
+    const id = eventIds[Math.floor(Math.random() * eventIds.length)];
+    const res = http.get(`${BASE_URL}/events/${id}`, { headers: publicHeaders() });
+    check(res, { 'event detail: status 200': (r) => r.status === 200 }) || errorRate.add(1);
   }
 
   sleep(0.5 + Math.random());
