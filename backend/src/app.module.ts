@@ -38,6 +38,7 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
         STORAGE_BUCKET: Joi.string().required(),
         THROTTLE_TTL: Joi.number().default(60),
         THROTTLE_LIMIT: Joi.number().default(100),
+        SENTRY_DSN: Joi.string().optional(), // Error monitoring; required in prod if monitoring is active
         FESTIVAL_ID: Joi.string().optional(), // Optional for single-tenant mode
       }),
     }),

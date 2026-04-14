@@ -38,7 +38,8 @@
       "node": "20.19.4",
       "env": {
         "APP_ENV": "production",
-        "GRADLE_VERSION": "8.6"
+        "GRADLE_VERSION": "8.6",
+        "EXPO_PUBLIC_SENTRY_DSN": ""
       },
       "ios": {
         "resourceClass": "m-medium"

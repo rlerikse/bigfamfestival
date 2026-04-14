@@ -8,6 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { Logger } from 'nestjs-pino';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { festivalConfig } from './config/festival.config';
+import { initSentry } from './config/sentry/sentry.config';
+
+// Sentry MUST be initialized before the app is created
+initSentry();
 
 async function bootstrap() {
   // Create NestJS application
