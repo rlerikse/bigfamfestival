@@ -21,6 +21,7 @@ import { Role } from '../auth/enums/role.enum';
 import { UsersService } from './users.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AdminUpdateUserDto } from './dto/admin-update-user.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -110,12 +111,12 @@ export class UsersController {
   @Put(':id')
   @ApiBearerAuth()
   @Roles(Role.ADMIN, Role.STAFF)
-  @ApiOperation({ summary: 'Update user by ID (Admin only)' })
+  @ApiOperation({ summary: 'Update user by ID (Admin/Staff only)' })
   @ApiResponse({ status: 200, description: 'Updates the user' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async updateUser(
     @Param('id') id: string,
-    @Body() updateUserDto: UpdateUserDto,
+    @Body() updateUserDto: AdminUpdateUserDto,
   ) {
     return this.usersService.update(id, updateUserDto);
   }
