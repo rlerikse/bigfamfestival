@@ -3,9 +3,10 @@ import { ScheduleController } from './schedule.controller';
 import { ScheduleService } from './schedule.service';
 import { FirestoreModule } from '../config/firestore/firestore.module';
 import { EventsModule } from '../events/events.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [FirestoreModule, EventsModule],
+  imports: [FirestoreModule, EventsModule, UsersModule],
   controllers: [ScheduleController],
   providers: [ScheduleService],
   exports: [ScheduleService],

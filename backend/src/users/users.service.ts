@@ -31,6 +31,7 @@ export class UsersService {
       ...userData,
       shareMyCampsite: userData.shareMyCampsite ?? false,
       shareMyLocation: userData.shareMyLocation ?? false,
+      shareMySchedule: userData.shareMySchedule ?? true,
       ticketType: userData.ticketType ?? 'need-ticket',
       notificationsEnabled: userData.notificationsEnabled ?? true,
       createdAt: now,

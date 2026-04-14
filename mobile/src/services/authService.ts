@@ -24,9 +24,13 @@ export const getUserProfile = async (token?: string): Promise<User> => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Get profile error:', error.response?.data || error.message);
-    throw new Error(
+    // Preserve the HTTP status so callers can distinguish 404 (not found) from other errors
+    const err = new Error(
       error.response?.data?.message || 'Failed to fetch user profile'
-    );
+    ) as any;
+    err.response = error.response;
+    err.statusCode = error.response?.status;
+    throw err;
   }
 };
 
