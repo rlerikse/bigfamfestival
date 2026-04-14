@@ -40,7 +40,6 @@ import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
 import firestore, { collection, getDocs } from '../utils/firebaseCompat';
-import genreService from '../services/genreService';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -834,7 +833,7 @@ const ScheduleScreen = () => {
             alignItems: 'center',
           }}>
             <Ionicons name="cloud-offline-outline" size={14} color="#e3b341" style={{ marginRight: 6 }} />
-            <Text style={{ color: '#e3b341', fontSize: 12 }}>You're offline — showing cached schedule</Text>
+            <Text style={{ color: '#e3b341', fontSize: 12 }}>You&apos;re offline — showing cached schedule</Text>
           </View>
         )}
         {/* Fixed header container for filter rows - align flush with nav bar bottom */}
