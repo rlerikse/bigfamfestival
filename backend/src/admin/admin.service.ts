@@ -67,6 +67,7 @@ export class AdminService {
     limit: number;
     totalPages: number;
   }> {
+    // TODO: move filtering to Firestore query when user count exceeds 1K
     let users = await this.firestoreService.getAll<any>('users');
 
     // Filter by role
@@ -149,18 +150,18 @@ export class AdminService {
   ): Promise<Event[]> {
     // Clear existing schedule
     const existing = await this.scheduleService.getSchedule(userId);
-    for (const event of existing) {
-      await this.scheduleService.removeFromSchedule(userId, {
-        event_id: event.id,
-      });
-    }
+    await Promise.all(
+      existing.map((e) =>
+        this.scheduleService.removeFromSchedule(userId, { event_id: e.id }),
+      ),
+    );
 
     // Add new events
-    for (const eventId of eventIds) {
-      await this.scheduleService.addToSchedule(userId, {
-        event_id: eventId,
-      });
-    }
+    await Promise.all(
+      eventIds.map((id) =>
+        this.scheduleService.addToSchedule(userId, { event_id: id }),
+      ),
+    );
 
     return this.scheduleService.getSchedule(userId);
   }
