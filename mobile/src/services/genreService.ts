@@ -29,11 +29,17 @@ class GenreService {
     }
 
     try {
-      // Process events in parallel for better performance
-      const eventsWithGenres = await Promise.all(
+      // Process events with a timeout — if Firestore genre lookups hang
+      // (e.g., client-side Firestore rules block reads), return events without genres
+      const GENRE_TIMEOUT_MS = 5000;
+      const genrePromise = Promise.all(
         events.map(event => this.populateSingleEventGenres(event))
       );
+      const timeoutPromise = new Promise<ScheduleEvent[]>((_, reject) =>
+        setTimeout(() => reject(new Error('Genre population timed out')), GENRE_TIMEOUT_MS)
+      );
 
+      const eventsWithGenres = await Promise.race([genrePromise, timeoutPromise]);
       return eventsWithGenres;
     } catch (error) {
       console.warn('Error populating event genres:', error);
