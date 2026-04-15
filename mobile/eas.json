@@ -81,7 +81,7 @@
     "beta": {
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
-        "track": "CLOSED-BETA"
+        "track": "alpha"
       }
     }
   }
