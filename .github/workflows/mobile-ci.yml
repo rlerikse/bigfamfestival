@@ -109,7 +109,7 @@ jobs:
 
       - name: Submit Android to Google Play (${{ steps.profile.outputs.profile }})
         if: steps.profile.outputs.profile == 'beta' || steps.profile.outputs.profile == 'production'
-        run: eas submit --platform android --profile ${{ steps.profile.outputs.profile }} --non-interactive
+        run: eas submit --platform android --profile ${{ steps.profile.outputs.profile }} --latest --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
           GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
