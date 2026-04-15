@@ -58,8 +58,10 @@ jobs:
         # Decode base64-encoded SA key from secret and write to disk
         # Atlas creates this key (BFF-S3-02) and stores it as GOOGLE_PLAY_SA_KEY secret
         run: |
-          echo "${{ secrets.GOOGLE_PLAY_SA_KEY }}" | base64 --decode > mobile/google-play-service-account.json
+          printf '%s' '${{ secrets.GOOGLE_PLAY_SA_KEY }}' > mobile/google-play-service-account.json
         shell: bash
+        env:
+          GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
 
       - name: Get latest Android build ID
         id: get-build
