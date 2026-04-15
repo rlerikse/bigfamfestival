@@ -1,6 +1,6 @@
 // src/components/LiveUpcomingEvents.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { api } from '../services/api';
 import { useTheme } from '../contexts/ThemeContext';
@@ -30,6 +30,8 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
     const fetchEventsAndSchedule = async () => {
       try {
@@ -52,8 +54,9 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
           setUserSchedule(scheduleMap);
         }
       } catch (err) {
-        setError('Could not load live events.');
-        console.error('Error fetching data for LiveUpcomingEvents:', err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('Error fetching data for LiveUpcomingEvents:', errMsg);
+        setError('Could not load live events. Pull down to retry.');
       } finally {
         setIsLoading(false);
       }
@@ -66,7 +69,7 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, retryCount]);
 
   const liveOrUpcomingEventsByStage = useMemo(() => {
     if (!events.length) {
@@ -194,7 +197,10 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
   if (error) {
     return (
       <View style={styles.centered}>
-        <Text style={{ color: theme.error }}>{error}</Text>
+        <Text style={{ color: theme.error, textAlign: 'center', marginBottom: 8 }}>{error}</Text>
+        <TouchableOpacity onPress={() => { setError(null); setIsLoading(true); setRetryCount(c => c + 1); }}>
+          <Text style={{ color: theme.primary, fontWeight: '600' }}>Tap to retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }

@@ -80,12 +80,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch user profile from our backend (to get role, ticketType, etc.)
           const userData = await getUserProfile(token ?? undefined);
           setUser(userData);
+          // Cache the successful profile so we can restore role on next failure
+          await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(userData));
           
           // Schedule notifications for user's events
           await scheduleAllUserEventsNotifications(userData.id);
         } catch (error) {
           console.error('[AuthContext] Error fetching user profile:', error);
-          // User exists in Firebase but not in Firestore - might need to create profile
+          // Attempt to restore the last known good profile from cache.
+          // This preserves role (e.g. admin) when the API is temporarily unreachable.
+          const cached = await AsyncStorage.getItem('cachedUserProfile');
+          if (cached) {
+            try {
+              const cachedUser = JSON.parse(cached);
+              // Only restore if same Firebase UID
+              if (cachedUser.id === fbUser.uid) {
+                console.log('[AuthContext] Restored user from cache with role:', cachedUser.role);
+                setUser(cachedUser);
+                setIsLoading(false);
+                return;
+              }
+            } catch {
+              // Bad cache entry — ignore
+            }
+          }
+          // No cache — fall back to minimal profile. Role defaults to ATTENDEE.
+          // NOTE: If this user should be admin, ensure their backend profile exists.
           setUser({
             id: fbUser.uid,
             name: fbUser.displayName || 'User',
@@ -284,8 +304,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthContext] Firebase sign out complete');
       }
       
-      // Clear guest user
+      // Clear guest user and cached profile
       await AsyncStorage.removeItem('guestUser');
+      await AsyncStorage.removeItem('cachedUserProfile');
       
       setUser(null);
       setFirebaseUser(null);

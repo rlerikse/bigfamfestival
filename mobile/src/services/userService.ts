@@ -1,6 +1,7 @@
 import { api } from './api';
 import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
 import { storage } from '../config/firebase';
@@ -63,24 +64,29 @@ export const uploadProfilePicture = async (
       throw new Error('Authentication token not found');
     }
 
-    // Read the image as a blob
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
+    // Read image as base64 via expo-file-system (handles both file:// and content:// URIs on Android)
+    const base64 = await FileSystem.readAsStringAsync(imageUri, {
+      encoding: 'base64' as any,
+    });
+    const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png'
+      : imageUri.toLowerCase().endsWith('.webp') ? 'image/webp'
+      : 'image/jpeg';
 
-    // Validate file size
-    if (blob.size > MAX_AVATAR_SIZE_BYTES) {
-      throw new Error('Image is too large. Please choose a photo under 5 MB.');
+    // Convert base64 to Uint8Array for Firebase uploadBytes
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
     }
 
-    // Validate file type
-    const mimeType = blob.type || 'image/jpeg';
-    if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
-      throw new Error('Unsupported image format. Please use JPEG, PNG, or WebP.');
+    // Validate size (5 MB max)
+    if (bytes.length > MAX_AVATAR_SIZE_BYTES) {
+      throw new Error('Image is too large. Please choose a photo under 5 MB.');
     }
 
     // Upload to Firebase Storage: profile-pictures/<userId>.jpg
     const storageRef = ref(storage, `profile-pictures/${userId}.jpg`);
-    await uploadBytes(storageRef, blob, { contentType: mimeType });
+    await uploadBytes(storageRef, bytes, { contentType: mimeType });
 
     // Get the public download URL
     const downloadUrl = await getDownloadURL(storageRef);
