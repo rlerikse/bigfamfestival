@@ -61,8 +61,18 @@ jobs:
           echo "${{ secrets.GOOGLE_PLAY_SA_KEY }}" | base64 --decode > mobile/google-play-service-account.json
         shell: bash
 
+      - name: Get latest Android build ID
+        id: get-build
+        run: |
+          BUILD_ID=$(eas build:list --platform android --status finished --limit 1 --non-interactive --json | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
+          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
+          echo "Latest build ID: $BUILD_ID"
+        working-directory: mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
       - name: Submit to Google Play — internal track
-        run: eas submit --platform android --profile beta --latest --non-interactive
+        run: eas submit --platform android --profile beta --id ${{ steps.get-build.outputs.build_id }} --non-interactive
         working-directory: mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
