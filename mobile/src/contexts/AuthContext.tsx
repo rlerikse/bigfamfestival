@@ -85,15 +85,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Schedule notifications for user's events
           await scheduleAllUserEventsNotifications(userData.id);
-        } catch (error) {
+        } catch (error: any) {
           console.error('[AuthContext] Error fetching user profile:', error);
-          // Attempt to restore the last known good profile from cache.
-          // This preserves role (e.g. admin) when the API is temporarily unreachable.
+
+          // 404 = Firebase Auth UID has no matching backend profile.
+          // Happens post-auth-migration: old Firestore docs used auto-generated IDs, not Auth UIDs.
+          // Auto-create a profile under the current UID so the user is unblocked.
+          if (error.statusCode === 404 || error.response?.status === 404) {
+            console.log('[AuthContext] Profile 404 — auto-creating backend profile for UID:', fbUser.uid);
+            try {
+              const freshToken = await getIdToken(true);
+              if (freshToken) {
+                const created = await createUserProfile(freshToken, {
+                  name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+                  email: fbUser.email || '',
+                });
+                setUser(created);
+                await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(created));
+                console.log('[AuthContext] Auto-created profile, role:', created.role);
+                setIsLoading(false);
+                return;
+              }
+            } catch (createErr: any) {
+              console.error('[AuthContext] Auto-create failed:', createErr.message);
+              // 409 = profile already exists (race) — retry fetch once
+              if (createErr.response?.status === 409) {
+                try {
+                  const t2 = await getIdToken(true);
+                  const retried = await getUserProfile(t2 ?? undefined);
+                  setUser(retried);
+                  await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(retried));
+                  setIsLoading(false);
+                  return;
+                } catch { /* fall through */ }
+              }
+            }
+          }
+
+          // Non-404: restore last known good profile from cache to preserve role
           const cached = await AsyncStorage.getItem('cachedUserProfile');
           if (cached) {
             try {
               const cachedUser = JSON.parse(cached);
-              // Only restore if same Firebase UID
               if (cachedUser.id === fbUser.uid) {
                 console.log('[AuthContext] Restored user from cache with role:', cachedUser.role);
                 setUser(cachedUser);
@@ -104,8 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // Bad cache entry — ignore
             }
           }
-          // No cache — fall back to minimal profile. Role defaults to ATTENDEE.
-          // NOTE: If this user should be admin, ensure their backend profile exists.
+          // Final fallback: minimal profile, role=ATTENDEE
           setUser({
             id: fbUser.uid,
             name: fbUser.displayName || 'User',
