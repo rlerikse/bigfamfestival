@@ -28,7 +28,7 @@ const SettingsScreen = () => {
   const { theme, isDark, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { isGuestUser, deleteAccount, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
   const { 
     scheduleNotificationsEnabled, 
     toggleScheduleNotifications,

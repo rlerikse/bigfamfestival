@@ -94,7 +94,13 @@ export const fetchEvents = async (): Promise<{
   }
 
   try {
-    const token = await getIdToken();
+    // Auth is optional for /events (public endpoint) — don't let auth failures block event loading
+    let token: string | null = null;
+    try {
+      token = await getIdToken();
+    } catch {
+      // Auth not available — proceed without token (events endpoint is public)
+    }
     const response = await api.get<ScheduleEvent[]>('/events', {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     });

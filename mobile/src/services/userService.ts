@@ -25,7 +25,7 @@ export const updateUserProfile = async (
     const token = await getIdToken();
     
     if (!token) {
-      throw new Error('Authentication token not found');
+      throw new Error('Please sign in to update your profile.');
     }
     
     const response = await api.put<User>(`/users/profile`, data, {
@@ -38,8 +38,11 @@ export const updateUserProfile = async (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error('Update profile error:', error.response?.data || error.message);
+    if (error.response?.status === 401) {
+      throw new Error('Your session has expired. Please sign in again.');
+    }
     throw new Error(
-      error.response?.data?.message || 'Failed to update user profile'
+      error.response?.data?.message || error.message || 'Failed to update user profile'
     );
   }
 };
@@ -60,7 +63,7 @@ export const uploadProfilePicture = async (
   try {
     const token = await getIdToken();
     if (!token) {
-      throw new Error('Authentication token not found');
+      throw new Error('Please sign in to upload a profile picture.');
     }
 
     // Read the image as a blob

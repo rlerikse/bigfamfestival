@@ -29,3 +29,4 @@ assets/customers/*.xlsx
 backend/email-blast-failures.txt
 backend/bigfam-serviceaccount.json
 BFF-S1-01-notification-backend-audit.md
+mobile/google-play-service-account.json
