@@ -5,7 +5,7 @@ name: Android Deploy — Closed Testing
 #
 # Required secrets (set in GitHub repo settings):
 #   EXPO_TOKEN              — Expo access token (create at expo.dev/accounts/[user]/settings/access-tokens)
-#   GOOGLE_PLAY_SA_KEY      — Google Play service account JSON key (base64-encoded)
+#   GOOGLE_PLAY_SA_KEY      — Google Play service account JSON key (raw JSON)
 #                             Created by Atlas (BFF-S3-02). Needs these Play Console permissions:
 #                             - Release manager on the app
 #                             - View app information
@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: dev
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
