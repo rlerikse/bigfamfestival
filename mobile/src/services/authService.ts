@@ -23,13 +23,14 @@ export const getUserProfile = async (token?: string): Promise<User> => {
     return response.data;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
-    console.error('Get profile error:', error.response?.data || error.message);
-    // Preserve the HTTP status so callers can distinguish 404 (not found) from other errors
+    console.error('Get profile error:', error.response?.data || error.responseData || error.message);
+    // Preserve the HTTP status so callers can distinguish 404 (not found) from other errors.
+    // Note: api.ts interceptor wraps errors — .response is stripped, but .statusCode is set.
     const err = new Error(
-      error.response?.data?.message || 'Failed to fetch user profile'
+      error.response?.data?.message || error.message || 'Failed to fetch user profile'
     ) as any;
-    err.response = error.response;
-    err.statusCode = error.response?.status;
+    err.statusCode = error.response?.status ?? error.statusCode;
+    err.responseData = error.response?.data ?? error.responseData;
     throw err;
   }
 };

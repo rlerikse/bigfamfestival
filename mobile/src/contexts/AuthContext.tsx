@@ -182,8 +182,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err: any) {
         // Only create a new profile if the backend returned 404 (profile doesn't exist yet)
         // Re-throw on network errors, 500s, or any other failure to avoid duplicate creation
-        const status = err?.response?.status ?? err?.statusCode;
-        if (status !== 404) {
+        const status = err?.statusCode ?? err?.response?.status;
+        const isNotFound = status === 404 || err?.message?.includes('not found');
+        if (!isNotFound) {
           throw err;
         }
         const profileData = await createUserProfile(token, {
