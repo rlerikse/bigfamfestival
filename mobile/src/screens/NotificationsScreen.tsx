@@ -31,7 +31,7 @@ const NotificationsScreen: React.FC = () => {
     () => (typeof isGuestUser === 'function' ? isGuestUser() : !user),
     [isGuestUser, user]
   );
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   // Local types to avoid name collision with component import
   interface NotificationHistoryEntry {

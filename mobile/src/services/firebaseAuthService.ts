@@ -13,10 +13,17 @@ import { appleAuth } from '@invertase/react-native-apple-authentication';
 import { Platform } from 'react-native';
 
 // Configure Google Sign-In
-GoogleSignin.configure({
-  webClientId: '292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com',
-  iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
-});
+// NOTE: Beta/alpha builds use a different signing key. The SHA-256 fingerprint
+// must be registered in Firebase Console > Project Settings > Android apps
+// for Google Sign-In to work on beta builds.
+try {
+  GoogleSignin.configure({
+    webClientId: '292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com',
+    iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
+  });
+} catch (e) {
+  console.warn('[FirebaseAuth] Google Sign-In configure failed:', e);
+}
 
 // Error code to user-friendly message mapping
 const ERROR_MESSAGES: Record<string, string> = {
