@@ -13,7 +13,6 @@ backend/bigfam-*-serviceaccount.json
 backend/bigfam-dev-serviceaccount.json
 # Dev Firebase credentials (never commit)
 mobile/GoogleService-Info.dev.plist
-mobile/google-services-dev.json
 /backend/dist
 /mobile/android
 mobile/package-lock.backup.json
