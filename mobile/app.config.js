@@ -12,14 +12,20 @@
  * Local dev:  APP_ENV=development npx expo start
  */
 
-const IS_DEV = process.env.APP_ENV === 'development';
+const IS_DEV     = process.env.APP_ENV === 'development';
 const IS_PREVIEW = process.env.APP_ENV === 'preview';
+const IS_BETA    = process.env.APP_ENV === 'beta';
 
 // ── API URLs ────────────────────────────────────────────────────────────────
+// beta + production both point at the production Cloud Run API.
+// If a separate staging API is deployed, set EXPO_PUBLIC_API_URL in the beta
+// EAS profile env block to override.
+const PRODUCTION_API_URL = 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1';
+
 const API_URL = process.env.EXPO_PUBLIC_API_URL || (
   IS_DEV
-    ? 'http://localhost:8080/api/v1'       // override with your local IP if testing on device
-    : 'https://bigfam-api-production-292369452544.us-central1.run.app/api/v1'
+    ? 'http://localhost:8080/api/v1'   // override with your LAN IP for physical device
+    : PRODUCTION_API_URL               // preview, beta, production all use prod API
 );
 
 // ── Firebase configs ────────────────────────────────────────────────────────

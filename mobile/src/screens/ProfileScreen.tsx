@@ -63,9 +63,10 @@ const ProfileScreen = () => {
       updateUser(updatedData);
       
       Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      Alert.alert('Update Failed', 'Could not update profile. Please try again.');
+      const msg = error?.message || 'Could not update profile. Please try again.';
+      Alert.alert('Update Failed', msg);
     } finally {
       setIsLoading(false);
       setIsEditing(false);
@@ -97,9 +98,10 @@ const ProfileScreen = () => {
         const imageUrl = await uploadProfilePicture(user.id, selectedImage.uri);
         setProfileImage(imageUrl);
         updateUser({ profilePictureUrl: imageUrl });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error uploading profile picture:', error);
-        Alert.alert('Upload Failed', 'Could not upload profile picture. Please try again.');
+        const msg = error?.message || 'Could not upload profile picture. Please try again.';
+        Alert.alert('Upload Failed', msg);
       } finally {
         setIsImageUploading(false);
       }

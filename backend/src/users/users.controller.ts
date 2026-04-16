@@ -37,9 +37,9 @@ export class UsersController {
     @Request() req,
     @Body() createProfileDto: CreateProfileDto,
   ) {
-    // Check if user already exists
+    // Check if user already exists (by UID or email migration)
     const existing = await this.usersService
-      .findById(req.user.id)
+      .findById(req.user.id, req.user.email)
       .catch(() => null);
     if (existing) {
       throw new ConflictException('User profile already exists');
@@ -58,7 +58,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'Returns the user profile' })
   async getProfile(@Request() req) {
-    return this.usersService.findById(req.user.id);
+    return this.usersService.findById(req.user.id, req.user.email);
   }
 
   @Put('profile')

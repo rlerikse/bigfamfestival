@@ -43,19 +43,49 @@ export class UsersService {
   }
 
   /**
-   * Find a user by ID
+   * Find a user by ID, with email fallback for pre-migration users.
+   * If no doc exists for the given ID but one exists for the email,
+   * migrates the old doc to the new ID (Auth UID), sets custom claims,
+   * and returns it.
    */
-  async findById(id: string): Promise<User | null> {
+  async findById(id: string, email?: string): Promise<User | null> {
     const userData = await this.firestoreService.get<Omit<User, 'id'>>(
       this.collection,
       id,
     );
 
-    if (!userData) {
-      throw new NotFoundException('User not found');
+    if (userData) {
+      return { id, ...userData } as User;
     }
 
-    return { id, ...userData } as User;
+    // Fallback: look up by email for pre-migration users whose doc ID
+    // doesn't match their Firebase Auth UID
+    if (email) {
+      const byEmail = await this.findByEmail(email);
+      if (byEmail && byEmail.id !== id) {
+        // Migrate: copy old doc to new ID (Auth UID), preserve all data
+        const { id: oldId, ...data } = byEmail;
+        await this.firestoreService.set(this.collection, id, {
+          ...data,
+          updatedAt: new Date(),
+        });
+
+        // Sync role to Firebase Auth custom claims so RBAC guard works
+        if (data.role) {
+          try {
+            const admin = await import('firebase-admin');
+            await admin.auth().setCustomUserClaims(id, { role: data.role });
+          } catch (e) {
+            // Non-fatal — custom claims will be set on next opportunity
+            console.warn('Failed to set custom claims during migration:', e.message);
+          }
+        }
+
+        return { id, ...data } as User;
+      }
+    }
+
+    throw new NotFoundException('User not found');
   }
 
   /**
@@ -88,8 +118,18 @@ export class UsersService {
     await this.firestoreService.update<User>(
       this.collection,
       id,
-      updateData, // Use the plain object here
+      updateData,
     );
+
+    // Sync role to Firebase Auth custom claims if role changed
+    if ('role' in updateData && updateData.role) {
+      try {
+        const adminSdk = await import('firebase-admin');
+        await adminSdk.auth().setCustomUserClaims(id, { role: updateData.role });
+      } catch (e) {
+        console.warn('Failed to sync role to custom claims:', e.message);
+      }
+    }
 
     // Return updated user
     return { ...user, ...updateData };

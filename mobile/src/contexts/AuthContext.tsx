@@ -80,12 +80,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch user profile from our backend (to get role, ticketType, etc.)
           const userData = await getUserProfile(token ?? undefined);
           setUser(userData);
+          // Cache the successful profile so we can restore role on next failure
+          await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(userData));
           
           // Schedule notifications for user's events
           await scheduleAllUserEventsNotifications(userData.id);
-        } catch (error) {
+        } catch (error: any) {
           console.error('[AuthContext] Error fetching user profile:', error);
-          // User exists in Firebase but not in Firestore - might need to create profile
+
+          // 404 = Firebase Auth UID has no matching backend profile.
+          // Happens post-auth-migration: old Firestore docs used auto-generated IDs, not Auth UIDs.
+          // Auto-create a profile under the current UID so the user is unblocked.
+          if (error.statusCode === 404 || error.response?.status === 404) {
+            console.log('[AuthContext] Profile 404 — auto-creating backend profile for UID:', fbUser.uid);
+            try {
+              const freshToken = await getIdToken(true);
+              if (freshToken) {
+                const created = await createUserProfile(freshToken, {
+                  name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+                  email: fbUser.email || '',
+                });
+                setUser(created);
+                await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(created));
+                console.log('[AuthContext] Auto-created profile, role:', created.role);
+                setIsLoading(false);
+                return;
+              }
+            } catch (createErr: any) {
+              console.error('[AuthContext] Auto-create failed:', createErr.message);
+              // 409 = profile already exists (race) — retry fetch once
+              if (createErr.response?.status === 409) {
+                try {
+                  const t2 = await getIdToken(true);
+                  const retried = await getUserProfile(t2 ?? undefined);
+                  setUser(retried);
+                  await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(retried));
+                  setIsLoading(false);
+                  return;
+                } catch { /* fall through */ }
+              }
+            }
+          }
+
+          // Non-404: restore last known good profile from cache to preserve role
+          const cached = await AsyncStorage.getItem('cachedUserProfile');
+          if (cached) {
+            try {
+              const cachedUser = JSON.parse(cached);
+              if (cachedUser.id === fbUser.uid) {
+                console.log('[AuthContext] Restored user from cache with role:', cachedUser.role);
+                setUser(cachedUser);
+                setIsLoading(false);
+                return;
+              }
+            } catch {
+              // Bad cache entry — ignore
+            }
+          }
+          // Final fallback: minimal profile, role=ATTENDEE
           setUser({
             id: fbUser.uid,
             name: fbUser.displayName || 'User',
@@ -285,8 +337,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthContext] Firebase sign out complete');
       }
       
-      // Clear guest user
+      // Clear guest user and cached profile
       await AsyncStorage.removeItem('guestUser');
+      await AsyncStorage.removeItem('cachedUserProfile');
       
       setUser(null);
       setFirebaseUser(null);
