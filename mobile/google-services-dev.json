@@ -1,0 +1,91 @@
+{
+  "project_info": {
+    "project_number": "292369452544",
+    "firebase_url": "https://bigfamfestival-default-rtdb.firebaseio.com",
+    "project_id": "bigfamfestival",
+    "storage_bucket": "bigfamfestival.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:292369452544:android:17f9722d7b63ca421c12e5",
+        "android_client_info": {
+          "package_name": "com.eriksensolutions.bigfam",
+          "certificate_hash": [
+            "6f9dffe74db33b830e136a674690eddcc7ed1920271b0a2f85e0a871fcc56cb8"
+          ]
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASlipjgOaPPyZpFtvD1tIGjxe3bEcBLh0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.eriksensolutions.bigfam",
+                "app_store_id": "6752632634"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:292369452544:android:17f9722d7b63ca421c12e5",
+        "android_client_info": {
+          "package_name": "com.eriksensolutions.bigfam.dev",
+          "certificate_hash": [
+            "6f9dffe74db33b830e136a674690eddcc7ed1920271b0a2f85e0a871fcc56cb8"
+          ]
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASlipjgOaPPyZpFtvD1tIGjxe3bEcBLh0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.eriksensolutions.bigfam",
+                "app_store_id": "6752632634"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
