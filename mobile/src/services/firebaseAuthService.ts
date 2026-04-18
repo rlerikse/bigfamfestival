@@ -213,6 +213,8 @@ export { auth };
 export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredential> {
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // Clear cached account selection so the account picker always appears
+    await GoogleSignin.signOut();
     const signInResult = await GoogleSignin.signIn();
     const idToken = signInResult.data?.idToken;
     if (!idToken) {
