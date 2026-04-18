@@ -10,10 +10,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:292369452544:android:17f9722d7b63ca421c12e5",
         "android_client_info": {
-          "package_name": "com.eriksensolutions.bigfam",
-          "certificate_hash": [
-            "6f9dffe74db33b830e136a674690eddcc7ed1920271b0a2f85e0a871fcc56cb8"
-          ]
+          "package_name": "com.eriksensolutions.bigfam"
         }
       },
       "oauth_client": [
@@ -48,15 +45,20 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:292369452544:android:17f9722d7b63ca421c12e5",
+        "mobilesdk_app_id": "1:292369452544:android:84ff896e21d486161c12e5",
         "android_client_info": {
-          "package_name": "com.eriksensolutions.bigfam.dev",
-          "certificate_hash": [
-            "6f9dffe74db33b830e136a674690eddcc7ed1920271b0a2f85e0a871fcc56cb8"
-          ]
+          "package_name": "com.eriksensolutions.bigfam.dev"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "292369452544-mpprf2gjbnmfgflufuplq01cv73a04rf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eriksensolutions.bigfam.dev",
+            "certificate_hash": "15271ea7a5909422882c277b8fc1077b347b921c"
+          }
+        },
         {
           "client_id": "292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com",
           "client_type": 3
