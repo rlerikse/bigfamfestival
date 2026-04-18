@@ -40,7 +40,7 @@ export const getUserProfile = async (token?: string): Promise<User> => {
  */
 export const createUserProfile = async (
   token: string,
-  profileData: { name: string; email: string; phone?: string; role?: string },
+  profileData: { name: string; email: string; phone?: string; role?: string; profilePictureUrl?: string },
 ): Promise<User> => {
   try {
     const response = await api.post<User>('/users/profile', profileData, {

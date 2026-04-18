@@ -223,7 +223,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // SSO login helper — creates backend profile if this is the user's first sign-in
-  const handleSsoLogin = async (credential: { user: { uid: string; email: string | null; displayName: string | null } }) => {
+  const handleSsoLogin = async (credential: { user: { uid: string; email: string | null; displayName: string | null; photoURL?: string | null } }) => {
     const fbUser = credential.user;
     const token = await getIdToken(true);
     if (token) {
@@ -242,6 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: fbUser.displayName || 'User',
           email: fbUser.email || '',
           role: UserRole.ATTENDEE,
+          profilePictureUrl: fbUser.photoURL || undefined,
         });
         setUser(profileData);
       }

@@ -38,16 +38,32 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
   const { user, logout } = useAuth(); // Get user and logout function from auth context
   
   return (
-    <View style={[styles.container, { paddingBottom: bottomPadding }]} pointerEvents="box-none">
+    <>
+    {/* Dirt-color fill that sits behind the Android system nav bar, preventing the black gap */}
+    {Platform.OS === 'android' && bottomPadding > 0 && (
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: bottomPadding + 2, // +2 for any sub-pixel gaps
+          backgroundColor: '#2C1A08', // Matches the dirt portion of the grass image
+          zIndex: 9,
+        }}
+      />
+    )}
+    <View style={[styles.container, { paddingBottom: 0, bottom: Platform.OS === 'android' ? bottomPadding : 0 }]} pointerEvents="box-none">
       {/* This View acts as a clipping mask for the Image */}
-      <View style={[styles.imageContainer, { height: EFFECTIVE_GRASS_VISIBLE_HEIGHT + NAVBAR_HEIGHT + bottomPadding }]} pointerEvents="none">
+      <View style={[styles.imageContainer, { height: EFFECTIVE_GRASS_VISIBLE_HEIGHT + NAVBAR_HEIGHT }]} pointerEvents="none">
         <Image
           source={require('../assets/images/grass-seamless.png')}
           style={[
             styles.actualImage,
             {
-              height: SCALED_TOTAL_IMAGE_HEIGHT + bottomPadding,
-              bottom: Platform.OS === 'ios' ? -bottomPadding - 0 : -bottomPadding - 5, // iOS stays same, Android moved up by 20px more
+              height: SCALED_TOTAL_IMAGE_HEIGHT,
+              bottom: 0,
             }
           ]}
           resizeMode="stretch" // Stretch to fit calculated dimensions precisely
@@ -179,17 +195,18 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
         })}
       </View>
     </View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({  container: {
     width: '100%',
-    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 52 , 
-    // paddingBottom will be applied dynamically
-    backgroundColor: 'transparent', // Default dirt color as fallback for any gaps
-    position: 'absolute', // Ensure the grass overlays the content
-    bottom: Platform.OS === 'ios' ? 0 : 0, // iOS stays at 0, Android moved up by 20px to 0
-    zIndex: 10, // Ensure it appears above other elements
+    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 52,
+    // bottom is applied dynamically via insets (Android shifts up by system nav height)
+    backgroundColor: 'transparent',
+    position: 'absolute',
+    bottom: 0, // overridden inline with insets
+    zIndex: 10,
   },
   imageContainer: { 
     position: 'absolute',
@@ -209,7 +226,7 @@ const styles = StyleSheet.create({  container: {
   },  treeImage: {
     position: 'absolute',
     left: -105, // Keep left aligned position (adjusted for smaller size)
-    bottom: Platform.OS === 'ios' ? 120 : 100, // iOS: 120px, Android: 115px (adjusted for consistency)
+    bottom: 120, // unified; container is shifted up by insets on Android
     width: 200, // Half of 400 - scaled down
     height: 150, // Half of 300 - scaled down
     opacity: 1, // Full opacity
@@ -217,7 +234,7 @@ const styles = StyleSheet.create({  container: {
   },  tentImage: {
     position: 'absolute',
     right: -45, // Moved 5px to the right (was -40)
-    top: Platform.OS === 'ios' ? -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80 : -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 100, // iOS stays the same, Android moved down by another 5px (total 25px)
+    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80, // container handles Android offset via bottom inset
     width: 100, // Scaled width
     height: 80, // Scaled height
     transform: [{ scaleX: -1 }], // Flipped on X-axis
@@ -238,7 +255,7 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: Platform.OS === 'ios' ? 50 : 30,
+    marginTop: 50, // container shift handles Android; no per-platform override needed
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',

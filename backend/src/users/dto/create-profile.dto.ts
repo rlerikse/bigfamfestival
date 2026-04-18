@@ -44,4 +44,13 @@ export class CreateProfileDto {
   @IsEnum(Role)
   @IsOptional()
   role?: Role;
+
+  @ApiProperty({
+    example: 'https://lh3.googleusercontent.com/a/photo',
+    description: 'Profile picture URL from SSO provider',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  profilePictureUrl?: string;
 }
