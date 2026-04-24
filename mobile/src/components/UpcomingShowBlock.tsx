@@ -25,8 +25,8 @@ const SHOW_CONFIG = {
   venue: 'The Crofoot / Pike Room',
   city: 'Detroit, MI',
   // TODO: Replace with real links when available
-  ticketUrl: 'https://thecrofoot.com',
-  facebookUrl: 'https://www.facebook.com',
+  ticketUrl: 'https://www.ticketweb.com/event/josh-teed-pike-room-the-crofoot-tickets/14180784',
+  facebookUrl: 'https://facebook.com/events/s/josh-teed-pike-room/1535485537547851/',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
