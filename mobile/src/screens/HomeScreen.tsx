@@ -3,6 +3,7 @@ import {
   View,
   Dimensions,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { RootStackParamList } from '../navigation';
 import { Alert } from 'react-native';
 import Countdown from '../components/Countdown';
 import LiveUpcomingEvents from '../components/LiveUpcomingEvents';
+import UpcomingShowBlock from '../components/UpcomingShowBlock';
 import EventDetailsModal from '../components/EventDetailsModal';
 import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
@@ -152,7 +154,13 @@ const HomeScreen = () => {
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
           <View style={{ height: 0 }} />
 
-          <LiveUpcomingEvents onEventPress={openEventModal} />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            <UpcomingShowBlock />
+            <LiveUpcomingEvents onEventPress={openEventModal} />
+          </ScrollView>
          </View>
         <EventDetailsModal
           isVisible={isModalVisible}
