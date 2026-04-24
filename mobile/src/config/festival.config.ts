@@ -103,6 +103,7 @@ const defaultConfig: FestivalConfig = {
   startDate: '2025-09-26',
   endDate: '2025-09-28',
   dates: [
+    { id: '2026-04-25', date: '2026-04-25', dayLabel: 'Apr 25', dayAbbrev: 'SAT', staffOnly: false },
     { id: '2025-09-26', date: '2025-09-26', dayLabel: 'Sep 26', dayAbbrev: 'FRI', staffOnly: false },
     { id: '2025-09-27', date: '2025-09-27', dayLabel: 'Sep 27', dayAbbrev: 'SAT', staffOnly: false },
     { id: '2025-09-28', date: '2025-09-28', dayLabel: 'Sep 28', dayAbbrev: 'SUN', staffOnly: false },
