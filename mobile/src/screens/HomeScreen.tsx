@@ -3,6 +3,7 @@ import {
   View,
   Dimensions,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { RootStackParamList } from '../navigation';
 import { Alert } from 'react-native';
 import Countdown from '../components/Countdown';
 import LiveUpcomingEvents from '../components/LiveUpcomingEvents';
+import UpcomingEvent from '../components/UpcomingEvent';
 import EventDetailsModal from '../components/EventDetailsModal';
 import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
@@ -130,22 +132,27 @@ const HomeScreen = () => {
          }} />
          
          {/* Content container with higher z-index */}
-         <View style={{ 
-           justifyContent: 'flex-start', 
-           alignItems: 'stretch', 
-           zIndex: 1,
-           backgroundColor: 'transparent',
-           paddingHorizontal: 5,
-           paddingBottom: 5,
-           borderRadius: 16,
-           marginHorizontal: 20,
-           paddingTop: 75, // TopNavBar height (55) + extra padding (20)
-         }}>
+         <ScrollView
+           style={{
+             zIndex: 1,
+             backgroundColor: 'transparent',
+             paddingTop: 75, // TopNavBar height (55) + extra padding (20)
+           }}
+           contentContainerStyle={{
+             paddingHorizontal: 5,
+             paddingBottom: 40,
+             marginHorizontal: 20,
+           }}
+           showsVerticalScrollIndicator={false}
+         >
           {/* Copper divider above timer / clock */}
           <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
           <View style={{ height: 12 }} />
           <Countdown targetDate={gatesOpenDate} />
+
+          {/* Upcoming Event: Josh Teed */}
+          <UpcomingEvent />
 
           {/* subtle divider + even less spacing between countdown and events */}
           <View style={{ height: 12 }} />
@@ -153,7 +160,7 @@ const HomeScreen = () => {
           <View style={{ height: 0 }} />
 
           <LiveUpcomingEvents onEventPress={openEventModal} />
-         </View>
+         </ScrollView>
         <EventDetailsModal
           isVisible={isModalVisible}
           onClose={closeEventModal}
