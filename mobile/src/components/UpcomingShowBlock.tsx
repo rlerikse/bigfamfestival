@@ -76,11 +76,11 @@ const UpcomingShowBlock: React.FC = () => {
   }, []);
 
   const handleTickets = useCallback(() => {
-    Linking.openURL(SHOW_CONFIG.ticketUrl).catch(() => {});
+    Linking.openURL(SHOW_CONFIG.ticketUrl).catch(() => { /* ignore */ });
   }, []);
 
   const handleFacebook = useCallback(() => {
-    Linking.openURL(SHOW_CONFIG.facebookUrl).catch(() => {});
+    Linking.openURL(SHOW_CONFIG.facebookUrl).catch(() => { /* ignore */ });
   }, []);
 
   const doorsOpen = timeLeft.total <= 0;
