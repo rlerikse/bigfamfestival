@@ -17,7 +17,7 @@ import {
 // ─── Config ──────────────────────────────────────────────────────────────────
 const SHOW_CONFIG = {
   artist: 'Josh Teed',
-  support: 'with support from Manity',
+  support: 'with support from Mfinity',
   dateLabel: 'Saturday, April 25, 2026',
   doorsLabel: 'Doors 8:00 PM EST',
   // Doors: Saturday April 25 2026 8:00pm America/Detroit (EDT = UTC-4)
@@ -103,7 +103,7 @@ const UpcomingShowBlock: React.FC = () => {
 
           {/* Artist name */}
           <Text style={styles.artistName}>Josh Teed</Text>
-          <Text style={styles.supportText}>with support from Manity</Text>
+          <Text style={styles.supportText}>with support from Mfinity</Text>
 
           <GoldDivider />
 
