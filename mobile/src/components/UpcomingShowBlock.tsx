@@ -23,7 +23,7 @@ const SHOW_CONFIG = {
   // Doors: Saturday April 25 2026 8:00pm America/Detroit (EDT = UTC-4)
   doorsDate: new Date('2026-04-25T20:00:00-04:00'),
   venue: 'The Crofoot / Pike Room',
-  city: 'Detroit, MI',
+  city: 'Pontiac, MI',
   // TODO: Replace with real links when available
   ticketUrl: 'https://www.ticketweb.com/event/josh-teed-pike-room-the-crofoot-tickets/14180784',
   facebookUrl: 'https://facebook.com/events/s/josh-teed-pike-room/1535485537547851/',
@@ -95,7 +95,7 @@ const UpcomingShowBlock: React.FC = () => {
           source={require('../assets/images/josh-teed-flyer.jpg')}
           style={styles.flyer}
           resizeMode="cover"
-          accessibilityLabel="Josh Teed — The Crofoot Detroit flyer"
+          accessibilityLabel="Josh Teed — The Crofoot Pontiac flyer"
         />
 
         {/* Content body */}
@@ -109,7 +109,7 @@ const UpcomingShowBlock: React.FC = () => {
 
           {/* Date / venue */}
           <Text style={styles.dateText}>Saturday, April 25, 2026</Text>
-          <Text style={styles.venueText}>The Crofoot / Pike Room — Detroit, MI</Text>
+          <Text style={styles.venueText}>The Crofoot / Pike Room — Pontiac, MI</Text>
 
           <GoldDivider />
 
