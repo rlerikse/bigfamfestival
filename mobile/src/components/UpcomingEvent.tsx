@@ -36,7 +36,7 @@ const UpcomingEvent = () => {
 
       <View style={styles.details}>
         <Text style={styles.artist}>Josh Teed</Text>
-        <Text style={styles.support}>with support from Manity</Text>
+        <Text style={styles.support}>with support from Mfinity</Text>
 
         <View style={styles.divider} />
 
