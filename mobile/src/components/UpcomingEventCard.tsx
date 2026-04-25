@@ -1,10 +1,10 @@
 /**
  * UpcomingEventCard
- * Data-driven card for an upcoming show/concert.
- * Renders: flyer image → artist + support → venue/date → live countdown → CTA buttons.
+ * Compact horizontal card matching the Big Fam schedule card aesthetic.
+ * Layout: [thumbnail] | [name / venue+time / genre / desc] | [countdown]
  *
- * Accepts an UpcomingShow object (Firestore-sourced). All show-specific fields
- * (flyerUrl, ticketUrl, doorsTime, etc.) are optional — card degrades gracefully.
+ * Data-driven from UpcomingShow (Firestore-sourced). All show-specific fields
+ * (flyerUrl, ticketUrl, doorsTime, etc.) are optional — degrades gracefully.
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -19,22 +19,19 @@ import {
 import { UpcomingShow } from '../types/event';
 
 // ─── Local flyer fallback map ─────────────────────────────────────────────────
-// Maps event IDs (or artist name slugs) to bundled local assets.
-// Add entries here when a flyer image isn't available remotely.
 const LOCAL_FLYERS: Record<string, ReturnType<typeof require>> = {
   'josh-teed-2026-04-25': require('../assets/images/josh-teed-flyer.jpg'),
 };
 
 function getFlyerSource(show: UpcomingShow) {
-  // Remote URL takes priority
   if (show.flyerUrl) return { uri: show.flyerUrl };
-  // Local bundled fallback keyed by event id or name slug
   const slug = show.id || show.name.toLowerCase().replace(/\s+/g, '-');
   if (LOCAL_FLYERS[slug]) return LOCAL_FLYERS[slug];
+  if (show.imageUrl) return { uri: show.imageUrl };
   return null;
 }
 
-// ─── Countdown helpers ────────────────────────────────────────────────────────
+// ─── Countdown ────────────────────────────────────────────────────────────────
 interface TimeLeft {
   days: number;
   hours: number;
@@ -68,17 +65,15 @@ function useCountdown(doorsTime?: string) {
   return timeLeft;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-const GoldDivider = () => <View style={styles.divider} />;
+/** Compact countdown label: "2d 4h", "45m", "OPEN" */
+function countdownLabel(t: TimeLeft): string {
+  if (t.total <= 0) return 'OPEN';
+  if (t.days > 0) return `${t.days}d ${t.hours}h`;
+  if (t.hours > 0) return `${t.hours}h ${t.minutes}m`;
+  return `${t.minutes}m ${t.seconds}s`;
+}
 
-const TimeUnit = ({ value, label }: { value: number; label: string }) => (
-  <View style={styles.timeUnit}>
-    <Text style={styles.timeValue}>{value.toString().padStart(2, '0')}</Text>
-    <Text style={styles.timeLabel}>{label}</Text>
-  </View>
-);
-
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 interface Props {
   show: UpcomingShow;
 }
@@ -86,307 +81,205 @@ interface Props {
 const UpcomingEventCard: React.FC<Props> = ({ show }) => {
   const timeLeft = useCountdown(show.doorsTime);
   const flyerSource = getFlyerSource(show);
-  const doorsOpen = timeLeft !== null && timeLeft.total <= 0;
+  const isOpen = timeLeft !== null && timeLeft.total <= 0;
 
   const handleTickets = useCallback(() => {
     if (show.ticketUrl) Linking.openURL(show.ticketUrl).catch(() => {});
   }, [show.ticketUrl]);
 
-  const handleFacebook = useCallback(() => {
-    if (show.facebookUrl) Linking.openURL(show.facebookUrl).catch(() => {});
-  }, [show.facebookUrl]);
-
-  // Format date label from show.date (YYYY-MM-DD) or fall back to doorsTime
-  const dateLabel = (() => {
-    try {
-      const d = show.date
-        ? new Date(show.date + 'T12:00:00')
-        : show.doorsTime
-        ? new Date(show.doorsTime)
-        : null;
-      if (!d) return '';
-      return d.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return show.date || '';
-    }
+  // Format "Venue — HH:MM AM/PM"
+  const venueLine = (() => {
+    const venue = show.venueName || show.stage || '';
+    const time = (() => {
+      try {
+        if (show.doorsTime) {
+          return new Date(show.doorsTime).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+        }
+        if (show.startTime) return show.startTime;
+        return '';
+      } catch { return ''; }
+    })();
+    return [venue, time].filter(Boolean).join(' \u2022 ');
   })();
 
-  const doorsLabel = (() => {
-    if (!show.doorsTime) return null;
-    try {
-      return new Date(show.doorsTime).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZoneName: 'short',
-      });
-    } catch {
-      return null;
-    }
-  })();
-
-  const venueLine = [show.venueName || show.stage, show.venueCity]
-    .filter(Boolean)
-    .join(' \u2014 ');
+  const cityLine = show.venueCity || '';
+  const genre = show.genre || (show.genres && show.genres[0]) || '';
+  // Use supportAct as the description line
+  const descLine = show.supportAct || show.description || '';
 
   return (
-    <View style={styles.card}>
-      {/* Flyer */}
-      {flyerSource && (
-        <Image
-          source={flyerSource}
-          style={styles.flyer}
-          resizeMode="contain"
-          onError={() => console.warn('[UpcomingEventCard] Flyer failed to load:', show.id)}
-          accessibilityLabel={`${show.name} flyer`}
-        />
-      )}
-
-      <View style={styles.body}>
-        {/* Artist */}
-        <Text style={styles.artistName}>{show.name}</Text>
-        {show.supportAct ? (
-          <Text style={styles.supportText}>{show.supportAct}</Text>
-        ) : null}
-
-        <GoldDivider />
-
-        {/* Date / venue */}
-        {dateLabel ? <Text style={styles.dateText}>{dateLabel}</Text> : null}
-        {venueLine ? <Text style={styles.venueText}>{venueLine}</Text> : null}
-        {doorsLabel ? (
-          <Text style={styles.doorsTimeText}>Doors {doorsLabel}</Text>
-        ) : null}
-
-        {/* Countdown — only shown when doorsTime is set */}
-        {timeLeft !== null && (
-          <>
-            <GoldDivider />
-            {doorsOpen ? (
-              <View style={styles.doorsOpenRow}>
-                <Text style={styles.doorsOpenText}>🚪 DOORS OPEN</Text>
-              </View>
-            ) : (
-              <View style={styles.countdownSection}>
-                <Text style={styles.countdownTitle}>DOORS OPEN IN</Text>
-                <View style={styles.countdownRow}>
-                  <TimeUnit value={timeLeft.days} label="DAYS" />
-                  <Text style={styles.colonSep}>:</Text>
-                  <TimeUnit value={timeLeft.hours} label="HRS" />
-                  <Text style={styles.colonSep}>:</Text>
-                  <TimeUnit value={timeLeft.minutes} label="MIN" />
-                  <Text style={styles.colonSep}>:</Text>
-                  <TimeUnit value={timeLeft.seconds} label="SEC" />
-                </View>
-              </View>
-            )}
-          </>
-        )}
-
-        {/* CTA Buttons */}
-        {(show.ticketUrl || show.facebookUrl) && (
-          <>
-            <GoldDivider />
-            <View style={styles.buttonRow}>
-              {show.ticketUrl && (
-                <TouchableOpacity
-                  style={[styles.button, styles.ticketButton]}
-                  onPress={handleTickets}
-                  activeOpacity={0.8}
-                  accessibilityLabel="Get tickets"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.ticketButtonText}>🎟  Get Tickets</Text>
-                </TouchableOpacity>
-              )}
-              {show.facebookUrl && (
-                <TouchableOpacity
-                  style={[styles.button, styles.fbButton]}
-                  onPress={handleFacebook}
-                  activeOpacity={0.8}
-                  accessibilityLabel="Facebook event"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.fbButtonText}>Facebook Event</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={show.ticketUrl ? 0.75 : 1}
+      onPress={show.ticketUrl ? handleTickets : undefined}
+      accessibilityRole={show.ticketUrl ? 'button' : 'none'}
+      accessibilityLabel={`${show.name} — tap to get tickets`}
+    >
+      {/* Thumbnail */}
+      <View style={styles.thumbContainer}>
+        {flyerSource ? (
+          <Image
+            source={flyerSource}
+            style={styles.thumb}
+            resizeMode="cover"
+            onError={() => console.warn('[UpcomingEventCard] thumb failed:', show.id)}
+          />
+        ) : (
+          <View style={[styles.thumb, styles.thumbPlaceholder]}>
+            <Text style={styles.thumbPlaceholderText}>
+              {show.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
         )}
       </View>
-    </View>
+
+      {/* Text body */}
+      <View style={styles.textBody}>
+        <Text style={styles.eventName} numberOfLines={1}>{show.name}</Text>
+        {venueLine ? (
+          <Text style={styles.venueLine} numberOfLines={1}>{venueLine}</Text>
+        ) : null}
+        {cityLine ? (
+          <Text style={styles.cityLine} numberOfLines={1}>{cityLine}</Text>
+        ) : null}
+        {genre ? (
+          <Text style={styles.genreLabel} numberOfLines={1}>{genre}</Text>
+        ) : null}
+        {descLine ? (
+          <Text style={styles.descLine} numberOfLines={1}>{descLine}</Text>
+        ) : null}
+      </View>
+
+      {/* Right column: countdown + ticket CTA */}
+      <View style={styles.rightCol}>
+        {timeLeft !== null && (
+          <Text style={[styles.countdownBadge, isOpen && styles.countdownOpen]}>
+            {countdownLabel(timeLeft)}
+          </Text>
+        )}
+        {show.ticketUrl ? (
+          <View style={styles.ticketBadge}>
+            <Text style={styles.ticketIcon}>🎟</Text>
+            <Text style={styles.ticketText}>Tickets</Text>
+          </View>
+        ) : null}
+      </View>
+    </TouchableOpacity>
   );
 };
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
+const CARD_BG = 'rgba(30, 45, 30, 0.82)';   // dark forest green, semi-transparent
+const COPPER = '#D4946B';
 const GOLD = '#C9A84C';
-const GOLD_LIGHT = '#E4C97A';
-const GOLD_DIM = '#7A6030';
-const BLACK_DEEP = '#0A0A0A';
-const BLACK_CARD = '#111111';
-const BLACK_INNER = '#161616';
+const WHITE = '#F0EDE8';
+const MUTED = '#A09880';
 
 const styles = StyleSheet.create({
   card: {
-    width: '100%',
-    borderBottomWidth: 1.5,
-    borderColor: GOLD,
-    backgroundColor: BLACK_CARD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: CARD_BG,
+    borderRadius: 12,
+    marginBottom: 12,
     overflow: 'hidden',
-    marginBottom: 16,
+    minHeight: 100,
     ...Platform.select({
       ios: {
-        shadowColor: GOLD,
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 6,
         shadowOpacity: 0.35,
       },
-      android: { elevation: 8 },
+      android: { elevation: 4 },
     }),
   },
-  flyer: {
-    width: '100%',
-    height: 420,
-    backgroundColor: BLACK_DEEP,
+  thumbContainer: {
+    width: 100,
+    height: 100,
+    flexShrink: 0,
   },
-  body: {
-    padding: 18,
-    backgroundColor: BLACK_INNER,
+  thumb: {
+    width: 100,
+    height: 100,
   },
-  artistName: {
-    color: GOLD_LIGHT,
-    fontSize: 26,
+  thumbPlaceholder: {
+    backgroundColor: '#1a2a1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbPlaceholderText: {
+    color: GOLD,
+    fontSize: 36,
     fontWeight: '800',
-    textAlign: 'center',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    textShadowColor: GOLD,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
   },
-  supportText: {
-    color: '#A89060',
+  textBody: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    justifyContent: 'center',
+  },
+  eventName: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+    letterSpacing: 0.2,
+  },
+  venueLine: {
+    color: MUTED,
     fontSize: 13,
-    textAlign: 'center',
+    marginBottom: 1,
+  },
+  cityLine: {
+    color: MUTED,
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  genreLabel: {
+    color: COPPER,
+    fontSize: 12,
     fontStyle: 'italic',
-    marginTop: 4,
-    letterSpacing: 0.5,
+    fontWeight: '500',
+    marginBottom: 2,
   },
-  divider: {
-    height: 1,
-    backgroundColor: GOLD_DIM,
-    marginVertical: 14,
-    opacity: 0.6,
+  descLine: {
+    color: MUTED,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
-  dateText: {
-    color: GOLD_LIGHT,
-    fontSize: 15,
+  rightCol: {
+    paddingRight: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minWidth: 64,
+  },
+  countdownBadge: {
+    color: WHITE,
+    fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  venueText: {
-    color: '#B0956A',
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 4,
     letterSpacing: 0.3,
   },
-  doorsTimeText: {
-    color: '#8A7050',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
-    letterSpacing: 0.5,
+  countdownOpen: {
+    color: COPPER,
   },
-  countdownSection: {
+  ticketBadge: {
     alignItems: 'center',
   },
-  countdownTitle: {
-    color: GOLD,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  countdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeUnit: {
-    alignItems: 'center',
-    minWidth: 54,
-  },
-  timeValue: {
-    color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: 'bold',
-    lineHeight: 38,
-    textShadowColor: GOLD,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
-  },
-  timeLabel: {
-    color: GOLD_DIM,
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 1.5,
-    marginTop: 2,
-  },
-  colonSep: {
-    color: GOLD,
-    fontSize: 28,
-    fontWeight: 'bold',
-    paddingBottom: 12,
-    marginHorizontal: 2,
-  },
-  doorsOpenRow: {
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  doorsOpenText: {
-    color: GOLD_LIGHT,
+  ticketIcon: {
     fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: 2,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: 13,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  ticketButton: {
-    backgroundColor: GOLD,
-  },
-  ticketButtonText: {
-    color: BLACK_DEEP,
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  fbButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: GOLD_DIM,
-  },
-  fbButtonText: {
-    color: GOLD,
-    fontSize: 14,
-    fontWeight: '600',
+  ticketText: {
+    color: MUTED,
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
     letterSpacing: 0.3,
   },
 });
