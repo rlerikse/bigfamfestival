@@ -173,7 +173,7 @@ const ForecastAndClock: React.FC = () => {
         <Text style={styles.timeText}>{hour12}:{minutes} {ampm}</Text>
       </View>
       <View style={styles.gatesStatusRow}>
-        <Text style={styles.gatesStatusText}>{isGatesOpen ? 'GATES OPEN' : 'GATES CLOSED'}</Text>
+        <Text style={styles.gatesStatusText}>{isGatesOpen ? 'DOORS OPEN' : 'DOORS CLOSED'}</Text>
       </View>
     </View>
   );
@@ -243,7 +243,7 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
           <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
         </View>
         <View style={[styles.gatesStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
-          <Text style={styles.gatesStatusText}>UNTIL GATES OPEN</Text>
+          <Text style={styles.gatesStatusText}>UNTIL DOORS OPEN</Text>
         </View>
         {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
           <View style={[styles.forecastRow, styles.forecastPadding]}>

@@ -95,6 +95,7 @@ const UpcomingShowBlock: React.FC = () => {
           source={require('../assets/images/josh-teed-flyer.jpg')}
           style={styles.flyer}
           resizeMode="cover"
+          onError={(e) => console.warn('Flyer image load error:', e.nativeEvent.error)}
           accessibilityLabel="Josh Teed — The Crofoot Pontiac flyer"
         />
 
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
   },
   flyer: {
     width: '100%',
-    aspectRatio: 16 / 9,
+    height: 200,
     backgroundColor: BLACK_DEEP,
   },
   body: {
