@@ -7,7 +7,7 @@ import { useCountdown } from '../hooks/useCountdown';
 /**
  * Countdown component: Shows countdown until target date. After countdown finishes
  * it displays local festival time (America/Detroit) plus current weather and a
- * compact always-visible 5-day forecast (Thu–Mon) for Brooklyn, MI using Open‑Meteo.
+ * compact always-visible 5-day forecast (Thu–Mon) for Pontiac, MI using Open‑Meteo.
  */
 interface CountdownProps {
   targetDate: Date;
@@ -127,7 +127,7 @@ const ForecastAndClock: React.FC = () => {
   const weather = useWeather();
   const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
   const pieces: string[] = [];
-  pieces.push('Brooklyn, MI');
+  pieces.push('Pontiac, MI');
   if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
   if (weatherEmoji) pieces.push(weatherEmoji);
 
@@ -196,7 +196,7 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
 
   const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
   const pieces: string[] = [];
-  pieces.push('Brooklyn, MI');
+  pieces.push('Pontiac, MI');
   if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
   if (weatherEmoji) pieces.push(weatherEmoji);
 

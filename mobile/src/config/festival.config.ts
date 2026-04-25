@@ -109,7 +109,7 @@ const defaultConfig: FestivalConfig = {
     { id: '2026-04-25', date: '2026-04-25', dayLabel: 'Apr 25', dayAbbrev: 'SAT', staffOnly: false },
   ],
   location: {
-    name: 'Brooklyn, MI',
+    name: 'Pontiac, MI',
     latitude: 42.1059,
     longitude: -84.2486,
     timezone: 'America/Detroit',
