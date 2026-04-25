@@ -105,7 +105,6 @@ const UpcomingEventsList: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: 12,
   },
   sectionHeader: {
     color: '#C9A84C',
