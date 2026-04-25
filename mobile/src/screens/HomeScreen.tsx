@@ -16,7 +16,7 @@ import { RootStackParamList } from '../navigation';
 import { Alert } from 'react-native';
 import Countdown from '../components/Countdown';
 import LiveUpcomingEvents from '../components/LiveUpcomingEvents';
-import UpcomingShowBlock from '../components/UpcomingShowBlock';
+import UpcomingEventsList from '../components/UpcomingEventsList';
 import EventDetailsModal from '../components/EventDetailsModal';
 import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
@@ -155,7 +155,7 @@ const HomeScreen = () => {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 120 }}
           >
-            <UpcomingShowBlock />
+            <UpcomingEventsList />
             <LiveUpcomingEvents onEventPress={openEventModal} />
           </ScrollView>
          </View>
