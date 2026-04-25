@@ -82,7 +82,7 @@ const UpcomingShowBlock: React.FC = () => {
         <Image
           source={require('../assets/images/josh-teed-flyer.jpg')}
           style={styles.flyer}
-          resizeMode="cover"
+          resizeMode="contain"
           onError={(e) => console.warn('Flyer image load error:', e.nativeEvent.error)}
           accessibilityLabel="Josh Teed — The Crofoot Pontiac flyer"
         />
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   flyer: {
     width: '100%',
-    height: 200,
+    height: 420,
     backgroundColor: BLACK_DEEP,
   },
   body: {
