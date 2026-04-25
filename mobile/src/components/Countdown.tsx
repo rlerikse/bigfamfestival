@@ -131,11 +131,11 @@ const ForecastAndClock: React.FC = () => {
   if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
   if (weatherEmoji) pieces.push(weatherEmoji);
 
-  // Check if gates are open: between 10am and 6:15am next day
+  // Check if doors are open: between 10am and 6:15am next day
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinutes = now.getMinutes();
-  const isGatesOpen = (currentHour > 10 || (currentHour === 10 && currentMinutes >= 0)) ||
+  const isDoorsOpen = (currentHour > 10 || (currentHour === 10 && currentMinutes >= 0)) ||
                       (currentHour < 6 || (currentHour === 6 && currentMinutes < 15));
 
   return (
@@ -172,8 +172,8 @@ const ForecastAndClock: React.FC = () => {
       <View style={styles.clockRow}>
         <Text style={styles.timeText}>{hour12}:{minutes} {ampm}</Text>
       </View>
-      <View style={styles.gatesStatusRow}>
-        <Text style={styles.gatesStatusText}>{isGatesOpen ? 'DOORS OPEN' : 'DOORS CLOSED'}</Text>
+      <View style={styles.doorsStatusRow}>
+        <Text style={styles.doorsStatusText}>{isDoorsOpen ? 'DOORS OPEN' : 'DOORS CLOSED'}</Text>
       </View>
     </View>
   );
@@ -191,8 +191,8 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
         <View style={styles.clockRow}>
           <Text style={styles.timeText}>DOORS OPEN</Text>
         </View>
-        <View style={[styles.gatesStatusRow, { paddingTop: 6 }]}>
-          <Text style={styles.gatesStatusText}>8:00 PM</Text>
+        <View style={[styles.doorsStatusRow, { paddingTop: 6 }]}>
+          <Text style={styles.doorsStatusText}>8:00 PM</Text>
         </View>
       </View>
     );
@@ -210,8 +210,8 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
         <Separator />
         <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
       </View>
-      <View style={[styles.gatesStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
-        <Text style={styles.gatesStatusText}>UNTIL DOORS OPEN</Text>
+      <View style={[styles.doorsStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
+        <Text style={styles.doorsStatusText}>UNTIL DOORS OPEN</Text>
       </View>
     </View>
   );
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
   },
-  gatesImage: {
+  doorsImage: {
     width: 350,
     height: 150,
     resizeMode: 'contain',
@@ -353,12 +353,12 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 0, // Requested bottom padding under forecast
   },
-  gatesStatusRow: {
+  doorsStatusRow: {
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
-  gatesStatusText: {
+  doorsStatusText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
