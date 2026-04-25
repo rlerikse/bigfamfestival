@@ -12,8 +12,14 @@ import TopNavBar from '../components/TopNavBar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
+import { Alert } from 'react-native';
 import Countdown from '../components/Countdown';
-import ShowModeHome from '../components/ShowModeHome';
+import LiveUpcomingEvents from '../components/LiveUpcomingEvents';
+import EventDetailsModal from '../components/EventDetailsModal';
+import { ScheduleEvent } from '../types/event';
+import { useAuth } from '../contexts/AuthContext';
+import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
+import { isLoggedInUser } from '../utils/userUtils';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -21,13 +27,79 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'M
 const DOORS_DATE = new Date('2026-04-25T20:00:00-04:00');
 
 const HomeScreen = () => {
-  const { isDark, isPerformanceMode, theme } = useTheme();
+  const { theme, isDark, isPerformanceMode } = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { user } = useAuth();
+  const [selectedEvent, setSelectedEvent] = React.useState<ScheduleEvent | null>(null);
+  const [isModalVisible, setIsModalVisible] = React.useState(false);
+  const [userSchedule, setUserSchedule] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user || !isLoggedInUser(user)) return;
+      try {
+        const schedule = await getUserSchedule(user.id);
+        if (!mounted) return;
+        const map = schedule.reduce<Record<string, boolean>>((acc, ev) => { acc[ev.id] = true; return acc; }, {});
+        setUserSchedule(map);
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user]);
+
+  const openEventModal = (item: ScheduleEvent) => {
+    setSelectedEvent(item);
+    setIsModalVisible(true);
+  };
+
+  const closeEventModal = () => {
+    setIsModalVisible(false);
+    setSelectedEvent(null);
+  };
+
+  const handleToggleSchedule = async (ev: ScheduleEvent) => {
+    if (!user || !isLoggedInUser(user) || user.id === 'guest-user') {
+      Alert.alert(
+        'Login Required',
+        'Please log in to manage your schedule.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Login', onPress: () => navigation.navigate('Auth') },
+        ]
+      );
+      return;
+    }
+    const id = ev.id;
+    const isIn = !!userSchedule[id];
+    setUserSchedule(prev => {
+      const copy = { ...prev };
+      if (isIn) delete copy[id]; else copy[id] = true;
+      return copy;
+    });
+    try {
+      if (isIn) await removeFromSchedule(user.id, id); else await addToSchedule(user.id, id);
+    } catch (e) {
+      setUserSchedule(prev => {
+        const copy = { ...prev };
+        if (isIn) copy[id] = true; else delete copy[id];
+        return copy;
+      });
+      Alert.alert('Error', 'Failed to update schedule');
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' }}>
+      {/* Day/Night Cycle Background */}
       {!isPerformanceMode && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
+        <View style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 0,
+        }}>
           <DayNightCycle height={Dimensions.get('window').height} />
         </View>
       )}
@@ -39,24 +111,33 @@ const HomeScreen = () => {
         whiteIcons={true}
       />
 
+      {/* Main content — flex:1 preserves tab bar */}
       <ScrollView
         style={{ flex: 1, zIndex: 1 }}
         contentContainerStyle={{ paddingTop: 75, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Existing countdown component — styled like festival "GATES OPEN" */}
-        <View style={{ paddingHorizontal: 20 }}>
+        {/* Festival-style countdown — "UNTIL DOORS OPEN" */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
+          <View style={{ height: 4 }} />
+          <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
+          <View style={{ height: 12 }} />
           <Countdown targetDate={DOORS_DATE} />
+          <View style={{ height: 12 }} />
+          <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
         </View>
 
-        {/* Divider */}
-        <View style={{ height: 12 }} />
-        <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35 }} />
-        <View style={{ height: 12 }} />
-
-        {/* Stage section with live now playing + lineup */}
-        <ShowModeHome />
+        {/* Artist cards — festival mode (EventCard with stage logos) */}
+        <LiveUpcomingEvents onEventPress={openEventModal} />
       </ScrollView>
+
+      <EventDetailsModal
+        isVisible={isModalVisible}
+        onClose={closeEventModal}
+        event={selectedEvent}
+        isInSchedule={!!selectedEvent && !!userSchedule[selectedEvent.id]}
+        onToggleSchedule={handleToggleSchedule}
+      />
     </SafeAreaView>
   );
 };
