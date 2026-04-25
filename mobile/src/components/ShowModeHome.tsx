@@ -96,7 +96,7 @@ const ShowModeHome: React.FC = () => {
       <Text style={styles.venueName}>{VENUE}</Text>
       <Text style={styles.venueCity}>Pontiac, MI</Text>
 
-      {/* Now Playing / Countdown */}
+      {/* Now Playing / Up Next — countdown handled by Countdown component above */}
       {showEnded ? (
         <View style={styles.statusBlock}>
           <Text style={styles.statusLabel}>SHOW ENDED</Text>
@@ -117,31 +117,6 @@ const ShowModeHome: React.FC = () => {
               Up next: {nextSet.artist} at {formatTime(nextSet.start)}
             </Text>
           )}
-        </View>
-      ) : !showStarted ? (
-        <View style={styles.statusBlock}>
-          <Text style={styles.countdownLabel}>UNTIL DOORS</Text>
-          <View style={styles.countdownRow}>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{pad(countdownD)}</Text>
-              <Text style={styles.timeLabel}>DAYS</Text>
-            </View>
-            <Text style={styles.colon}>:</Text>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{pad(countdownH)}</Text>
-              <Text style={styles.timeLabel}>HRS</Text>
-            </View>
-            <Text style={styles.colon}>:</Text>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{pad(countdownM)}</Text>
-              <Text style={styles.timeLabel}>MIN</Text>
-            </View>
-            <Text style={styles.colon}>:</Text>
-            <View style={styles.timeBlock}>
-              <Text style={styles.timeValue}>{pad(countdownS)}</Text>
-              <Text style={styles.timeLabel}>SEC</Text>
-            </View>
-          </View>
         </View>
       ) : null}
 
