@@ -3,7 +3,7 @@
  * Dark/gold aesthetic matching the Big Fam flyer.
  * Shows: flyer image, artist, support, venue, countdown to doors, ticket + FB buttons.
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -66,15 +66,6 @@ const TimeUnit: React.FC<TimeUnitProps> = ({ value, label }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const UpcomingShowBlock: React.FC = () => {
-  const [timeLeft, setTimeLeft] = useState<TimeLeft>(getTimeLeft(SHOW_CONFIG.doorsDate));
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setTimeLeft(getTimeLeft(SHOW_CONFIG.doorsDate));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
-
   const handleTickets = useCallback(() => {
     Linking.openURL(SHOW_CONFIG.ticketUrl).catch(() => { /* ignore */ });
   }, []);
@@ -82,15 +73,12 @@ const UpcomingShowBlock: React.FC = () => {
   const handleFacebook = useCallback(() => {
     Linking.openURL(SHOW_CONFIG.facebookUrl).catch(() => { /* ignore */ });
   }, []);
-
-  const doorsOpen = timeLeft.total <= 0;
-
   return (
     <View style={styles.container}>
       {/* Gold border card */}
       <View style={styles.card}>
 
-        {/* Flyer image — full width, aspect ratio preserved */}
+        {/* Flyer image — constrained height, no full-screen stretch */}
         <Image
           source={require('../assets/images/josh-teed-flyer.jpg')}
           style={styles.flyer}
@@ -111,29 +99,7 @@ const UpcomingShowBlock: React.FC = () => {
           {/* Date / venue */}
           <Text style={styles.dateText}>Saturday, April 25, 2026</Text>
           <Text style={styles.venueText}>The Crofoot / Pike Room — Pontiac, MI</Text>
-
-          <GoldDivider />
-
-          {/* Countdown */}
-          {doorsOpen ? (
-            <View style={styles.doorsOpenRow}>
-              <Text style={styles.doorsOpenText}>🚪 DOORS OPEN</Text>
-            </View>
-          ) : (
-            <View style={styles.countdownSection}>
-              <Text style={styles.countdownTitle}>DOORS OPEN IN</Text>
-              <View style={styles.countdownRow}>
-                <TimeUnit value={timeLeft.days} label="DAYS" />
-                <Text style={styles.colonSep}>:</Text>
-                <TimeUnit value={timeLeft.hours} label="HRS" />
-                <Text style={styles.colonSep}>:</Text>
-                <TimeUnit value={timeLeft.minutes} label="MIN" />
-                <Text style={styles.colonSep}>:</Text>
-                <TimeUnit value={timeLeft.seconds} label="SEC" />
-              </View>
-              <Text style={styles.doorsTimeText}>Doors 8:00 PM EST</Text>
-            </View>
-          )}
+          <Text style={styles.doorsTimeText}>Doors 8:00 PM EST</Text>
 
           <GoldDivider />
 
