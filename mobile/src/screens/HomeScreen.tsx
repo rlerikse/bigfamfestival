@@ -133,14 +133,11 @@ const HomeScreen = () => {
          
          {/* Content container with higher z-index */}
          <View style={{ 
+           flex: 1,
            justifyContent: 'flex-start', 
            alignItems: 'stretch', 
            zIndex: 1,
            backgroundColor: 'transparent',
-           paddingHorizontal: 5,
-           paddingBottom: 5,
-           borderRadius: 16,
-           marginHorizontal: 20,
            paddingTop: 75, // TopNavBar height (55) + extra padding (20)
          }}>
           {/* Copper divider above timer / clock */}
@@ -156,7 +153,7 @@ const HomeScreen = () => {
 
           <ScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 120 }}
           >
             <UpcomingShowBlock />
             <LiveUpcomingEvents onEventPress={openEventModal} />

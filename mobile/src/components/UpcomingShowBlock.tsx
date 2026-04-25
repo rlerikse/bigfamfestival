@@ -175,13 +175,16 @@ const BLACK_INNER = '#161616';
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 12,
     width: '100%',
   },
   card: {
-    borderRadius: 12,
-    borderWidth: 1.5,
+    borderRadius: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderTopWidth: 0,
+    borderBottomWidth: 1.5,
     borderColor: GOLD,
     backgroundColor: BLACK_CARD,
     overflow: 'hidden',
