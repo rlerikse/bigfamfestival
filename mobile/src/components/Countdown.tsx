@@ -181,93 +181,41 @@ const ForecastAndClock: React.FC = () => {
 
 const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
   const timeLeft = useCountdown(targetDate);
-  const weather = useWeather();
   const now = new Date();
-  const gatesOpenDate = new Date('2025-09-26T10:00:00-04:00'); // Sept 26 10am EDT
-  const shouldShowCountdown = timeLeft !== null || now < gatesOpenDate;
+  const hasTimeLeft = timeLeft !== null && (timeLeft.days > 0 || timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0);
 
-  const shortLabel = (lbl: string) => lbl.slice(0, 3);
-  const forecastDays = (weather.daily || [])
-    .filter(d => ['Thu', 'Fri', 'Sat', 'Sun', 'Mon'].includes(shortLabel(d.dayLabel)))
-    .sort((a, b) => {
-      const order = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
-      return order.indexOf(shortLabel(a.dayLabel)) - order.indexOf(shortLabel(b.dayLabel));
-    });
-
-  const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
-  const pieces: string[] = [];
-  pieces.push('Pontiac, MI');
-  if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
-  if (weatherEmoji) pieces.push(weatherEmoji);
-
-  if (shouldShowCountdown) {
-    // Still counting down or before gates open
+  if (!hasTimeLeft) {
+    // Doors are open — show static message
     return (
       <View style={styles.countdownWrapper}>
-        {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
-          <View style={[styles.forecastRow, styles.forecastPadding]}>
-            {forecastDays.map(d => {
-              const icon = weatherCodeToEmoji(d.code) || '';
-              const hi = d.tMax != null ? Math.round(d.tMax) : '-';
-              const lo = d.tMin != null ? Math.round(d.tMin) : '-';
-              return (
-                <View key={d.date} style={styles.forecastDay}>
-                  <Text style={styles.forecastIcon}>{icon}</Text>
-                  <Text style={styles.forecastTemps}>{hi}°/{lo}°</Text>
-                  <Text style={styles.forecastDayLabel}>{shortLabel(d.dayLabel)}</Text>
-                </View>
-              );
-            })}
-          </View>
-        )} */}
-        {/* <Image source={require('../assets/images/gates-open-in.png')} style={styles.gatesImage} /> */}
-        <View style={{ minHeight: 20, marginTop: -20, marginBottom: 3, alignItems: 'flex-start', paddingTop: 15 }}>
-          {weather.isLoading ? (
-            <View style={styles.inlineRow}>
-              <ActivityIndicator size="small" color="#B87333" />
-              <Text style={styles.metaText}>  Loading weather...</Text>
-            </View>
-          ) : weather.error ? (
-            <Text style={styles.metaText}>{weather.error}</Text>
-          ) : (
-            <Text style={styles.metaText}>{pieces.join(' \u2022 ')}</Text>
-          )}
+        <View style={styles.clockRow}>
+          <Text style={styles.timeText}>DOORS OPEN</Text>
         </View>
-        <View style={styles.countdownRow}>
-          <TimeBlock label="DAYS" value={timeLeft?.days ?? 0} />
-          <Separator />
-          <TimeBlock label="HRS" value={timeLeft?.hours ?? 0} />
-          <Separator />
-          <TimeBlock label="MIN" value={timeLeft?.minutes ?? 0} />
-          <Separator />
-          <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
+        <View style={[styles.gatesStatusRow, { paddingTop: 6 }]}>
+          <Text style={styles.gatesStatusText}>8:00 PM</Text>
         </View>
-        <View style={[styles.gatesStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
-          <Text style={styles.gatesStatusText}>UNTIL DOORS</Text>
-        </View>
-        {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
-          <View style={[styles.forecastRow, styles.forecastPadding]}>
-            {forecastDays.map(d => {
-              const icon = weatherCodeToEmoji(d.code) || '';
-              const hi = d.tMax != null ? Math.round(d.tMax) : '-';
-              const lo = d.tMin != null ? Math.round(d.tMin) : '-';
-              return (
-                <View key={d.date} style={styles.forecastDay}>
-                  <Text style={styles.forecastIcon}>{icon}</Text>
-                  <Text style={styles.forecastTemps}>{hi}°/{lo}°</Text>
-                  <Text style={styles.forecastDayLabel}>{shortLabel(d.dayLabel)}</Text>
-                </View>
-              );
-            })}
-          </View>
-        )} */}
       </View>
     );
   }
-  // Countdown finished and after gates open => show festival info
-  return <ForecastAndClock />;
-};
 
+  // Still counting down
+  return (
+    <View style={styles.countdownWrapper}>
+      <View style={styles.countdownRow}>
+        <TimeBlock label="DAYS" value={timeLeft?.days ?? 0} />
+        <Separator />
+        <TimeBlock label="HRS" value={timeLeft?.hours ?? 0} />
+        <Separator />
+        <TimeBlock label="MIN" value={timeLeft?.minutes ?? 0} />
+        <Separator />
+        <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
+      </View>
+      <View style={[styles.gatesStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
+        <Text style={styles.gatesStatusText}>UNTIL DOORS OPEN</Text>
+      </View>
+    </View>
+  );
+};
 interface TimeBlockProps { label: string; value: number; }
 const TimeBlock: React.FC<TimeBlockProps> = ({ label, value }) => (
   <View style={styles.timeBlock}>
