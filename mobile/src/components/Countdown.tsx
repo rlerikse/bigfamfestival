@@ -181,13 +181,26 @@ const ForecastAndClock: React.FC = () => {
 
 const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
   const timeLeft = useCountdown(targetDate);
-  const now = new Date();
+  const weather = useWeather();
   const hasTimeLeft = timeLeft !== null && (timeLeft.days > 0 || timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0);
 
+  const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
+  const weatherPieces: string[] = ['Pontiac, MI'];
+  if (weather.temperature != null) weatherPieces.push(`${Math.round(weather.temperature)}°F`);
+  if (weatherEmoji) weatherPieces.push(weatherEmoji);
+
+  const weatherLine = (
+    <View style={{ minHeight: 20, marginBottom: 8, alignItems: 'center' }}>
+      {weather.isLoading ? null : weather.error ? null : (
+        <Text style={styles.metaText}>{weatherPieces.join(' \u2022 ')}</Text>
+      )}
+    </View>
+  );
+
   if (!hasTimeLeft) {
-    // Doors are open — show static message
     return (
       <View style={styles.countdownWrapper}>
+        {weatherLine}
         <View style={styles.clockRow}>
           <Text style={styles.timeText}>DOORS OPEN</Text>
         </View>
@@ -198,9 +211,9 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
     );
   }
 
-  // Still counting down
   return (
     <View style={styles.countdownWrapper}>
+      {weatherLine}
       <View style={styles.countdownRow}>
         <TimeBlock label="DAYS" value={timeLeft?.days ?? 0} />
         <Separator />
