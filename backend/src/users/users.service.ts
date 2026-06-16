@@ -105,15 +105,15 @@ export class UsersService {
   /**
    * Update a user
    */
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findById(id);
+  async update(id: string, updateUserDto: UpdateUserDto, email?: string): Promise<User> {
+    const user = await this.findById(id, email);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    // Convert DTO to plain object for Firestore
-    const updateData = { ...updateUserDto };
+    // Convert DTO to plain object for Firestore, add timestamp
+    const updateData = { ...updateUserDto, updatedAt: new Date() };
 
     await this.firestoreService.update<User>(
       this.collection,
