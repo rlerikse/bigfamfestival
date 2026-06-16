@@ -1,7 +1,7 @@
 import { api } from './api';
 import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import { File } from 'expo-file-system';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
 import { storage } from '../config/firebase';
@@ -64,20 +64,16 @@ export const uploadProfilePicture = async (
       throw new Error('Authentication token not found');
     }
 
-    // Read image as base64 via expo-file-system (handles both file:// and content:// URIs on Android)
-    const base64 = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: 'base64' as any,
-    });
+    // Read image bytes via expo-file-system's new File API.
+    // Replaces the deprecated FileSystem.readAsStringAsync (removed from the main
+    // entrypoint in expo-file-system v19). File.bytes() returns a Uint8Array
+    // directly, so we no longer need the base64 -> atob -> manual byte-copy dance.
+    const file = new File(imageUri);
+    const bytes = await file.bytes();
+
     const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png'
       : imageUri.toLowerCase().endsWith('.webp') ? 'image/webp'
       : 'image/jpeg';
-
-    // Convert base64 to Uint8Array for Firebase uploadBytes
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
 
     // Validate size (5 MB max)
     if (bytes.length > MAX_AVATAR_SIZE_BYTES) {
