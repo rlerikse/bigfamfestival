@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Artists collection (public read)
+    match /artists/{artistId} {
+      allow read: if true;
+
+      match /genres/{genreId} {
+        allow read: if true;
+      }
+    }
+
+    // Genres collection (public read)
+    match /genres/{document} {
+      allow read: if true;
+    }
+
+    // Notifications (public read, user-specific write)
+    match /notifications/{document=**} {
+      allow read: if true;
+    }
+
+    // Config collection (public read for festival state etc.)
+    match /config/{document} {
+      allow read: if true;
+    }
+
+    // Default: authenticated users can read/write everything else
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
