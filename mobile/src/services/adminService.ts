@@ -3,7 +3,7 @@
  * All calls require admin role (enforced server-side via RBAC)
  */
 import { api } from './api';
-import { getIdToken } from './firebaseAuthService';
+import { getIdToken, getCurrentUser } from './firebaseAuthService';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -178,7 +178,17 @@ export const sendAdminNotification = async (params: {
   targetGroup?: string;
 }): Promise<void> => {
   const headers = await authHeaders();
-  await api.post('/notifications/send', params, { headers });
+  const user = getCurrentUser();
+  const payload: Record<string, unknown> = {
+    title: params.title,
+    body: params.body,
+    sentBy: user?.uid ?? 'admin',
+    priority: 'normal' as const,
+  };
+  if (params.targetGroup) {
+    payload.receiverGroups = [params.targetGroup];
+  }
+  await api.post('/notifications', payload, { headers });
 };
 
 // ── Schedule (admin bypass) ────────────────────────────────────────────────
