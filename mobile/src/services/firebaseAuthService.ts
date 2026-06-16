@@ -13,13 +13,18 @@ import { appleAuth } from '@invertase/react-native-apple-authentication';
 import { Platform } from 'react-native';
 
 // Configure Google Sign-In
-// NOTE: Beta/alpha builds use a different signing key. The SHA-256 fingerprint
-// must be registered in Firebase Console > Project Settings > Android apps
-// for Google Sign-In to work on beta builds.
+// IMPORTANT: webClientId MUST be the "Web application" OAuth 2.0 client ID
+// from Google Cloud Console (not the Android or iOS client ID).
+// On Android, the app's SHA-256 signing fingerprint must be registered in
+// Firebase Console > Project Settings > Android apps for each build variant.
 try {
   GoogleSignin.configure({
+    // Web Application OAuth client ID (same Firebase project)
     webClientId: '292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com',
-    iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
+    // iOS client ID from GoogleService-Info.plist; only needed if not auto-detected
+    ...(Platform.OS === 'ios' && {
+      iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
+    }),
   });
 } catch (e) {
   console.warn('[FirebaseAuth] Google Sign-In configure failed:', e);
@@ -216,17 +221,45 @@ export { auth };
 
 /**
  * Sign in with Google
+ *
+ * Uses @react-native-google-signin/google-signin v16+ API.
+ * The webClientId must match the OAuth 2.0 "Web application" client ID in
+ * Google Cloud Console (same project as Firebase). On Android, the app's
+ * signing certificate SHA-256 fingerprint must be registered in Firebase
+ * Console > Project Settings > Android apps.
  */
 export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredential> {
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     // Clear cached account selection so the account picker always appears
     await GoogleSignin.signOut();
+
     const signInResult = await GoogleSignin.signIn();
-    const idToken = signInResult.data?.idToken;
-    if (!idToken) {
-      throw new Error('Google Sign-In failed: no ID token returned.');
+
+    // v13+: signIn() returns { type, data } — handle cancellation
+    if ('type' in signInResult && signInResult.type === 'cancelled') {
+      throw new Error('Google Sign-In was cancelled.');
     }
+
+    // Extract ID token — different access paths for API versions
+    const idToken = signInResult.data?.idToken ?? (signInResult as any)?.idToken;
+
+    if (!idToken) {
+      // Common causes:
+      // - webClientId mismatch (must be the Web client ID, not Android/iOS)
+      // - SHA fingerprint not registered for this build variant
+      // - OAuth consent screen not configured
+      console.error(
+        '[FirebaseAuth] Google Sign-In: no idToken. Check webClientId matches ' +
+        'the Web Application OAuth client in Google Cloud Console, and that ' +
+        'the SHA-256 fingerprint for this build is registered in Firebase.',
+      );
+      throw new Error(
+        'Google Sign-In failed: Could not get authentication token. ' +
+        'Please try again or use email login.',
+      );
+    }
+
     const googleCredential = auth.GoogleAuthProvider.credential(idToken);
     return await auth().signInWithCredential(googleCredential);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -240,6 +273,17 @@ export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredenti
     }
     if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
       throw new Error('Google Play Services is not available on this device.');
+    }
+    // Network failure during token exchange
+    if (error.code === '10' || error.code === 'DEVELOPER_ERROR') {
+      console.error(
+        '[FirebaseAuth] DEVELOPER_ERROR: SHA fingerprint or webClientId mismatch. ' +
+        'Ensure the OAuth web client ID is used (not Android client ID) and ' +
+        'all build-variant SHA-256 fingerprints are registered in Firebase Console.',
+      );
+      throw new Error(
+        'Google Sign-In configuration error. Please contact support if this persists.',
+      );
     }
     throw new Error(getErrorMessage(error));
   }
