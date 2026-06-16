@@ -84,8 +84,10 @@ export const uploadProfilePicture = async (
       throw new Error('Image is too large. Please choose a photo under 5 MB.');
     }
 
-    // Upload to Firebase Storage: profile-pictures/<userId>.jpg
-    const storageRef = ref(storage, `profile-pictures/${userId}.jpg`);
+    // Upload to Firebase Storage: profile-pictures/<userId>/avatar.jpg
+    // Path must match storage.rules pattern: profile-pictures/{userId}/{allPaths=**}
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const storageRef = ref(storage, `profile-pictures/${userId}/avatar.${ext}`);
     await uploadBytes(storageRef, bytes, { contentType: mimeType });
 
     // Get the public download URL
