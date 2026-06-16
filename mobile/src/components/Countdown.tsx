@@ -252,6 +252,7 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
       </View>
     </View>
   );
+};
 
 interface TimeBlockProps { label: string; value: number; }
 const TimeBlock: React.FC<TimeBlockProps> = ({ label, value }) => (
