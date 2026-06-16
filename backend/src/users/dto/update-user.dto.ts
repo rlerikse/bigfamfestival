@@ -48,7 +48,10 @@ export class UpdateUserDto {
     description: 'The profile picture URL of the user',
     required: false,
   })
-  @IsUrl()
+  @IsUrl(
+    { require_protocol: true, require_valid_protocol: true },
+    { message: 'profilePictureUrl must be a valid URL' },
+  )
   @IsOptional()
   profilePictureUrl?: string;
 

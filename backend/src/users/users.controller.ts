@@ -67,7 +67,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiResponse({ status: 200, description: 'Updates the user profile' })
   async updateProfile(@Request() req, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(req.user.id, updateUserDto);
+    return this.usersService.update(req.user.id, updateUserDto, req.user.email);
   }
 
   @Put('push-token')
