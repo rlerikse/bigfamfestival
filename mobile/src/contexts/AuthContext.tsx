@@ -233,19 +233,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
       } catch (err: any) {
         // Only create a new profile if the backend returned 404 (profile doesn't exist yet)
-        // Re-throw on network errors, 500s, or any other failure to avoid duplicate creation
         const status = err?.statusCode ?? err?.response?.status;
         const isNotFound = status === 404 || err?.message?.includes('not found');
         if (!isNotFound) {
-          throw err;
+          throw new Error(
+            err?.message || 'Sign-in succeeded but we could not load your profile. Please try again.'
+          );
         }
-        const profileData = await createUserProfile(token, {
-          name: fbUser.displayName || 'User',
-          email: fbUser.email || '',
-          role: UserRole.ATTENDEE,
-          profilePictureUrl: fbUser.photoURL || undefined,
-        });
-        setUser(profileData);
+        try {
+          const profileData = await createUserProfile(token, {
+            name: fbUser.displayName || 'User',
+            email: fbUser.email || '',
+            role: UserRole.ATTENDEE,
+            profilePictureUrl: fbUser.photoURL || undefined,
+          });
+          setUser(profileData);
+        } catch (createErr: any) {
+          throw new Error(
+            createErr?.message || 'Account created but profile setup failed. Please try again.'
+          );
+        }
       }
     }
   };

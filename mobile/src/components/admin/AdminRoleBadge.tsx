@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 interface AdminRoleBadgeProps {
-  role: string;
+  role?: string;
   small?: boolean;
 }
 
@@ -18,11 +18,12 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export const AdminRoleBadge: React.FC<AdminRoleBadgeProps> = ({ role, small }) => {
-  const colors = ROLE_COLORS[role] ?? { bg: '#6b7280', text: '#fff' };
+  const normalizedRole = role ?? 'attendee';
+  const colors = ROLE_COLORS[normalizedRole] ?? { bg: '#6b7280', text: '#fff' };
   return (
     <View style={[styles.badge, { backgroundColor: colors.bg }, small && styles.small]}>
       <Text style={[styles.text, { color: colors.text }, small && styles.smallText]}>
-        {role.toUpperCase()}
+        {normalizedRole.toUpperCase()}
       </Text>
     </View>
   );

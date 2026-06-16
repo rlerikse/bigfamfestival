@@ -28,6 +28,7 @@ const ProfileScreen = () => {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   // Sharing preferences - commented out for later implementation
@@ -40,6 +41,8 @@ const ProfileScreen = () => {
     if (isEditing) {
       // Save changes
       handleSaveProfile();
+    } else {
+      setSaveError(null);
     }
     setIsEditing(!isEditing);
   };
@@ -47,14 +50,12 @@ const ProfileScreen = () => {
   const handleSaveProfile = async () => {
     if (!user) return;
     
+    setSaveError(null);
     setIsLoading(true);
     try {
       const updatedData = {
         name,
         phone,
-        // Sharing preferences commented out
-        // shareMyCampsite,
-        // shareMyLocation,
       };
       
       await updateUserProfile(user.id, updatedData);
@@ -65,12 +66,18 @@ const ProfileScreen = () => {
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      const msg = error?.message || 'Could not update profile. Please try again.';
-      Alert.alert('Update Failed', msg);
+      // Show inline error so the user can see and retry without closing the form
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Could not update profile. Please check your connection and try again.';
+      setSaveError(msg);
+      // Keep editing state open so they can fix and retry
+      return;
     } finally {
       setIsLoading(false);
-      setIsEditing(false);
     }
+    setIsEditing(false);
   };
 
   const handleSelectProfileImage = async () => {
@@ -158,6 +165,12 @@ const ProfileScreen = () => {
 
         <View style={styles.infoContainer}>
           <View style={[styles.infoSection, { borderColor: theme.border, backgroundColor: theme.card }]}>
+            {saveError && (
+              <View style={[styles.errorBanner, { backgroundColor: `${theme.error || '#FF3B30'}15`, borderColor: `${theme.error || '#FF3B30'}40` }]}>
+                <Ionicons name="alert-circle" size={18} color={theme.error || '#FF3B30'} style={{ marginRight: 8 }} />
+                <Text style={[styles.errorBannerText, { color: theme.error || '#FF3B30' }]}>{saveError}</Text>
+              </View>
+            )}
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Information</Text>
               <TouchableOpacity
@@ -500,6 +513,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
