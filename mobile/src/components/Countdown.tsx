@@ -1,16 +1,20 @@
-// Commit: Fix malformed Countdown component, always show 5-day forecast without divider or toggle
-// /src/components/Countdown.tsx
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useCountdown } from '../hooks/useCountdown';
+import type { FestivalPhase } from '../hooks/useFestivalState';
 
 /**
- * Countdown component: Shows countdown until target date. After countdown finishes
- * it displays local festival time (America/Detroit) plus current weather and a
- * compact always-visible 5-day forecast (Thu–Mon) for Pontiac, MI using Open‑Meteo.
+ * Countdown component: Shows countdown until target date.
+ *
+ * Behaviour:
+ * - `upcoming`: show countdown digits + "UNTIL DOORS OPEN"
+ * - `live`:     show live clock + "DOORS OPEN" (same as before, now phase-driven)
+ * - `past`:     show neutral "LINEUP" heading so the app looks fine between festivals
  */
 interface CountdownProps {
   targetDate: Date;
+  /** Festival phase from useFestivalState. Defaults to time-based heuristic if omitted. */
+  festivalPhase?: FestivalPhase;
 }
 
 import { festivalConfig } from '../config/festival.config';
@@ -179,7 +183,7 @@ const ForecastAndClock: React.FC = () => {
   );
 };
 
-const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
+const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
   const timeLeft = useCountdown(targetDate);
   const weather = useWeather();
   const hasTimeLeft = timeLeft !== null && (timeLeft.days > 0 || timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0);
@@ -197,7 +201,27 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
     </View>
   );
 
-  if (!hasTimeLeft) {
+  // Phase-driven rendering:
+  // 1. If festivalPhase is provided, trust it as source of truth.
+  // 2. Otherwise fall back to time-based heuristic (hasTimeLeft).
+  const effectivePhase: FestivalPhase = festivalPhase ??
+    (hasTimeLeft ? 'upcoming' : 'live');
+
+  if (effectivePhase === 'past') {
+    return (
+      <View style={styles.countdownWrapper}>
+        {weatherLine}
+        <View style={styles.clockRow}>
+          <Text style={styles.timeText}>BIG FAM</Text>
+        </View>
+        <View style={[styles.doorsStatusRow, { paddingTop: 6 }]}>
+          <Text style={styles.doorsStatusText}>FESTIVAL</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (effectivePhase === 'live') {
     return (
       <View style={styles.countdownWrapper}>
         {weatherLine}
@@ -228,7 +252,7 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
       </View>
     </View>
   );
-};
+
 interface TimeBlockProps { label: string; value: number; }
 const TimeBlock: React.FC<TimeBlockProps> = ({ label, value }) => (
   <View style={styles.timeBlock}>
