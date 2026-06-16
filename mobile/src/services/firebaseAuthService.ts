@@ -32,16 +32,43 @@ try {
 
 // Error code to user-friendly message mapping
 const ERROR_MESSAGES: Record<string, string> = {
-  'auth/email-already-in-use': 'This email is already registered. Please login instead.',
+  // Email / password
+  'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
   'auth/invalid-email': 'Please enter a valid email address.',
-  'auth/operation-not-allowed': 'Email/password accounts are not enabled.',
-  'auth/weak-password': 'Password should be at least 6 characters.',
-  'auth/user-disabled': 'This account has been disabled.',
-  'auth/user-not-found': 'No account found with this email.',
-  'auth/wrong-password': 'Incorrect password. Please try again.',
-  'auth/invalid-credential': 'Invalid email or password.',
-  'auth/too-many-requests': 'Too many login attempts. Please try again later.',
-  'auth/network-request-failed': 'Network error. Please check your connection.',
+  'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Please contact support.',
+  'auth/weak-password': 'Password must be at least 6 characters.',
+  'auth/user-disabled': 'This account has been disabled. Please contact support.',
+  'auth/user-not-found': 'No account found with that email. Check the address or sign up.',
+  'auth/wrong-password': 'Incorrect password. Please try again or reset your password.',
+  'auth/invalid-credential': 'Incorrect email or password. Please try again.',
+  'auth/too-many-requests': 'Too many failed attempts. Please wait a few minutes before trying again.',
+  'auth/network-request-failed': 'Network error. Please check your connection and try again.',
+  // Account linking / SSO
+  'auth/account-exists-with-different-credential':
+    'An account already exists with that email using a different sign-in method. Try signing in with Google or use email/password.',
+  'auth/credential-already-in-use':
+    'This credential is already linked to another account.',
+  'auth/provider-already-linked':
+    'This sign-in method is already linked to your account.',
+  // Session
+  'auth/requires-recent-login':
+    'For security, please sign out and sign back in before making this change.',
+  'auth/session-cookie-expired':
+    'Your session has expired. Please sign in again.',
+  'auth/id-token-expired':
+    'Your session has expired. Please sign in again.',
+  // Profile / email update
+  'auth/email-already-exists':
+    'This email is already in use by another account.',
+  'auth/invalid-password':
+    'Password must be at least 6 characters.',
+  // General
+  'auth/internal-error':
+    'An internal error occurred. Please try again.',
+  'auth/cancelled-popup-request':
+    'Sign-in cancelled — only one sign-in window can be open at a time.',
+  'auth/popup-closed-by-user':
+    'Sign-in window was closed before completing. Please try again.',
 };
 
 /**
@@ -172,6 +199,10 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     console.log('[FirebaseAuth] Password reset email sent successfully');
   } catch (error: any) {
     console.error('[FirebaseAuth] Password reset error:', error.code, error.message);
+    // Normalize user-not-found so callers can detect it
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('No account found with that email address.');
+    }
     throw new Error(getErrorMessage(error));
   }
 }
