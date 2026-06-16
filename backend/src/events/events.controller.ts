@@ -51,7 +51,14 @@ export class EventsController {
     @Query('stage') stage?: string,
     @Query('date') date?: string,
   ) {
-    return this.eventsService.findAll(stage, date);
+    try {
+      return await this.eventsService.findAll(stage, date);
+    } catch (error) {
+      this.logger.error('Failed to fetch events:', error.message || error);
+      // Return empty array on Firestore failure rather than crashing
+      // The mobile app has cache fallback — an empty 200 is better than a 500
+      return [];
+    }
   }
 
   @Get('stages')
