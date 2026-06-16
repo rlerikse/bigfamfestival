@@ -20,19 +20,35 @@ import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
 import { isLoggedInUser } from '../utils/userUtils';
+import { useFestivalState } from '../hooks/useFestivalState';
+import { festivalConfig } from '../config/festival.config';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
-// Doors at 8 PM EDT tonight
-const DOORS_DATE = new Date('2026-04-25T20:00:00-04:00');
+// Fallback doors date used only if Firestore config is unavailable and
+// festival.config.startDate hasn't been set. Kept for backward-compat.
+const DOORS_DATE_FALLBACK = new Date('2026-04-25T20:00:00-04:00');
 
 const HomeScreen = () => {
   const { theme, isDark, isPerformanceMode } = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
+  const festivalState = useFestivalState();
   const [selectedEvent, setSelectedEvent] = React.useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [userSchedule, setUserSchedule] = React.useState<Record<string, boolean>>({});
+
+  // Determine the countdown target: window start if upcoming, or the configured end
+  const countdownTarget = React.useMemo(() => {
+    if (festivalState.windowStart) return festivalState.windowStart;
+    // Fallback to config start date if Firestore not loaded yet
+    try {
+      const [year, month, day] = festivalConfig.startDate.split('-').map(Number);
+      return new Date(year, month - 1, day, 20, 0, 0); // assume 8 PM
+    } catch {
+      return DOORS_DATE_FALLBACK;
+    }
+  }, [festivalState.windowStart]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -122,7 +138,10 @@ const HomeScreen = () => {
           <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
           <View style={{ height: 12 }} />
-          <Countdown targetDate={DOORS_DATE} />
+          <Countdown
+            targetDate={countdownTarget}
+            festivalPhase={festivalState.phase}
+          />
           <View style={{ height: 12 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
         </View>
