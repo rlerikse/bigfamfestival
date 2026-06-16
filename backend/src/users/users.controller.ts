@@ -50,6 +50,7 @@ export class UsersController {
       email: createProfileDto.email,
       phone: createProfileDto.phone,
       role: createProfileDto.role,
+      profilePictureUrl: createProfileDto.profilePictureUrl,
     });
   }
 
