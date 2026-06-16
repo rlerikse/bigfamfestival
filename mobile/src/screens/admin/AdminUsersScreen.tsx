@@ -75,7 +75,7 @@ export const AdminUsersScreen: React.FC = () => {
         <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>{item.name || '(no name)'}</Text>
         <Text style={[styles.email, { color: theme.muted }]} numberOfLines={1}>{item.email}</Text>
       </View>
-      <AdminRoleBadge role={item.role} small />
+      <AdminRoleBadge role={item.role ?? 'attendee'} small />
       <Text style={[styles.chevron, { color: theme.muted }]}>›</Text>
     </TouchableOpacity>
   );
