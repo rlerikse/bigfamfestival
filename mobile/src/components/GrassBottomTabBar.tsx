@@ -201,7 +201,8 @@ const GrassBottomTabBar: React.FC<BottomTabBarProps> = ({
 
 const styles = StyleSheet.create({  container: {
     width: '100%',
-    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 52,
+    paddingTop: EFFECTIVE_GRASS_VISIBLE_HEIGHT - 64,
+    // keep the grass edge lower while preserving room for the raised decorative assets
     // bottom is applied dynamically via insets (Android shifts up by system nav height)
     backgroundColor: 'transparent',
     position: 'absolute',
@@ -215,9 +216,9 @@ const styles = StyleSheet.create({  container: {
     left: 0,
     right: 0,
     // height will be applied dynamically
-    overflow: 'visible', // Changed from 'hidden' to allow tree to extend outside
-    zIndex: 0, 
-  },  
+    overflow: 'visible',
+    zIndex: 0,
+  },
   actualImage: { 
     position: 'absolute', 
     left: 0,            
@@ -225,20 +226,20 @@ const styles = StyleSheet.create({  container: {
     // height and bottom will be applied dynamically
   },  treeImage: {
     position: 'absolute',
-    left: -105, // Keep left aligned position (adjusted for smaller size)
-    bottom: 120, // unified; container is shifted up by insets on Android
-    width: 200, // Half of 400 - scaled down
-    height: 150, // Half of 300 - scaled down
-    opacity: 1, // Full opacity
-    zIndex: 5, // Higher z-index to ensure visibility
+    left: -160,
+    bottom: 120,
+    width: 300,
+    height: 225,
+    opacity: 1,
+    zIndex: 5,
   },  tentImage: {
     position: 'absolute',
-    right: -45, // Moved 5px to the right (was -40)
-    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 80, // container handles Android offset via bottom inset
-    width: 100, // Scaled width
-    height: 80, // Scaled height
-    transform: [{ scaleX: -1 }], // Flipped on X-axis
-    zIndex: 6, // Ensure it's above the grass and tree
+    right: -75,
+    top: -ORIGINAL_EFFECTIVE_GRASS_HEIGHT + 12,
+    width: 150,
+    height: 120,
+    transform: [{ scaleX: -1 }],
+    zIndex: 6,
   },  navbar: {
     flexDirection: 'row',
     height: NAVBAR_HEIGHT,
@@ -255,11 +256,11 @@ const styles = StyleSheet.create({  container: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: 50, // container shift handles Android; no per-platform override needed
+    marginTop: 18,
   },tabLabel: {
     fontSize: 10,
     fontWeight: '500',
-    marginTop: 4,
+    marginTop: 2,
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
