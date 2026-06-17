@@ -100,7 +100,6 @@ export const AdminDashboardScreen: React.FC = () => {
           { label: '🎵  Manage Events', screen: 'AdminEvents' },
           { label: '🔔  Send Notification', screen: 'AdminNotifications' },
           { label: '🗓️  View Shifts', screen: 'AdminShifts' },
-          { label: '📅  Edit Schedule', screen: 'AdminSchedule' },
         ].map(({ label, screen }) => (
           <TouchableOpacity
             key={screen}

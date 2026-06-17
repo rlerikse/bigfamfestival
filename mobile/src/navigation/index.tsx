@@ -20,7 +20,6 @@ import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
 import { AdminEventsScreen } from '../screens/admin/AdminEventsScreen';
 import { AdminEventEditScreen } from '../screens/admin/AdminEventEditScreen';
 import { AdminShiftsScreen } from '../screens/admin/AdminShiftsScreen';
-import { AdminScheduleScreen } from '../screens/admin/AdminScheduleScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -42,7 +41,6 @@ export type RootStackParamList = {
   AdminEvents: undefined;
   AdminEventEdit: { eventId?: string };
   AdminShifts: undefined;
-  AdminSchedule: undefined;
 };
 
 export type AuthStackParamList = {
@@ -299,11 +297,6 @@ export default function Navigation() {
             name="AdminShifts"
             component={AdminShiftsScreen}
             options={{ headerShown: true, title: 'Shifts', contentStyle: { backgroundColor } }}
-          />
-          <Stack.Screen
-            name="AdminSchedule"
-            component={AdminScheduleScreen}
-            options={{ headerShown: true, title: 'Schedule Editor', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="Debug"
