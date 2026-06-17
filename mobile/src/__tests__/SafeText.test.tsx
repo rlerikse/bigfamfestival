@@ -14,7 +14,6 @@ import { Text, View } from 'react-native';
 import SafeText from '../components/SafeText';
 
 // Skip entire suite until test-renderer compatibility is resolved
-// eslint-disable-next-line jest/no-disabled-tests
 
 describe.skip('SafeText Component', () => {
   it('renders string children correctly', () => {
