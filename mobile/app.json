@@ -1,137 +1,138 @@
 {
-    "expo": {
-        "name": "Big Fam Festival",
-        "slug": "bigfam-festival",
-        "newArchEnabled": true,
-        "version": "1.0.0",
-        "orientation": "portrait",
-        "icon": "./src/assets/images/icon.png",
-        "userInterfaceStyle": "automatic",
-        "splash": {
-            "image": "./src/assets/images/splash.png",
-            "resizeMode": "cover",
-            "backgroundColor": "#F5F5DC"
-        },
-        "assetBundlePatterns": [
-            "**/*"
+  "expo": {
+    "name": "Big Fam Festival",
+    "slug": "bigfam-festival",
+    "newArchEnabled": true,
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./src/assets/images/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#F5F5DC"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.eriksensolutions.bigfam",
+      "buildNumber": "1",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
+        "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
+        "NSCameraUsageDescription": "We need camera access to enable QR code scanning for tickets.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "remote-notification"
         ],
-        "ios": {
-            "supportsTablet": true,
-            "bundleIdentifier": "com.eriksensolutions.bigfam",
-            "buildNumber": "1",
-            "googleServicesFile": "./GoogleService-Info.plist",
-            "entitlements": {
-                "com.apple.developer.applesignin": [
-                    "Default"
-                ]
-            },
-            "infoPlist": {
-                "NSLocationWhenInUseUsageDescription": "We need your location to show you on the festival map and provide navigation.",
-                "NSPhotoLibraryUsageDescription": "We need access to your photo library to allow you to upload profile pictures.",
-                "NSCameraUsageDescription": "We need camera access to enable QR code scanning for tickets.",
-                "ITSAppUsesNonExemptEncryption": false,
-                "UIBackgroundModes": [
-                    "remote-notification"
-                ],
-                "NSUserNotificationUsageDescription": "Big Fam Festival would like to send you notifications about events, schedules, and important updates.",
-                "NSUserNotificationTypesAllowed": [
-                    "alert",
-                    "badge",
-                    "sound"
-                ]
-            }
-        },
-        "androidStatusBar": {
-            "backgroundColor": "#00000000",
-            "translucent": true
-        },
-        "androidNavigationBar": {
-            "visible": "immersive",
-            "backgroundColor": "#8B7355"
-        },
-        "android": {
-            "adaptiveIcon": {
-                "foregroundImage": "./src/assets/images/adaptive-icon.png",
-                "backgroundColor": "#F5F5DC"
-            },
-            "package": "com.eriksensolutions.bigfam",
-            "permissions": [
-                "android.permission.ACCESS_FINE_LOCATION",
-                "android.permission.ACCESS_COARSE_LOCATION",
-                "android.permission.CAMERA",
-                "android.permission.READ_EXTERNAL_STORAGE",
-                "android.permission.WRITE_EXTERNAL_STORAGE",
-                "android.permission.FOREGROUND_SERVICE",
-                "android.permission.RECORD_AUDIO",
-                "android.permission.RECEIVE_BOOT_COMPLETED",
-                "android.permission.VIBRATE"
-            ],
-            "googleServicesFile": "./google-services.json",
-            "softwareKeyboardLayoutMode": "pan"
-        },
-        "web": {
-            "favicon": "./src/assets/images/favicon.png"
-        },
-        "plugins": [
-            [
-                "expo-location",
-                {
-                    "locationAlwaysAndWhenInUsePermission": "Allow Big Fam Festival to use your location to show you on the map and enable navigation at the festival."
-                }
-            ],
-            [
-                "expo-image-picker",
-                {
-                    "photosPermission": "Allow Big Fam Festival to access your photos to set your profile picture."
-                }
-            ],
-            [
-                "expo-notifications",
-                {
-                    "icon": "./src/assets/images/notification-icon.png",
-                    "color": "#2E4031",
-                    "sounds": [
-                        "./src/assets/sounds/notification.wav"
-                    ],
-                    "androidSettings": {
-                        "priority": "high",
-                        "sound": true,
-                        "vibrate": true,
-                        "enableLights": true,
-                        "lightColor": "#FF3366",
-                        "mode": "default"
-                    },
-                    "iosSettings": {
-                        "sound": true,
-                        "critical": false,
-                        "badge": true,
-                        "interruptionLevel": "active"
-                    }
-                }
-            ],
-            [
-                "expo-build-properties",
-                {
-                    "android": {
-                        "targetSdkVersion": 35,
-                        "gradleVersion": "8.6",
-                        "usesCleartextTraffic": false
-                    },
-                    "ios": {
-                        "useFrameworks": "static"
-                    }
-                }
-            ],
-            "expo-asset",
-            "@react-native-google-signin/google-signin",
-            "@sentry/react-native"
-        ],
-        "extra": {
-            "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",
-            "eas": {
-                "projectId": "0c013fd4-da29-4e1c-9c8d-b69783e98066"
-            }
-        },
-        "owner": "eriksensolutions"
-    }
+        "NSUserNotificationUsageDescription": "Big Fam Festival would like to send you notifications about events, schedules, and important updates.",
+        "NSUserNotificationTypesAllowed": [
+          "alert",
+          "badge",
+          "sound"
+        ]
+      }
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "visible": "immersive",
+      "backgroundColor": "#8B7355"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "backgroundColor": "#F5F5DC"
+      },
+      "package": "com.eriksensolutions.bigfam",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
+      "googleServicesFile": "./google-services.json",
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "favicon": "./src/assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Big Fam Festival to use your location to show you on the map and enable navigation at the festival."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Big Fam Festival to access your photos to set your profile picture."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/images/notification-icon.png",
+          "color": "#2E4031",
+          "sounds": [
+            "./src/assets/sounds/notification.wav"
+          ],
+          "androidSettings": {
+            "priority": "high",
+            "sound": true,
+            "vibrate": true,
+            "enableLights": true,
+            "lightColor": "#FF3366",
+            "mode": "default"
+          },
+          "iosSettings": {
+            "sound": true,
+            "critical": false,
+            "badge": true,
+            "interruptionLevel": "active"
+          }
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "targetSdkVersion": 35,
+            "gradleVersion": "8.6",
+            "usesCleartextTraffic": false
+          },
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "expo-asset",
+      "@react-native-google-signin/google-signin",
+      "@sentry/react-native",
+      "expo-font"
+    ],
+    "extra": {
+      "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",
+      "eas": {
+        "projectId": "0c013fd4-da29-4e1c-9c8d-b69783e98066"
+      }
+    },
+    "owner": "eriksensolutions"
+  }
 }
