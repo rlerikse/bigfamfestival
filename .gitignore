@@ -40,3 +40,4 @@ BFF-S1-01-notification-backend-audit.md
 mobile/ios/
 mobile/android/
 mobile/google-play-service-account.json
+mobile/.env
