@@ -29,7 +29,7 @@ import { getIdToken } from '../../services/firebaseAuthService';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const STAGES = ['Apogee', 'Bayou', 'Pike Room', 'The Gallery'];
+const STAGES = ['Apogee', 'The Bayou', 'The Gallery'];
 
 const COMMON_GENRES = [
   'House', 'Techno', 'Drum & Bass', 'Jungle', 'Garage',
