@@ -46,7 +46,6 @@ export const updateUserProfile = async (
 };
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
  * Upload profile picture directly to Firebase Storage, then update user profile with the URL.

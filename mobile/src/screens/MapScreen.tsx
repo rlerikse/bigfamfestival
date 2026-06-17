@@ -22,7 +22,6 @@ import { useTheme } from '../contexts/ThemeContext';
 export default function MapScreen() {
   const { width } = useWindowDimensions();
   const [isLoading, setIsLoading] = useState(true);
-  const [cachedImageUri, setCachedImageUri] = useState<string | null>(null);
   const { theme, isDark } = useTheme();
   
   // Icons should be white on dark background, dark on light background
