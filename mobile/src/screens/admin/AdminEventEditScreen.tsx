@@ -16,6 +16,7 @@ import {
   Image, Platform, KeyboardAvoidingView,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
@@ -770,6 +771,7 @@ const EMPTY_FORM: FormState = {
 
 export const AdminEventEditScreen: React.FC = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const route = useRoute<RouteProp<Record<string, RouteParams>, string>>();
   const navigation = useNavigation<any>();
   const { eventId } = route.params ?? {};
@@ -872,7 +874,7 @@ export const AdminEventEditScreen: React.FC = () => {
     >
       <ScrollView
         style={[styles.container, { backgroundColor: theme.background }]}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: insets.top + 56 }]}
         keyboardShouldPersistTaps="handled"
       >
         <Text style={[styles.title, { color: theme.text }]}>{isEdit ? 'Edit Event' : 'New Event'}</Text>
