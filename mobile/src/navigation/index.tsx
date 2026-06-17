@@ -286,12 +286,12 @@ export default function Navigation() {
           <Stack.Screen
             name="AdminEvents"
             component={AdminEventsScreen}
-            options={{ headerShown: false }}
+            options={{ headerShown: true, title: 'Events', headerTransparent: true, headerBlurEffect: 'regular', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="AdminEventEdit"
             component={AdminEventEditScreen}
-            options={{ headerShown: true, title: 'Edit Event', contentStyle: { backgroundColor } }}
+            options={{ headerShown: true, title: 'Edit Event', headerTransparent: true, headerBlurEffect: 'regular', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="AdminShifts"
