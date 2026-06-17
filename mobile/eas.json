@@ -26,6 +26,7 @@
       "node": "20.19.4",
       "env": {
         "APP_ENV": "preview",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "GRADLE_VERSION": "8.6"
       },
       "ios": {
@@ -42,6 +43,7 @@
       "distribution": "store",
       "env": {
         "APP_ENV": "beta",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "GRADLE_VERSION": "8.6"
       },
       "ios": {
@@ -56,6 +58,7 @@
       "node": "20.19.4",
       "env": {
         "APP_ENV": "production",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "GRADLE_VERSION": "8.6"
       },
       "ios": {
