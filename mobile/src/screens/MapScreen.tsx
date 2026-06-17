@@ -5,7 +5,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { SafeAreaView, StyleSheet, View, useWindowDimensions, ActivityIndicator, Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import * as FileSystem from 'expo-file-system';
 
 import campingMap from '../assets/images/bff25_CampingMap.png';
 import TopNavBar from '../components/TopNavBar';
