@@ -531,7 +531,7 @@ const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, sugge
             >
               <Ionicons name="add-circle" size={16} color={theme.primary} style={{ marginRight: 8 }} />
               <Text style={[tagStyles.suggestionText, { color: theme.primary, fontStyle: 'italic' }]}>
-                Add "{trimmed}"
+                {`Add "${trimmed}"`}
               </Text>
             </TouchableOpacity>
           )}
