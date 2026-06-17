@@ -12,7 +12,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator, Modal, FlatList,
+  TextInput, Alert, ActivityIndicator, Modal,
   Image, Platform, KeyboardAvoidingView,
 } from 'react-native';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
@@ -51,7 +51,7 @@ interface FormState {
   description: string;
   imageUrl: string;
   genres: string[];
-  artists: string;
+  artists: string[];
 }
 
 type PickerMode = 'date' | 'startTime' | 'endTime' | null;
@@ -448,76 +448,75 @@ const dropStyles = StyleSheet.create({
   },
 });
 
-// ── Genre Tag Input ───────────────────────────────────────────────────────
+// ── Reusable Tag Input (shared by genres + artists) ─────────────────────
 
-interface GenreTagInputProps {
+interface TagInputProps {
   value: string[];
-  onChange: (genres: string[]) => void;
+  onChange: (tags: string[]) => void;
+  placeholder: string;
+  suggestions?: string[];
   theme: any;
 }
 
-const GenreTagInput: React.FC<GenreTagInputProps> = ({ value, onChange, theme }) => {
+const TagInput: React.FC<TagInputProps> = ({ value, onChange, placeholder, suggestions = [], theme }) => {
   const [query, setQuery] = useState('');
   const trimmed = query.trim();
 
-  const suggestions = COMMON_GENRES.filter(g =>
-    !value.includes(g) &&
-    g.toLowerCase().includes(trimmed.toLowerCase())
+  const filteredSuggestions = suggestions.filter(s =>
+    !value.includes(s) &&
+    s.toLowerCase().includes(trimmed.toLowerCase())
   );
 
-  const addGenre = (genre: string) => {
-    const clean = genre.trim();
+  const addTag = (tag: string) => {
+    const clean = tag.trim();
     if (clean && !value.includes(clean)) {
       onChange([...value, clean]);
     }
     setQuery('');
   };
 
-  const removeGenre = (genre: string) => {
-    onChange(value.filter(g => g !== genre));
+  const removeTag = (tag: string) => {
+    onChange(value.filter(t => t !== tag));
   };
 
-  const showAddNew = trimmed.length > 0 && !COMMON_GENRES.map(g => g.toLowerCase()).includes(trimmed.toLowerCase()) && !value.includes(trimmed);
+  const showAddNew = trimmed.length > 0 &&
+    !suggestions.map(s => s.toLowerCase()).includes(trimmed.toLowerCase()) &&
+    !value.includes(trimmed);
 
   return (
     <View>
-      {/* Selected tags */}
       <View style={tagStyles.tagsWrap}>
-        {value.map(g => (
-          <View key={g} style={[tagStyles.tag, { backgroundColor: `${theme.primary}28`, borderColor: `${theme.primary}55` }]}>
-            <Text style={[tagStyles.tagText, { color: theme.primary }]}>{g}</Text>
+        {value.map(t => (
+          <View key={t} style={[tagStyles.tag, { backgroundColor: `${theme.primary}28`, borderColor: `${theme.primary}55` }]}>
+            <Text style={[tagStyles.tagText, { color: theme.primary }]}>{t}</Text>
             <TouchableOpacity
-              onPress={() => removeGenre(g)}
+              onPress={() => removeTag(t)}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              accessibilityLabel={`Remove genre ${g}`}
+              accessibilityLabel={`Remove ${t}`}
             >
               <Ionicons name="close-circle" size={16} color={theme.primary} />
             </TouchableOpacity>
           </View>
         ))}
       </View>
-
-      {/* Search/add input */}
       <TextInput
         style={[tagStyles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-        placeholder="Search genres or type new…"
+        placeholder={placeholder}
         placeholderTextColor={theme.muted}
         value={query}
         onChangeText={setQuery}
-        onSubmitEditing={() => { if (trimmed) addGenre(trimmed); }}
+        onSubmitEditing={() => { if (trimmed) addTag(trimmed); }}
         returnKeyType="done"
-        accessibilityLabel="Genre search input"
+        accessibilityLabel={placeholder}
       />
-
-      {/* Suggestions */}
-      {(suggestions.length > 0 || showAddNew) && (
+      {(filteredSuggestions.length > 0 || showAddNew) && (
         <View style={[tagStyles.suggestions, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {suggestions.slice(0, 6).map(s => (
+          {filteredSuggestions.slice(0, 6).map(s => (
             <TouchableOpacity
               key={s}
               style={[tagStyles.suggestionRow, { borderBottomColor: theme.border }]}
-              onPress={() => addGenre(s)}
-              accessibilityLabel={`Add genre ${s}`}
+              onPress={() => addTag(s)}
+              accessibilityLabel={`Add ${s}`}
             >
               <Ionicons name="add-circle-outline" size={16} color={theme.primary} style={{ marginRight: 8 }} />
               <Text style={[tagStyles.suggestionText, { color: theme.text }]}>{s}</Text>
@@ -526,8 +525,8 @@ const GenreTagInput: React.FC<GenreTagInputProps> = ({ value, onChange, theme })
           {showAddNew && (
             <TouchableOpacity
               style={[tagStyles.suggestionRow, { borderBottomColor: 'transparent' }]}
-              onPress={() => addGenre(trimmed)}
-              accessibilityLabel={`Add new genre ${trimmed}`}
+              onPress={() => addTag(trimmed)}
+              accessibilityLabel={`Add "${trimmed}"`}
             >
               <Ionicons name="add-circle" size={16} color={theme.primary} style={{ marginRight: 8 }} />
               <Text style={[tagStyles.suggestionText, { color: theme.primary, fontStyle: 'italic' }]}>
@@ -540,6 +539,13 @@ const GenreTagInput: React.FC<GenreTagInputProps> = ({ value, onChange, theme })
     </View>
   );
 };
+
+// ── Genre Tag Input ───────────────────────────────────────────────────────
+
+// Convenience wrappers for specific field contexts
+const GenreTagInput: React.FC<{ value: string[]; onChange: (v: string[]) => void; theme: any }> = ({ value, onChange, theme }) => (
+  <TagInput value={value} onChange={onChange} placeholder="Search genres or type new…" suggestions={COMMON_GENRES} theme={theme} />
+);
 
 const tagStyles = StyleSheet.create({
   tagsWrap: {
@@ -759,7 +765,7 @@ const imgStyles = StyleSheet.create({
 
 const EMPTY_FORM: FormState = {
   name: '', stage: '', date: '', startTime: '', endTime: '',
-  description: '', imageUrl: '', genres: [], artists: '',
+  description: '', imageUrl: '', genres: [], artists: [],
 };
 
 export const AdminEventEditScreen: React.FC = () => {
@@ -790,7 +796,7 @@ export const AdminEventEditScreen: React.FC = () => {
           description: ev.description ?? '',
           imageUrl: ev.imageUrl ?? '',
           genres: Array.isArray(ev.genres) ? ev.genres : [],
-          artists: (ev.artists ?? []).join(', '),
+          artists: Array.isArray(ev.artists) ? ev.artists : [],
         });
       } catch (e: any) {
         Alert.alert('Error', e.message);
@@ -821,7 +827,7 @@ export const AdminEventEditScreen: React.FC = () => {
         description: form.description.trim() || undefined,
         imageUrl: form.imageUrl.trim() || undefined,
         genres: form.genres.length > 0 ? form.genres : undefined,
-        artists: form.artists ? form.artists.split(',').map(a => a.trim()).filter(Boolean) : undefined,
+        artists: form.artists.length > 0 ? form.artists : undefined,
       };
       if (isEdit) {
         await updateAdminEvent(eventId!, dto);
@@ -951,15 +957,13 @@ export const AdminEventEditScreen: React.FC = () => {
         <Text style={[styles.label, { color: theme.muted }]}>Genres</Text>
         <GenreTagInput value={form.genres} onChange={v => set('genres', v)} theme={theme} />
 
-        {/* Artists */}
-        <Text style={[styles.label, { color: theme.muted }]}>Artists (comma-separated)</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: theme.card, color: theme.text, borderColor: theme.border }]}
-          placeholder="DJ A, DJ B"
-          placeholderTextColor={theme.muted}
+        {/* Artists Tag Input */}
+        <Text style={[styles.label, { color: theme.muted }]}>Artists</Text>
+        <TagInput
           value={form.artists}
-          onChangeText={v => set('artists', v)}
-          accessibilityLabel="Artists"
+          onChange={v => set('artists', v)}
+          placeholder="Type artist name and press return…"
+          theme={theme}
         />
 
         {/* Image Manager */}
