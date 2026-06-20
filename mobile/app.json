@@ -131,7 +131,8 @@
           "uploadSourceMaps": false
         }
       ],
-      "expo-font"
+      "expo-font",
+      "./plugins/withModularHeaders"
     ],
     "extra": {
       "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",
