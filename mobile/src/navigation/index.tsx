@@ -237,9 +237,15 @@ export default function Navigation() {
 
   // Use theme background color if provided, otherwise fall back to white
   const backgroundColor = theme?.background ?? '#ffffffff';
+  const headerTintColor = theme?.text ?? '#000000';
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{
+      headerShown: false,
+      headerStyle: { backgroundColor },
+      headerTintColor,
+      headerTitleStyle: { color: headerTintColor },
+    }}>
       {user ? (
         <>
           <Stack.Screen name="Main" component={MainNavigator} />
