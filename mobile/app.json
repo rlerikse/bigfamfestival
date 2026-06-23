@@ -123,9 +123,16 @@
         }
       ],
       "expo-asset",
+      "@react-native-firebase/app",
       "@react-native-google-signin/google-signin",
-      "@sentry/react-native",
-      "expo-font"
+      [
+        "@sentry/react-native/expo",
+        {
+          "uploadSourceMaps": false
+        }
+      ],
+      "expo-font",
+      "./plugins/withModularHeaders"
     ],
     "extra": {
       "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",

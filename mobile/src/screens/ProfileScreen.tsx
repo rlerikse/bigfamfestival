@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
