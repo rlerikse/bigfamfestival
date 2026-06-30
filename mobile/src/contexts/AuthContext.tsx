@@ -65,8 +65,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(async (fbUser) => {
       setFirebaseUser(fbUser);
-      
+
       if (fbUser) {
+        // Auth succeeded — show the global splash while we load the backend profile.
+        // This is the ONLY place the global isLoading should be raised for a sign-in:
+        // raising it from the interactive login/SSO handlers unmounts the navigator
+        // (Navigation returns null while isLoading), which discards the LoginScreen's
+        // inline error state on a FAILED attempt (see #71, #52).
+        setIsLoading(true);
+
         // Skip profile fetch during registration — register() will handle it
         if (isRegisteringRef.current) {
           setIsLoading(false);
@@ -201,15 +208,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Login function using Firebase Auth
   const login = async (email: string, password: string) => {
+    // NOTE: do NOT toggle the global isLoading here. The calling screen owns its
+    // local loading state, and raising the global flag unmounts the navigator
+    // (Navigation returns null), which wipes the LoginScreen's inline error on a
+    // failed attempt. On success, onAuthStateChanged raises the splash instead.
     try {
-      setIsLoading(true);
-      
       // Clear any guest user
       await AsyncStorage.removeItem('guestUser');
-      
+
       // Sign in with Firebase
       await firebaseSignIn(email, password);
-      
+
       // onAuthStateChanged will handle setting the user
       if (__DEV__) {
         console.log('[AuthContext] Login initiated for:', email);
@@ -217,8 +226,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -259,8 +266,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Google Sign-In
   const googleLogin = async () => {
+    // Do NOT toggle the global isLoading here — see login() note. Raising it
+    // unmounts the navigator and discards the inline Google Sign-In error,
+    // which is why a failed Google sign-in silently "loops back" to login (#52).
     try {
-      setIsLoading(true);
       await AsyncStorage.removeItem('guestUser');
       const credential = await firebaseSignInWithGoogle();
       await handleSsoLogin(credential);
@@ -270,15 +279,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Apple Sign-In
   const appleLogin = async () => {
+    // Do NOT toggle the global isLoading here — see login() note.
     try {
-      setIsLoading(true);
       await AsyncStorage.removeItem('guestUser');
       const credential = await firebaseSignInWithApple();
       await handleSsoLogin(credential);
@@ -288,17 +295,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Apple login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Register function using Firebase Auth
   const register = async (name: string, email: string, password: string, phone?: string) => {
+    // Do NOT toggle the global isLoading here — see login() note. RegisterScreen
+    // owns its local loading state; the global flag would unmount the navigator
+    // and discard the inline registration error on failure.
     try {
-      setIsLoading(true);
       isRegisteringRef.current = true;
-      
+
       // Clear any guest user
       await AsyncStorage.removeItem('guestUser');
       
@@ -329,7 +336,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     } finally {
       isRegisteringRef.current = false;
-      setIsLoading(false);
     }
   };
 
@@ -364,9 +370,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Login as guest function
   const loginAsGuest = async () => {
+    // Do NOT toggle the global isLoading here — see login() note. Guest sign-in
+    // does not go through Firebase auth, so there is no onAuthStateChanged to
+    // clear a global flag; setting user is enough to switch the navigator.
     try {
-      setIsLoading(true);
-      
       // Create a guest user without Firebase auth
       const guestUserData: User = {
         id: 'guest-user',
@@ -375,16 +382,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: UserRole.ATTENDEE,
         ticketType: 'guest'
       };
-      
+
       // Store guest user preference
       await AsyncStorage.setItem('guestUser', JSON.stringify(guestUserData));
-      
+
       setUser(guestUserData);
     } catch (error) {
       console.error('Guest login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
