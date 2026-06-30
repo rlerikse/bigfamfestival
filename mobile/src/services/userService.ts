@@ -1,7 +1,6 @@
 import { api } from './api';
 import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { File } from 'expo-file-system';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
 import { storage } from '../config/firebase';
@@ -63,25 +62,22 @@ export const uploadProfilePicture = async (
       throw new Error('Authentication token not found');
     }
 
-    // Read image bytes via expo-file-system File API (SDK 54+)
-    // File.bytes() returns Uint8Array directly — no base64 roundtrip needed
-    const file = new File(imageUri);
-    const bytes = await file.bytes();
-
     const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png'
       : imageUri.toLowerCase().endsWith('.webp') ? 'image/webp'
       : 'image/jpeg';
 
-    // Validate size (5 MB max)
-    if (bytes.length > MAX_AVATAR_SIZE_BYTES) {
+    // Use fetch blob workaround — Hermes doesn't support creating Blobs
+    // from ArrayBuffer/ArrayBufferView, so uploadBytes(ref, Uint8Array) fails on Android.
+    const response = await fetch(imageUri);
+    const blob = await response.blob();
+
+    if (blob.size > MAX_AVATAR_SIZE_BYTES) {
       throw new Error('Image is too large. Please choose a photo under 5 MB.');
     }
 
-    // Upload to Firebase Storage: profile-pictures/<userId>/avatar.jpg
-    // Path must match storage.rules pattern: profile-pictures/{userId}/{allPaths=**}
     const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
     const storageRef = ref(storage, `profile-pictures/${userId}/avatar.${ext}`);
-    await uploadBytes(storageRef, bytes, { contentType: mimeType });
+    await uploadBytes(storageRef, blob, { contentType: mimeType });
 
     // Get the public download URL
     const downloadUrl = await getDownloadURL(storageRef);
