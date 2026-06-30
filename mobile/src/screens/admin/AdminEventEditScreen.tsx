@@ -18,7 +18,6 @@ import {
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { createAdminEvent, updateAdminEvent, AdminEvent } from '../../services/adminService';
@@ -626,25 +625,21 @@ const ImageManager: React.FC<ImageManagerProps> = ({ value, onChange, theme }) =
       const token = await getIdToken();
       if (!token) throw new Error('Not authenticated');
 
-      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' as any });
       const mimeType = uri.toLowerCase().endsWith('.png') ? 'image/png'
         : uri.toLowerCase().endsWith('.webp') ? 'image/webp'
         : 'image/jpeg';
 
-      const binaryStr = atob(base64);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
+      const response = await fetch(uri);
+      const blob = await response.blob();
 
-      if (bytes.length > MAX_IMAGE_SIZE_BYTES) {
+      if (blob.size > MAX_IMAGE_SIZE_BYTES) {
         throw new Error('Image is too large. Please choose a photo under 5 MB.');
       }
 
       const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
       const filename = `event-images/${Date.now()}.${ext}`;
       const storageRef = ref(storage, filename);
-      await uploadBytes(storageRef, bytes, { contentType: mimeType });
+      await uploadBytes(storageRef, blob, { contentType: mimeType });
       const downloadUrl = await getDownloadURL(storageRef);
       onChange(downloadUrl);
     } catch (err: any) {
