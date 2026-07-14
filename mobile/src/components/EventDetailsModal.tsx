@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontSize: 13,
-    color: 'rgba(168, 230, 163, 0.45)',
+    color: 'rgba(184, 115, 51, 0.6)',
     textAlign: 'center',
     marginTop: 10,
   },
