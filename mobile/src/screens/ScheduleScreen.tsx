@@ -303,11 +303,14 @@ const ScheduleScreen = () => {
     
     return [
       { id: 'all', label: 'All Stages', value: 'all' },
-      ...sortedStages.map(stage => ({
-        id: stage,
-        label: stage,
-        value: stage,
-      }))
+      ...sortedStages.map(stage => {
+        const displayName = stage.replace(/^The /i, '');
+        return {
+          id: stage,
+          label: displayName,
+          value: stage,
+        };
+      })
     ];
   }, [events]);
 
@@ -818,7 +821,7 @@ const ScheduleScreen = () => {
 
   // --- Main Render ---
   return (
-    <SafeAreaView style={[filterStyles.container, { backgroundColor: theme.background }]}> 
+    <SafeAreaView style={[filterStyles.container, { backgroundColor: 'transparent' }]}> 
       <StatusBar style={isDark ? 'light' : 'dark'} />
   {/* Main content container */}
   {/* Account for TopNavBar height, platform-specific padding */}
@@ -839,8 +842,8 @@ const ScheduleScreen = () => {
         {/* Fixed header container for filter rows - align flush with nav bar bottom */}
         <View
           style={{
-            backgroundColor: theme.background,
-            paddingTop: 0, // remove extra top padding so filters are flush with nav bar
+            backgroundColor: 'transparent',
+            paddingTop: 0,
             paddingBottom: 6,
             zIndex: 1000,
             position: 'relative',
@@ -862,8 +865,8 @@ const ScheduleScreen = () => {
               key={day.id}
               style={[
                 styles.dateFilterButton,
-                { borderColor: theme.border, flex: 1 },
-                day.date === selectedDay && { backgroundColor: theme.primary },
+                { borderColor: 'rgba(255, 255, 255, 0.4)', flex: 1, backgroundColor: 'rgba(255, 255, 255, 0.15)' },
+                day.date === selectedDay && { backgroundColor: 'rgba(46, 64, 49, 0.85)', borderColor: 'rgba(46, 64, 49, 0.85)' },
               ]}
               onPress={() => handleDayPress(day.date)}
               accessibilityLabel={`Select ${day.dayLabel} for events`}
@@ -871,7 +874,7 @@ const ScheduleScreen = () => {
               <Text
                 style={[
                   styles.dateFilterButtonDateText,
-                  day.date === selectedDay ? { color: theme.background } : { color: theme.text }
+                  day.date === selectedDay ? { color: '#fff' } : { color: '#fff' }
                 ]}
                 numberOfLines={1}
                 ellipsizeMode='clip'
@@ -881,7 +884,7 @@ const ScheduleScreen = () => {
               <Text
                 style={[
                   styles.dateFilterButtonText,
-                  day.date === selectedDay ? { color: theme.background } : { color: theme.text }
+                  day.date === selectedDay ? { color: '#fff' } : { color: '#fff' }
                 ]}
                 numberOfLines={1}
                 ellipsizeMode='clip'
@@ -912,8 +915,8 @@ const ScheduleScreen = () => {
               {
                 borderRadius: 8,
                 borderWidth: 1,
-                borderColor: theme.border,
-                backgroundColor: showMySchedule ? theme.primary : 'transparent',
+                borderColor: showMySchedule ? 'rgba(46, 64, 49, 0.85)' : 'rgba(255, 255, 255, 0.4)',
+                backgroundColor: showMySchedule ? 'rgba(46, 64, 49, 0.85)' : 'rgba(255, 255, 255, 0.15)',
                 marginLeft: 0, // Changed from 4 since grid icon is hidden 
                 marginRight: 8, 
                 flexDirection: 'row', 
@@ -930,14 +933,14 @@ const ScheduleScreen = () => {
             <Ionicons
               name={showMySchedule ? 'heart' : 'heart-outline'}
               size={16}
-              color={showMySchedule ? '#B87333' : theme.text}
+              color={showMySchedule ? '#B87333' : '#fff'}
               style={{ marginRight: 6 }}
             />
             <Text style={[
               {
                 fontSize: 14,
                 fontWeight: '500',
-                color: showMySchedule ? theme.background : theme.text
+                color: '#fff'
               }
             ]}>
               My Schedule
@@ -1014,12 +1017,12 @@ const ScheduleScreen = () => {
         {isLoading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
-            <Text style={{ color: theme.text, marginTop: 16 }}>Loading events...</Text>
+            <Text style={{ color: '#fff', marginTop: 16 }}>Loading events...</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle-outline" size={48} color={theme.error || '#FF0000'} />
-            <Text style={[styles.errorText, { color: theme.text }]}>{error}</Text>
+            <Text style={[styles.errorText, { color: '#fff' }]}>{error}</Text>
             <TouchableOpacity style={[styles.retryButton, { backgroundColor: theme.primary }]} onPress={() => fetchEvents()}>
               <Text style={styles.retryButtonText}>Try Again</Text>
             </TouchableOpacity>
@@ -1067,10 +1070,10 @@ const ScheduleScreen = () => {
             }}
             ListEmptyComponent={
               <View style={[styles.emptyContainer, { flex: 1, justifyContent: 'center' }]}> 
-                <Ionicons name="calendar-outline" size={48} color={theme.muted || '#666666'} />
-                <Text style={[styles.emptyText, { color: theme.text }]}>No events found for the selected filters.</Text>
+                <Ionicons name="calendar-outline" size={48} color={'#B87333'} />
+                <Text style={[styles.emptyText, { color: '#fff' }]}>No events found for the selected filters.</Text>
                 <TouchableOpacity style={styles.resetButton} onPress={handleResetFilters}>
-                  <Text style={[styles.resetButtonText, { color: theme.primary }]}>Reset Filters</Text>
+                  <Text style={[styles.resetButtonText, { color: '#B87333' }]}>Reset Filters</Text>
                 </TouchableOpacity>
               </View>
             }
@@ -1092,7 +1095,7 @@ const ScheduleScreen = () => {
       {/* Top navigation bar (render last so it overlays content reliably) */}
       <TopNavBar 
         onSettingsPress={() => navigation.navigate('Settings')}
-        whiteIcons={false}
+        whiteIcons={true}
       />
 
       {/* Event details modal */}

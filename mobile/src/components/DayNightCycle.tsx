@@ -137,20 +137,23 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
   // Enhanced cloud animations with different speeds and directions
   useEffect(() => {
     // Layer 1 - Slow moving high clouds (8 minutes)
+    // Start fully off-screen right, move to fully off-screen left — seamless loop
     Animated.loop(
       Animated.timing(cloudLayer1, {
         toValue: 1,
-        duration: 480000, // 8 minutes - slow but visible
+        duration: 480000,
         useNativeDriver: true,
+        easing: require('react-native').Easing.linear,
       })
     ).start();
 
-    // Layer 2 - Medium speed clouds (12 minutes)
+    // Layer 2 - Medium speed clouds (12 minutes), moves opposite direction
     Animated.loop(
       Animated.timing(cloudLayer2, {
         toValue: 1,
-        duration: 720000, // 12 minutes - medium slow
+        duration: 720000,
         useNativeDriver: true,
+        easing: require('react-native').Easing.linear,
       })
     ).start();
 
@@ -158,8 +161,9 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
     Animated.loop(
       Animated.timing(cloudLayer3, {
         toValue: 1,
-        duration: 900000, // 15 minutes - slow
+        duration: 900000,
         useNativeDriver: true,
+        easing: require('react-native').Easing.linear,
       })
     ).start();
 
@@ -167,8 +171,9 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
     Animated.loop(
       Animated.timing(bigBackgroundCloud, {
         toValue: 1,
-        duration: 1500000, // 25 minutes - very slow background movement
+        duration: 1500000,
         useNativeDriver: true,
+        easing: require('react-native').Easing.linear,
       })
     ).start();
   }, [cloudLayer1, cloudLayer2, cloudLayer3, bigBackgroundCloud, height]);
@@ -552,22 +557,22 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         end={{ x: 0, y: 1 }}
       />
 
-      {/* Horizon Atmospheric Glow */}
+      {/* Horizon Atmospheric Glow — subtle warm band, reduced height to stay behind grass */}
       <Animated.View
         style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
-          height: height * 0.3,
-          opacity: horizonGlow,
+          height: height * 0.15,
+          opacity: horizonGlow.interpolate({ inputRange: [0, 1], outputRange: [0, 0.4] }),
         }}
       >
         <LinearGradient
-          colors={['transparent', isGoldenHour ? '#ffd700' : (isSunset ? '#ff4500' : '#ff8c00'), 'transparent']}
+          colors={['transparent', isGoldenHour ? '#ffd700' : (isSunset ? '#ff4500' : '#ff8c00')]}
           style={{ height: '100%', width: '100%' }}
-          start={{ x: 0, y: 1 }}
-          end={{ x: 0, y: 0 }}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
         />
       </Animated.View>
 
@@ -732,8 +737,8 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
             translateX: cloudLayer1.interpolate({
               inputRange: [0, 1],
               outputRange: [
-                -1 * width * 1.0, // -100% of width
-                width * 1.0 // 100% of width
+                width * 1.2, // start fully off-screen right
+                -1 * width * 1.2 // end fully off-screen left
               ],
             })
           }
@@ -758,8 +763,8 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
             translateX: cloudLayer2.interpolate({
               inputRange: [0, 1],
               outputRange: [
-                width * 1.0, // 100% of width
-                -1 * width * 1.0 // -100% of width
+                -1 * width * 1.1, // start fully off-screen left
+                width * 1.1 // end fully off-screen right
               ],
             })
           }
@@ -784,8 +789,8 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
             translateX: cloudLayer3.interpolate({
               inputRange: [0, 1],
               outputRange: [
-                -1 * width * 1.2, // -120% of width
-                width * 1.2 // 120% of width
+                width * 1.2, // start fully off-screen right
+                -1 * width * 1.2 // end fully off-screen left
               ],
             })
           }
@@ -810,8 +815,8 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
             translateX: bigBackgroundCloud.interpolate({
               inputRange: [0, 1],
               outputRange: [
-                -1 * width * 0.5, // -50% of width
-                width * 1.5 // 150% of width
+                -1 * width * 1.8, // start fully off-screen left
+                width * 1.8 // end fully off-screen right
               ],
             })
           }

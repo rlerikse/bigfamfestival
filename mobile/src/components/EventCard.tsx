@@ -215,9 +215,9 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
       style={[
         styles.eventCard,
         {
-          borderColor: isLive && showStatusBadge ? animatedBorderColor : theme.border,
+          borderColor: isLive && showStatusBadge ? animatedBorderColor : 'rgba(255, 255, 255, 0.2)',
           borderWidth: isLive && showStatusBadge ? (animatedBorderWidth as unknown as number) : 1,
-          backgroundColor: theme.card,
+          backgroundColor: 'rgba(255, 255, 255, 0.12)',
           opacity: isPast ? 0.5 : 1,
         },
       ]}
@@ -290,7 +290,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         >
           <Text
             style={{
-              color: theme.muted,
+              color: 'rgba(255, 255, 255, 0.7)',
               fontSize: 10,
               fontWeight: '700',
               letterSpacing: 0.5,
@@ -312,14 +312,14 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
       />
       <View style={styles.eventInfo}>
         <Text
-          style={[styles.eventName, { color: theme.text }]}
+          style={[styles.eventName, { color: '#fff' }]}
           numberOfLines={1}
           ellipsizeMode="tail"
         >
           {item.name}
         </Text>
         <Text
-          style={[styles.eventDetails, { color: theme.muted }]}
+          style={[styles.eventDetails, { color: 'rgba(255, 255, 255, 0.7)' }]}
           numberOfLines={1}
           ellipsizeMode="tail"
         >
@@ -339,7 +339,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         
         {item.description && (
           <Text
-            style={[styles.eventDescription, { color: theme.text }]}
+            style={[styles.eventDescription, { color: 'rgba(255, 255, 255, 0.9)' }]}
             numberOfLines={1}
             ellipsizeMode="tail"
           >

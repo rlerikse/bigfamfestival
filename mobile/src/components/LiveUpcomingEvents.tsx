@@ -269,7 +269,7 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
             } else if (event.stage === 'Bayou' || idx === 1) {
               logoSource = require('../assets/images/bayou-logo-trans.png');
               logoStyle = styles.stageLogoBayou;
-            } else if (event.stage === 'The Gallery' || idx === 2) {
+            } else if (event.stage === 'The Gallery' || event.stage === 'Gallery' || idx === 2) {
               logoSource = require('../assets/images/gallery-logo-trans.png');
               logoStyle = styles.stageLogoGallery;
             }

@@ -180,8 +180,8 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         style={[
           styles.dropdownButton,
           {
-            borderColor: theme.border,
-            backgroundColor: theme.background,
+            borderColor: 'rgba(255, 255, 255, 0.4)',
+            backgroundColor: 'rgba(255, 255, 255, 0.15)',
             opacity: disabled ? 0.6 : 1,
           },
           style
@@ -193,7 +193,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
           <Ionicons
             name={icon}
             size={16}
-            color={theme.text}
+            color={'#fff'}
             style={{ marginRight: 8 }}
           />
         )}
@@ -201,7 +201,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
           style={[
             styles.dropdownButtonText,
             {
-              color: selectedValues.length > 0 ? theme.text : theme.muted,
+              color: '#fff',
               flex: 1,
             }
           ]}
@@ -212,7 +212,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         <Ionicons
           name={isVisible ? 'chevron-up' : 'chevron-down'}
           size={18}
-          color={theme.text}
+          color={'#fff'}
         />
       </TouchableOpacity>
 

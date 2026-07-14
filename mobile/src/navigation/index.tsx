@@ -95,6 +95,7 @@ function MainNavigator() {
       )}
       <Tab.Navigator
         tabBar={(props) => <GrassBottomTabBar {...props} />}
+        sceneContainerStyle={{ backgroundColor: 'transparent' }}
         screenOptions={{
           headerShown: false,
         }}

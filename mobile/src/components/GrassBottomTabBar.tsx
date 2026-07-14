@@ -208,6 +208,7 @@ const styles = StyleSheet.create({  container: {
     position: 'absolute',
     bottom: 0, // overridden inline with insets
     zIndex: 10,
+    overflow: 'visible',
   },
   imageContainer: { 
     position: 'absolute',

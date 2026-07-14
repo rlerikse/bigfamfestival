@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useCountdown } from '../hooks/useCountdown';
 import type { FestivalPhase } from '../hooks/useFestivalState';
 
@@ -22,6 +22,12 @@ import { festivalConfig } from '../config/festival.config';
 const FESTIVAL_LAT = festivalConfig.location.latitude;
 const FESTIVAL_LON = festivalConfig.location.longitude;
 const FESTIVAL_TIMEZONE = festivalConfig.location.timezone;
+const FESTIVAL_LOCATION_NAME = festivalConfig.location.name;
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface WeatherDay {
   date: string;
@@ -129,11 +135,19 @@ const useWeather = () => {
 const ForecastAndClock: React.FC = () => {
   const { hour12, minutes, ampm } = useFestivalClock();
   const weather = useWeather();
+  const [expanded, setExpanded] = React.useState(false);
   const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
   const pieces: string[] = [];
-  pieces.push('Pontiac, MI');
+  pieces.push(FESTIVAL_LOCATION_NAME);
   if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
   if (weatherEmoji) pieces.push(weatherEmoji);
+
+  const forecastDays = (weather.daily || []).slice(0, 5);
+
+  const toggleForecast = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
 
   // Check if doors are open: between 10am and 6:15am next day
   const now = new Date();
@@ -144,40 +158,43 @@ const ForecastAndClock: React.FC = () => {
 
   return (
     <View style={styles.liveClockWrapper}>
-      {/* 5-day forecast hidden for now */}
-      {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
-        <View style={[styles.forecastRow, styles.forecastPadding]}>
-          {forecastDays.map(d => {
-            const icon = weatherCodeToEmoji(d.code) || '';
+      <TouchableOpacity onPress={toggleForecast} activeOpacity={0.7}>
+        <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
+          {weather.isLoading ? (
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
+          ) : weather.error ? (
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
+          ) : (
+            <Text style={styles.metaText}>{pieces.join(' \u2022 ')}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      {expanded && !weather.isLoading && !weather.error && forecastDays.length > 0 && (
+        <View style={styles.forecastContainer}>
+          {forecastDays.map((d, i) => {
+            const icon = weatherCodeToEmoji(d.code) || '☁️';
             const hi = d.tMax != null ? Math.round(d.tMax) : '-';
             const lo = d.tMin != null ? Math.round(d.tMin) : '-';
             return (
-              <View key={d.date} style={styles.forecastDay}>
+              <View key={d.date} style={[styles.forecastDayCard, i === 0 && styles.forecastDayCardToday]}>
+                <Text style={styles.forecastDayLabel}>{i === 0 ? 'Today' : d.dayLabel}</Text>
                 <Text style={styles.forecastIcon}>{icon}</Text>
-                <Text style={styles.forecastTemps}>{hi}°/{lo}°</Text>
-                <Text style={styles.forecastDayLabel}>{shortLabel(d.dayLabel)}</Text>
+                <View style={styles.forecastTempRow}>
+                  <Text style={styles.forecastHi}>{hi}°</Text>
+                  <Text style={styles.forecastLo}>{lo}°</Text>
+                </View>
               </View>
             );
           })}
         </View>
-      )} */}
-      <View style={{ minHeight: 20, marginTop: 4 }}>
-        {weather.isLoading ? (
-          <View style={styles.inlineRow}>
-            <ActivityIndicator size="small" color="#B87333" />
-            <Text style={styles.metaText}>  Loading weather...</Text>
-          </View>
-        ) : weather.error ? (
-          <Text style={styles.metaText}>{weather.error}</Text>
-        ) : (
-          <Text style={styles.metaText}>{pieces.join(' \u2022 ')}</Text>
-        )}
-      </View>
+      )}
+
       <View style={styles.clockRow}>
         <Text style={styles.timeText}>{hour12}:{minutes} {ampm}</Text>
       </View>
       <View style={styles.doorsStatusRow}>
-        <Text style={styles.doorsStatusText}>{isDoorsOpen ? 'DOORS OPEN' : 'DOORS CLOSED'}</Text>
+        <Text style={styles.doorsStatusText}>{isDoorsOpen ? 'GATES OPEN' : 'GATES CLOSED'}</Text>
       </View>
     </View>
   );
@@ -186,17 +203,52 @@ const ForecastAndClock: React.FC = () => {
 const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
   const timeLeft = useCountdown(targetDate);
   const weather = useWeather();
+  const [expanded, setExpanded] = React.useState(false);
   const hasTimeLeft = timeLeft !== null && (timeLeft.days > 0 || timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0);
 
   const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
-  const weatherPieces: string[] = ['Pontiac, MI'];
+  const weatherPieces: string[] = [FESTIVAL_LOCATION_NAME];
   if (weather.temperature != null) weatherPieces.push(`${Math.round(weather.temperature)}°F`);
   if (weatherEmoji) weatherPieces.push(weatherEmoji);
 
+  const forecastDays = (weather.daily || []).slice(0, 5);
+
+  const toggleForecast = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
   const weatherLine = (
-    <View style={{ minHeight: 20, marginBottom: 8, alignItems: 'center' }}>
-      {weather.isLoading ? null : weather.error ? null : (
-        <Text style={styles.metaText}>{weatherPieces.join(' \u2022 ')}</Text>
+    <View style={{ alignItems: "center", marginBottom: 6 }}>
+      <TouchableOpacity onPress={toggleForecast} activeOpacity={0.7} style={{ height: 24, justifyContent: "center" }}>
+        <View style={{ alignItems: 'center' }}>
+          {weather.isLoading ? (
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
+          ) : weather.error ? (
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
+          ) : (
+            <Text style={styles.metaText}>{weatherPieces.join(' \u2022 ')}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+      {expanded && !weather.isLoading && !weather.error && forecastDays.length > 0 && (
+        <View style={styles.forecastContainer}>
+          {forecastDays.map((d, i) => {
+            const icon = weatherCodeToEmoji(d.code) || '☁️';
+            const hi = d.tMax != null ? Math.round(d.tMax) : '-';
+            const lo = d.tMin != null ? Math.round(d.tMin) : '-';
+            return (
+              <View key={d.date} style={[styles.forecastDayCard, i === 0 && styles.forecastDayCardToday]}>
+                <Text style={styles.forecastDayLabel}>{i === 0 ? 'Today' : d.dayLabel}</Text>
+                <Text style={styles.forecastIcon}>{icon}</Text>
+                <View style={styles.forecastTempRow}>
+                  <Text style={styles.forecastHi}>{hi}°</Text>
+                  <Text style={styles.forecastLo}>{lo}°</Text>
+                </View>
+              </View>
+            );
+          })}
+        </View>
       )}
     </View>
   );
@@ -226,7 +278,7 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
       <View style={styles.countdownWrapper}>
         {weatherLine}
         <View style={styles.clockRow}>
-          <Text style={styles.timeText}>DOORS OPEN</Text>
+          <Text style={styles.timeText}>GATES OPEN</Text>
         </View>
         <View style={[styles.doorsStatusRow, { paddingTop: 6 }]}>
           <Text style={styles.doorsStatusText}>8:00 PM</Text>
@@ -248,7 +300,7 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
         <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
       </View>
       <View style={[styles.doorsStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
-        <Text style={styles.doorsStatusText}>UNTIL DOORS OPEN</Text>
+        <Text style={styles.doorsStatusText}>UNTIL GATES OPEN</Text>
       </View>
     </View>
   );
@@ -359,13 +411,52 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginTop: 0,
   },
+  forecastContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    alignSelf: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+    gap: 8,
+  },
+  forecastDayCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    width: 56,
+  },
+  forecastDayCardToday: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  forecastTempRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
+  },
+  forecastHi: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  forecastLo: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 10,
+    fontWeight: '500',
+  },
   forecastDay: {
     alignItems: 'center',
     marginHorizontal: 8,
   },
   forecastIcon: {
     fontSize: 18,
-    lineHeight: 20,
+    lineHeight: 22,
+    marginVertical: 2,
   },
   forecastTemps: {
     color: '#fff',
@@ -379,13 +470,19 @@ const styles = StyleSheet.create({
   },
   forecastDayLabel: {
     color: '#fff',
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
+  expandArrow: {
+    color: '#fff',
     fontSize: 10,
     fontWeight: '600',
-    marginTop: 0,
     textShadowColor: '#B87333',
     textShadowOffset: { width: 0.5, height: 0.5 },
     textShadowRadius: 2,
-    lineHeight: 12,
   },
   forecastPadding: {
     paddingTop: 12,

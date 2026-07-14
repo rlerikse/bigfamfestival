@@ -1,10 +1,8 @@
 import { api } from './api';
-import { getIdToken } from './firebaseAuthService';
+import { getIdToken, getCurrentUser } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
-import { storage } from '../config/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface UpdateProfileParams {
   name?: string;
@@ -57,6 +55,12 @@ export const uploadProfilePicture = async (
   imageUri: string
 ): Promise<string> => {
   try {
+    // Use native Firebase auth UID for storage path (must match security rules)
+    const authUid = getCurrentUser()?.uid;
+    if (!authUid) {
+      throw new Error('Not authenticated');
+    }
+
     const token = await getIdToken();
     if (!token) {
       throw new Error('Authentication token not found');
@@ -66,21 +70,39 @@ export const uploadProfilePicture = async (
       : imageUri.toLowerCase().endsWith('.webp') ? 'image/webp'
       : 'image/jpeg';
 
-    // Use fetch blob workaround — Hermes doesn't support creating Blobs
-    // from ArrayBuffer/ArrayBufferView, so uploadBytes(ref, Uint8Array) fails on Android.
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const storagePath = `profile-pictures/${authUid}/avatar.${ext}`;
+    const bucket = 'bigfamfestival.firebasestorage.app';
+
+    // Upload via Firebase Storage REST API using native auth token
+    const encodedPath = encodeURIComponent(storagePath);
+    const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}`;
+
+    const fileResponse = await fetch(imageUri);
+    const blob = await fileResponse.blob();
 
     if (blob.size > MAX_AVATAR_SIZE_BYTES) {
       throw new Error('Image is too large. Please choose a photo under 5 MB.');
     }
 
-    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-    const storageRef = ref(storage, `profile-pictures/${userId}/avatar.${ext}`);
-    await uploadBytes(storageRef, blob, { contentType: mimeType });
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': mimeType,
+      },
+      body: blob,
+    });
 
-    // Get the public download URL
-    const downloadUrl = await getDownloadURL(storageRef);
+    if (!uploadResponse.ok) {
+      const errBody = await uploadResponse.text();
+      throw new Error(`Upload failed: ${errBody}`);
+    }
+
+    // Construct download URL with token
+    const metadata = await uploadResponse.json();
+    const downloadToken = metadata.downloadTokens;
+    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media&token=${downloadToken}`;
 
     // Persist the URL to the backend user profile
     await updateUserProfile(userId, { profilePictureUrl: downloadUrl });

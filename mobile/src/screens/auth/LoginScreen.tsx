@@ -13,6 +13,7 @@ import {
   Alert,
   Animated,
 } from 'react-native';
+import * as Device from 'expo-device';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';

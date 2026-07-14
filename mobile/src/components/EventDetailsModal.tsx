@@ -20,10 +20,11 @@ const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = 
   );
 };
 // filepath: e:\repos\bigfamfestival\mobile\src\components\EventDetailsModal.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleEvent } from '../types/event';
+import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
 
 // Debug logging utility for this component
 const debugLog = (message: string, data?: any) => {
@@ -188,16 +189,45 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   isInSchedule,
   onToggleSchedule,
 }) => {
+  const [artists, setArtists] = useState<ArtistProfile[]>([]);
+
+  // Fetch artist profiles when event changes
+  useEffect(() => {
+    if (!event || !event.artists || event.artists.length === 0) {
+      setArtists([]);
+      return;
+    }
+    let cancelled = false;
+    getArtistsBySlugs(event.artists).then((results) => {
+      if (!cancelled) {
+        setArtists(results.filter((a): a is ArtistProfile => a !== null));
+      }
+    });
+    return () => { cancelled = true; };
+  }, [event?.id]);
+
   if (!event) {
     return null;
   }
+
+  // Resolve display data: prefer artist data over event-level data
+  const primaryArtist = artists[0] ?? null;
+  const resolvedImageUrl = primaryArtist?.imageUrl || event.imageUrl;
+  const resolvedDescription = primaryArtist?.bio || (typeof event.description === 'string' ? event.description : null);
+  const resolvedSocials = {
+    soundcloudUrl: primaryArtist?.soundcloudUrl || (event as any).soundcloud_url,
+    spotifyUrl: primaryArtist?.spotifyUrl || (event as any).spotify_url,
+    facebookUrl: primaryArtist?.facebookUrl || (event as any).facebook_url,
+    instagramUrl: primaryArtist?.instagramUrl || (event as any).instagram_url,
+  };
+
   // Ensure event properties used for display are strings or provide fallbacks
   const eventName = typeof event.name === 'string' ? event.name : "Event Name N/A";
   const eventStage = typeof event.stage === 'string' ? event.stage : "Stage N/A";
   const startTimeFormatted = formatTime(event.startTime);
   const endTimeFormatted = formatTime(event.endTime ?? undefined);
   const dateFormatted = formatDate(event.date);
-  const description = typeof event.description === 'string' ? event.description : "No description available";
+  const description = resolvedDescription || "No description available";
 
 
   debugLog('Rendering EventDetailsModal for:', { eventName: eventName, eventId: event.id });
@@ -235,9 +265,14 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
               <View style={styles.imageContainer}>
-                <EventImageWithFallback imageUrl={event.imageUrl} style={styles.eventImage} />
+                <EventImageWithFallback imageUrl={resolvedImageUrl} style={styles.eventImage} />
                 <View style={styles.gradientOverlay}>
                   <SafeText style={styles.eventName}>{eventName}</SafeText>
+                  {artists.length > 0 && (
+                    <SafeText style={styles.artistNames}>
+                      {artists.map(a => a.name).join(' b2b ')}
+                    </SafeText>
+                  )}
                 </View>
               </View>
               
@@ -273,37 +308,37 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 
                 <View style={styles.actionsContainer}>
                   <View style={styles.socialIconsContainer}>
-                    {/* Social links remain the same, ensure URLs are strings */}
-                    {(event as EventWithSocial).soundcloud_url && typeof (event as EventWithSocial).soundcloud_url === 'string' && (
+                    {/* Social links resolved from artist profiles */}
+                    {resolvedSocials.soundcloudUrl && typeof resolvedSocials.soundcloudUrl === 'string' && (
                       <TouchableOpacity 
-                        onPress={() => handleSocialLink((event as EventWithSocial).soundcloud_url)} 
+                        onPress={() => handleSocialLink(resolvedSocials.soundcloudUrl)} 
                         style={styles.socialIcon}
                       >
                         <Ionicons name="logo-soundcloud" size={24} color="#fff" />
                       </TouchableOpacity>
                     )}
                     
-                    {(event as EventWithSocial).facebook_url && typeof (event as EventWithSocial).facebook_url === 'string' && (
+                    {resolvedSocials.facebookUrl && typeof resolvedSocials.facebookUrl === 'string' && (
                       <TouchableOpacity 
-                        onPress={() => handleSocialLink((event as EventWithSocial).facebook_url)} 
+                        onPress={() => handleSocialLink(resolvedSocials.facebookUrl)} 
                         style={styles.socialIcon}
                       >
                         <Ionicons name="logo-facebook" size={24} color="#fff" />
                       </TouchableOpacity>
                     )}
                     
-                    {(event as EventWithSocial).instagram_url && typeof (event as EventWithSocial).instagram_url === 'string' && (
+                    {resolvedSocials.instagramUrl && typeof resolvedSocials.instagramUrl === 'string' && (
                       <TouchableOpacity 
-                        onPress={() => handleSocialLink((event as EventWithSocial).instagram_url)} 
+                        onPress={() => handleSocialLink(resolvedSocials.instagramUrl)} 
                         style={styles.socialIcon}
                       >
                         <Ionicons name="logo-instagram" size={24} color="#fff" />
                       </TouchableOpacity>
                     )}
                     
-                    {(event as EventWithSocial).spotify_url && typeof (event as EventWithSocial).spotify_url === 'string' && (
+                    {resolvedSocials.spotifyUrl && typeof resolvedSocials.spotifyUrl === 'string' && (
                       <TouchableOpacity 
-                        onPress={() => handleSocialLink((event as EventWithSocial).spotify_url)} 
+                        onPress={() => handleSocialLink(resolvedSocials.spotifyUrl)} 
                         style={styles.socialIcon}
                       >
                         <Ionicons name="musical-notes" size={24} color="#fff" />
@@ -412,6 +447,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     textAlign: 'center',
     paddingHorizontal: 15,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10
+  },
+  artistNames: {
+    fontSize: 16,
+    color: '#ddd',
+    textAlign: 'center',
+    paddingHorizontal: 15,
+    marginTop: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: -1, height: 1 },
     textShadowRadius: 10

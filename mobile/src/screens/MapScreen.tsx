@@ -50,8 +50,8 @@ export default function MapScreen() {
   }, []);
   
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TopNavBar whiteIcons={whiteIcons} />
+    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <TopNavBar whiteIcons={true} />
       
       {isLoading ? (
         <View style={styles.loadingContainer}>
