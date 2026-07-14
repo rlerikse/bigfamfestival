@@ -27,6 +27,7 @@ import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
 
 // Debug logging utility for this component
+// eslint-disable-next-line @typescript-eslint/no-empty-function
 const debugLog = (_message: string, _data?: any) => {};
 
 
