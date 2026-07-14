@@ -13,6 +13,7 @@ import {
   Alert,
   Animated,
 } from 'react-native';
+import * as Device from 'expo-device';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -171,8 +172,8 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
     >
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={styles.scrollContent}>

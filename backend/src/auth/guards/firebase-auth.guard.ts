@@ -49,7 +49,26 @@ export class FirebaseAuthGuard implements CanActivate {
     }
 
     try {
-      const decodedToken = await admin.auth().verifyIdToken(token, true);
+      // verifyIdToken with checkRevoked=true may fail transiently for tokens
+      // issued immediately after account creation (Firebase propagation delay).
+      // Fall back to verification without revocation check on specific errors.
+      let decodedToken: admin.auth.DecodedIdToken;
+      try {
+        decodedToken = await admin.auth().verifyIdToken(token, true);
+      } catch (revokeCheckErr: any) {
+        if (
+          revokeCheckErr.code === 'auth/user-not-found' ||
+          revokeCheckErr.code === 'auth/user-token-expired'
+        ) {
+          // Retry without revocation check for freshly created accounts
+          this.logger.debug(
+            `Revocation check failed (${revokeCheckErr.code}), retrying without checkRevoked`,
+          );
+          decodedToken = await admin.auth().verifyIdToken(token, false);
+        } else {
+          throw revokeCheckErr;
+        }
+      }
 
       // Attach decoded Firebase token info to request
       request.user = {

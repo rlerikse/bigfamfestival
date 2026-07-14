@@ -20,7 +20,6 @@ import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
 import { AdminEventsScreen } from '../screens/admin/AdminEventsScreen';
 import { AdminEventEditScreen } from '../screens/admin/AdminEventEditScreen';
 import { AdminShiftsScreen } from '../screens/admin/AdminShiftsScreen';
-import { AdminScheduleScreen } from '../screens/admin/AdminScheduleScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DebugScreen from '../screens/DebugScreen';
@@ -42,7 +41,6 @@ export type RootStackParamList = {
   AdminEvents: undefined;
   AdminEventEdit: { eventId?: string };
   AdminShifts: undefined;
-  AdminSchedule: undefined;
 };
 
 export type AuthStackParamList = {
@@ -97,6 +95,7 @@ function MainNavigator() {
       )}
       <Tab.Navigator
         tabBar={(props) => <GrassBottomTabBar {...props} />}
+        sceneContainerStyle={{ backgroundColor: 'transparent' }}
         screenOptions={{
           headerShown: false,
         }}
@@ -239,9 +238,15 @@ export default function Navigation() {
 
   // Use theme background color if provided, otherwise fall back to white
   const backgroundColor = theme?.background ?? '#ffffffff';
+  const headerTintColor = theme?.text ?? '#000000';
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{
+      headerShown: false,
+      headerStyle: { backgroundColor },
+      headerTintColor,
+      headerTitleStyle: { color: headerTintColor },
+    }}>
       {user ? (
         <>
           <Stack.Screen name="Main" component={MainNavigator} />
@@ -288,22 +293,17 @@ export default function Navigation() {
           <Stack.Screen
             name="AdminEvents"
             component={AdminEventsScreen}
-            options={{ headerShown: true, title: 'Events', contentStyle: { backgroundColor } }}
+            options={{ headerShown: true, title: 'Events', headerTransparent: true, headerBlurEffect: 'regular', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="AdminEventEdit"
             component={AdminEventEditScreen}
-            options={{ headerShown: true, title: 'Edit Event', contentStyle: { backgroundColor } }}
+            options={{ headerShown: true, title: 'Edit Event', headerTransparent: true, headerBlurEffect: 'regular', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="AdminShifts"
             component={AdminShiftsScreen}
             options={{ headerShown: true, title: 'Shifts', contentStyle: { backgroundColor } }}
-          />
-          <Stack.Screen
-            name="AdminSchedule"
-            component={AdminScheduleScreen}
-            options={{ headerShown: true, title: 'Schedule Editor', contentStyle: { backgroundColor } }}
           />
           <Stack.Screen
             name="Debug"

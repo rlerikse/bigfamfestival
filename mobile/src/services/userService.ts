@@ -1,10 +1,8 @@
 import { api } from './api';
-import { getIdToken } from './firebaseAuthService';
+import { getIdToken, getCurrentUser } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { User } from '../contexts/AuthContext';
-import { storage } from '../config/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface UpdateProfileParams {
   name?: string;
@@ -45,7 +43,6 @@ export const updateUserProfile = async (
 };
 
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
  * Upload profile picture directly to Firebase Storage, then update user profile with the URL.
@@ -58,32 +55,54 @@ export const uploadProfilePicture = async (
   imageUri: string
 ): Promise<string> => {
   try {
+    // Use native Firebase auth UID for storage path (must match security rules)
+    const authUid = getCurrentUser()?.uid;
+    if (!authUid) {
+      throw new Error('Not authenticated');
+    }
+
     const token = await getIdToken();
     if (!token) {
       throw new Error('Authentication token not found');
     }
 
-    // Read the image as a blob
-    const response = await fetch(imageUri);
-    const blob = await response.blob();
+    const mimeType = imageUri.toLowerCase().endsWith('.png') ? 'image/png'
+      : imageUri.toLowerCase().endsWith('.webp') ? 'image/webp'
+      : 'image/jpeg';
 
-    // Validate file size
+    const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+    const storagePath = `profile-pictures/${authUid}/avatar.${ext}`;
+    const bucket = 'bigfamfestival.firebasestorage.app';
+
+    // Upload via Firebase Storage REST API using native auth token
+    const encodedPath = encodeURIComponent(storagePath);
+    const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}`;
+
+    const fileResponse = await fetch(imageUri);
+    const blob = await fileResponse.blob();
+
     if (blob.size > MAX_AVATAR_SIZE_BYTES) {
       throw new Error('Image is too large. Please choose a photo under 5 MB.');
     }
 
-    // Validate file type
-    const mimeType = blob.type || 'image/jpeg';
-    if (!ALLOWED_IMAGE_TYPES.includes(mimeType)) {
-      throw new Error('Unsupported image format. Please use JPEG, PNG, or WebP.');
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': mimeType,
+      },
+      body: blob,
+    });
+
+    if (!uploadResponse.ok) {
+      const errBody = await uploadResponse.text();
+      throw new Error(`Upload failed: ${errBody}`);
     }
 
-    // Upload to Firebase Storage: profile-pictures/<userId>.jpg
-    const storageRef = ref(storage, `profile-pictures/${userId}.jpg`);
-    await uploadBytes(storageRef, blob, { contentType: mimeType });
-
-    // Get the public download URL
-    const downloadUrl = await getDownloadURL(storageRef);
+    // Construct download URL with token
+    const metadata = await uploadResponse.json();
+    const downloadToken = metadata.downloadTokens;
+    const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media&token=${downloadToken}`;
 
     // Persist the URL to the backend user profile
     await updateUserProfile(userId, { profilePictureUrl: downloadUrl });

@@ -31,7 +31,7 @@ const NotificationsScreen: React.FC = () => {
     () => (typeof isGuestUser === 'function' ? isGuestUser() : !user),
     [isGuestUser, user]
   );
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   // Local types to avoid name collision with component import
   interface NotificationHistoryEntry {
@@ -560,10 +560,10 @@ const NotificationsScreen: React.FC = () => {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
+      style={[styles.container, { backgroundColor: 'transparent' }]}
       edges={['top', 'left', 'right', 'bottom']}
     >
-  <TopNavBar whiteIcons={isDark} unreadCount={visibleHistory.length} />
+  <TopNavBar whiteIcons={true} unreadCount={visibleHistory.length} />
       
       {/* Admin controls moved to Settings screen */}
       
@@ -586,10 +586,10 @@ const NotificationsScreen: React.FC = () => {
             <Ionicons
               name="notifications-outline"
               size={80}
-              color={theme.muted || '#666666'}
+              color={'#fff'}
             />
-            <Text style={[styles.title, { color: theme.text }]}>Notifications</Text>
-            <Text style={[styles.description, { color: theme.muted }]}>
+            <Text style={[styles.title, { color: '#fff' }]}>Notifications</Text>
+            <Text style={[styles.description, { color: 'rgba(255, 255, 255, 0.8)' }]}>
               Stay updated with festival announcements, artist updates, and important information.
             </Text>
           </View>
@@ -601,10 +601,6 @@ const NotificationsScreen: React.FC = () => {
           ) : visibleHistory.length > 0 ? (
             <View
               style={{
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                borderWidth: 1,
-                borderRadius: 12,
                 paddingVertical: 4,
               }}
             >

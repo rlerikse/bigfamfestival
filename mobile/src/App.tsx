@@ -1,3 +1,9 @@
+// Suppress known simulator-only errors — must run before any expo-notifications import
+import { LogBox } from 'react-native';
+LogBox.ignoreLogs([
+  '[expo-notifications] Error reading persisted server registration info',
+]);
+
 import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

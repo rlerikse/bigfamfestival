@@ -24,3 +24,25 @@ export interface Event {
   export interface ScheduleEvent extends Event {
     userNotes?: string;
   }
+
+  /**
+   * Upcoming show/concert — extends Event with show-specific fields.
+   * Sourced from Firestore `events` collection. All new fields are optional
+   * for backward compatibility with existing festival events.
+   */
+  export interface UpcomingShow extends Event {
+    /** ISO 8601 datetime string for doors open time, e.g. '2026-04-25T20:00:00-04:00' */
+    doorsTime?: string;
+    /** URL to event flyer image (remote or local asset path) */
+    flyerUrl?: string;
+    /** Ticket purchase URL */
+    ticketUrl?: string;
+    /** Facebook event URL */
+    facebookUrl?: string;
+    /** Support act display string, e.g. 'with support from Mfinity' */
+    supportAct?: string;
+    /** Venue name override (if different from stage) */
+    venueName?: string;
+    /** City/state string, e.g. 'Pontiac, MI' */
+    venueCity?: string;
+  }

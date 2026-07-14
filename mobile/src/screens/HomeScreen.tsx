@@ -1,13 +1,11 @@
 import React from 'react';
 import {
   View,
-  Dimensions,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
-import DayNightCycle from '../components/DayNightCycle';
 import TopNavBar from '../components/TopNavBar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,23 +18,39 @@ import { ScheduleEvent } from '../types/event';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
 import { isLoggedInUser } from '../utils/userUtils';
+import { useFestivalState } from '../hooks/useFestivalState';
+import { festivalConfig } from '../config/festival.config';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
+// Fallback doors date used only if Firestore config is unavailable and
+// festival.config.startDate hasn't been set. Kept for backward-compat.
+const DOORS_DATE_FALLBACK = new Date('2026-09-25T14:00:00-05:00');
+
 const HomeScreen = () => {
-  const { theme, isDark, isPerformanceMode } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const insets = useSafeAreaInsets();
-  const gatesOpenDate = new Date('2025-09-26T10:00:00');
   const { user } = useAuth();
+  const festivalState = useFestivalState();
   const [selectedEvent, setSelectedEvent] = React.useState<ScheduleEvent | null>(null);
   const [isModalVisible, setIsModalVisible] = React.useState(false);
   const [userSchedule, setUserSchedule] = React.useState<Record<string, boolean>>({});
 
+  // Determine the countdown target: window start if upcoming, or the configured end
+  const countdownTarget = React.useMemo(() => {
+    if (festivalState.windowStart) return festivalState.windowStart;
+    // Fallback to config start date if Firestore not loaded yet
+    try {
+      const [year, month, day] = festivalConfig.startDate.split('-').map(Number);
+      return new Date(year, month - 1, day, 14, 0, 0); // 2 PM EST gates open
+    } catch {
+      return DOORS_DATE_FALLBACK;
+    }
+  }, [festivalState.windowStart]);
+
   React.useEffect(() => {
     let mounted = true;
     (async () => {
-      // Only fetch user schedule if user is logged in (not a guest)
       if (!user || !isLoggedInUser(user)) return;
       try {
         const schedule = await getUserSchedule(user.id);
@@ -61,7 +75,6 @@ const HomeScreen = () => {
   };
 
   const handleToggleSchedule = async (ev: ScheduleEvent) => {
-    // Require a logged-in (non-guest) user to manage schedule
     if (!user || !isLoggedInUser(user) || user.id === 'guest-user') {
       Alert.alert(
         'Login Required',
@@ -83,7 +96,6 @@ const HomeScreen = () => {
     try {
       if (isIn) await removeFromSchedule(user.id, id); else await addToSchedule(user.id, id);
     } catch (e) {
-      // revert
       setUserSchedule(prev => {
         const copy = { ...prev };
         if (isIn) copy[id] = true; else delete copy[id];
@@ -94,76 +106,47 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' }}>
-      {/* Day/Night Cycle Background - Only render if performance mode is off */}
-      {!isPerformanceMode && (
-        <View style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0,
-          zIndex: 0 
-        }}>
-          <DayNightCycle height={Dimensions.get('window').height} />
-        </View>
-      )}
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
 
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      
-      <TopNavBar 
+
+      <TopNavBar
         onSettingsPress={() => navigation.navigate('Settings')}
         whiteIcons={true}
       />
 
-      {/* Main content container */}
-      <View style={{ flex: 1, justifyContent: 'flex-start', alignItems: 'stretch' }}>
-        {/* Semi-transparent overlay to ensure text readability over the day/night cycle */}
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'transparent',
-           zIndex: 0
-         }} />
-         
-         {/* Content container with higher z-index */}
-         <View style={{ 
-           justifyContent: 'flex-start', 
-           alignItems: 'stretch', 
-           zIndex: 1,
-           backgroundColor: 'transparent',
-           paddingHorizontal: 5,
-           paddingBottom: 5,
-           borderRadius: 16,
-           marginHorizontal: 20,
-           paddingTop: 75, // TopNavBar height (55) + extra padding (20)
-         }}>
-          {/* Copper divider above timer / clock */}
+      {/* Main content — flex:1 preserves tab bar */}
+      <ScrollView
+        style={{ flex: 1, zIndex: 1 }}
+        contentContainerStyle={{ paddingTop: 90, paddingBottom: 40 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Festival-style countdown — "UNTIL GATES OPEN" */}
+        <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
           <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
-          <View style={{ height: 12 }} />
-          <Countdown targetDate={gatesOpenDate} />
-
-          {/* subtle divider + even less spacing between countdown and events */}
+          <View style={{ height: 0 }} />
+          <Countdown
+            targetDate={countdownTarget}
+            festivalPhase={festivalState.phase}
+          />
           <View style={{ height: 12 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
-          <View style={{ height: 0 }} />
+        </View>
 
-          <LiveUpcomingEvents onEventPress={openEventModal} />
-         </View>
-        <EventDetailsModal
-          isVisible={isModalVisible}
-          onClose={closeEventModal}
-          event={selectedEvent}
-          isInSchedule={!!selectedEvent && !!userSchedule[selectedEvent.id]}
-          onToggleSchedule={handleToggleSchedule}
-        />
-       </View>
-     </SafeAreaView>
-   );
- };
+        {/* Artist cards — festival mode (EventCard with stage logos) */}
+        <LiveUpcomingEvents onEventPress={openEventModal} />
+      </ScrollView>
 
- export default HomeScreen;
+      <EventDetailsModal
+        isVisible={isModalVisible}
+        onClose={closeEventModal}
+        event={selectedEvent}
+        isInSchedule={!!selectedEvent && !!userSchedule[selectedEvent.id]}
+        onToggleSchedule={handleToggleSchedule}
+      />
+    </SafeAreaView>
+  );
+};
+
+export default HomeScreen;

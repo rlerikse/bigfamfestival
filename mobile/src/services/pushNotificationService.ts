@@ -156,7 +156,7 @@ export const registerForPushNotifications = async (userId?: string): Promise<str
         }
       }
     } catch (error) {
-      console.error('Failed to handle backend push token registration:', error);
+      console.warn('Failed to handle backend push token registration:', error);
       // Continue anyway since local notifications will still work
     }
     

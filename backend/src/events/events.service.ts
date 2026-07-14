@@ -121,14 +121,23 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
+    // Strip undefined/null values — Firestore rejects undefined
+    const cleanData = Object.fromEntries(
+      Object.entries(updateEventDto).filter(([_, v]) => v !== undefined && v !== null),
+    );
+
+    if (Object.keys(cleanData).length === 0) {
+      return event;
+    }
+
     await this.firestoreService.update<Event>(
       this.collection,
       id,
-      updateEventDto,
+      cleanData,
     );
 
     // Return updated event
-    return { ...event, ...updateEventDto };
+    return { ...event, ...cleanData };
   }
 
   /**

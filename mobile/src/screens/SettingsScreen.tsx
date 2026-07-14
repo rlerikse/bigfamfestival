@@ -28,7 +28,7 @@ const SettingsScreen = () => {
   const { theme, isDark, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { isGuestUser, deleteAccount, user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
   const { 
     scheduleNotificationsEnabled, 
     toggleScheduleNotifications,
@@ -104,7 +104,10 @@ const SettingsScreen = () => {
           data: { category: 'my_schedule', test: 'scheduled-5s' },
           sound: 'default',
         },
-        trigger: { seconds: 5 } as Notifications.TimeIntervalTriggerInput,
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: 5,
+        },
       });
 
       Alert.alert('Scheduled', 'A test notification will fire in about 5 seconds.');

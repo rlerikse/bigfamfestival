@@ -65,8 +65,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(async (fbUser) => {
       setFirebaseUser(fbUser);
-      
+
       if (fbUser) {
+        // Auth succeeded — show the global splash while we load the backend profile.
+        // This is the ONLY place the global isLoading should be raised for a sign-in:
+        // raising it from the interactive login/SSO handlers unmounts the navigator
+        // (Navigation returns null while isLoading), which discards the LoginScreen's
+        // inline error state on a FAILED attempt (see #71, #52).
+        setIsLoading(true);
+
         // Skip profile fetch during registration — register() will handle it
         if (isRegisteringRef.current) {
           setIsLoading(false);
@@ -80,12 +87,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch user profile from our backend (to get role, ticketType, etc.)
           const userData = await getUserProfile(token ?? undefined);
           setUser(userData);
+          // Cache the successful profile so we can restore role on next failure
+          await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(userData));
           
           // Schedule notifications for user's events
           await scheduleAllUserEventsNotifications(userData.id);
-        } catch (error) {
+        } catch (error: any) {
           console.error('[AuthContext] Error fetching user profile:', error);
-          // User exists in Firebase but not in Firestore - might need to create profile
+
+          // 404 = Firebase Auth UID has no matching backend profile.
+          // Happens post-auth-migration: old Firestore docs used auto-generated IDs, not Auth UIDs.
+          // Auto-create a profile under the current UID so the user is unblocked.
+          if (error.statusCode === 404 || error.response?.status === 404) {
+            console.log('[AuthContext] Profile 404 — auto-creating backend profile for UID:', fbUser.uid);
+            try {
+              const freshToken = await getIdToken(true);
+              if (freshToken) {
+                const created = await createUserProfile(freshToken, {
+                  name: fbUser.displayName || fbUser.email?.split('@')[0] || 'User',
+                  email: fbUser.email || '',
+                });
+                setUser(created);
+                await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(created));
+                console.log('[AuthContext] Auto-created profile, role:', created.role);
+                setIsLoading(false);
+                return;
+              }
+            } catch (createErr: any) {
+              console.error('[AuthContext] Auto-create failed:', createErr.message);
+              // 409 = profile already exists (race) — retry fetch once
+              if (createErr.response?.status === 409) {
+                try {
+                  const t2 = await getIdToken(true);
+                  const retried = await getUserProfile(t2 ?? undefined);
+                  setUser(retried);
+                  await AsyncStorage.setItem('cachedUserProfile', JSON.stringify(retried));
+                  setIsLoading(false);
+                  return;
+                } catch { /* fall through */ }
+              }
+            }
+          }
+
+          // Non-404: restore last known good profile from cache to preserve role
+          const cached = await AsyncStorage.getItem('cachedUserProfile');
+          if (cached) {
+            try {
+              const cachedUser = JSON.parse(cached);
+              if (cachedUser.id === fbUser.uid) {
+                console.log('[AuthContext] Restored user from cache with role:', cachedUser.role);
+                setUser(cachedUser);
+                setIsLoading(false);
+                return;
+              }
+            } catch {
+              // Bad cache entry — ignore
+            }
+          }
+          // Final fallback: minimal profile, role=ATTENDEE
           setUser({
             id: fbUser.uid,
             name: fbUser.displayName || 'User',
@@ -149,15 +208,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Login function using Firebase Auth
   const login = async (email: string, password: string) => {
+    // NOTE: do NOT toggle the global isLoading here. The calling screen owns its
+    // local loading state, and raising the global flag unmounts the navigator
+    // (Navigation returns null), which wipes the LoginScreen's inline error on a
+    // failed attempt. On success, onAuthStateChanged raises the splash instead.
     try {
-      setIsLoading(true);
-      
       // Clear any guest user
       await AsyncStorage.removeItem('guestUser');
-      
+
       // Sign in with Firebase
       await firebaseSignIn(email, password);
-      
+
       // onAuthStateChanged will handle setting the user
       if (__DEV__) {
         console.log('[AuthContext] Login initiated for:', email);
@@ -165,13 +226,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // SSO login helper — creates backend profile if this is the user's first sign-in
-  const handleSsoLogin = async (credential: { user: { uid: string; email: string | null; displayName: string | null } }) => {
+  const handleSsoLogin = async (credential: { user: { uid: string; email: string | null; displayName: string | null; photoURL?: string | null } }) => {
     const fbUser = credential.user;
     const token = await getIdToken(true);
     if (token) {
@@ -181,25 +240,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
       } catch (err: any) {
         // Only create a new profile if the backend returned 404 (profile doesn't exist yet)
-        // Re-throw on network errors, 500s, or any other failure to avoid duplicate creation
-        const status = err?.response?.status ?? err?.statusCode;
-        if (status !== 404) {
-          throw err;
+        const status = err?.statusCode ?? err?.response?.status;
+        const isNotFound = status === 404 || err?.message?.includes('not found');
+        if (!isNotFound) {
+          throw new Error(
+            err?.message || 'Sign-in succeeded but we could not load your profile. Please try again.'
+          );
         }
-        const profileData = await createUserProfile(token, {
-          name: fbUser.displayName || 'User',
-          email: fbUser.email || '',
-          role: UserRole.ATTENDEE,
-        });
-        setUser(profileData);
+        try {
+          const profileData = await createUserProfile(token, {
+            name: fbUser.displayName || 'User',
+            email: fbUser.email || '',
+            role: UserRole.ATTENDEE,
+            profilePictureUrl: fbUser.photoURL || undefined,
+          });
+          setUser(profileData);
+        } catch (createErr: any) {
+          throw new Error(
+            createErr?.message || 'Account created but profile setup failed. Please try again.'
+          );
+        }
       }
     }
   };
 
   // Google Sign-In
   const googleLogin = async () => {
+    // Do NOT toggle the global isLoading here — see login() note. Raising it
+    // unmounts the navigator and discards the inline Google Sign-In error,
+    // which is why a failed Google sign-in silently "loops back" to login (#52).
     try {
-      setIsLoading(true);
       await AsyncStorage.removeItem('guestUser');
       const credential = await firebaseSignInWithGoogle();
       await handleSsoLogin(credential);
@@ -209,15 +279,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Apple Sign-In
   const appleLogin = async () => {
+    // Do NOT toggle the global isLoading here — see login() note.
     try {
-      setIsLoading(true);
       await AsyncStorage.removeItem('guestUser');
       const credential = await firebaseSignInWithApple();
       await handleSsoLogin(credential);
@@ -227,17 +295,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Apple login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   // Register function using Firebase Auth
   const register = async (name: string, email: string, password: string, phone?: string) => {
+    // Do NOT toggle the global isLoading here — see login() note. RegisterScreen
+    // owns its local loading state; the global flag would unmount the navigator
+    // and discard the inline registration error on failure.
     try {
-      setIsLoading(true);
       isRegisteringRef.current = true;
-      
+
       // Clear any guest user
       await AsyncStorage.removeItem('guestUser');
       
@@ -268,7 +336,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw error;
     } finally {
       isRegisteringRef.current = false;
-      setIsLoading(false);
     }
   };
 
@@ -284,8 +351,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('[AuthContext] Firebase sign out complete');
       }
       
-      // Clear guest user
+      // Clear guest user and cached profile
       await AsyncStorage.removeItem('guestUser');
+      await AsyncStorage.removeItem('cachedUserProfile');
       
       setUser(null);
       setFirebaseUser(null);
@@ -302,9 +370,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Login as guest function
   const loginAsGuest = async () => {
+    // Do NOT toggle the global isLoading here — see login() note. Guest sign-in
+    // does not go through Firebase auth, so there is no onAuthStateChanged to
+    // clear a global flag; setting user is enough to switch the navigator.
     try {
-      setIsLoading(true);
-      
       // Create a guest user without Firebase auth
       const guestUserData: User = {
         id: 'guest-user',
@@ -313,16 +382,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: UserRole.ATTENDEE,
         ticketType: 'guest'
       };
-      
+
       // Store guest user preference
       await AsyncStorage.setItem('guestUser', JSON.stringify(guestUserData));
-      
+
       setUser(guestUserData);
     } catch (error) {
       console.error('Guest login error:', error);
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 

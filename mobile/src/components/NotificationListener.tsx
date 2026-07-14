@@ -2,22 +2,25 @@ import React, { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import { registerForPushNotifications, syncPendingPushToken } from '../services/pushNotificationService';
 import { api } from '../services/api';
 import { getIdToken } from '../services/firebaseAuthService';
 import { goToNotificationsSafe } from '../navigation/navigationRef';
 import { useAuth } from '../contexts/AuthContext';
 
-// Set up notification handler for when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Set up notification handler for when app is in foreground (skip on simulator to avoid Keychain entitlement errors)
+if (Device.isDevice) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 /**
  * NotificationListener component that handles push notification setup and responses

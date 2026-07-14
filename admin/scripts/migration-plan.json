@@ -1,0 +1,1901 @@
+{
+  "artists": [
+    {
+      "oldId": "0Xi2bNXuCO0a6hNsxg1Q",
+      "newSlug": "jonvh",
+      "name": "JONVH",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/jonvh.jpg",
+      "bio": "An underground electronic music producer from Colorado, this artist is known for crafting experimental Bass with intricate percussion. His sound is a fusion of halftime, drum and bass, and dubstep, creating a vibe that is both intense and melodic. With releases on labels such as The Wub Club and Wormhole Music Group, he's a rising talent in the Bass scene.",
+      "genre": null
+    },
+    {
+      "oldId": "0nyIm0C2NBM9ldJwz12u",
+      "newSlug": "raedy-lex-bass-set",
+      "name": "Raedy Lex (Bass Set)",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/raedy_lex.jpg",
+      "bio": "Michigan producer focused on highlighting older Detroit music while embracing the new, with passion for music that makes people want to move. Known for robust, darker sounds, has performed with Deepfake, VNSSA, Eric Prydz, Sacha Robotti, and others ",
+      "genre": null
+    },
+    {
+      "oldId": "1G8zWyw5iB7z1v1PPh5B",
+      "newSlug": "saturna",
+      "name": "Saturna",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/saturna.jpg",
+      "bio": "Known for his unique blend of ambient soundscapes and downtempo beats, this artist is a rising star from Vancouver, Canada. He creates deeply emotional and introspective music that fuses ethereal synths, intricate percussion, and melodic elements with a cinematic flair. As the founder of the collective Wildlife Division, he is pushing the boundaries of sound experimentation.",
+      "genre": null
+    },
+    {
+      "oldId": "1T3dAcanMIQW9imklbJQ",
+      "newSlug": "kaptain",
+      "name": "Kaptain",
+      "imageUrl": null,
+      "bio": "Kaptain (Stephen Kaplan) is an electronic music producer, musician, and performer based in Denver, Colorado. His music is a fusion of electronic and Bass with classic/psychedelic rock and funk, incorporating live instruments like guitar, keyboard, and analog synthesizers.",
+      "genre": null
+    },
+    {
+      "oldId": "4NxEKHVhgC6MZnjmgVgF",
+      "newSlug": "thane-of-earth",
+      "name": "Thane of Earth",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/thane_of_earth.jpg",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "4q1twbcwnVjCTxf9orrG",
+      "newSlug": "sacred-kriyations-breathwork",
+      "name": "Sacred Kriyations (Breathwork)",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "59DPz0hqJAsQsGTxmAeg",
+      "newSlug": "chmura",
+      "name": "Chmura",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/chmura.jpg",
+      "bio": "Chmura, an electronic artist, is known for his experimental Bass. He has performed at festivals like Lost Lands and Sound Haven and has collaborated with other artists such as Daggz and Lowcation.",
+      "genre": null
+    },
+    {
+      "oldId": "5QTp04VZnG0smJiyKNBh",
+      "newSlug": "common-oddity",
+      "name": "Common Oddity",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/common_oddity.jpg",
+      "bio": "Hailing from Ann Arbor/Ypsilanti, MI the Common Oddity project aims to hybridize genres. In a sea of new DJs (\"Common\") emerging in the exponentially growing Electronic music community. The aim was to be different and more diverse (\"Oddity\"). Blending genres and overlaying various tracks not usually put together is the goal. Focusing on underground bass music, but incorporating hip-hop & rap, funk, jazz, oldies, and numerous other sub-genre hybrids within Electronic music to explore new mutations in music.",
+      "genre": null
+    },
+    {
+      "oldId": "6EbU1jgrDPIcH62MmD6D",
+      "newSlug": "spectrum",
+      "name": "Spectrum",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/spectrum.JPG",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "7JEIWwdGu77gPg3D6MbJ",
+      "newSlug": "zoska",
+      "name": "Zoska",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/zoska.png",
+      "bio": "Merges funk, jazz, and bass, grew up in the Midwest playing piano, saxophone, and ukulele, using Ableton to blend songwriting with production",
+      "genre": null
+    },
+    {
+      "oldId": "7kVpDVmUKiTqm8Y4CGqo",
+      "newSlug": "able-grey",
+      "name": "Able Grey",
+      "imageUrl": null,
+      "bio": "Rising producer and DJ from Chicago who blends indie dance electronica, melodic bass, future bass, and mid-tempo, performing live with electronic drum pad and midi controller",
+      "genre": null
+    },
+    {
+      "oldId": "8FWujK4L38zKslUnarqF",
+      "newSlug": "j-rose",
+      "name": "J-Rose",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/jrose.jpg",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "8ZQWYsGKWtGB1Nf49WnB",
+      "newSlug": "joebig",
+      "name": "JoeBig",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/joebig.jpg",
+      "bio": "Electronic music producer from Grand Rapids, Michigan. Has tracks like \"War Dub 2024\" and \"Tek\" on Apple Music, known for remixes including \"Who? (JoeBig remix)\".",
+      "genre": null
+    },
+    {
+      "oldId": "8yv3xqHJzsoNYVowbl1J",
+      "newSlug": "floppy-drive",
+      "name": "Floppy Drive",
+      "imageUrl": null,
+      "bio": "Independent experimental electronic producer from Grand Rapids, Michigan, creating melodic Hip-hop grooves infused with soulful vocal samples and experimental bass",
+      "genre": null
+    },
+    {
+      "oldId": "9FZlNaoY1Mm1PGLzEkI4",
+      "newSlug": "fshr",
+      "name": "FSHR",
+      "imageUrl": null,
+      "bio": "Musician and sound designer who studies the effects of sound and melody on the human psyche, with compositions spanning from classical minimalism to environmental soundscapes",
+      "genre": null
+    },
+    {
+      "oldId": "9IE9jyT7XrNwRaSRlAW6",
+      "newSlug": "the-velvet-snakes",
+      "name": "The Velvet Snakes",
+      "imageUrl": null,
+      "bio": "Psychedelic garage rock from Ypsilanti MI, founded by Belz in 2021 with lineup changes since then",
+      "genre": null
+    },
+    {
+      "oldId": "9K5uLrFmYkfV0x7A6tMx",
+      "newSlug": "saproling",
+      "name": "Saproling",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/saproling.JPG",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "9TCUzEBtsT1ncxnFMyKr",
+      "newSlug": "viskus",
+      "name": "Viskus",
+      "imageUrl": null,
+      "bio": "Musical Adhesive that brings people together. Nick Charles, Michigan-bred, Austin-based rising dubstep artist who is starting to turn heads in the Bass world.",
+      "genre": null
+    },
+    {
+      "oldId": "9eG2rfW7Uo2fOeFe27bz",
+      "newSlug": "ozztin",
+      "name": "Ozztin",
+      "imageUrl": null,
+      "bio": "Known for seamless fusion of heavy bass, eerie melodies, and catchy rhythms that have the ability to take listeners to another world",
+      "genre": null
+    },
+    {
+      "oldId": "9vHF3RiBvyswut02kKq9",
+      "newSlug": "movement-meditation",
+      "name": "Movement Meditation",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "A8CrvO68aoe88JZQUEFp",
+      "newSlug": "shuffle-workshop",
+      "name": "Shuffle Workshop",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "Ao1XeRdUEsGS5ceByTa0",
+      "newSlug": "drop-catch",
+      "name": "Drop Catch",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "B0Ynn7ekKszssMIovdxb",
+      "newSlug": "limbus-luna",
+      "name": "Limbus Luna",
+      "imageUrl": null,
+      "bio": "Limbus Luna is a music producer who creates a blend of electronic and progressive house music. They have collaborated with other artists on tracks and have released singles and EPs, with some of their music appearing on compilations. They have a growing presence on music platforms like Apple Music and Boomplay, showcasing their instrumental compositions and collaborations.",
+      "genre": null
+    },
+    {
+      "oldId": "CM5Zni8xkDFQI0Pyt8MU",
+      "newSlug": "quinlan-mauer",
+      "name": "Quinlan Mauer",
+      "imageUrl": null,
+      "bio": "Quinlan Mauer is a jam band from Detroit, Michigan, with a blend of funk, rock, and Americana. The band is comprised of four members: Quinlan Mauer on bass, Colonel Zachman on guitar, Brandon Murray on guitar, and Chase Higgins on drums.",
+      "genre": null
+    },
+    {
+      "oldId": "CMWFVdG8rMy3uh65gZlS",
+      "newSlug": "ashez",
+      "name": "Ashez",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/ashez.jpg",
+      "bio": "Bass producer from Auckland, New Zealand. Has over 4 million streams and collaborated with CloZee, Opiuo, Truth, Stylust, K+Lab",
+      "genre": null
+    },
+    {
+      "oldId": "CMhhpOdJhTvaoa5w4UwV",
+      "newSlug": "rsun",
+      "name": "rSUN",
+      "imageUrl": null,
+      "bio": "Electronic music producer from Richmond, Virginia who creates a diverse range of sounds across genres, spanning from heavy bass to softer, vibrant dance songs",
+      "genre": null
+    },
+    {
+      "oldId": "CnFo1gZKnbkKHLdpthdR",
+      "newSlug": "grapefruit-jacuzzi",
+      "name": "Grapefruit Jacuzzi",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "Csjl6XrpvyDKCYiBwWeD",
+      "newSlug": "naiad",
+      "name": "Naiad",
+      "imageUrl": null,
+      "bio": "Progressive techno producer and DJ based in Los Angeles, California. Creates dark and mythical techno inspired by underground culture and mythology, made the pilgrimage to Ibiza with the ENTER team",
+      "genre": null
+    },
+    {
+      "oldId": "D5WjKcPdsqXQdbRUFdma",
+      "newSlug": "xiro",
+      "name": "Xiro",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "Dw2h2lI2R9qT7alu3ItX",
+      "newSlug": "noki",
+      "name": "Noki",
+      "imageUrl": null,
+      "bio": "Rising DJ/Producer from Pittsburgh whose fans are called \"Sprouts\" and sound is called \"PLURRstep\" with motto \"HEART HANDS UP!!\"",
+      "genre": null
+    },
+    {
+      "oldId": "ECXpUJmEDaFjtiCA9kSb",
+      "newSlug": "the-widdler",
+      "name": "The Widdler",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/widdler.jpg",
+      "bio": "As a Pioneer in the American dubstep scene, this Tel Aviv-born, Austin-based producer is celebrated for his signature \"dub sound.\" His flawless, improvisational performances and seamless blend of deep, atmospheric bass with reggae influences have solidified his place as a true innovator in the genre.",
+      "genre": null
+    },
+    {
+      "oldId": "EVVqjrJS9x5KmKIXyA1q",
+      "newSlug": "kenzybear",
+      "name": "kenzybear",
+      "imageUrl": null,
+      "bio": "Describes their style as \"I like to make some weird sh*t\", also goes by KWubz and identifies as a female creating experimental electronic music",
+      "genre": null
+    },
+    {
+      "oldId": "FDn3QiKcHaV2kf7uct4T",
+      "newSlug": "yoko",
+      "name": "Yoko",
+      "imageUrl": null,
+      "bio": "Yoko is a Denver-based electronic musician and producer. Her music is bass-heavy with a vintage science fiction vibe, and she often incorporates classical instrumentation like muted trumpets and violins. She is part of the duo Critical H!t and is known for creating music for a \"rapidly approaching cybernetic dystopian society.\"",
+      "genre": null
+    },
+    {
+      "oldId": "FT5xueXMiydAUPCVHqXt",
+      "newSlug": "fluf",
+      "name": "FLUF",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "GAAmAvVuCvAC7MkRrRVM",
+      "newSlug": "mayple",
+      "name": "Mayple",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/mayple.jpg",
+      "bio": "aemes Chouinard, Michigan-based freeform bass artist who has quickly become known in the freeform bass scene. \"Bass maker from the mitten\"",
+      "genre": null
+    },
+    {
+      "oldId": "GOCzY6wAOPyfTL524dwH",
+      "newSlug": "abram-gunther",
+      "name": "Abram Gunther",
+      "imageUrl": null,
+      "bio": "Visual artist whose work stems from free flow consciousness of dreamlike surrealism, working mostly in acrylics with deep passion for oil paint, often at live music events",
+      "genre": null
+    },
+    {
+      "oldId": "GjuJcOCpKHSUjGtU7Sic",
+      "newSlug": "vision-boards-collages",
+      "name": "Vision Boards & Collages",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "Gm4h6HZ1u5ofTAaa1Fra",
+      "newSlug": "screaming-into-pillows",
+      "name": "Screaming Into Pillows",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "Gx7WQxSsEyJzkairrEi1",
+      "newSlug": "mfinity",
+      "name": "Mfinity",
+      "imageUrl": null,
+      "bio": "Mfinity is an electronic music artist who is often described as a \"shrouded enigma.\" His music is known for its melancholic soundscapes and intricate beat patterns, created from a blend of organic sound design and undulating basslines. Drawing inspiration from his personal childhood memories and the world around him, Mfinity crafts a genre-defying sound that pushes the limits of electronic music.",
+      "genre": null
+    },
+    {
+      "oldId": "HFeXZKUmFPKAy3qe5yRd",
+      "newSlug": "dredlok",
+      "name": "Dredlok",
+      "imageUrl": null,
+      "bio": "Dredlok is a Denver-based electronic music artist known for his unique blend of Bass. His sound is heavily influenced by a diverse range of artists, including Bob Marley, Liquid Stranger, and Daft Punk, which he weaves into a chaotic collision of melodies and bass-forward energy. He has gained attention for his concept-based EPs, which showcase his signature sound design and ability to tell a story through his music.",
+      "genre": null
+    },
+    {
+      "oldId": "HJEgDraIr3BBiw5qariw",
+      "newSlug": "hoodlum",
+      "name": "Hoodlum",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/hoodlum.jpg",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "HryXapKldNmPZUGqDQhd",
+      "newSlug": "super-future",
+      "name": "Super Future",
+      "imageUrl": null,
+      "bio": "Nick Rowland from Detroit, combines experimental bass, beautiful melodies, bright future-style synths, and hard-hitting dance beats with occasional guitar solos ",
+      "genre": null
+    },
+    {
+      "oldId": "I7HVavcwZgbHeHqeYSCu",
+      "newSlug": "caspa",
+      "name": "Caspa",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/caspa.jpg",
+      "bio": "Legendary London-based producer widely regarded as one of the pioneers of dubstep. His groundbreaking work and collaborative projects were instrumental in shaping the genre and bringing it to a global audience. Known for his gritty basslines and innovative sound design, he continues to be a formidable and influential force in the Bass community.",
+      "genre": null
+    },
+    {
+      "oldId": "IaQamlx4iM2dmokhiby3",
+      "newSlug": "probcause-dj-set",
+      "name": "Probcause (DJ Set)",
+      "imageUrl": null,
+      "bio": "Colin Grimm from Evanston, Illinois, known for collaborations with Chance the Rapper and Griz Top artists of Experimental Bass genre, what began as Hip-hop grew into a larger world of creativity, earning his MFA for painting and animation ",
+      "genre": null
+    },
+    {
+      "oldId": "JaN5xTLmz4GbPoLPZ9UY",
+      "newSlug": "g-zoom",
+      "name": "G Zoom",
+      "imageUrl": null,
+      "bio": "Grayson Szumilas, creates ambient dance music inspired by his journey through EDM, grew up in coastal Maine without any taste in music until discovering EDM",
+      "genre": null
+    },
+    {
+      "oldId": "JoD4xOZ1hQYZcFgqvIzM",
+      "newSlug": "johnny-malek",
+      "name": "Johnny Malek",
+      "imageUrl": null,
+      "bio": "Johnny Malek is a DJ and producer from Detroit, Michigan. He is known for fusing his music with the sounds of Gospel and Jazz, creating a unique Deep House experience. He has had several top-100 tracks and number-one albums on Beatport.",
+      "genre": null
+    },
+    {
+      "oldId": "KA0oyW1XBesyVKack2U4",
+      "newSlug": "yung-flaco-friends",
+      "name": "Yung Flaco & Friends",
+      "imageUrl": null,
+      "bio": " \"Not a rapper. not a singer. but an Artist\" based in the 989 area (Michigan)",
+      "genre": null
+    },
+    {
+      "oldId": "NCEHs30Q9TSIRIUaguLU",
+      "newSlug": "flowstar-w-mother-beef",
+      "name": "Flowstar w/ Mother Beef",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "OsliYMLZtb1wSGAZ7fq5",
+      "newSlug": "polly-hocket",
+      "name": "Polly Hocket",
+      "imageUrl": null,
+      "bio": "This producer and vocalist from Portland, Oregon, is celebrated for her unique blend of house, synth-pop, and electronic music. Her sound is both vibrant and ethereal, creating a memorable dance experience. She is known for her infectious energy and intricate vocal harmonies, making her a standout artist in the Pacific Northwest music scene.",
+      "genre": null
+    },
+    {
+      "oldId": "PqCnL0urnPV1WRcPtuwC",
+      "newSlug": "devin-is-dead",
+      "name": "Devin Is Dead",
+      "imageUrl": null,
+      "bio": "Hailing from Orlando, Florida, this producer specializes in a dark and aggressive style of Bass. They are known for their raw and powerful sound, which fuses deathstep, riddim, and experimental elements to create a truly visceral experience. With a commanding stage presence and a reputation for pushing sonic boundaries, they are a formidable force in the heavy electronic music scene.",
+      "genre": null
+    },
+    {
+      "oldId": "Q1EQWWj9ON43gP96n43S",
+      "newSlug": "ganja-girl",
+      "name": "Ganja Girl",
+      "imageUrl": null,
+      "bio": "Electronic music DJ collective, live music event organizer, event planning and promoting services based in Lansing, MI. Founded by Morgan Underwood, focuses on EVENTS • MUSIC • COMMUNITY",
+      "genre": null
+    },
+    {
+      "oldId": "QBMvGXAjYoVy9BcE1emw",
+      "newSlug": "svvitch",
+      "name": "SVVITCH",
+      "imageUrl": null,
+      "bio": "Electronic bass producer with releases on Hypeddit including tracks like \"Waking Life\" and \"We Are Not Free [War Dub]\"",
+      "genre": null
+    },
+    {
+      "oldId": "QWRpDxorENmjNxOLAkqB",
+      "newSlug": "directors-cut",
+      "name": "Directors Cut",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "RaZ66SH7bFLIgxOySG3j",
+      "newSlug": "abby-vice-b2b-vusive",
+      "name": "Abby Vice B2B Vusive",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/abby_vice_x_vusive.jpeg",
+      "bio": "By-ear piano player and established melodic trip-hop producer from Cincinnati, OH, blends dreamy piano leads, haunting orchestral soundscapes, and deep bass. Has performed at Resonance Music & Arts festival and TEDxCincinnati",
+      "genre": null
+    },
+    {
+      "oldId": "SRX1cAAMPCOmTPV60tB8",
+      "newSlug": "selyna-alvarez",
+      "name": "Selyna Alvarez",
+      "imageUrl": null,
+      "bio": "DJ, singer, and songwriter from Detroit who works across UK garage, tech house, deep dub, drum & bass, experimental, tribal, breakbeat, and ambient music",
+      "genre": null
+    },
+    {
+      "oldId": "Sr7b2gosb5y8M7CUiLGI",
+      "newSlug": "seth-david",
+      "name": "Seth David",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/seth_david.jpg",
+      "bio": "Dynamic Chicago DJ who switched from house music to infectious Bass, gaining viral TikTok popularity",
+      "genre": null
+    },
+    {
+      "oldId": "TY6RH50ypbfDICU5Iqxx",
+      "newSlug": "candyshack",
+      "name": "Candyshack",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/candyshack.jpg",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "TYIyD48QBp7JAuAVYxoy",
+      "newSlug": "chirp",
+      "name": "Chirp",
+      "imageUrl": null,
+      "bio": "A four-piece band from Detroit, Michigan, Chirp was formed in 2015. They are known for their high-energy live shows and \"genre-hopping\" sound, blending elements of progressive rock/funk and jazz-fusion.",
+      "genre": null
+    },
+    {
+      "oldId": "UVKPSKfHatjWq9ota1Bb",
+      "newSlug": "daydreme",
+      "name": "DAYDREME",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "VbesRgLMGxMkdsbKIGsg",
+      "newSlug": "dixons-violin",
+      "name": "Dixon's Violin",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/dixon.jpg",
+      "bio": "A former technology leader and symphony violinist, Dixon's Violin walked away from his distinguished career to pursue his passion full-time. He improvises on a 5-string electric violin with a looping system he developed to create an all-live, one-man symphony. He has performed at over 1,000 concerts, including at Burning Man and Electric Forest, and has given multiple TED talks.",
+      "genre": null
+    },
+    {
+      "oldId": "Vizb7GIymZDLfU0qapuf",
+      "newSlug": "freesbass",
+      "name": "FREESBASS",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "Y9cyF4pvHTeyIrjGiLUV",
+      "newSlug": "ooze",
+      "name": "OOZE",
+      "imageUrl": null,
+      "bio": "Ooze is the downtempo and chillout project of Sebastian Mullaert, half of the major electronic dancefloor act Minilogue and progressive trance act Son Kite",
+      "genre": null
+    },
+    {
+      "oldId": "YAABHHBTum2oWELeq6Q7",
+      "newSlug": "me",
+      "name": "M.E.",
+      "imageUrl": null,
+      "bio": "A rising talent in the electronic music world, this artist is celebrated for their sophisticated house and techno productions. Their music is characterized by intricate rhythms, melodic progressions, and a refined sound that is both groovy and hypnotic. A respected producer, they have gained a following for their unique approach to minimalist techno and their compelling live sets.",
+      "genre": null
+    },
+    {
+      "oldId": "aKb2MfWOIbzyFqSnjepT",
+      "newSlug": "j-rose-cypher",
+      "name": "J-Rose (Cypher)",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/jrose.jpg",
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "aOuEJLNMsuQDMlwWCPyo",
+      "newSlug": "garden-boi",
+      "name": "Garden Boi",
+      "imageUrl": null,
+      "bio": "This Detroit-based producer and DJ is celebrated for his unique sound, which is heavily influenced by yoga and meditation. He masterfully blends organic beats with electronic music, creating immersive soundscapes that are both meditative and dance-friendly. As the founder of MorFlo Records and The Instrument Garden, he is a true innovator in the conscious electronic music community.",
+      "genre": null
+    },
+    {
+      "oldId": "bxN7UWe7sapMyJgfaHiZ",
+      "newSlug": "miilk",
+      "name": "Miilk",
+      "imageUrl": null,
+      "bio": "Miilk is an anonymous electronic producer known for a fresh, genre-bending style. The artist blends elements of trap, bass, dubstep, and Hip-hop into a unique sound. Miilk debuted with the single \"Blow the Whistle\" and has since been recognized for creating music with a high level of creativity and diversity.",
+      "genre": null
+    },
+    {
+      "oldId": "cSZzNOW0UsHDtipP0qBu",
+      "newSlug": "agent-0",
+      "name": "Agent 0",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "cSxcf0WR1B6cbKd5vjpz",
+      "newSlug": "benji-robot",
+      "name": "Benji Robot",
+      "imageUrl": null,
+      "bio": "Benji Robot is the electronic music project of producer and DJ Benjamin Roman, hailing from Michigan. Known for his genre-bending sound, he combines elements of heavy dubstep and soothing downtempo with psychedelic, eccentric basslines. His music is often described as complex yet accessible, with a strong focus on emotional storytelling and intricate sound design. He has gained a following for his live performances and for being a prominent figure in the underground Bass community.",
+      "genre": null
+    },
+    {
+      "oldId": "cjMg1Rygppnhge9jpM47",
+      "newSlug": "trb",
+      "name": "TRÏBŪ",
+      "imageUrl": null,
+      "bio": "A highly creative electronic music producer, this artist has been making waves with their bold future bass and trap sounds. Their music is a journey through high-energy beats, complex sound design, and infectious melodies. With a strong presence in the underground scene, they have released tracks that showcase their unique approach to electronic music production.",
+      "genre": null
+    },
+    {
+      "oldId": "davwlwKZaBiFzhvkIabY",
+      "newSlug": "jason-leech",
+      "name": "Jason Leech",
+      "imageUrl": null,
+      "bio": "Keyboardist, producer, and composer from Louisville, KY who performs live triple keyboard flips over electronic beats",
+      "genre": null
+    },
+    {
+      "oldId": "dsviG8vdS0hnJSFTm0YQ",
+      "newSlug": "sully",
+      "name": "Sully",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/sully.jpg",
+      "bio": "Jack Stevens from the UK, an understated folk hero and elusive bass producer",
+      "genre": null
+    },
+    {
+      "oldId": "e6IEKJkzcNkEFy1NthaX",
+      "newSlug": "root-to-rise-yoga",
+      "name": "Root to Rise (Yoga)",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/root_to_rise.jpg",
+      "bio": "Grounding Yoga and Integration",
+      "genre": null
+    },
+    {
+      "oldId": "eW5lgQ3L84VuD1SOtjUb",
+      "newSlug": "herbal-alchemy-intentional-tea-blending",
+      "name": "Herbal Alchemy / Intentional Tea Blending",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "eaGvErY7SuWgAeNmXCrd",
+      "newSlug": "kaebr",
+      "name": "Kaebr",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "f1YFxo8pmVMviFrZWmM8",
+      "newSlug": "daggur-b2b-watch-party",
+      "name": "Daggur B2B Watch Party",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "foapKPft9VCYL7Ewg6jX",
+      "newSlug": "dev",
+      "name": "Dev",
+      "imageUrl": null,
+      "bio": "DEV is a Detroit-born producer, DJ, vocalist, and swaggy ass dancer shaping her own lane in the underground bass scene. With roots in songwriting and live performance, she blends raw energy, heavy low-end, and ethereal melodies into sets that feel both visceral and emotional.",
+      "genre": null
+    },
+    {
+      "oldId": "gJTZnHNKMXdfCd65gFFz",
+      "newSlug": "eroy",
+      "name": "eRoy",
+      "imageUrl": null,
+      "bio": "Evan Roy from Grand Rapids, Michigan, electronic music producer, guitar player, and vibe provider. Rising artist in West Michigan's electronic music scene who also works as an educator",
+      "genre": null
+    },
+    {
+      "oldId": "ibtyR6VnaEU5DgpKnN8E",
+      "newSlug": "zen-selekta",
+      "name": "Zen Selekta",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/zen-selekta.jpg",
+      "bio": "Nicole Gracia Barton from Atlanta, Georgia, creates \"ceremonial Bass\" that intertwines moody elements with ethereal melodies and global influences. Known for losing herself and transcending during performances",
+      "genre": null
+    },
+    {
+      "oldId": "l2OkAiUFmCsilf6fMWiv",
+      "newSlug": "atm",
+      "name": "ATM",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "lORihqoXzyZZHPUhhlzA",
+      "newSlug": "goshfather",
+      "name": "Goshfather",
+      "imageUrl": null,
+      "bio": "Goshfather is a musician who specializes in Disco House, Tech House, and Soulful House. He has collaborated with artists like Bingo Players and released a record every week in 2023. He is associated with Hysteria and Spinnin Records.",
+      "genre": null
+    },
+    {
+      "oldId": "m42L9qN9DZt7eqztE5ND",
+      "newSlug": "luminyst",
+      "name": "Luminyst",
+      "imageUrl": null,
+      "bio": "Luminyst is the creative alias of David Timko, an electronic music producer known for his bass-heavy sound. His music is often described as \"cinematic bass,\" blending a wide range of genres with a focus on melodic and cultural elements.",
+      "genre": null
+    },
+    {
+      "oldId": "mG25kilH7NZCTr7djr4w",
+      "newSlug": "hari",
+      "name": "Hari",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/hari.jpg",
+      "bio": "Hari is a project born with the intention of making people sweat, creating a tribe that dances to the rhythm of a collective trance. Creates acid-tinged electronic dub full of hypnotic grooves and interweaving melodies",
+      "genre": null
+    },
+    {
+      "oldId": "mKBUfbLXYLJ137LdirU4",
+      "newSlug": "mushroom-cloud",
+      "name": "Mushroom Cloud",
+      "imageUrl": null,
+      "bio": "This American DJ and producer is a true force in the heavy Bass community. Their sound is characterized by a brutal and aggressive blend of dubstep, riddim, and deathstep, creating a truly chaotic yet expertly crafted sonic experience. With a strong and dedicated fan base, they are known for their powerful live sets and relentless energy.",
+      "genre": null
+    },
+    {
+      "oldId": "mPUIE8qUDSjOhhZO6eVE",
+      "newSlug": "mistah-dill",
+      "name": "Mistah Dill",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/mistah_dill.jpg",
+      "bio": "Known as a \"bass wizard\" who creates flips and bootlegs, including nostalgic reworks like A Day To Remember's \"Have Faith In Me\", has the tagline \"Feeling through sound\"",
+      "genre": null
+    },
+    {
+      "oldId": "mgoP56gPwZU7O29EpleA",
+      "newSlug": "mocha",
+      "name": "Mocha",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "oPQbq6AtLQ4UblJcjKna",
+      "newSlug": "local-man",
+      "name": "Local Man",
+      "imageUrl": null,
+      "bio": "Local Man is the music project of producer and DJ Sam Gouthro, based in Melbourne, Australia. Known for his signature style of uplifting, melodic house and progressive house music, he has released several tracks and remixes that have been supported by a variety of high-profile artists in the electronic music scene.",
+      "genre": null
+    },
+    {
+      "oldId": "oQ9AAv5K7tlXpSaCig7E",
+      "newSlug": "klab",
+      "name": "K+Lab",
+      "imageUrl": null,
+      "bio": "K+Lab, a New Zealand-born musician and producer, is a master of \"intergalactic funk.\" He combines funk, Hip-hop, Glitch-hop, and drum and bass into a unique sound. Known for his live performances with a signature keytar, he has toured extensively across the globe and has released several albums, solidifying his position as a best-selling artist in the Glitch-hop scene.",
+      "genre": null
+    },
+    {
+      "oldId": "oRjpPT1Qgm1d1d1BDIU2",
+      "newSlug": "opal",
+      "name": "Opal",
+      "imageUrl": null,
+      "bio": "Michigan-based jam band from Detroit described as \"a musical kaleidoscope of everything and anything at once!\" Known for their eclectic blend of musical styles and improvisational approach",
+      "genre": null
+    },
+    {
+      "oldId": "oUVanHKMfQJdy4aPklDr",
+      "newSlug": "cozm-nova",
+      "name": "Cozm & Nova",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/cozm_and_nova.jpg",
+      "bio": "Cozm is an experimental electronic artist who creates music that is often described as psychedelic and minimal. Associated with the \"Cozm X Transmissions\" project, their work leans heavily into ambient and drone soundscapes, creating an abstract listening experience.",
+      "genre": null
+    },
+    {
+      "oldId": "ohpSkpmotRcpEjKv3dim",
+      "newSlug": "fire-flower",
+      "name": "Fire Flower",
+      "imageUrl": null,
+      "bio": "San Francisco-based act where \"Hip-hop, dub and soul collide in a worldly influenced stew\", seeks to showcase wide spectrum of artistry across many varying genres",
+      "genre": null
+    },
+    {
+      "oldId": "p5o6U6SZM1iVSeylc5yh",
+      "newSlug": "lowcation",
+      "name": "Lowcation",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/lowcation.jpg",
+      "bio": "Known for his blend of organic beats and natural atmospherics, Lowcation is an artist who creates powerful low-frequency energy. His rich body of work is designed to move both a dance crowd and a solitary listener, showcasing his unique approach to production and sound design",
+      "genre": null
+    },
+    {
+      "oldId": "qDoqU4cgdK6kxPg1ctDs",
+      "newSlug": "saka",
+      "name": "Saka",
+      "imageUrl": null,
+      "bio": "Eric Chow, experimental producer who grew up moving between San Francisco and Hong Kong, creates immersive tracks spanning drum & bass, half-time, and dubstep",
+      "genre": null
+    },
+    {
+      "oldId": "rQKNgnQ9xwbz0mYHCGC6",
+      "newSlug": "stuttastep-live-band",
+      "name": "Stuttastep Live Band",
+      "imageUrl": null,
+      "bio": "Electronic music DJ and producer who creates dynamic EDM with a growing fanbase. Known for versatile performances in both solo DJ/producer format and live band arrangements.",
+      "genre": null
+    },
+    {
+      "oldId": "riSFkyMAG7TMIfKfi9CB",
+      "newSlug": "nina-soulfia",
+      "name": "Nina Soulfia",
+      "imageUrl": null,
+      "bio": "Nina Soulfia is a singer-songwriter and entertainer known for her powerful vocals and soulful sound. Born into a musical family, she has a rich background in music and performance. Her artistry is described as having a \"voice of thunder\" and a \"soul of fire,\" with a unique style that blends legendary soul music with modern R&B. She is also a certified nutritionist and has created her own television show.",
+      "genre": null
+    },
+    {
+      "oldId": "s0UXALtln8BMgLXLqSLF",
+      "newSlug": "groovee",
+      "name": "Groovee",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/groovee.jpeg",
+      "bio": "Found on Apple Music with tracks like \"Fragile\" and \"I Am Awake\"",
+      "genre": null
+    },
+    {
+      "oldId": "s1jcpaaKjT5WC6w6JfgN",
+      "newSlug": "kursa",
+      "name": "Kursa",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/kursa.jpeg",
+      "bio": "A producer from the UK, Kursa is an artist who defies easy categorization. His musical style blends a wide range of influences, from classical and jazz to acid and rave, creating a sound that is both emotionally resonant and sonically complex. He is a key member of the electronic trio K.L.O and a respected figure in the Bass community.",
+      "genre": null
+    },
+    {
+      "oldId": "tCwcF7ynzyflHHt4jQdb",
+      "newSlug": "maddy-oneal",
+      "name": "Maddy O'Neal",
+      "imageUrl": null,
+      "bio": "Maddy O'Neal is a Denver-based producer and DJ known for her \"Dirty Funky Bass.\" Her sound combines her roots in funk and soul with deep bass frequencies and glitchy Hip-hop rhythms. She is a self-taught producer who incorporates live instrumentation, such as drum pads, into her performances. Maddy O'Neal is a prominent figure in the electronic music scene, having performed at major festivals and toured with notable artists.",
+      "genre": null
+    },
+    {
+      "oldId": "tgIWxqIR5TcLaZK3oPsJ",
+      "newSlug": "blejay",
+      "name": "blüejay",
+      "imageUrl": null,
+      "bio": "This producer and DJ is known for crafting emotionally resonant electronic music with a unique, ethereal sound. Blending elements of future bass, trap, and downtempo, their music creates a vibrant and atmospheric experience. Their productions are a testament to their skilled sound design and their ability to forge a deep connection with listeners.",
+      "genre": null
+    },
+    {
+      "oldId": "to5QK4AGbHtfXwMLckoR",
+      "newSlug": "super-future-down-tempo",
+      "name": "Super Future (Down Tempo)",
+      "imageUrl": null,
+      "bio": "Nick Rowland from Detroit, combines experimental bass, beautiful melodies, bright future-style synths, and hard-hitting dance beats with occasional guitar solos ",
+      "genre": null
+    },
+    {
+      "oldId": "u0sIgDPifuILRXNS7jws",
+      "newSlug": "mz-north",
+      "name": "MZ North",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "vCXpbzjX8Sp8A9qjxB6p",
+      "newSlug": "q-and-q-with-david-lee",
+      "name": "Q and Q with David Lee",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "vY1iHogG4E7nqI7ZmxF5",
+      "newSlug": "lyny",
+      "name": "LYNY",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/lyny.jpg",
+      "bio": "Alec Leinhauser, 24-year-old Chicago producer pushing boundaries by combining cutting-edge sounds with melodic compositions",
+      "genre": null
+    },
+    {
+      "oldId": "w5lHKmUSL11emyUZUkyD",
+      "newSlug": "emrys-b2b-chidi",
+      "name": "Emrys B2B Chidi",
+      "imageUrl": null,
+      "bio": "The feeling of being nostalgic for things that haven't happened yet put into a musical form.",
+      "genre": null
+    },
+    {
+      "oldId": "wagGRGIuf6oSHPDY1MWS",
+      "newSlug": "jimmy-corks",
+      "name": "Jimmy Corks",
+      "imageUrl": null,
+      "bio": "A musical artist with over a decade of experience, he has developed a versatile sound that spans numerous electronic and dance genres. With a background in piano and live performance, he has made a name for himself as the founder of Pretty Good Show, curating unique popup events worldwide.",
+      "genre": null
+    },
+    {
+      "oldId": "wkoXCoI8QbtxYvbWQDtu",
+      "newSlug": "canvas",
+      "name": "Canvas",
+      "imageUrl": null,
+      "bio": "Rising DJ and producer from Atlanta, Rita Mucavele is known for creating high-energy \"gut music\" that defies genre. With a background in orchestral music, her sets take the audience on a journey through unexpected twists and turns, earning her recognition from major Bass labels and spots at renowned festivals.",
+      "genre": null
+    },
+    {
+      "oldId": "wluDyPQaxHE8wmyDPb4W",
+      "newSlug": "manthom-phenace",
+      "name": "Manthom Phenace",
+      "imageUrl": null,
+      "bio": "Creating a heavy and funky bass sound, this artist is a prominent figure in the Bass scene. Known for their energetic live sets, they incorporate a variety of styles, from dubstep to funk, to create a dancefloor experience that is both trippy and groovy.",
+      "genre": null
+    },
+    {
+      "oldId": "wokN1zc6Dr8KuFqKGrKx",
+      "newSlug": "ternion-sound",
+      "name": "Ternion Sound",
+      "imageUrl": "gs://bigfamfestival.firebasestorage.app/artist_photos/artists/ternion-sound.jpg",
+      "bio": "Dynamic trio of producers and DJs from Minneapolis, they have become leaders in the American underground bass scene. Known for their deep dubstep sound, the group's high-energy live sets and dedication to sound system culture have captivated audiences worldwide.",
+      "genre": null
+    },
+    {
+      "oldId": "wuidL1tG4mBmYKBjZfSn",
+      "newSlug": "fendz",
+      "name": "Fendz",
+      "imageUrl": null,
+      "bio": "Making his mark on the electronic music scene, this artist is a master of intricate sound design. His music is a unique fusion of riddim and experimental bass, built on a foundation of heavy basslines and technical precision. Known for his forward-thinking production style and ability to push genre boundaries, he has become a respected name in the underground bass community.",
+      "genre": null
+    },
+    {
+      "oldId": "xns94COh4wk98xlqS507",
+      "newSlug": "alex-radloff",
+      "name": "Alex Radloff",
+      "imageUrl": null,
+      "bio": "Songwriter, vocalist and guitarist from Ann Arbor/Kalamazoo, Michigan area playing originals and covers. Singer-songwriter \"bending genres and strings with feelin'\"",
+      "genre": null
+    },
+    {
+      "oldId": "ykMAhfsmP7DusJu0x5Uh",
+      "newSlug": "garden-boi-and-the-sound-medicine-collective-chakra-garden",
+      "name": "Garden Boi and the Sound Medicine Collective (Chakra Garden)",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "z25KnqP25tv5mBFFXILf",
+      "newSlug": "breathwork-technique-w-kristen-gardner",
+      "name": "Breathwork Technique w/ Kristen Gardner",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    },
+    {
+      "oldId": "z7kXrdXPL1pVya3HFi7K",
+      "newSlug": "air-castles",
+      "name": "Air Castles",
+      "imageUrl": null,
+      "bio": null,
+      "genre": null
+    }
+  ],
+  "eventUpdates": [
+    {
+      "eventId": "XmuyBK2xZPw4Ej8WUcu3",
+      "oldArtists": [
+        "5QTp04VZnG0smJiyKNBh"
+      ],
+      "newArtists": [
+        "common-oddity"
+      ]
+    },
+    {
+      "eventId": "j9Fcz87Z7ns9p7otq57y",
+      "oldArtists": [
+        "4NxEKHVhgC6MZnjmgVgF"
+      ],
+      "newArtists": [
+        "thane-of-earth"
+      ]
+    },
+    {
+      "eventId": "YvA7cjrktUuRrjfQxf8F",
+      "oldArtists": [
+        "0nyIm0C2NBM9ldJwz12u"
+      ],
+      "newArtists": [
+        "raedy-lex-bass-set"
+      ]
+    },
+    {
+      "eventId": "yZMQhcA5Cj6IAwq51yF9",
+      "oldArtists": [
+        "s0UXALtln8BMgLXLqSLF"
+      ],
+      "newArtists": [
+        "groovee"
+      ]
+    },
+    {
+      "eventId": "1XfgDgbYPZEE9PE543yj",
+      "oldArtists": [
+        "eaGvErY7SuWgAeNmXCrd"
+      ],
+      "newArtists": [
+        "kaebr"
+      ]
+    },
+    {
+      "eventId": "vO3z5zxsv51SUZpGS5Xj",
+      "oldArtists": [
+        "e6IEKJkzcNkEFy1NthaX"
+      ],
+      "newArtists": [
+        "root-to-rise-yoga"
+      ]
+    },
+    {
+      "eventId": "OGpNxg6sN0YbmBIww2tN",
+      "oldArtists": [
+        "mPUIE8qUDSjOhhZO6eVE"
+      ],
+      "newArtists": [
+        "mistah-dill"
+      ]
+    },
+    {
+      "eventId": "mWHU2o3HaPtZmjTGbcpa",
+      "oldArtists": [
+        "TY6RH50ypbfDICU5Iqxx"
+      ],
+      "newArtists": [
+        "candyshack"
+      ]
+    },
+    {
+      "eventId": "MbhwVkhOD0aV2CHwpl7m",
+      "oldArtists": [
+        "aKb2MfWOIbzyFqSnjepT"
+      ],
+      "newArtists": [
+        "j-rose-cypher"
+      ]
+    },
+    {
+      "eventId": "ANCBl5oMJWzi2aNr8PVS",
+      "oldArtists": [
+        "Q1EQWWj9ON43gP96n43S"
+      ],
+      "newArtists": [
+        "ganja-girl"
+      ]
+    },
+    {
+      "eventId": "h3YLssojqbrRWa99ixGn",
+      "oldArtists": [
+        "mgoP56gPwZU7O29EpleA"
+      ],
+      "newArtists": [
+        "mocha"
+      ]
+    },
+    {
+      "eventId": "jNNU6Q11Xod9ePtPwVk7",
+      "oldArtists": [
+        "8FWujK4L38zKslUnarqF"
+      ],
+      "newArtists": [
+        "j-rose"
+      ]
+    },
+    {
+      "eventId": "jZSMujvCvG5khXsvv2tT",
+      "oldArtists": [
+        "w5lHKmUSL11emyUZUkyD"
+      ],
+      "newArtists": [
+        "emrys-b2b-chidi"
+      ]
+    },
+    {
+      "eventId": "4I8Wax8l3rxyTVgLUbne",
+      "oldArtists": [
+        "7JEIWwdGu77gPg3D6MbJ"
+      ],
+      "newArtists": [
+        "zoska"
+      ]
+    },
+    {
+      "eventId": "WYGV2chveCNxf8EM6xXa",
+      "oldArtists": [
+        "GAAmAvVuCvAC7MkRrRVM"
+      ],
+      "newArtists": [
+        "mayple"
+      ]
+    },
+    {
+      "eventId": "crameIj3hTxmjlPfXEWE",
+      "oldArtists": [
+        "9K5uLrFmYkfV0x7A6tMx"
+      ],
+      "newArtists": [
+        "saproling"
+      ]
+    },
+    {
+      "eventId": "jMxKfUusGs0f5PuBsI8r",
+      "oldArtists": [
+        "Sr7b2gosb5y8M7CUiLGI"
+      ],
+      "newArtists": [
+        "seth-david"
+      ]
+    },
+    {
+      "eventId": "oyGxg4fRiV42Cdhf1uwL",
+      "oldArtists": [
+        "RaZ66SH7bFLIgxOySG3j"
+      ],
+      "newArtists": [
+        "abby-vice-b2b-vusive"
+      ]
+    },
+    {
+      "eventId": "q5huMyUzVdlhVUwpxdmD",
+      "oldArtists": [
+        "HryXapKldNmPZUGqDQhd"
+      ],
+      "newArtists": [
+        "super-future"
+      ]
+    },
+    {
+      "eventId": "oyZQwxrJsl7rKOeSV8Xp",
+      "oldArtists": [
+        "IaQamlx4iM2dmokhiby3"
+      ],
+      "newArtists": [
+        "probcause-dj-set"
+      ]
+    },
+    {
+      "eventId": "lAdkOwOkn4gn7FstBlM6",
+      "oldArtists": [
+        "oPQbq6AtLQ4UblJcjKna"
+      ],
+      "newArtists": [
+        "local-man"
+      ]
+    },
+    {
+      "eventId": "4bvLLmD2YmJnmMJuhBrB",
+      "oldArtists": [
+        "oQ9AAv5K7tlXpSaCig7E"
+      ],
+      "newArtists": [
+        "klab"
+      ]
+    },
+    {
+      "eventId": "Ux4zfsXFinsadNpYaNMi",
+      "oldArtists": [
+        "oUVanHKMfQJdy4aPklDr"
+      ],
+      "newArtists": [
+        "cozm-nova"
+      ]
+    },
+    {
+      "eventId": "bDrlZrRDipVmDth1D1Jq",
+      "oldArtists": [
+        "tCwcF7ynzyflHHt4jQdb"
+      ],
+      "newArtists": [
+        "maddy-oneal"
+      ]
+    },
+    {
+      "eventId": "87O6rkFScntxXnQ1fIeY",
+      "oldArtists": [
+        "FDn3QiKcHaV2kf7uct4T"
+      ],
+      "newArtists": [
+        "yoko"
+      ]
+    },
+    {
+      "eventId": "0EQJuf8mrFAb1gxWfbvh",
+      "oldArtists": [
+        "riSFkyMAG7TMIfKfi9CB"
+      ],
+      "newArtists": [
+        "nina-soulfia"
+      ]
+    },
+    {
+      "eventId": "zMOriS5UGDvtKJ42jjdD",
+      "oldArtists": [
+        "EVVqjrJS9x5KmKIXyA1q"
+      ],
+      "newArtists": [
+        "kenzybear"
+      ]
+    },
+    {
+      "eventId": "PE4z6wuC71KLbSRK8EmZ",
+      "oldArtists": [
+        "4q1twbcwnVjCTxf9orrG"
+      ],
+      "newArtists": [
+        "sacred-kriyations-breathwork"
+      ]
+    },
+    {
+      "eventId": "uFGpyJY99uISGInW6iv1",
+      "oldArtists": [
+        "B0Ynn7ekKszssMIovdxb"
+      ],
+      "newArtists": [
+        "limbus-luna"
+      ]
+    },
+    {
+      "eventId": "1mtnAyUAhuNmHJ6uSmNd",
+      "oldArtists": [
+        "bxN7UWe7sapMyJgfaHiZ"
+      ],
+      "newArtists": [
+        "miilk"
+      ]
+    },
+    {
+      "eventId": "OeQPzNjqh1gQNC2MCILJ",
+      "oldArtists": [
+        "GjuJcOCpKHSUjGtU7Sic"
+      ],
+      "newArtists": [
+        "vision-boards-collages"
+      ]
+    },
+    {
+      "eventId": "Q7rbUw3BeBL5IV28Gm4C",
+      "oldArtists": [
+        "ykMAhfsmP7DusJu0x5Uh"
+      ],
+      "newArtists": [
+        "garden-boi-and-the-sound-medicine-collective-chakra-garden"
+      ]
+    },
+    {
+      "eventId": "1TnZwfL2REGCOc4WgpuL",
+      "oldArtists": [
+        "NCEHs30Q9TSIRIUaguLU"
+      ],
+      "newArtists": [
+        "flowstar-w-mother-beef"
+      ]
+    },
+    {
+      "eventId": "YHixOhxAfAmFxYOy9TBd",
+      "oldArtists": [
+        "Gm4h6HZ1u5ofTAaa1Fra"
+      ],
+      "newArtists": [
+        "screaming-into-pillows"
+      ]
+    },
+    {
+      "eventId": "htAR8Byka0uB8r1w19Jm",
+      "oldArtists": [
+        "cSxcf0WR1B6cbKd5vjpz"
+      ],
+      "newArtists": [
+        "benji-robot"
+      ]
+    },
+    {
+      "eventId": "ADOXFyOzcc2ZrHe3zRd2",
+      "oldArtists": [
+        "foapKPft9VCYL7Ewg6jX"
+      ],
+      "newArtists": [
+        "dev"
+      ]
+    },
+    {
+      "eventId": "iyyzrgGevBDxj8yT1zLl",
+      "oldArtists": [
+        "xns94COh4wk98xlqS507"
+      ],
+      "newArtists": [
+        "alex-radloff"
+      ]
+    },
+    {
+      "eventId": "QpjoO2VGM6lri1m86oAj",
+      "oldArtists": [
+        "l2OkAiUFmCsilf6fMWiv"
+      ],
+      "newArtists": [
+        "atm"
+      ]
+    },
+    {
+      "eventId": "nrGCnOAY7kvwRNFQXXAQ",
+      "oldArtists": [
+        "m42L9qN9DZt7eqztE5ND"
+      ],
+      "newArtists": [
+        "luminyst"
+      ]
+    },
+    {
+      "eventId": "brtxMrPFCoBzovITrUkt",
+      "oldArtists": [
+        "9FZlNaoY1Mm1PGLzEkI4"
+      ],
+      "newArtists": [
+        "fshr"
+      ]
+    },
+    {
+      "eventId": "R6FRucYJWubQDtWXC5Rq",
+      "oldArtists": [
+        "KA0oyW1XBesyVKack2U4"
+      ],
+      "newArtists": [
+        "yung-flaco-friends"
+      ]
+    },
+    {
+      "eventId": "331MVYkNJPmHJPtjWhbw",
+      "oldArtists": [
+        "CMhhpOdJhTvaoa5w4UwV"
+      ],
+      "newArtists": [
+        "rsun"
+      ]
+    },
+    {
+      "eventId": "M1ZBF4HMldZafjLpZaAT",
+      "oldArtists": [
+        "oRjpPT1Qgm1d1d1BDIU2"
+      ],
+      "newArtists": [
+        "opal"
+      ]
+    },
+    {
+      "eventId": "vvWRMPZteLQyuccIwWlW",
+      "oldArtists": [
+        "JaN5xTLmz4GbPoLPZ9UY"
+      ],
+      "newArtists": [
+        "g-zoom"
+      ]
+    },
+    {
+      "eventId": "BqqpJFwkDmFiP1O2KFdK",
+      "oldArtists": [
+        "gJTZnHNKMXdfCd65gFFz"
+      ],
+      "newArtists": [
+        "eroy"
+      ]
+    },
+    {
+      "eventId": "We9phWTxQOCKy0lIOcR9",
+      "oldArtists": [
+        "9eG2rfW7Uo2fOeFe27bz"
+      ],
+      "newArtists": [
+        "ozztin"
+      ]
+    },
+    {
+      "eventId": "HAN5EDS7t2OepvBF810f",
+      "oldArtists": [
+        "ohpSkpmotRcpEjKv3dim"
+      ],
+      "newArtists": [
+        "fire-flower"
+      ]
+    },
+    {
+      "eventId": "5dMi837KkDNvPaQTE69A",
+      "oldArtists": [
+        "Csjl6XrpvyDKCYiBwWeD"
+      ],
+      "newArtists": [
+        "naiad"
+      ]
+    },
+    {
+      "eventId": "H8Y6nnSz207huaYSfRpm",
+      "oldArtists": [
+        "dsviG8vdS0hnJSFTm0YQ"
+      ],
+      "newArtists": [
+        "sully"
+      ]
+    },
+    {
+      "eventId": "qUyulgg8fcJU0vaaTsRW",
+      "oldArtists": [
+        "Gx7WQxSsEyJzkairrEi1"
+      ],
+      "newArtists": [
+        "mfinity"
+      ]
+    },
+    {
+      "eventId": "aWMQZh6q1BEdu4FW0x9M",
+      "oldArtists": [
+        "HJEgDraIr3BBiw5qariw"
+      ],
+      "newArtists": [
+        "hoodlum"
+      ]
+    },
+    {
+      "eventId": "VpwiEomOHuYAlUxbnF53",
+      "oldArtists": [
+        "8yv3xqHJzsoNYVowbl1J"
+      ],
+      "newArtists": [
+        "floppy-drive"
+      ]
+    },
+    {
+      "eventId": "Z9hQlYB9NT8mpRcy3aJ1",
+      "oldArtists": [
+        "qDoqU4cgdK6kxPg1ctDs"
+      ],
+      "newArtists": [
+        "saka"
+      ]
+    },
+    {
+      "eventId": "Yd5jQxv0R6B0Jpwu5kJa",
+      "oldArtists": [
+        "vY1iHogG4E7nqI7ZmxF5"
+      ],
+      "newArtists": [
+        "lyny"
+      ]
+    },
+    {
+      "eventId": "aEXnIEGV4reVK75OUVKx",
+      "oldArtists": [
+        "9IE9jyT7XrNwRaSRlAW6"
+      ],
+      "newArtists": [
+        "the-velvet-snakes"
+      ]
+    },
+    {
+      "eventId": "ZWo1W7IawNWE2n4GXRtJ",
+      "oldArtists": [
+        "davwlwKZaBiFzhvkIabY"
+      ],
+      "newArtists": [
+        "jason-leech"
+      ]
+    },
+    {
+      "eventId": "dbKi4TJeL1XWNPcikPqV",
+      "oldArtists": [
+        "HFeXZKUmFPKAy3qe5yRd"
+      ],
+      "newArtists": [
+        "dredlok"
+      ]
+    },
+    {
+      "eventId": "qHlpF59YKDM8LemogVvK",
+      "oldArtists": [
+        "7kVpDVmUKiTqm8Y4CGqo"
+      ],
+      "newArtists": [
+        "able-grey"
+      ]
+    },
+    {
+      "eventId": "kWshHSdcuZOO9HhvhPqE",
+      "oldArtists": [
+        "SRX1cAAMPCOmTPV60tB8"
+      ],
+      "newArtists": [
+        "selyna-alvarez"
+      ]
+    },
+    {
+      "eventId": "fOjCUg7WsxtlpNWIvKil",
+      "oldArtists": [
+        "6EbU1jgrDPIcH62MmD6D"
+      ],
+      "newArtists": [
+        "spectrum"
+      ]
+    },
+    {
+      "eventId": "mC65TfXMAzOTr9qoAO26",
+      "oldArtists": [
+        "D5WjKcPdsqXQdbRUFdma"
+      ],
+      "newArtists": [
+        "xiro"
+      ]
+    },
+    {
+      "eventId": "WyXtvAhEYstjgv9wV9Fj",
+      "oldArtists": [
+        "CMWFVdG8rMy3uh65gZlS"
+      ],
+      "newArtists": [
+        "ashez"
+      ]
+    },
+    {
+      "eventId": "as6dyfGJ4SSRKm5S5Pyn",
+      "oldArtists": [
+        "GOCzY6wAOPyfTL524dwH"
+      ],
+      "newArtists": [
+        "abram-gunther"
+      ]
+    },
+    {
+      "eventId": "Drqt6gemF2JJiwI9UEiq",
+      "oldArtists": [
+        "ibtyR6VnaEU5DgpKnN8E"
+      ],
+      "newArtists": [
+        "zen-selekta"
+      ]
+    },
+    {
+      "eventId": "OuyFNXji7zxYL87RoqaZ",
+      "oldArtists": [
+        "rQKNgnQ9xwbz0mYHCGC6"
+      ],
+      "newArtists": [
+        "stuttastep-live-band"
+      ]
+    },
+    {
+      "eventId": "rvqQpLHY95PmPa19UiLN",
+      "oldArtists": [
+        "UVKPSKfHatjWq9ota1Bb"
+      ],
+      "newArtists": [
+        "daydreme"
+      ]
+    },
+    {
+      "eventId": "qkADJXRaRsQrLd8L5w6C",
+      "oldArtists": [
+        "A8CrvO68aoe88JZQUEFp"
+      ],
+      "newArtists": [
+        "shuffle-workshop"
+      ]
+    },
+    {
+      "eventId": "lW8tDZNLhcVhGubIygVE",
+      "oldArtists": [
+        "u0sIgDPifuILRXNS7jws"
+      ],
+      "newArtists": [
+        "mz-north"
+      ]
+    },
+    {
+      "eventId": "tFZvO8MhBbUjOVacW577",
+      "oldArtists": [
+        "vCXpbzjX8Sp8A9qjxB6p"
+      ],
+      "newArtists": [
+        "q-and-q-with-david-lee"
+      ]
+    },
+    {
+      "eventId": "q0VyFGev5vJ9SSC86CEz",
+      "oldArtists": [
+        "JoD4xOZ1hQYZcFgqvIzM"
+      ],
+      "newArtists": [
+        "johnny-malek"
+      ]
+    },
+    {
+      "eventId": "JdT5o8ttgj0BSSTNavk3",
+      "oldArtists": [
+        "cSZzNOW0UsHDtipP0qBu"
+      ],
+      "newArtists": [
+        "agent-0"
+      ]
+    },
+    {
+      "eventId": "tfAbdXniFhZsOtgWEBiJ",
+      "oldArtists": [
+        "9vHF3RiBvyswut02kKq9"
+      ],
+      "newArtists": [
+        "movement-meditation"
+      ]
+    },
+    {
+      "eventId": "JM6nnzkWiqhXh5lj4R5b",
+      "oldArtists": [
+        "Ao1XeRdUEsGS5ceByTa0"
+      ],
+      "newArtists": [
+        "drop-catch"
+      ]
+    },
+    {
+      "eventId": "CEyyYH7stQ333bpdyTeh",
+      "oldArtists": [
+        "CnFo1gZKnbkKHLdpthdR"
+      ],
+      "newArtists": [
+        "grapefruit-jacuzzi"
+      ]
+    },
+    {
+      "eventId": "M1E4jEDiGKtuzIBH3rii",
+      "oldArtists": [
+        "PqCnL0urnPV1WRcPtuwC"
+      ],
+      "newArtists": [
+        "devin-is-dead"
+      ]
+    },
+    {
+      "eventId": "4vCxOLJ2ELV5XASb1GRY",
+      "oldArtists": [
+        "lORihqoXzyZZHPUhhlzA"
+      ],
+      "newArtists": [
+        "goshfather"
+      ]
+    },
+    {
+      "eventId": "WJa2vdJlVtquTYIPeOIi",
+      "oldArtists": [
+        "YAABHHBTum2oWELeq6Q7"
+      ],
+      "newArtists": [
+        "me"
+      ]
+    },
+    {
+      "eventId": "5DoJPki7LECbVKI5liVI",
+      "oldArtists": [
+        "mG25kilH7NZCTr7djr4w"
+      ],
+      "newArtists": [
+        "hari"
+      ]
+    },
+    {
+      "eventId": "ZU8k4QH0bL8LO97DsuSl",
+      "oldArtists": [
+        "QWRpDxorENmjNxOLAkqB"
+      ],
+      "newArtists": [
+        "directors-cut"
+      ]
+    },
+    {
+      "eventId": "yItnh0D8GNiUkzxi4QYA",
+      "oldArtists": [
+        "eW5lgQ3L84VuD1SOtjUb"
+      ],
+      "newArtists": [
+        "herbal-alchemy-intentional-tea-blending"
+      ]
+    },
+    {
+      "eventId": "Ahq7SwmxgnpjKXXj6y4R",
+      "oldArtists": [
+        "8ZQWYsGKWtGB1Nf49WnB"
+      ],
+      "newArtists": [
+        "joebig"
+      ]
+    },
+    {
+      "eventId": "t9jfKkX0P6JBxGC06fhj",
+      "oldArtists": [
+        "wagGRGIuf6oSHPDY1MWS"
+      ],
+      "newArtists": [
+        "jimmy-corks"
+      ]
+    },
+    {
+      "eventId": "IALitH6qvyRSabSLmuob",
+      "oldArtists": [
+        "z25KnqP25tv5mBFFXILf"
+      ],
+      "newArtists": [
+        "breathwork-technique-w-kristen-gardner"
+      ]
+    },
+    {
+      "eventId": "pHC853PyC0C8kEkjg26u",
+      "oldArtists": [
+        "wkoXCoI8QbtxYvbWQDtu"
+      ],
+      "newArtists": [
+        "canvas"
+      ]
+    },
+    {
+      "eventId": "89LuKMg8KC4yRhFukiqZ",
+      "oldArtists": [
+        "wluDyPQaxHE8wmyDPb4W"
+      ],
+      "newArtists": [
+        "manthom-phenace"
+      ]
+    },
+    {
+      "eventId": "rwq4uNgJC3dL0SvyXfUc",
+      "oldArtists": [
+        "s1jcpaaKjT5WC6w6JfgN"
+      ],
+      "newArtists": [
+        "kursa"
+      ]
+    },
+    {
+      "eventId": "85vXVB3XT9waqs93k5LG",
+      "oldArtists": [
+        "f1YFxo8pmVMviFrZWmM8"
+      ],
+      "newArtists": [
+        "daggur-b2b-watch-party"
+      ]
+    },
+    {
+      "eventId": "f4ni4MGBzG0KsVzf7mGd",
+      "oldArtists": [
+        "aOuEJLNMsuQDMlwWCPyo"
+      ],
+      "newArtists": [
+        "garden-boi"
+      ]
+    },
+    {
+      "eventId": "Yr5SeYUBuiFscPpAc3Va",
+      "oldArtists": [
+        "wokN1zc6Dr8KuFqKGrKx"
+      ],
+      "newArtists": [
+        "ternion-sound"
+      ]
+    },
+    {
+      "eventId": "Q0nb0uzyHrRjP7PeuMa4",
+      "oldArtists": [
+        "to5QK4AGbHtfXwMLckoR"
+      ],
+      "newArtists": [
+        "super-future-down-tempo"
+      ]
+    },
+    {
+      "eventId": "NHeeGHpMGksTi4sfvQWs",
+      "oldArtists": [
+        "Y9cyF4pvHTeyIrjGiLUV"
+      ],
+      "newArtists": [
+        "ooze"
+      ]
+    },
+    {
+      "eventId": "fJiiLP6zxkSSYx5tXF4b",
+      "oldArtists": [
+        "ECXpUJmEDaFjtiCA9kSb"
+      ],
+      "newArtists": [
+        "the-widdler"
+      ]
+    },
+    {
+      "eventId": "mpZNm1X6mtrPmc30KcMA",
+      "oldArtists": [
+        "I7HVavcwZgbHeHqeYSCu"
+      ],
+      "newArtists": [
+        "caspa"
+      ]
+    },
+    {
+      "eventId": "fSHAaTKCLS7Xa1WADng8",
+      "oldArtists": [
+        "TYIyD48QBp7JAuAVYxoy"
+      ],
+      "newArtists": [
+        "chirp"
+      ]
+    },
+    {
+      "eventId": "llZFL76BPuMxUnaSCFCq",
+      "oldArtists": [
+        "1G8zWyw5iB7z1v1PPh5B"
+      ],
+      "newArtists": [
+        "saturna"
+      ]
+    },
+    {
+      "eventId": "r1mmQme8K4SSqmp1jm9R",
+      "oldArtists": [
+        "59DPz0hqJAsQsGTxmAeg"
+      ],
+      "newArtists": [
+        "chmura"
+      ]
+    },
+    {
+      "eventId": "8ArXmzqfGDW21KCF9BoI",
+      "oldArtists": [
+        "z7kXrdXPL1pVya3HFi7K"
+      ],
+      "newArtists": [
+        "air-castles"
+      ]
+    },
+    {
+      "eventId": "CVXAONAo4rjv5DH6lV91",
+      "oldArtists": [
+        "Dw2h2lI2R9qT7alu3ItX"
+      ],
+      "newArtists": [
+        "noki"
+      ]
+    },
+    {
+      "eventId": "1ulE2ql44KkEoTVtTUls",
+      "oldArtists": [
+        "9TCUzEBtsT1ncxnFMyKr"
+      ],
+      "newArtists": [
+        "viskus"
+      ]
+    },
+    {
+      "eventId": "Qj6WM9258d8llnCjoTVh",
+      "oldArtists": [
+        "Vizb7GIymZDLfU0qapuf"
+      ],
+      "newArtists": [
+        "freesbass"
+      ]
+    },
+    {
+      "eventId": "8Hq6FthgGgxuxELKgZu2",
+      "oldArtists": [
+        "QBMvGXAjYoVy9BcE1emw"
+      ],
+      "newArtists": [
+        "svvitch"
+      ]
+    },
+    {
+      "eventId": "L1OcKg3z6nWHbG6VsLFM",
+      "oldArtists": [
+        "CM5Zni8xkDFQI0Pyt8MU"
+      ],
+      "newArtists": [
+        "quinlan-mauer"
+      ]
+    },
+    {
+      "eventId": "rrkXhyXJ682zmF45yFhD",
+      "oldArtists": [
+        "p5o6U6SZM1iVSeylc5yh"
+      ],
+      "newArtists": [
+        "lowcation"
+      ]
+    },
+    {
+      "eventId": "us5g1pvdRgEMWZBxIf1c",
+      "oldArtists": [
+        "0Xi2bNXuCO0a6hNsxg1Q"
+      ],
+      "newArtists": [
+        "jonvh"
+      ]
+    },
+    {
+      "eventId": "yenYwXVXRr09qi53iyRQ",
+      "oldArtists": [
+        "VbesRgLMGxMkdsbKIGsg"
+      ],
+      "newArtists": [
+        "dixons-violin"
+      ]
+    },
+    {
+      "eventId": "EByOSikoB1ChMjQO91Ae",
+      "oldArtists": [
+        "OsliYMLZtb1wSGAZ7fq5"
+      ],
+      "newArtists": [
+        "polly-hocket"
+      ]
+    },
+    {
+      "eventId": "4TMk363Uk0FzSQQlFNEM",
+      "oldArtists": [
+        "1T3dAcanMIQW9imklbJQ"
+      ],
+      "newArtists": [
+        "kaptain"
+      ]
+    },
+    {
+      "eventId": "mGrEDtBfvGV8Zhtc5djk",
+      "oldArtists": [
+        "cjMg1Rygppnhge9jpM47"
+      ],
+      "newArtists": [
+        "trb"
+      ]
+    },
+    {
+      "eventId": "me4M3qyOnm0rEbm1qt23",
+      "oldArtists": [
+        "mKBUfbLXYLJ137LdirU4"
+      ],
+      "newArtists": [
+        "mushroom-cloud"
+      ]
+    },
+    {
+      "eventId": "3zn0az8CrhNh5laN1WjT",
+      "oldArtists": [
+        "wuidL1tG4mBmYKBjZfSn"
+      ],
+      "newArtists": [
+        "fendz"
+      ]
+    },
+    {
+      "eventId": "kfxzafZtobGdrIw4DjLE",
+      "oldArtists": [
+        "tgIWxqIR5TcLaZK3oPsJ"
+      ],
+      "newArtists": [
+        "blejay"
+      ]
+    }
+  ]
+}

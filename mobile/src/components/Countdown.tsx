@@ -1,16 +1,20 @@
-// Commit: Fix malformed Countdown component, always show 5-day forecast without divider or toggle
-// /src/components/Countdown.tsx
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Animated, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { useCountdown } from '../hooks/useCountdown';
+import type { FestivalPhase } from '../hooks/useFestivalState';
 
 /**
- * Countdown component: Shows countdown until target date. After countdown finishes
- * it displays local festival time (America/Detroit) plus current weather and a
- * compact always-visible 5-day forecast (Thu–Mon) for Brooklyn, MI using Open‑Meteo.
+ * Countdown component: Shows countdown until target date.
+ *
+ * Behaviour:
+ * - `upcoming`: show countdown digits + "UNTIL DOORS OPEN"
+ * - `live`:     show live clock + "DOORS OPEN" (same as before, now phase-driven)
+ * - `past`:     show neutral "LINEUP" heading so the app looks fine between festivals
  */
 interface CountdownProps {
   targetDate: Date;
+  /** Festival phase from useFestivalState. Defaults to time-based heuristic if omitted. */
+  festivalPhase?: FestivalPhase;
 }
 
 import { festivalConfig } from '../config/festival.config';
@@ -18,6 +22,12 @@ import { festivalConfig } from '../config/festival.config';
 const FESTIVAL_LAT = festivalConfig.location.latitude;
 const FESTIVAL_LON = festivalConfig.location.longitude;
 const FESTIVAL_TIMEZONE = festivalConfig.location.timezone;
+const FESTIVAL_LOCATION_NAME = festivalConfig.location.name;
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface WeatherDay {
   date: string;
@@ -125,147 +135,175 @@ const useWeather = () => {
 const ForecastAndClock: React.FC = () => {
   const { hour12, minutes, ampm } = useFestivalClock();
   const weather = useWeather();
+  const [expanded, setExpanded] = React.useState(false);
   const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
   const pieces: string[] = [];
-  pieces.push('Brooklyn, MI');
+  pieces.push(FESTIVAL_LOCATION_NAME);
   if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
   if (weatherEmoji) pieces.push(weatherEmoji);
 
-  // Check if gates are open: between 10am and 6:15am next day
+  const forecastDays = (weather.daily || []).slice(0, 5);
+
+  const toggleForecast = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
+  // Check if doors are open: between 10am and 6:15am next day
   const now = new Date();
   const currentHour = now.getHours();
   const currentMinutes = now.getMinutes();
-  const isGatesOpen = (currentHour > 10 || (currentHour === 10 && currentMinutes >= 0)) ||
+  const isDoorsOpen = (currentHour > 10 || (currentHour === 10 && currentMinutes >= 0)) ||
                       (currentHour < 6 || (currentHour === 6 && currentMinutes < 15));
 
   return (
     <View style={styles.liveClockWrapper}>
-      {/* 5-day forecast hidden for now */}
-      {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
-        <View style={[styles.forecastRow, styles.forecastPadding]}>
-          {forecastDays.map(d => {
-            const icon = weatherCodeToEmoji(d.code) || '';
+      <TouchableOpacity onPress={toggleForecast} activeOpacity={0.7}>
+        <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
+          {weather.isLoading ? (
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
+          ) : weather.error ? (
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
+          ) : (
+            <Text style={styles.metaText}>{pieces.join(' \u2022 ')}</Text>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      {expanded && !weather.isLoading && !weather.error && forecastDays.length > 0 && (
+        <View style={styles.forecastContainer}>
+          {forecastDays.map((d, i) => {
+            const icon = weatherCodeToEmoji(d.code) || '☁️';
             const hi = d.tMax != null ? Math.round(d.tMax) : '-';
             const lo = d.tMin != null ? Math.round(d.tMin) : '-';
             return (
-              <View key={d.date} style={styles.forecastDay}>
+              <View key={d.date} style={[styles.forecastDayCard, i === 0 && styles.forecastDayCardToday]}>
+                <Text style={styles.forecastDayLabel}>{i === 0 ? 'Today' : d.dayLabel}</Text>
                 <Text style={styles.forecastIcon}>{icon}</Text>
-                <Text style={styles.forecastTemps}>{hi}°/{lo}°</Text>
-                <Text style={styles.forecastDayLabel}>{shortLabel(d.dayLabel)}</Text>
+                <View style={styles.forecastTempRow}>
+                  <Text style={styles.forecastHi}>{hi}°</Text>
+                  <Text style={styles.forecastLo}>{lo}°</Text>
+                </View>
               </View>
             );
           })}
         </View>
-      )} */}
-      <View style={{ minHeight: 20, marginTop: 4 }}>
-        {weather.isLoading ? (
-          <View style={styles.inlineRow}>
-            <ActivityIndicator size="small" color="#B87333" />
-            <Text style={styles.metaText}>  Loading weather...</Text>
-          </View>
-        ) : weather.error ? (
-          <Text style={styles.metaText}>{weather.error}</Text>
-        ) : (
-          <Text style={styles.metaText}>{pieces.join(' \u2022 ')}</Text>
-        )}
-      </View>
+      )}
+
       <View style={styles.clockRow}>
         <Text style={styles.timeText}>{hour12}:{minutes} {ampm}</Text>
       </View>
-      <View style={styles.gatesStatusRow}>
-        <Text style={styles.gatesStatusText}>{isGatesOpen ? 'GATES OPEN' : 'GATES CLOSED'}</Text>
+      <View style={styles.doorsStatusRow}>
+        <Text style={styles.doorsStatusText}>{isDoorsOpen ? 'GATES OPEN' : 'GATES CLOSED'}</Text>
       </View>
     </View>
   );
 };
 
-const Countdown: React.FC<CountdownProps> = ({ targetDate }) => {
+const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
   const timeLeft = useCountdown(targetDate);
   const weather = useWeather();
-  const now = new Date();
-  const gatesOpenDate = new Date('2025-09-26T10:00:00-04:00'); // Sept 26 10am EDT
-  const shouldShowCountdown = timeLeft !== null || now < gatesOpenDate;
-
-  const shortLabel = (lbl: string) => lbl.slice(0, 3);
-  const forecastDays = (weather.daily || [])
-    .filter(d => ['Thu', 'Fri', 'Sat', 'Sun', 'Mon'].includes(shortLabel(d.dayLabel)))
-    .sort((a, b) => {
-      const order = ['Thu', 'Fri', 'Sat', 'Sun', 'Mon'];
-      return order.indexOf(shortLabel(a.dayLabel)) - order.indexOf(shortLabel(b.dayLabel));
-    });
+  const [expanded, setExpanded] = React.useState(false);
+  const hasTimeLeft = timeLeft !== null && (timeLeft.days > 0 || timeLeft.hours > 0 || timeLeft.minutes > 0 || timeLeft.seconds > 0);
 
   const weatherEmoji = weather.weatherCode != null ? weatherCodeToEmoji(weather.weatherCode) : undefined;
-  const pieces: string[] = [];
-  pieces.push('Brooklyn, MI');
-  if (weather.temperature != null) pieces.push(`${Math.round(weather.temperature)}°F`);
-  if (weatherEmoji) pieces.push(weatherEmoji);
+  const weatherPieces: string[] = [FESTIVAL_LOCATION_NAME];
+  if (weather.temperature != null) weatherPieces.push(`${Math.round(weather.temperature)}°F`);
+  if (weatherEmoji) weatherPieces.push(weatherEmoji);
 
-  if (shouldShowCountdown) {
-    // Still counting down or before gates open
-    return (
-      <View style={styles.countdownWrapper}>
-        {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
-          <View style={[styles.forecastRow, styles.forecastPadding]}>
-            {forecastDays.map(d => {
-              const icon = weatherCodeToEmoji(d.code) || '';
-              const hi = d.tMax != null ? Math.round(d.tMax) : '-';
-              const lo = d.tMin != null ? Math.round(d.tMin) : '-';
-              return (
-                <View key={d.date} style={styles.forecastDay}>
-                  <Text style={styles.forecastIcon}>{icon}</Text>
-                  <Text style={styles.forecastTemps}>{hi}°/{lo}°</Text>
-                  <Text style={styles.forecastDayLabel}>{shortLabel(d.dayLabel)}</Text>
-                </View>
-              );
-            })}
-          </View>
-        )} */}
-        {/* <Image source={require('../assets/images/gates-open-in.png')} style={styles.gatesImage} /> */}
-        <View style={{ minHeight: 20, marginTop: -20, marginBottom: 3, alignItems: 'flex-start', paddingTop: 15 }}>
+  const forecastDays = (weather.daily || []).slice(0, 5);
+
+  const toggleForecast = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
+  const weatherLine = (
+    <View style={{ alignItems: "center", marginBottom: 6 }}>
+      <TouchableOpacity onPress={toggleForecast} activeOpacity={0.7} style={{ height: 24, justifyContent: "center" }}>
+        <View style={{ alignItems: 'center' }}>
           {weather.isLoading ? (
-            <View style={styles.inlineRow}>
-              <ActivityIndicator size="small" color="#B87333" />
-              <Text style={styles.metaText}>  Loading weather...</Text>
-            </View>
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
           ) : weather.error ? (
-            <Text style={styles.metaText}>{weather.error}</Text>
+            <Text style={styles.metaText}>{FESTIVAL_LOCATION_NAME}</Text>
           ) : (
-            <Text style={styles.metaText}>{pieces.join(' \u2022 ')}</Text>
+            <Text style={styles.metaText}>{weatherPieces.join(' \u2022 ')}</Text>
           )}
         </View>
-        <View style={styles.countdownRow}>
-          <TimeBlock label="DAYS" value={timeLeft?.days ?? 0} />
-          <Separator />
-          <TimeBlock label="HRS" value={timeLeft?.hours ?? 0} />
-          <Separator />
-          <TimeBlock label="MIN" value={timeLeft?.minutes ?? 0} />
-          <Separator />
-          <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
-        </View>
-        <View style={[styles.gatesStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
-          <Text style={styles.gatesStatusText}>UNTIL GATES OPEN</Text>
-        </View>
-        {/* {!weather.isLoading && !weather.error && forecastDays.length > 0 && (
-          <View style={[styles.forecastRow, styles.forecastPadding]}>
-            {forecastDays.map(d => {
-              const icon = weatherCodeToEmoji(d.code) || '';
-              const hi = d.tMax != null ? Math.round(d.tMax) : '-';
-              const lo = d.tMin != null ? Math.round(d.tMin) : '-';
-              return (
-                <View key={d.date} style={styles.forecastDay}>
-                  <Text style={styles.forecastIcon}>{icon}</Text>
-                  <Text style={styles.forecastTemps}>{hi}°/{lo}°</Text>
-                  <Text style={styles.forecastDayLabel}>{shortLabel(d.dayLabel)}</Text>
+      </TouchableOpacity>
+      {expanded && !weather.isLoading && !weather.error && forecastDays.length > 0 && (
+        <View style={styles.forecastContainer}>
+          {forecastDays.map((d, i) => {
+            const icon = weatherCodeToEmoji(d.code) || '☁️';
+            const hi = d.tMax != null ? Math.round(d.tMax) : '-';
+            const lo = d.tMin != null ? Math.round(d.tMin) : '-';
+            return (
+              <View key={d.date} style={[styles.forecastDayCard, i === 0 && styles.forecastDayCardToday]}>
+                <Text style={styles.forecastDayLabel}>{i === 0 ? 'Today' : d.dayLabel}</Text>
+                <Text style={styles.forecastIcon}>{icon}</Text>
+                <View style={styles.forecastTempRow}>
+                  <Text style={styles.forecastHi}>{hi}°</Text>
+                  <Text style={styles.forecastLo}>{lo}°</Text>
                 </View>
-              );
-            })}
-          </View>
-        )} */}
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+
+  // Phase-driven rendering:
+  // 1. If festivalPhase is provided, trust it as source of truth.
+  // 2. Otherwise fall back to time-based heuristic (hasTimeLeft).
+  const effectivePhase: FestivalPhase = festivalPhase ??
+    (hasTimeLeft ? 'upcoming' : 'live');
+
+  if (effectivePhase === 'past') {
+    return (
+      <View style={styles.countdownWrapper}>
+        {weatherLine}
+        <View style={styles.clockRow}>
+          <Text style={styles.timeText}>BIG FAM</Text>
+        </View>
+        <View style={[styles.doorsStatusRow, { paddingTop: 6 }]}>
+          <Text style={styles.doorsStatusText}>FESTIVAL</Text>
+        </View>
       </View>
     );
   }
-  // Countdown finished and after gates open => show festival info
-  return <ForecastAndClock />;
+
+  if (effectivePhase === 'live') {
+    return (
+      <View style={styles.countdownWrapper}>
+        {weatherLine}
+        <View style={styles.clockRow}>
+          <Text style={styles.timeText}>GATES OPEN</Text>
+        </View>
+        <View style={[styles.doorsStatusRow, { paddingTop: 6 }]}>
+          <Text style={styles.doorsStatusText}>8:00 PM</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.countdownWrapper}>
+      {weatherLine}
+      <View style={styles.countdownRow}>
+        <TimeBlock label="DAYS" value={timeLeft?.days ?? 0} />
+        <Separator />
+        <TimeBlock label="HRS" value={timeLeft?.hours ?? 0} />
+        <Separator />
+        <TimeBlock label="MIN" value={timeLeft?.minutes ?? 0} />
+        <Separator />
+        <TimeBlock label="SEC" value={timeLeft?.seconds ?? 0} />
+      </View>
+      <View style={[styles.doorsStatusRow, { paddingTop: 6, marginBottom: -10 }]}>
+        <Text style={styles.doorsStatusText}>UNTIL GATES OPEN</Text>
+      </View>
+    </View>
+  );
 };
 
 interface TimeBlockProps { label: string; value: number; }
@@ -284,7 +322,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 8,
   },
-  gatesImage: {
+  doorsImage: {
     width: 350,
     height: 150,
     resizeMode: 'contain',
@@ -373,13 +411,52 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginTop: 0,
   },
+  forecastContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    alignSelf: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+    gap: 8,
+  },
+  forecastDayCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    width: 56,
+  },
+  forecastDayCardToday: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  forecastTempRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
+  },
+  forecastHi: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  forecastLo: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 10,
+    fontWeight: '500',
+  },
   forecastDay: {
     alignItems: 'center',
     marginHorizontal: 8,
   },
   forecastIcon: {
     fontSize: 18,
-    lineHeight: 20,
+    lineHeight: 22,
+    marginVertical: 2,
   },
   forecastTemps: {
     color: '#fff',
@@ -393,24 +470,30 @@ const styles = StyleSheet.create({
   },
   forecastDayLabel: {
     color: '#fff',
+    fontSize: 9,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
+  expandArrow: {
+    color: '#fff',
     fontSize: 10,
     fontWeight: '600',
-    marginTop: 0,
     textShadowColor: '#B87333',
     textShadowOffset: { width: 0.5, height: 0.5 },
     textShadowRadius: 2,
-    lineHeight: 12,
   },
   forecastPadding: {
     paddingTop: 12,
     paddingBottom: 0, // Requested bottom padding under forecast
   },
-  gatesStatusRow: {
+  doorsStatusRow: {
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
-  gatesStatusText: {
+  doorsStatusText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',

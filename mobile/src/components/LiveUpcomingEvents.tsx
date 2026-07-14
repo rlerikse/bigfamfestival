@@ -1,8 +1,8 @@
 // src/components/LiveUpcomingEvents.tsx
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import { api } from '../services/api';
+import { fetchEvents as fetchEventsData } from '../services/eventsService';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
@@ -12,7 +12,6 @@ import { RootStackParamList, MainTabParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserSchedule, addToSchedule, removeFromSchedule } from '../services/scheduleService';
 import { isLoggedInUser } from '../utils/userUtils';
-import genreService from '../services/genreService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -30,21 +29,28 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
+  const [retryCount, setRetryCount] = useState(0);
+
   useEffect(() => {
     const fetchEventsAndSchedule = async () => {
       try {
-        // Fetch events and user schedule in parallel for speed
-        // Only fetch user schedule if user is logged in (not a guest)
-        const [eventsResponse, scheduleResponse] = await Promise.all([
-          api.get<ScheduleEvent[]>('/events'),
-          (user && isLoggedInUser(user)) ? getUserSchedule(user.id) : Promise.resolve([]),
-        ]);
+        // Fetch events using eventsService (has offline cache fallback)
+        const { events: fetchedEvents } = await fetchEventsData();
 
-        // Populate genres for the events
-        const eventsWithGenres = await genreService.populateEventGenres(eventsResponse.data);
-        setEvents(eventsWithGenres);
+        // Fetch user schedule in parallel (only for authenticated users)
+        let scheduleResponse: ScheduleEvent[] = [];
+        if (user && isLoggedInUser(user)) {
+          try {
+            scheduleResponse = await getUserSchedule(user.id);
+          } catch (schedErr) {
+            // Non-blocking — schedule fetch failure shouldn't break event display
+            console.warn('LiveUpcomingEvents: schedule fetch failed:', schedErr);
+          }
+        }
 
-        if (scheduleResponse) {
+        setEvents(fetchedEvents);
+
+        if (scheduleResponse.length > 0) {
           const scheduleMap = scheduleResponse.reduce<Record<string, boolean>>((acc, ev) => {
             acc[ev.id] = true;
             return acc;
@@ -52,8 +58,14 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
           setUserSchedule(scheduleMap);
         }
       } catch (err) {
-        setError('Could not load live events.');
-        console.error('Error fetching data for LiveUpcomingEvents:', err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error('Error fetching data for LiveUpcomingEvents:', errMsg);
+        // Only show error if it's a genuine failure (not empty data)
+        if (errMsg.includes('offline') || errMsg.includes('No internet')) {
+          setError('You\'re offline. Connect to load events.');
+        } else {
+          setError('Could not load events. Pull down to retry.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -66,7 +78,7 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
     }, 60000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, retryCount]);
 
   const liveOrUpcomingEventsByStage = useMemo(() => {
     if (!events.length) {
@@ -93,6 +105,38 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
 
       if (nextEvent) {
         upcomingEvents.push(nextEvent);
+      }
+    }
+
+    // If no live/upcoming events found (outside festival window),
+    // show the soonest future events across all stages, or the most
+    // recent past events as a preview of what's coming.
+    if (upcomingEvents.length === 0) {
+      const allSorted = [...events].sort((a, b) => {
+        const timeA = new Date(`${a.date}T${a.startTime}`).getTime();
+        const timeB = new Date(`${b.date}T${b.startTime}`).getTime();
+        return timeA - timeB;
+      });
+
+      // Try future events first
+      const futureEvents = allSorted.filter(e => {
+        const startTime = new Date(`${e.date}T${e.startTime}`).getTime();
+        return startTime > nowTime;
+      });
+
+      if (futureEvents.length > 0) {
+        // Show one per stage from the soonest future events
+        const seenStages = new Set<string>();
+        for (const ev of futureEvents) {
+          if (!seenStages.has(ev.stage) && seenStages.size < 3) {
+            upcomingEvents.push(ev);
+            seenStages.add(ev.stage);
+          }
+        }
+      } else {
+        // All events are in the past — show the last few as a "preview" of the lineup
+        const lastFew = allSorted.slice(-3);
+        upcomingEvents.push(...lastFew);
       }
     }
 
@@ -194,7 +238,10 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
   if (error) {
     return (
       <View style={styles.centered}>
-        <Text style={{ color: theme.error }}>{error}</Text>
+        <Text style={{ color: theme.error, textAlign: 'center', marginBottom: 8 }}>{error}</Text>
+        <TouchableOpacity onPress={() => { setError(null); setIsLoading(true); setRetryCount(c => c + 1); }}>
+          <Text style={{ color: theme.primary, fontWeight: '600' }}>Tap to retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -222,7 +269,7 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
             } else if (event.stage === 'Bayou' || idx === 1) {
               logoSource = require('../assets/images/bayou-logo-trans.png');
               logoStyle = styles.stageLogoBayou;
-            } else if (event.stage === 'The Gallery' || idx === 2) {
+            } else if (event.stage === 'The Gallery' || event.stage === 'Gallery' || idx === 2) {
               logoSource = require('../assets/images/gallery-logo-trans.png');
               logoStyle = styles.stageLogoGallery;
             }

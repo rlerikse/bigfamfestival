@@ -13,23 +13,62 @@ import { appleAuth } from '@invertase/react-native-apple-authentication';
 import { Platform } from 'react-native';
 
 // Configure Google Sign-In
-GoogleSignin.configure({
-  webClientId: '292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com',
-  iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
-});
+// IMPORTANT: webClientId MUST be the "Web application" OAuth 2.0 client ID
+// from Google Cloud Console (not the Android or iOS client ID).
+// On Android, the app's SHA-256 signing fingerprint must be registered in
+// Firebase Console > Project Settings > Android apps for each build variant.
+try {
+  GoogleSignin.configure({
+    // Web Application OAuth client ID (same Firebase project)
+    webClientId: '292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com',
+    // iOS client ID from GoogleService-Info.plist; only needed if not auto-detected
+    ...(Platform.OS === 'ios' && {
+      iosClientId: '292369452544-0fs6n82klotfoo0ckbsgq5kmcresasue.apps.googleusercontent.com',
+    }),
+  });
+} catch (e) {
+  console.warn('[FirebaseAuth] Google Sign-In configure failed:', e);
+}
 
 // Error code to user-friendly message mapping
 const ERROR_MESSAGES: Record<string, string> = {
-  'auth/email-already-in-use': 'This email is already registered. Please login instead.',
+  // Email / password
+  'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
   'auth/invalid-email': 'Please enter a valid email address.',
-  'auth/operation-not-allowed': 'Email/password accounts are not enabled.',
-  'auth/weak-password': 'Password should be at least 6 characters.',
-  'auth/user-disabled': 'This account has been disabled.',
-  'auth/user-not-found': 'No account found with this email.',
-  'auth/wrong-password': 'Incorrect password. Please try again.',
-  'auth/invalid-credential': 'Invalid email or password.',
-  'auth/too-many-requests': 'Too many login attempts. Please try again later.',
-  'auth/network-request-failed': 'Network error. Please check your connection.',
+  'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Please contact support.',
+  'auth/weak-password': 'Password must be at least 6 characters.',
+  'auth/user-disabled': 'This account has been disabled. Please contact support.',
+  'auth/user-not-found': 'No account found with that email. Check the address or sign up.',
+  'auth/wrong-password': 'Incorrect password. Please try again or reset your password.',
+  'auth/invalid-credential': 'Incorrect email or password. Please try again.',
+  'auth/too-many-requests': 'Too many failed attempts. Please wait a few minutes before trying again.',
+  'auth/network-request-failed': 'Network error. Please check your connection and try again.',
+  // Account linking / SSO
+  'auth/account-exists-with-different-credential':
+    'An account already exists with that email using a different sign-in method. Try signing in with Google or use email/password.',
+  'auth/credential-already-in-use':
+    'This credential is already linked to another account.',
+  'auth/provider-already-linked':
+    'This sign-in method is already linked to your account.',
+  // Session
+  'auth/requires-recent-login':
+    'For security, please sign out and sign back in before making this change.',
+  'auth/session-cookie-expired':
+    'Your session has expired. Please sign in again.',
+  'auth/id-token-expired':
+    'Your session has expired. Please sign in again.',
+  // Profile / email update
+  'auth/email-already-exists':
+    'This email is already in use by another account.',
+  'auth/invalid-password':
+    'Password must be at least 6 characters.',
+  // General
+  'auth/internal-error':
+    'An internal error occurred. Please try again.',
+  'auth/cancelled-popup-request':
+    'Sign-in cancelled — only one sign-in window can be open at a time.',
+  'auth/popup-closed-by-user':
+    'Sign-in window was closed before completing. Please try again.',
 };
 
 /**
@@ -160,6 +199,10 @@ export async function sendPasswordResetEmail(email: string): Promise<void> {
     console.log('[FirebaseAuth] Password reset email sent successfully');
   } catch (error: any) {
     console.error('[FirebaseAuth] Password reset error:', error.code, error.message);
+    // Normalize user-not-found so callers can detect it
+    if (error.code === 'auth/user-not-found') {
+      throw new Error('No account found with that email address.');
+    }
     throw new Error(getErrorMessage(error));
   }
 }
@@ -209,15 +252,45 @@ export { auth };
 
 /**
  * Sign in with Google
+ *
+ * Uses @react-native-google-signin/google-signin v16+ API.
+ * The webClientId must match the OAuth 2.0 "Web application" client ID in
+ * Google Cloud Console (same project as Firebase). On Android, the app's
+ * signing certificate SHA-256 fingerprint must be registered in Firebase
+ * Console > Project Settings > Android apps.
  */
 export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredential> {
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // Clear cached account selection so the account picker always appears
+    await GoogleSignin.signOut();
+
     const signInResult = await GoogleSignin.signIn();
-    const idToken = signInResult.data?.idToken;
-    if (!idToken) {
-      throw new Error('Google Sign-In failed: no ID token returned.');
+
+    // v13+: signIn() returns { type, data } — handle cancellation
+    if ('type' in signInResult && signInResult.type === 'cancelled') {
+      throw new Error('Google Sign-In was cancelled.');
     }
+
+    // Extract ID token — different access paths for API versions
+    const idToken = signInResult.data?.idToken ?? (signInResult as any)?.idToken;
+
+    if (!idToken) {
+      // Common causes:
+      // - webClientId mismatch (must be the Web client ID, not Android/iOS)
+      // - SHA fingerprint not registered for this build variant
+      // - OAuth consent screen not configured
+      console.error(
+        '[FirebaseAuth] Google Sign-In: no idToken. Check webClientId matches ' +
+        'the Web Application OAuth client in Google Cloud Console, and that ' +
+        'the SHA-256 fingerprint for this build is registered in Firebase.',
+      );
+      throw new Error(
+        'Google Sign-In failed: Could not get authentication token. ' +
+        'Please try again or use email login.',
+      );
+    }
+
     const googleCredential = auth.GoogleAuthProvider.credential(idToken);
     return await auth().signInWithCredential(googleCredential);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -231,6 +304,17 @@ export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredenti
     }
     if (error.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
       throw new Error('Google Play Services is not available on this device.');
+    }
+    // Network failure during token exchange
+    if (error.code === '10' || error.code === 'DEVELOPER_ERROR') {
+      console.error(
+        '[FirebaseAuth] DEVELOPER_ERROR: SHA fingerprint or webClientId mismatch. ' +
+        'Ensure the OAuth web client ID is used (not Android client ID) and ' +
+        'all build-variant SHA-256 fingerprints are registered in Firebase Console.',
+      );
+      throw new Error(
+        'Google Sign-In configuration error. Please contact support if this persists.',
+      );
     }
     throw new Error(getErrorMessage(error));
   }

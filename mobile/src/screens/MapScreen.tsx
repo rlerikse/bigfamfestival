@@ -5,7 +5,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { SafeAreaView, StyleSheet, View, useWindowDimensions, ActivityIndicator, Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import * as FileSystem from 'expo-file-system';
 
 import campingMap from '../assets/images/bff25_CampingMap.png';
 import TopNavBar from '../components/TopNavBar';
@@ -23,7 +22,6 @@ import { useTheme } from '../contexts/ThemeContext';
 export default function MapScreen() {
   const { width } = useWindowDimensions();
   const [isLoading, setIsLoading] = useState(true);
-  const [cachedImageUri, setCachedImageUri] = useState<string | null>(null);
   const { theme, isDark } = useTheme();
   
   // Icons should be white on dark background, dark on light background
@@ -52,8 +50,8 @@ export default function MapScreen() {
   }, []);
   
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TopNavBar whiteIcons={whiteIcons} />
+    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <TopNavBar whiteIcons={true} />
       
       {isLoading ? (
         <View style={styles.loadingContainer}>

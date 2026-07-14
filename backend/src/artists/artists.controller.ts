@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Body,
   Param,
   NotFoundException,
@@ -19,6 +21,7 @@ import { Public } from '../auth/decorators/public.decorator';
 import { ArtistsService } from './artists.service';
 import { Artist } from './interfaces/artist.interface';
 import { CreateArtistDto } from './dto/create-artist.dto';
+import { UpdateArtistDto } from './dto/update-artist.dto';
 
 @ApiTags('artists')
 @Controller('artists')
@@ -56,5 +59,31 @@ export class ArtistsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(@Body() createArtistDto: CreateArtistDto): Promise<Artist> {
     return this.artistsService.create(createArtistDto);
+  }
+
+  @Patch(':slug')
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update an artist by slug (Admin only). Changing slug renames the doc and updates event refs.' })
+  @ApiParam({ name: 'slug', description: 'Current artist slug' })
+  @ApiResponse({ status: 200, description: 'Artist updated successfully' })
+  @ApiResponse({ status: 404, description: 'Artist not found' })
+  @ApiResponse({ status: 409, description: 'New slug conflicts with existing artist' })
+  async update(
+    @Param('slug') slug: string,
+    @Body() updateArtistDto: UpdateArtistDto,
+  ): Promise<Artist> {
+    return this.artistsService.update(slug, updateArtistDto);
+  }
+
+  @Delete(':slug')
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete an artist by slug (Admin only)' })
+  @ApiParam({ name: 'slug', description: 'Artist slug' })
+  @ApiResponse({ status: 200, description: 'Artist deleted' })
+  @ApiResponse({ status: 404, description: 'Artist not found' })
+  async remove(@Param('slug') slug: string): Promise<void> {
+    return this.artistsService.delete(slug);
   }
 }

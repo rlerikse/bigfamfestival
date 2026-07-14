@@ -23,11 +23,19 @@ import TopNavBar from '../components/TopNavBar';
 
 const ProfileScreen = () => {
   const { user, updateUser, logout } = useAuth();
-  const { theme, isDark } = useTheme();
+  const { theme, isDark, isPerformanceMode } = useTheme();
   const { scheduleNotificationsEnabled, toggleScheduleNotifications, globalNotificationsEnabled, toggleGlobalNotifications } = useAppSettings();
-  
+
+  // In performance mode (no animated sky), use dark text on light cards for readability
+  const cardBg = isPerformanceMode ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.15)';
+  const cardBorder = isPerformanceMode ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.3)';
+  const textColor = isPerformanceMode ? '#1a1a1a' : '#fff';
+  const labelColor = isPerformanceMode ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)';
+  const iconColor = isPerformanceMode ? '#2E4031' : '#fff';
+
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   // Sharing preferences - commented out for later implementation
@@ -40,6 +48,8 @@ const ProfileScreen = () => {
     if (isEditing) {
       // Save changes
       handleSaveProfile();
+    } else {
+      setSaveError(null);
     }
     setIsEditing(!isEditing);
   };
@@ -47,14 +57,12 @@ const ProfileScreen = () => {
   const handleSaveProfile = async () => {
     if (!user) return;
     
+    setSaveError(null);
     setIsLoading(true);
     try {
       const updatedData = {
         name,
         phone,
-        // Sharing preferences commented out
-        // shareMyCampsite,
-        // shareMyLocation,
       };
       
       await updateUserProfile(user.id, updatedData);
@@ -63,13 +71,20 @@ const ProfileScreen = () => {
       updateUser(updatedData);
       
       Alert.alert('Success', 'Profile updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
-      Alert.alert('Update Failed', 'Could not update profile. Please try again.');
+      // Show inline error so the user can see and retry without closing the form
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Could not update profile. Please check your connection and try again.';
+      setSaveError(msg);
+      // Keep editing state open so they can fix and retry
+      return;
     } finally {
       setIsLoading(false);
-      setIsEditing(false);
     }
+    setIsEditing(false);
   };
 
   const handleSelectProfileImage = async () => {
@@ -97,9 +112,10 @@ const ProfileScreen = () => {
         const imageUrl = await uploadProfilePicture(user.id, selectedImage.uri);
         setProfileImage(imageUrl);
         updateUser({ profilePictureUrl: imageUrl });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error uploading profile picture:', error);
-        Alert.alert('Upload Failed', 'Could not upload profile picture. Please try again.');
+        const msg = error?.message || 'Could not upload profile picture. Please try again.';
+        Alert.alert('Upload Failed', msg);
       } finally {
         setIsImageUploading(false);
       }
@@ -125,15 +141,15 @@ const ProfileScreen = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <TopNavBar whiteIcons={isDark} />
+      <TopNavBar whiteIcons={true} />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: 100 }]}>
 
         <View style={styles.profileImageContainer}>
-          <View style={[styles.profileImageWrapper, { borderColor: theme.border }]}>
+          <View style={[styles.profileImageWrapper, { borderColor: 'rgba(255, 255, 255, 0.3)' }]}>
             {isImageUploading ? (
-              <ActivityIndicator size="large" color={theme.primary} />
+              <ActivityIndicator size="large" color={"#B87333"} />
             ) : profileImage ? (
               <Image source={{ uri: profileImage }} style={styles.profileImage} />
             ) : (
@@ -146,7 +162,7 @@ const ProfileScreen = () => {
           </View>
           {isEditing && (
             <TouchableOpacity
-              style={[styles.changePhotoButton, { backgroundColor: theme.primary }]}
+              style={[styles.changePhotoButton, { backgroundColor: "#2E4031" }]}
               onPress={handleSelectProfileImage}
             >
               <Text style={styles.changePhotoButtonText}>Change Photo</Text>
@@ -155,48 +171,54 @@ const ProfileScreen = () => {
         </View>
 
         <View style={styles.infoContainer}>
-          <View style={[styles.infoSection, { borderColor: theme.border, backgroundColor: theme.card }]}>
+          <View style={[styles.infoSection, { borderColor: cardBorder, backgroundColor: cardBg }]}>
+            {saveError && (
+              <View style={[styles.errorBanner, { backgroundColor: `${theme.error || '#FF3B30'}15`, borderColor: `${theme.error || '#FF3B30'}40` }]}>
+                <Ionicons name="alert-circle" size={18} color={theme.error || '#FF3B30'} style={{ marginRight: 8 }} />
+                <Text style={[styles.errorBannerText, { color: theme.error || '#FF3B30' }]}>{saveError}</Text>
+              </View>
+            )}
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Account Information</Text>
+              <Text style={[styles.sectionTitle, { color: textColor }]}>Account Information</Text>
               <TouchableOpacity
-                style={[styles.editButton, isEditing && { backgroundColor: theme.primary }]}
+                style={[styles.editButton, isEditing && { backgroundColor: "#2E4031" }]}
                 onPress={handleEditToggle}
                 disabled={isLoading}
               >
                 {isEditing ? (
                   <Text style={[styles.editButtonText, { color: '#FFFFFF' }]}>Save</Text>
                 ) : (
-                  <Ionicons name="pencil" size={20} color={isDark ? '#FFFFFF' : theme.primary} />
+                  <Ionicons name="pencil" size={20} color={iconColor} />
                 )}
               </TouchableOpacity>
             </View>
             <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
             
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Name</Text>
+              <Text style={[styles.fieldLabel, { color: labelColor }]}>Name</Text>
               {isEditing ? (
                 <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                  style={[styles.input, { color: textColor, borderColor: 'rgba(255, 255, 255, 0.3)' }]}
                   value={name}
                   onChangeText={setName}
                   placeholder="Enter your name"
                   placeholderTextColor={theme.muted}
                 />
               ) : (
-                <Text style={[styles.fieldValue, { color: theme.text }]}>{user?.name}</Text>
+                <Text style={[styles.fieldValue, { color: textColor }]}>{user?.name}</Text>
               )}
             </View>
             
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Email</Text>
-              <Text style={[styles.fieldValue, { color: theme.text }]}>{user?.email}</Text>
+              <Text style={[styles.fieldLabel, { color: labelColor }]}>Email</Text>
+              <Text style={[styles.fieldValue, { color: textColor }]}>{user?.email}</Text>
             </View>
             
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Phone</Text>
+              <Text style={[styles.fieldLabel, { color: labelColor }]}>Phone</Text>
               {isEditing ? (
                 <TextInput
-                  style={[styles.input, { color: theme.text, borderColor: theme.border }]}
+                  style={[styles.input, { color: textColor, borderColor: 'rgba(255, 255, 255, 0.3)' }]}
                   value={phone}
                   onChangeText={setPhone}
                   placeholder="Enter your phone number"
@@ -204,37 +226,37 @@ const ProfileScreen = () => {
                   keyboardType="phone-pad"
                 />
               ) : (
-                <Text style={[styles.fieldValue, { color: theme.text }]}>{user?.phone || 'Not set'}</Text>
+                <Text style={[styles.fieldValue, { color: textColor }]}>{user?.phone || 'Not set'}</Text>
               )}
             </View>
             
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Ticket Type</Text>
-              <Text style={[styles.fieldValue, { color: theme.text }]}>{user?.ticketType || 'Need Ticket'}</Text>
+              <Text style={[styles.fieldLabel, { color: labelColor }]}>Ticket Type</Text>
+              <Text style={[styles.fieldValue, { color: textColor }]}>{user?.ticketType || 'Need Ticket'}</Text>
             </View>
             
             <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: theme.muted }]}>Role</Text>
-              <Text style={[styles.fieldValue, { color: theme.text }]}>
+              <Text style={[styles.fieldLabel, { color: labelColor }]}>Role</Text>
+              <Text style={[styles.fieldValue, { color: textColor }]}>
                 {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Attendee'}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.infoSection, { borderColor: theme.border, backgroundColor: theme.card }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Notification Preferences</Text>
+          <View style={[styles.infoSection, { borderColor: cardBorder, backgroundColor: cardBg }]}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Notification Preferences</Text>
             <View style={[styles.sectionDivider, { backgroundColor: theme.border }]} />
 
             {user && user.id !== 'guest-user' ? (
               <>
                 <View style={styles.switchField}>
                   <View style={styles.switchLabelRow}>
-                    <View style={[styles.switchIcon, { backgroundColor: `${theme.primary}20` }]}>
-                      <Ionicons name="calendar-outline" size={18} color={theme.primary} />
+                    <View style={[styles.switchIcon, { backgroundColor: 'rgba(184, 115, 51, 0.12)' }]}>
+                      <Ionicons name="calendar-outline" size={18} color={iconColor} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.switchLabel, { color: theme.text }]}>Schedule Notifications</Text>
-                      <Text style={[styles.switchDescription, { color: theme.muted }]}>
+                      <Text style={[styles.switchLabel, { color: textColor }]}>Schedule Notifications</Text>
+                      <Text style={[styles.switchDescription, { color: labelColor }]}>
                         Get notified 15 min before your events
                       </Text>
                     </View>
@@ -243,7 +265,7 @@ const ProfileScreen = () => {
                     <Switch
                       value={scheduleNotificationsEnabled}
                       onValueChange={toggleScheduleNotifications}
-                      trackColor={{ false: theme.border, true: theme.primary }}
+                      trackColor={{ false: "rgba(255, 255, 255, 0.3)", true: "#B87333" }}
                       thumbColor={'#FFFFFF'}
                       style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                     />
@@ -254,12 +276,12 @@ const ProfileScreen = () => {
 
                 <View style={styles.switchField}>
                   <View style={styles.switchLabelRow}>
-                    <View style={[styles.switchIcon, { backgroundColor: `${theme.primary}20` }]}>
-                      <Ionicons name="globe-outline" size={18} color={theme.primary} />
+                    <View style={[styles.switchIcon, { backgroundColor: 'rgba(184, 115, 51, 0.12)' }]}>
+                      <Ionicons name="globe-outline" size={18} color={iconColor} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.switchLabel, { color: theme.text }]}>Global Notifications</Text>
-                      <Text style={[styles.switchDescription, { color: theme.muted }]}>
+                      <Text style={[styles.switchLabel, { color: textColor }]}>Global Notifications</Text>
+                      <Text style={[styles.switchDescription, { color: labelColor }]}>
                         Festival-wide announcements
                       </Text>
                     </View>
@@ -268,7 +290,7 @@ const ProfileScreen = () => {
                     <Switch
                       value={globalNotificationsEnabled}
                       onValueChange={toggleGlobalNotifications}
-                      trackColor={{ false: theme.border, true: theme.primary }}
+                      trackColor={{ false: "rgba(255, 255, 255, 0.3)", true: "#B87333" }}
                       thumbColor={'#FFFFFF'}
                       style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                     />
@@ -276,43 +298,43 @@ const ProfileScreen = () => {
                 </View>
               </>
             ) : (
-              <Text style={[styles.switchDescription, { color: theme.muted }]}> 
+              <Text style={[styles.switchDescription, { color: labelColor }]}> 
                 Login with an account to enable notification preferences
               </Text>
             )}
           </View>
 
           {/* Sharing Preferences - commented out for later implementation
-          <View style={[styles.infoSection, { borderColor: theme.border }]}>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Sharing Preferences</Text>
+          <View style={[styles.infoSection, { borderColor: 'rgba(255, 255, 255, 0.3)' }]}>
+            <Text style={[styles.sectionTitle, { color: textColor }]}>Sharing Preferences</Text>
             
             <View style={styles.switchField}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Share My Campsite</Text>
+              <Text style={[styles.fieldLabel, { color: textColor }]}>Share My Campsite</Text>
               <Switch
                 value={shareMyCampsite}
                 onValueChange={setShareMyCampsite}
                 disabled={!isEditing}
-                trackColor={{ false: theme.border, true: theme.primary }}
+                trackColor={{ false: "rgba(255, 255, 255, 0.3)", true: "#B87333" }}
                 thumbColor={'#FFFFFF'}
               />
             </View>
             
-            <Text style={[styles.switchDescription, { color: theme.muted }]}>
+            <Text style={[styles.switchDescription, { color: labelColor }]}>
               When enabled, your campsite location will be visible to your friends
             </Text>
             
             <View style={styles.switchField}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>Share My Location</Text>
+              <Text style={[styles.fieldLabel, { color: textColor }]}>Share My Location</Text>
               <Switch
                 value={shareMyLocation}
                 onValueChange={setShareMyLocation}
                 disabled={!isEditing}
-                trackColor={{ false: theme.border, true: theme.primary }}
+                trackColor={{ false: "rgba(255, 255, 255, 0.3)", true: "#B87333" }}
                 thumbColor={'#FFFFFF'}
               />
             </View>
             
-            <Text style={[styles.switchDescription, { color: theme.muted }]}>
+            <Text style={[styles.switchDescription, { color: labelColor }]}>
               When enabled, your real-time location will be visible to your friends
             </Text>
           </View>
@@ -331,7 +353,7 @@ const ProfileScreen = () => {
       
       {isLoading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={theme.primary} />
+          <ActivityIndicator size="large" color={"#B87333"} />
         </View>
       )}
     </View>
@@ -344,7 +366,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -498,6 +520,19 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -71,7 +71,7 @@ const NotificationHistoryItem: React.FC<NotificationHistoryItemProps> = ({
           borderLeftWidth: 4,
           borderColor: isEmergency ? accentColor : 'transparent',
           borderWidth: isEmergency ? 1 : 0,
-          backgroundColor: theme?.card || (isDark ? '#222' : '#fff'),
+          backgroundColor: 'rgba(255, 255, 255, 0.15)',
         },
       ]}
     >
@@ -80,7 +80,7 @@ const NotificationHistoryItem: React.FC<NotificationHistoryItemProps> = ({
       </View>
       <View style={styles.contentContainer}>
         <View style={styles.headerRow}>
-          <Text style={[styles.title, { color: theme?.text || (isDark ? '#fff' : '#222') }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: '#fff' }]} numberOfLines={1}>
             {title}
           </Text>
           {priority === 'high' && (
@@ -96,14 +96,14 @@ const NotificationHistoryItem: React.FC<NotificationHistoryItemProps> = ({
               style={styles.dismissButton}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-outline" size={22} color={theme?.muted || '#999'} />
+              <Ionicons name="close-outline" size={22} color={'rgba(255, 255, 255, 0.7)'} />
             </TouchableOpacity>
           ) : null}
         </View>
-        <Text style={[styles.body, { color: theme?.text || (isDark ? '#fff' : '#222') }]} numberOfLines={2}>
+        <Text style={[styles.body, { color: 'rgba(255, 255, 255, 0.9)' }]} numberOfLines={2}>
           {body}
         </Text>
-        <Text style={[styles.timestamp, { color: theme?.muted || (isDark ? '#bbb' : '#888') }]}>{formatDate(sentAt)}</Text>
+        <Text style={[styles.timestamp, { color: 'rgba(255, 255, 255, 0.6)' }]}>{formatDate(sentAt)}</Text>
       </View>
     </View>
   );
@@ -114,15 +114,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 12,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     marginBottom: 8,
     borderLeftWidth: 4,
     borderLeftColor: '#3498db',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowColor: 'transparent',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    elevation: 0,
   },
   iconContainer: {
     marginRight: 12,
@@ -141,6 +141,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
+    color: '#fff',
   },
   priorityBadge: {
     backgroundColor: '#FFEBEB',
@@ -160,12 +161,12 @@ const styles = StyleSheet.create({
   },
   body: {
     fontSize: 14,
-    color: '#555',
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: 4,
   },
   timestamp: {
     fontSize: 12,
-    color: '#888',
+    color: 'rgba(255,255,255,0.6)',
   },
 });
 
