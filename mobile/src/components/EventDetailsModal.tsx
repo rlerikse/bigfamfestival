@@ -541,9 +541,9 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontSize: 13,
-    color: '#8ab4f8',
+    color: '#a8e6a3',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 10,
   },
   actionsContainer: {
     flexDirection: 'row',
