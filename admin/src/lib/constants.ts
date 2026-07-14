@@ -2,7 +2,7 @@ export const ENV = detectEnv();
 
 function detectEnv(): 'production' | 'development' | 'unknown' {
   const host = typeof window !== 'undefined' ? window.location.hostname : '';
-  if (host.includes('admin.bigfam') || host.includes('bigfam-admin')) return 'production';
+  if (host.includes('admin.bigfam') || host.includes('bigfam-admin') || host.includes('bigfamfestival.web.app')) return 'production';
   if (host === 'localhost' || host === '127.0.0.1') return 'development';
   return 'unknown';
 }
