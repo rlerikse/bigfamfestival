@@ -100,6 +100,7 @@ module.exports = ({ config }) => ({
     firebaseMessagingSenderId: FIREBASE_CONFIG.messagingSenderId,
     firebaseAppId:             FIREBASE_CONFIG.appId,
     firebaseMeasurementId:     FIREBASE_CONFIG.measurementId,
+    mapboxAccessToken: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN || undefined,
     eas: {
       projectId: '0c013fd4-da29-4e1c-9c8d-b69783e98066',
     },

@@ -26,6 +26,7 @@
     "@react-navigation/bottom-tabs": "^6.5.7",
     "@react-navigation/native": "^6.1.6",
     "@react-navigation/native-stack": "^6.9.12",
+    "@rnmapbox/maps": "^10.3.2",
     "@sentry/react-native": "~7.2.0",
     "@tanstack/react-query": "^5.59.0",
     "axios": "^1.12.2",

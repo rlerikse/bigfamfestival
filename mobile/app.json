@@ -133,7 +133,13 @@
         }
       ],
       "expo-font",
-      "./plugins/withModularHeaders"
+      "./plugins/withModularHeaders",
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsImpl": "mapbox"
+        }
+      ]
     ],
     "extra": {
       "apiUrl": "https://bigfam-api-production-292369452544.us-central1.run.app/api/v1",

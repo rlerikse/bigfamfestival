@@ -25,6 +25,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { DebugProvider } from './contexts/DebugContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import { MapboxProvider } from './providers/MapboxProvider';
 import { initSentry } from './config/sentry';
 import useCachedResources from './hooks/useCachedResources';
 
@@ -80,6 +81,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <MapboxProvider>
       <SafeAreaProvider style={{ backgroundColor: 'transparent' }}>
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
@@ -97,6 +99,7 @@ export default function App() {
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
+      </MapboxProvider>
     </ErrorBoundary>
   );
 }
