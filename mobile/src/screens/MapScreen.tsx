@@ -6,8 +6,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { firestore } from '../config/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 
-const FESTIVAL_CENTER: [number, number] = [-84.2565, 42.0567];
-const DEFAULT_ZOOM = 15;
+const FESTIVAL_CENTER: [number, number] = [-84.2575, 42.0577];
+const DEFAULT_ZOOM = 16;
 
 interface MapZone {
   type: 'Feature';
