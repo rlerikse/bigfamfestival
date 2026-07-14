@@ -33,10 +33,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-
-
-};
-
 // Local SafeText component for robust text rendering
 interface SafeTextProps extends TextProps {
   children: React.ReactNode;
