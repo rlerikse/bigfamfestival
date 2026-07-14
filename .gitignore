@@ -41,3 +41,10 @@ mobile/ios/
 mobile/android/
 mobile/google-play-service-account.json
 mobile/.env
+
+# Additional ignores
+admin/node_modules
+functions/node_modules
+*.apk
+mobile/dist
+

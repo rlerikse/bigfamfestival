@@ -1,13 +1,11 @@
 import React from 'react';
 import {
   View,
-  Dimensions,
   SafeAreaView,
   ScrollView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
-import DayNightCycle from '../components/DayNightCycle';
 import TopNavBar from '../components/TopNavBar';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,10 +25,10 @@ type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'M
 
 // Fallback doors date used only if Firestore config is unavailable and
 // festival.config.startDate hasn't been set. Kept for backward-compat.
-const DOORS_DATE_FALLBACK = new Date('2026-04-25T20:00:00-04:00');
+const DOORS_DATE_FALLBACK = new Date('2026-09-25T14:00:00-05:00');
 
 const HomeScreen = () => {
-  const { theme, isDark, isPerformanceMode } = useTheme();
+  const { theme, isDark } = useTheme();
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { user } = useAuth();
   const festivalState = useFestivalState();
@@ -44,7 +42,7 @@ const HomeScreen = () => {
     // Fallback to config start date if Firestore not loaded yet
     try {
       const [year, month, day] = festivalConfig.startDate.split('-').map(Number);
-      return new Date(year, month - 1, day, 20, 0, 0); // assume 8 PM
+      return new Date(year, month - 1, day, 14, 0, 0); // 2 PM EST gates open
     } catch {
       return DOORS_DATE_FALLBACK;
     }
@@ -108,17 +106,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: isPerformanceMode ? (theme.background || '#FFFFFF') : 'transparent' }}>
-      {/* Day/Night Cycle Background */}
-      {!isPerformanceMode && (
-        <View style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 0,
-        }}>
-          <DayNightCycle height={Dimensions.get('window').height} />
-        </View>
-      )}
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
 
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
@@ -130,14 +118,14 @@ const HomeScreen = () => {
       {/* Main content — flex:1 preserves tab bar */}
       <ScrollView
         style={{ flex: 1, zIndex: 1 }}
-        contentContainerStyle={{ paddingTop: 75, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 90, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Festival-style countdown — "UNTIL DOORS OPEN" */}
+        {/* Festival-style countdown — "UNTIL GATES OPEN" */}
         <View style={{ paddingHorizontal: 20, marginBottom: 4 }}>
           <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
-          <View style={{ height: 12 }} />
+          <View style={{ height: 0 }} />
           <Countdown
             targetDate={countdownTarget}
             festivalPhase={festivalState.phase}
