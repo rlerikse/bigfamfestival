@@ -1,30 +1,5 @@
-// Show logo.png from assets/images if event image fails to load
-const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
-  const [error, setError] = React.useState(false);
-  const resolvedUrl = imageUrl ? getFullImageUrl(imageUrl) : undefined;
-  if (!resolvedUrl || error) {
-    return (
-      <Image
-        source={require('../assets/images/bf-logo-trans.png')}
-        style={style}
-        resizeMode="contain"
-      />
-    );
-  }
-  return (
-    <ExpoImage
-      source={{ uri: resolvedUrl }}
-      style={style}
-      contentFit="cover"
-      cachePolicy="memory-disk"
-      onError={() => setError(true)}
-    />
-  );
-};
-// filepath: e:\repos\bigfamfestival\mobile\src\components\EventDetailsModal.tsx
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
@@ -188,6 +163,29 @@ const getFullImageUrl = (imagePath?: string) => {
     // Assume S3 path if not gs:// or http(s)
     return `https://big-fam-app.S3.us-east-2.amazonaws.com/${imagePath}`;
   }
+};
+
+// Show logo.png from assets/images if event image fails to load
+const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
+  const [error, setError] = React.useState(false);
+  const resolvedUrl = imageUrl ? getFullImageUrl(imageUrl) : undefined;
+  if (!resolvedUrl || error) {
+    return (
+      <Image
+        source={require('../assets/images/bf-logo-trans.png')}
+        style={style}
+        resizeMode="contain"
+      />
+    );
+  }
+  return (
+    <Image
+      source={{ uri: resolvedUrl }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setError(true)}
+    />
+  );
 };
 
 const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
