@@ -54,6 +54,7 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
     startTime: string;
     endTime: string;
     imageUrl: string;
+    description: string;
   }) => {
     if (editingEvent) {
       // Strip empty strings and only send changed fields to avoid backend validation errors

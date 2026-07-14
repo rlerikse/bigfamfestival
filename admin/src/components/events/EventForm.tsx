@@ -6,6 +6,7 @@ import { validateImageFile, uploadEventImage } from '@/lib/storage';
 import { ArtistImageCycler } from '@/components/events/ArtistImageCycler';
 import { ArtistSelect } from '@/components/events/ArtistSelect';
 import { useApiQuery } from '@/hooks/useApi';
+import { useStorageUrl } from '@/hooks/useStorageUrl';
 import { STAGES } from '@/lib/constants';
 import type { Event, Artist } from '@/types';
 
@@ -19,6 +20,7 @@ interface EventFormProps {
     startTime: string;
     endTime: string;
     imageUrl: string;
+    description: string;
   }) => Promise<void>;
   onCancel: () => void;
 }
@@ -33,12 +35,17 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
   const [date, setDate] = useState(event?.date ?? '');
   const [startTime, setStartTime] = useState(event?.startTime ?? '');
   const [endTime, setEndTime] = useState(event?.endTime ?? '');
+  const [description, setDescription] = useState(event?.description ?? '');
 
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(event?.imageUrl ?? null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageRemoved, setImageRemoved] = useState(false);
   const [imageManuallySet, setImageManuallySet] = useState(!!event?.imageUrl);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  // Resolve gs:// URLs to downloadable HTTPS URLs
+  const resolvedEventImage = useStorageUrl(event?.imageUrl);
+  const displayImage = imageFile ? imagePreview : (imageRemoved ? null : resolvedEventImage);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +122,7 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
         startTime,
         endTime,
         imageUrl,
+        description: description.trim(),
       });
     } catch (err) {
       if (err instanceof Error) {
@@ -153,10 +161,10 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
           }}
         />
 
-        {imagePreview ? (
+        {displayImage ? (
           <div className="relative w-full aspect-square max-w-[200px] mx-auto rounded-lg overflow-hidden border border-border">
             <img
-              src={imagePreview}
+              src={displayImage}
               alt="Event preview"
               className="w-full h-full object-cover"
             />
@@ -251,6 +259,18 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
           <label className="text-sm font-medium block mb-1.5">End</label>
           <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
         </div>
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="text-sm font-medium block mb-1.5">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Event description (optional)"
+          rows={3}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y min-h-[80px]"
+        />
       </div>
 
       {/* Error */}
