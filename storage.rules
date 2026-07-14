@@ -9,15 +9,15 @@ service firebase.storage {
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Event images — any authenticated user can read, only admins can write
+    // Event images — public read, only admins can write
     match /event-images/{allPaths=**} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null && request.auth.token.role == 'admin';
     }
 
-    // Artist photos — any authenticated user can read, only admins can write
+    // Artist photos — public read, only admins can write
     match /artist_photos/{allPaths=**} {
-      allow read: if request.auth != null;
+      allow read: if true;
       allow write: if request.auth != null && request.auth.token.role == 'admin';
     }
 
