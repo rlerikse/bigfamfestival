@@ -1055,7 +1055,7 @@ const ScheduleScreen = () => {
             ]}
             showsVerticalScrollIndicator={false}
             // Enhanced performance optimizations for smooth scrolling
-            removeClippedSubviews={true}
+            removeClippedSubviews={false}
             maxToRenderPerBatch={20}
             updateCellsBatchingPeriod={100}
             initialNumToRender={75}
