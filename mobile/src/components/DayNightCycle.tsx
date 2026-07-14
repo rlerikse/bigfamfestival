@@ -735,7 +735,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        opacity: 0.95,
+        opacity: 0.8,
         width: '120%',
         height: '25%',
         zIndex: 2,
@@ -761,7 +761,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        opacity: 0.9,
+        opacity: 0.7,
         width: '110%',
         height: '22%',
         zIndex: 2,
@@ -787,7 +787,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        opacity: 0.85,
+        opacity: 0.6,
         width: '100%',
         height: '18%',
         zIndex: 2,
@@ -813,7 +813,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       <Animated.View style={{
         position: 'absolute',
         top: 0,
-        opacity: 0.8,
+        opacity: 0.6,
         width: '180%',
         height: '35%',
         zIndex: 1,
