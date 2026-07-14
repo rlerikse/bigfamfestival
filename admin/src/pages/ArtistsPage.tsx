@@ -158,6 +158,13 @@ export function ArtistsPage() {
             ) : (
               <InstagramIcon className="h-4 w-4 opacity-20 grayscale" />
             )}
+            {a.websiteUrl ? (
+              <a href={a.websiteUrl} target="_blank" rel="noopener noreferrer" title="Website">
+                <span className="text-sm">🌐</span>
+              </a>
+            ) : (
+              <span className="text-sm opacity-20 grayscale">🌐</span>
+            )}
           </div>
         );
       },

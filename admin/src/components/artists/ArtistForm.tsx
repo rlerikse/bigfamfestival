@@ -226,6 +226,15 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
         <label className="text-sm font-medium block mb-2">Social Links</label>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
+            <span className="w-8 flex justify-center" title="Website">🌐</span>
+            <Input
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              placeholder="https://artist-website.com"
+              className="flex-1"
+            />
+          </div>
+          <div className="flex items-center gap-2">
             <span className="w-8 flex justify-center" title="SoundCloud"><SoundCloudIcon /></span>
             <Input
               value={soundcloudUrl}
@@ -258,15 +267,6 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
               placeholder="https://instagram.com/..."
-              className="flex-1"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-8 flex justify-center" title="Website">🌐</span>
-            <Input
-              value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder="https://artist-website.com"
               className="flex-1"
             />
           </div>

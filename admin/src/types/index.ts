@@ -39,6 +39,7 @@ export interface Artist {
   spotifyUrl?: string;
   facebookUrl?: string;
   instagramUrl?: string;
+  websiteUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
