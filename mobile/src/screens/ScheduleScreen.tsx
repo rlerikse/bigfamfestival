@@ -1052,7 +1052,7 @@ const ScheduleScreen = () => {
             contentContainerStyle={[
               styles.eventsList,
               // Respect bottom safe-area and keep minimum scroll space for footers/tab bar
-              { paddingTop: 0, paddingBottom: Math.max(100, insets.bottom + 16), flexGrow: 1 }
+              { paddingTop: 0, paddingBottom: Math.max(160, insets.bottom + 80), flexGrow: 1 }
             ]}
             showsVerticalScrollIndicator={false}
             // Enhanced performance optimizations for smooth scrolling
