@@ -27,9 +27,10 @@ import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
 
 // Debug logging utility for this component
-const debugLog = (message: string, data?: any) => {
-  // Basic console log, can be enhanced (e.g., with a logging library or conditional logging)
-  console.log(`[EventDetailsModal DEBUG] ${message}`, data !== undefined ? data : '');
+const debugLog = (_message: string, _data?: any) => {};
+
+
+
 };
 
 // Local SafeText component for robust text rendering
@@ -311,7 +312,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   <>
                     <SafeText style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</SafeText>
                     {description.length > 100 && (
-                      <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)}>
+                      <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}>
                         <SafeText style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</SafeText>
                       </TouchableOpacity>
                     )}

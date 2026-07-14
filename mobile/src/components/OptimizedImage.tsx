@@ -79,7 +79,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   }, [uri]);
 
   useEffect(() => {
-    if (__DEV__) console.log('[OptimizedImage] uri:', uri, '-> optimizedUri:', optimizedUri);
   }, [uri, optimizedUri]);
 
   // Check if image was already loaded successfully
@@ -119,7 +118,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const handleError = useCallback((e: any) => {
     setIsLoading(false);
     setHasError(true);
-    if (__DEV__) console.warn('[OptimizedImage] Failed to load:', optimizedUri, 'error:', JSON.stringify(e?.nativeEvent));
     onError?.();
   }, [optimizedUri, onError]);
 
