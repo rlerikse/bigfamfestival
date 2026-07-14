@@ -145,8 +145,10 @@ const formatDate = (dateString: string | undefined) => {
   }
   
   try {
-    const date = new Date(dateString);
-    // Format: "Sunday, September 28, 2025"
+    // Parse as local date to avoid UTC→local timezone shift (e.g. Sep 25 UTC → Sep 24 EDT)
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    // Format: "Friday, September 25, 2026"
     return date.toLocaleDateString('en-US', { 
       weekday: 'long', 
       year: 'numeric', 
