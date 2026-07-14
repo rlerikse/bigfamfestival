@@ -210,24 +210,6 @@ export default function MapScreen() {
           ))}
         </Mapbox.MapView>
 
-        {/* Filter tabs overlaid at top */}
-        <SafeAreaView style={styles.filterOverlay} pointerEvents="box-none">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            {CATEGORY_FILTERS.map(f => (
-              <TouchableOpacity
-                key={f.key}
-                style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
-                onPress={() => setActiveFilter(f.key)}
-              >
-                <Text style={styles.filterEmoji}>{f.emoji}</Text>
-                <Text style={[styles.filterLabel, activeFilter === f.key && styles.filterLabelActive]}>
-                  {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-
         {/* Selected POI info card */}
         {selectedPOI && (
           <TouchableOpacity
