@@ -122,7 +122,7 @@ const HomeScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Festival-style countdown — "UNTIL GATES OPEN" */}
-        <View style={{ paddingHorizontal: 20, marginBottom: 4, marginTop: -12 }}>
+        <View style={{ paddingHorizontal: 20, marginBottom: 4, marginTop: -24 }}>
           <View style={{ height: 4 }} />
           <View style={{ height: 1, width: '66%', alignSelf: 'center', backgroundColor: '#D4946B', opacity: 0.35, borderRadius: 1 }} />
           <View style={{ height: 0 }} />
