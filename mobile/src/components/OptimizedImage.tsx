@@ -78,8 +78,8 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     return null;
   }, [uri]);
 
-  useEffect(() => {
-  }, [uri, optimizedUri]);
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  useEffect(() => {}, [uri, optimizedUri]);
 
   // Check if image was already loaded successfully
   const isImageCached = useMemo(() => {
