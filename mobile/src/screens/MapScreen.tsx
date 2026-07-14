@@ -122,46 +122,25 @@ export default function MapScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <TopNavBar whiteIcons={true} />
+      <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6BBF59" />
           <Text style={styles.loadingText}>Loading map...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <TopNavBar whiteIcons={true} />
-
-      {/* Category filter tabs */}
-      <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          {CATEGORY_FILTERS.map(f => (
-            <TouchableOpacity
-              key={f.key}
-              style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
-              onPress={() => setActiveFilter(f.key)}
-            >
-              <Text style={styles.filterEmoji}>{f.emoji}</Text>
-              <Text style={[styles.filterLabel, activeFilter === f.key && styles.filterLabelActive]}>
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.mapContainer}>
-        <Mapbox.MapView
-          style={styles.map}
-          styleURL="mapbox://styles/mapbox/satellite-streets-v12"
-          compassEnabled={true}
-          logoEnabled={true}
-          attributionEnabled={true}
-        >
+    <View style={styles.container}>
+      {/* Map extends to top of screen */}
+      <Mapbox.MapView
+        style={StyleSheet.absoluteFill}
+        styleURL="mapbox://styles/mapbox/satellite-streets-v12"
+        compassEnabled={true}
+        logoEnabled={true}
+        attributionEnabled={true}
+      >
           <Mapbox.Camera
             defaultSettings={{
               centerCoordinate: FESTIVAL_CENTER,
@@ -231,6 +210,24 @@ export default function MapScreen() {
           ))}
         </Mapbox.MapView>
 
+        {/* Filter tabs overlaid at top */}
+        <SafeAreaView style={styles.filterOverlay} pointerEvents="box-none">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            {CATEGORY_FILTERS.map(f => (
+              <TouchableOpacity
+                key={f.key}
+                style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
+                onPress={() => setActiveFilter(f.key)}
+              >
+                <Text style={styles.filterEmoji}>{f.emoji}</Text>
+                <Text style={[styles.filterLabel, activeFilter === f.key && styles.filterLabelActive]}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+
         {/* Selected POI info card */}
         {selectedPOI && (
           <TouchableOpacity
@@ -250,8 +247,7 @@ export default function MapScreen() {
             )}
           </TouchableOpacity>
         )}
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -271,11 +267,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     opacity: 0.6,
   },
-  filterContainer: {
-    backgroundColor: '#1C2B20',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(245, 245, 220, 0.1)',
+  filterOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   filterScroll: {
     paddingHorizontal: 12,
@@ -304,12 +302,6 @@ const styles = StyleSheet.create({
   },
   filterLabelActive: {
     color: '#1C2B20',
-  },
-  mapContainer: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
   },
   stageMarker: {
     width: 36,
@@ -347,7 +339,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 100,
     left: 16,
     right: 16,
     backgroundColor: '#1C2B20',

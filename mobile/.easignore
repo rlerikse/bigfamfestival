@@ -7,4 +7,11 @@ node_modules/**/*
 android/.gradle
 android/app/build
 ios/build
-ios/Podsdist
+ios/Pods
+
+# Exclude non-mobile dirs from archive
+admin
+backend
+docs
+tools
+*.md
