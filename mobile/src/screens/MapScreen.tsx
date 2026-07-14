@@ -262,7 +262,7 @@ export default function MapScreen() {
           <Ionicons name="remove" size={24} color="#F5F5DC" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={handleCenterOnUser} activeOpacity={0.7}>
-          <Ionicons name="locate" size={22} color="#F5F5DC" />
+          <Ionicons name="navigate" size={22} color="#F5F5DC" />
         </TouchableOpacity>
       </View>
 
