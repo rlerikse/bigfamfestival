@@ -1,177 +1,128 @@
 # Release Checklist
 
-Pre-release checklist for Big Fam Festival app deployment to iOS App Store and Google Play Store.
+Pre-release checklist for Big Fam Festival app. Follow these steps every time we bump versions.
 
 ---
 
-## Current Workflow
+## Version Bump Procedure
+
+Every release should include all of the following:
+
+### 1. Merge & Version
+```bash
+cd /Users/reg/.openclaw/workspace-bigfam/repo
+
+# Merge dev → main
+git checkout main
+git merge dev -m "release: vX.Y.Z — description"
+git push origin main
+
+# Bump version in mobile/app.json
+# - version: "X.Y.Z"
+# - ios.buildNumber: increment (or use EAS remote auto-increment)
+# - android.versionCode: increment (or use EAS remote auto-increment)
+# Also bump mobile/package.json version
+
+# Sync dev
+git checkout dev && git merge main && git push origin dev
+```
+
+### 2. Update Docs
+- [ ] **CHANGELOG.md** — Add new version section with Added/Fixed/Changed
+- [ ] **README.md** — Update if features changed (SDK version, key features, project structure)
+- [ ] **docs/PROJECT_STATUS.md** — Update current version, status, recent changes
+
+### 3. Deploy Services
+```bash
+# Backend auto-deploys to Cloud Run from main via CI
+
+# Admin panel
+cd admin && npx vite build && npx firebase deploy --only hosting
+
+# Firebase rules (if changed)
+npx firebase deploy --only storage,firestore
+```
+
+### 4. Build & Submit to Stores
+```bash
+cd mobile
+
+# Build both platforms (EAS handles version auto-increment remotely)
+eas build --platform android --profile production --non-interactive --no-wait
+eas build --platform ios --profile production --non-interactive --no-wait
+
+# Monitor builds at:
+# https://expo.dev/accounts/eriksensolutions/projects/bigfam-festival/builds
+
+# Once builds complete, submit:
+eas submit --platform ios --latest
+eas submit --platform android --latest
+
+# Or download manually:
+# iOS: Upload .ipa via Transporter app → App Store Connect → Submit for Review
+# Android: Upload .aab via Play Console → Release → Create new release
+```
+
+### 5. Post-Release
+- [ ] Tag release in git: `git tag vX.Y.Z && git push --tags`
+- [ ] Verify CI passed on main
+- [ ] Verify admin panel live at https://bigfamfestival.web.app
+- [ ] Verify backend healthy (Cloud Run)
+- [ ] Monitor store review status
+
+---
+
+## Current Status
 
 | Platform | Build | Submit | Status |
 |----------|-------|--------|--------|
-| **iOS** | `eas build --platform ios --profile production` | Manual via Transporter | ✅ Working |
-| **Android** | `eas build --platform android --profile production` | Manual via Play Console | ⚠️ Check closed testing status |
+| **iOS** | `eas build --platform ios --profile production` | `eas submit` or Transporter | ✅ Working |
+| **Android** | `eas build --platform android --profile production` | `eas submit` or Play Console | ✅ Working |
 
 ---
 
-## Status Summary
+## Versioning Strategy
 
-| Category | iOS | Android |
-|----------|-----|---------|
-| Developer Account | ✅ Configured | ✅ Configured |
-| Store Listing | ✅ Exists (ASC ID: 6752632634) | ⚠️ Verify in Play Console |
-| Build Config | ✅ Ready | ✅ Ready |
-| Submit Config | ✅ Manual upload | ⚠️ Manual upload (service account optional) |
-| Signing | ✅ EAS Managed | ✅ EAS Managed |
-| Closed Testing | N/A | ⚠️ **Check if 14-day period complete** |
+- **EAS Remote Versioning**: `appVersionSource: "remote"` with `autoIncrement: true`
+- EAS auto-increments `buildNumber` (iOS) and `versionCode` (Android) on each build
+- `app.json` values are ignored for actual builds but kept in sync for reference
+- Semantic versioning: MAJOR.MINOR.PATCH
+  - MAJOR: Breaking changes
+  - MINOR: New features
+  - PATCH: Bug fixes
 
 ---
 
-## 1. Account & Access
+## Account & Access
 
 ### iOS (Apple)
-- [x] Apple Developer Program enrolled ($99/year)
-- [x] App Store Connect access confirmed
-- [x] Apple ID in eas.json: `eriksen.solutions@gmail.com`
-- [x] Team ID in eas.json: `XQ353QHFF7`
-- [x] ASC App ID in eas.json: `6752632634`
+- Apple Developer Program: enrolled ($99/year)
+- Apple ID: `eriksen.solutions@gmail.com`
+- Team ID: `XQ353QHFF7`
+- ASC App ID: `6752632634`
+- Bundle ID: `com.eriksensolutions.bigfam`
 
 ### Android (Google)
-- [x] Google Play Developer account created ($25)
-- [x] Google Play Console access confirmed
-- [ ] **⚠️ CHECK: Is closed testing 14-day period complete?**
-  - Go to Play Console → Big Fam Festival → Release → Production
-  - If "Start rollout to Production" is available → You're cleared!
-  - If blocked → Check Testing → Closed testing status
-- [ ] (Optional) Create `mobile/google-play-service-account.json` for automated submit
+- Google Play Developer account: created ($25)
+- Package name: `com.eriksensolutions.bigfam`
 
 ---
 
-## 2. Store Listings
-
-### iOS App Store Connect
-- [x] App created in App Store Connect (ID: 6752632634)
-- [x] App name: Big Fam Festival
-- [x] Bundle ID: `com.eriksensolutions.bigfam`
-- [ ] Verify current app metadata is up to date for new version
-
-### Google Play Console
-- [x] App created in Play Console
-- [x] Package name: `com.eriksensolutions.bigfam`
-- [ ] Verify current store listing is up to date for new version
-- [ ] **Check closed testing status** (see Section 1)
-
----
-
-## 3. Build & Deploy Quick Reference
-
-### iOS Deployment (Current Workflow)
-```bash
-# 1. Build
-cd mobile
-eas build --platform ios --profile production
-
-# 2. Wait for build to complete on expo.dev
-
-# 3. Download .ipa from Expo dashboard
-# https://expo.dev/accounts/eriksensolutions/projects/bigfam-festival/builds
-
-# 4. Upload via Transporter app (macOS)
-# - Open Transporter
-# - Sign in as eriksen.solutions@gmail.com
-# - Drag & drop .ipa
-# - Click Deliver
-
-# 5. Go to App Store Connect
-# - Select build
-# - Add "What's New" notes
-# - Submit for Review
-```
-
-### Android Deployment (Current Workflow)
-```bash
-# 1. Build
-cd mobile
-eas build --platform android --profile production
-
-# 2. Wait for build to complete on expo.dev
-
-# 3. Download .aab from Expo dashboard
-# https://expo.dev/accounts/eriksensolutions/projects/bigfam-festival/builds
-
-# 4. Go to Google Play Console
-# - Release → Production (or Closed testing if not cleared)
-# - Create new release
-# - Upload .aab
-# - Add release notes
-# - Start rollout
-```
-
----
-
-## 4. Pre-Build Checks
-
-### Code
-- [ ] All tests pass: `npm test`
-- [ ] No lint errors: `npm run lint`
-- [ ] Version number updated in `app.json` if needed
-- [ ] Release notes prepared
-
-### Credentials
-```bash
-# Verify credentials are set up
-eas credentials --platform ios
-eas credentials --platform android
-```
-- [ ] iOS credentials valid
-- [ ] Android credentials valid
-
----
-
-## 5. Post-Submission
-
-### iOS
-- [ ] Build appears in App Store Connect
-- [ ] Submitted for App Review
-- [ ] Monitor review status (24-48 hours typical)
-
-### Android
-- [ ] Build uploaded to Play Console
-- [ ] Release rolled out (or closed testing if needed)
-- [ ] Monitor for policy issues
-
----
-
-## Blocking Issues
-
-| Priority | Issue | Action |
-|----------|-------|--------|
-| 🟡 P1 | Android closed testing status unknown | Check Play Console → Release → Production |
-| 🟢 P2 | No automated Android submit | Optional: Create google-play-service-account.json |
-
----
-
-## Quick Reference
-
-### Key URLs
+## Key URLs
 - **Expo Builds**: https://expo.dev/accounts/eriksensolutions/projects/bigfam-festival/builds
 - **App Store Connect**: https://appstoreconnect.apple.com
 - **Google Play Console**: https://play.google.com/console
+- **Admin Panel**: https://bigfamfestival.web.app
+- **Backend API**: https://bigfam-api-production-292369452544.us-central1.run.app/api/v1
+- **GitHub**: https://github.com/rlerikse/bigfamfestival
 
-### Key Credentials (eas.json)
-```json
-{
-  "ios": {
-    "appleId": "eriksen.solutions@gmail.com",
-    "ascAppId": "6752632634",
-    "appleTeamId": "XQ353QHFF7"
-  }
-}
-```
+---
 
-### Key Files
+## Key Files
 | File | Purpose |
 |------|---------|
 | `mobile/app.json` | App configuration, version |
 | `mobile/eas.json` | Build & submit profiles |
-| `mobile/google-services.json` | Android Firebase config |
-| `mobile/GoogleService-Info.plist` | iOS Firebase config |
+| `CHANGELOG.md` | Release history |
+| `README.md` | Project overview |
+| `docs/PROJECT_STATUS.md` | Current project status |
