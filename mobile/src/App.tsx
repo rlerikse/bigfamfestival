@@ -65,7 +65,7 @@ export default function App() {
     async function initializeAndHideSplash() {
       if (isLoadingComplete) {
         // Initialize Sentry for error tracking (production only)
-        await initSentry();
+        try { await initSentry(); } catch (_) {}
         
         // Hide splash screen
         await SplashScreen.hideAsync();

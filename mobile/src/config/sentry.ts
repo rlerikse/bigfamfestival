@@ -6,8 +6,8 @@
 let isInitialized = false;
 
 export const initSentry = async () => {
-  // Only initialize in production
-  if (__DEV__) {
+  // Only initialize in production with a valid DSN
+  if (__DEV__ || !process.env.EXPO_PUBLIC_SENTRY_DSN) {
     return;
   }
 
@@ -20,7 +20,7 @@ export const initSentry = async () => {
     const Sentry = await import('@sentry/react-native');
     
     Sentry.init({
-      dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || undefined,
+      dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
       debug: false,
       environment: process.env.EXPO_PUBLIC_APP_ENV || 'production',
       tracesSampleRate: 0.1, // 10% of transactions
