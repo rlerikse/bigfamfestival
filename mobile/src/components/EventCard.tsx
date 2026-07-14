@@ -217,7 +217,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
         {
           borderColor: isLive && showStatusBadge ? animatedBorderColor : 'rgba(255, 255, 255, 0.2)',
           borderWidth: isLive && showStatusBadge ? (animatedBorderWidth as unknown as number) : 1,
-          backgroundColor: 'rgba(255, 255, 255, 0.12)',
+          backgroundColor: 'rgba(255, 255, 255, 0.18)',
           opacity: isPast ? 0.5 : 1,
         },
       ]}
