@@ -306,7 +306,14 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 )}
                 
                 <SafeText style={styles.bioText}>{description}</SafeText>
-                
+
+                {resolvedSocials.websiteUrl && typeof resolvedSocials.websiteUrl === 'string' && (
+                  <TouchableOpacity onPress={() => handleSocialLink(resolvedSocials.websiteUrl)} style={styles.websiteLink}>
+                    <Ionicons name="globe-outline" size={16} color="#aaa" />
+                    <SafeText style={styles.websiteLinkText}>Visit Website</SafeText>
+                  </TouchableOpacity>
+                )}
+
                 <View style={styles.actionsContainer}>
                   <View style={styles.socialIconsContainer}>
                     {/* Social links resolved from artist profiles */}
@@ -508,6 +515,18 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 10,
     textAlign: 'center', // Added textAlign center
+  },
+  websiteLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 6,
+  },
+  websiteLinkText: {
+    fontSize: 14,
+    color: '#aaa',
+    textDecorationLine: 'underline',
   },
   actionsContainer: {
     flexDirection: 'row',
