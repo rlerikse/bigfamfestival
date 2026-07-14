@@ -1,5 +1,7 @@
 # Big Fam Festival Application
 
+**Current Version:** 1.2.1 | **Platforms:** iOS, Android | **Status:** Production
+
 A full-stack festival management application with a NestJS backend API and React Native mobile app built with Expo.
 
 ## 📋 Table of Contents

@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1] - 2026-07-14
+
+### Fixed
+- Performance: removed LayoutAnimation from artist modal (was causing scroll lag)
+- Performance: prefer event imageUrl over artist profile image to avoid double image load/re-render
+- Performance: use plain Text for bio display, added fast-path to SafeText for string children
+
 ## [1.2.0] - 2026-07-14
 
 ### Added
