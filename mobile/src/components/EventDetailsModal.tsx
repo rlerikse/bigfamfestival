@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
+import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
@@ -168,6 +168,7 @@ const getFullImageUrl = (imagePath?: string) => {
 // Show logo.png from assets/images if event image fails to load
 const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
   const [error, setError] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
   const resolvedUrl = imageUrl ? getFullImageUrl(imageUrl) : undefined;
   if (!resolvedUrl || error) {
     return (
@@ -179,12 +180,20 @@ const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = 
     );
   }
   return (
-    <Image
-      source={{ uri: resolvedUrl }}
-      style={style}
-      resizeMode="cover"
-      onError={() => setError(true)}
-    />
+    <View style={style}>
+      {loading && (
+        <View style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a2e' }}>
+          <ActivityIndicator size="large" color="#D4A574" />
+        </View>
+      )}
+      <Image
+        source={{ uri: resolvedUrl }}
+        style={{ width: '100%', height: '100%' }}
+        resizeMode="cover"
+        onLoad={() => setLoading(false)}
+        onError={() => setError(true)}
+      />
+    </View>
   );
 };
 
