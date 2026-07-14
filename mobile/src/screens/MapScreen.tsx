@@ -4,8 +4,8 @@ import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useTheme } from '../contexts/ThemeContext';
 
-// Big Fam Festival coordinates (13500 US-12, Brooklyn, MI 49230)
-const FESTIVAL_CENTER: [number, number] = [-84.2560, 42.0627];
+// Big Fam Festival coordinates (The Groves of Michigan, 13500 US-12, Brooklyn, MI 49230)
+const FESTIVAL_CENTER: [number, number] = [-84.2565, 42.0567];
 const DEFAULT_ZOOM = 15;
 
 export default function MapScreen() {
