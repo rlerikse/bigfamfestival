@@ -56,7 +56,11 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
     imageUrl: string;
   }) => {
     if (editingEvent) {
-      await updateMutation.mutateAsync({ id: editingEvent.id, data: formData as unknown as Record<string, unknown> });
+      // Strip empty strings and only send changed fields to avoid backend validation errors
+      const cleanData = Object.fromEntries(
+        Object.entries(formData).filter(([_, v]) => v !== '' && v !== undefined && v !== null)
+      );
+      await updateMutation.mutateAsync({ id: editingEvent.id, data: cleanData });
     } else {
       await createMutation.mutateAsync(formData as unknown as Record<string, unknown>);
     }
