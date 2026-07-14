@@ -86,8 +86,13 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
-      setError('Name is required.');
+    const errors: string[] = [];
+    if (!name.trim()) errors.push('Name is required');
+    if (!stage) errors.push('Stage is required');
+    if (!date) errors.push('Date is required');
+    if (!startTime) errors.push('Start time is required');
+    if (errors.length > 0) {
+      setError(errors.join('. ') + '.');
       return;
     }
 
@@ -112,7 +117,21 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
         imageUrl,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+      if (err instanceof Error) {
+        // Try to extract validation messages from API response
+        const match = err.message.match(/\{.*\}/);
+        if (match) {
+          try {
+            const body = JSON.parse(match[0]);
+            const msgs = Array.isArray(body.message) ? body.message : [body.message];
+            setError(msgs.join('. ') + '.');
+            return;
+          } catch { /* fall through */ }
+        }
+        setError(err.message);
+      } else {
+        setError('Something went wrong.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -235,7 +254,11 @@ export function EventForm({ event, onSubmit, onCancel }: EventFormProps) {
       </div>
 
       {/* Error */}
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-2">
