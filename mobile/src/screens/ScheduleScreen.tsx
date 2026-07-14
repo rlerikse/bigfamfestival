@@ -495,11 +495,10 @@ const ScheduleScreen = () => {
         const [eventHours, eventMinutes] = ev.startTime.split(':').map(Number);
         const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
         
-        // Get the next day after the filter day
-        const filterDate = new Date(selectedDay);
-        const nextDay = new Date(filterDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-        const nextDayString = nextDay.toISOString().split('T')[0];
+        // Get the next day after the filter day (avoid UTC parsing bug)
+        const [y, m, d] = selectedDay.split('-').map(Number);
+        const nextDay = new Date(y, m - 1, d + 1); // local date, no UTC shift
+        const nextDayString = `${nextDay.getFullYear()}-${String(nextDay.getMonth() + 1).padStart(2, '0')}-${String(nextDay.getDate()).padStart(2, '0')}`;
         
         // Case 1: Event is on the filter day and starts at 6:30 AM or later
         if (ev.date === selectedDay && eventStartTimeInMinutes >= dateConstants.cutoffTimeInMinutes) {
