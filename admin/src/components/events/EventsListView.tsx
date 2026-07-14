@@ -90,7 +90,18 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
     {
       accessorKey: 'stage',
       header: 'Stage',
-      cell: ({ row }) => <Badge variant="secondary">{row.original.stage}</Badge>,
+      cell: ({ row }) => {
+        const stage = row.original.stage;
+        const logoMap: Record<string, string> = {
+          'Apogee': '/stages/apogee-logo-trans.png',
+          'Bayou': '/stages/bayou-logo-trans.png',
+          'The Gallery': '/stages/the-gallery-logo-trans.png',
+          'Gallery': '/stages/gallery-logo-trans.png',
+        };
+        const logo = logoMap[stage];
+        if (logo) return <img src={logo} alt={stage} title={stage} className="h-6 object-contain" />;
+        return <span className="text-sm text-muted-foreground">{stage}</span>;
+      },
       enableSorting: true,
     },
     {
