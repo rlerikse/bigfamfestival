@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 const { withXcodeProject, withDangerousMod } = require("expo/config-plugins");
 const { resolve } = require("path");
 const { readFileSync, writeFileSync, existsSync } = require("fs");

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Animated, Dimensions, Image, Text, TouchableOpacity } from 'react-native';
+import { View, Animated, Dimensions, Image, Text, TouchableOpacity, Easing } from 'react-native';
 // Slider removed due to New Architecture incompatibility
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line } from 'react-native-svg'; // Removed unused Circle and Path
@@ -143,7 +143,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         toValue: 1,
         duration: 480000,
         useNativeDriver: true,
-        easing: require('react-native').Easing.linear,
+        easing: Easing.linear,
       })
     ).start();
 
@@ -153,7 +153,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         toValue: 1,
         duration: 720000,
         useNativeDriver: true,
-        easing: require('react-native').Easing.linear,
+        easing: Easing.linear,
       })
     ).start();
 
@@ -163,7 +163,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         toValue: 1,
         duration: 900000,
         useNativeDriver: true,
-        easing: require('react-native').Easing.linear,
+        easing: Easing.linear,
       })
     ).start();
 
@@ -173,7 +173,7 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
         toValue: 1,
         duration: 1500000,
         useNativeDriver: true,
-        easing: require('react-native').Easing.linear,
+        easing: Easing.linear,
       })
     ).start();
   }, [cloudLayer1, cloudLayer2, cloudLayer3, bigBackgroundCloud, height]);
