@@ -268,7 +268,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 <EventImageWithFallback imageUrl={resolvedImageUrl} style={styles.eventImage} />
                 <View style={styles.gradientOverlay}>
                   <SafeText style={styles.eventName}>{eventName}</SafeText>
-                  {artists.length > 0 && (
+                  {artists.length > 0 && artists.map(a => a.name).join(' b2b ') !== eventName && (
                     <SafeText style={styles.artistNames}>
                       {artists.map(a => a.name).join(' b2b ')}
                     </SafeText>

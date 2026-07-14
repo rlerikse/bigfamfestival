@@ -165,7 +165,7 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
       <EditModal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={editingEvent ? `Edit: ${editingEvent.name}` : 'Add Event'}
+        title={editingEvent ? 'Edit Event' : 'Add Event'}
       >
         <EventForm
           key={editingEvent?.id ?? 'new'}

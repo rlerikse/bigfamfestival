@@ -18,6 +18,7 @@ import {
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import storage from '@react-native-firebase/storage';
 
 // Global cache to track loaded images across component instances
 const loadedImagesCache = new Set<string>();
@@ -56,25 +57,27 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [hasError, setHasError] = useState(false);
   const hasAttemptedLoad = useRef(false);
 
-  // Convert Google Storage URLs to proper Firebase Storage URLs
+  // Resolve gs:// URLs via Firebase SDK (returns token-signed URL)
+  const [resolvedGsUrl, setResolvedGsUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!uri || !uri.startsWith('gs://')) {
+      setResolvedGsUrl(null);
+      return;
+    }
+    let cancelled = false;
+    storage().refFromURL(uri).getDownloadURL()
+      .then(url => { if (!cancelled) setResolvedGsUrl(url); })
+      .catch(() => { if (!cancelled) setResolvedGsUrl(null); });
+    return () => { cancelled = true; };
+  }, [uri]);
+
   const optimizedUri = useMemo(() => {
     if (!uri) return null;
-    
-    if (uri.startsWith('gs://')) {
-      const gsPath = uri.substring(5);
-      const firstSlashIndex = gsPath.indexOf('/');
-      if (firstSlashIndex > 0) {
-        const bucket = gsPath.substring(0, firstSlashIndex);
-        const objectPath = gsPath.substring(firstSlashIndex + 1);
-        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
-      }
-    } else if (uri.startsWith('http')) {
-      return uri;
-    } else if (uri.trim()) {
-      return `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
-    }
+    if (uri.startsWith('gs://')) return resolvedGsUrl;
+    if (uri.startsWith('http')) return uri;
+    if (uri.trim()) return `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;
     return null;
-  }, [uri]);
+  }, [uri, resolvedGsUrl]);
 
   // Check if image was already loaded successfully
   const isImageCached = useMemo(() => {
