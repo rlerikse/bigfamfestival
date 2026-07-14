@@ -318,11 +318,6 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   </>
                 ) : null}
 
-                {resolvedSocials.websiteUrl && typeof resolvedSocials.websiteUrl === 'string' && (
-                  <TouchableOpacity onPress={() => handleSocialLink(resolvedSocials.websiteUrl)} style={styles.websiteLink}>
-                    <Ionicons name="globe-outline" size={20} color="rgba(255,255,255,0.45)" />
-                  </TouchableOpacity>
-                )}
 
                 <View style={styles.actionsContainer}>
                   <View style={styles.socialIconsContainer}>
