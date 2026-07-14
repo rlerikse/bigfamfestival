@@ -18,8 +18,6 @@ export default function MapScreen() {
         <Mapbox.MapView
           style={styles.map}
           styleURL={isDark ? Mapbox.StyleURL.Dark : Mapbox.StyleURL.Outdoors}
-          logoEnabled={false}
-          attributionEnabled={false}
           compassEnabled={true}
         >
           <Mapbox.Camera
