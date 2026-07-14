@@ -1,7 +1,8 @@
 // Show logo.png from assets/images if event image fails to load
 const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
   const [error, setError] = React.useState(false);
-  if (!imageUrl || error) {
+  const resolvedUrl = imageUrl ? getFullImageUrl(imageUrl) : undefined;
+  if (!resolvedUrl || error) {
     return (
       <Image
         source={require('../assets/images/bf-logo-trans.png')}
@@ -11,10 +12,11 @@ const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = 
     );
   }
   return (
-    <Image
-      source={{ uri: getFullImageUrl(imageUrl) }}
+    <ExpoImage
+      source={{ uri: resolvedUrl }}
       style={style}
-      resizeMode="cover"
+      contentFit="cover"
+      cachePolicy="memory-disk"
       onError={() => setError(true)}
     />
   );
@@ -22,6 +24,7 @@ const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = 
 // filepath: e:\repos\bigfamfestival\mobile\src\components\EventDetailsModal.tsx
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
