@@ -13,7 +13,8 @@ import {
   ImageStyle, 
   ViewStyle,
   ActivityIndicator,
-  Text
+  Text,
+  Image as RNImage
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,7 +67,9 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       if (firstSlashIndex > 0) {
         const bucket = gsPath.substring(0, firstSlashIndex);
         const objectPath = gsPath.substring(firstSlashIndex + 1);
-        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+        const resolved = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+        if (__DEV__) console.log('[OptimizedImage] gs:// resolved:', uri, '->', resolved);
+        return resolved;
       }
     } else if (uri.startsWith('http')) {
       return uri;
@@ -113,8 +116,9 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const handleError = useCallback(() => {
     setIsLoading(false);
     setHasError(true);
+    if (__DEV__) console.warn('[OptimizedImage] Failed to load:', optimizedUri);
     onError?.();
-  }, [onError]);
+  }, [optimizedUri, onError]);
 
   // Combined container style
   const combinedContainerStyle = useMemo(() => [
@@ -148,17 +152,13 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
   return (
     <View style={combinedContainerStyle}>
       {/* Main image */}
-      <Image
+      <RNImage
         source={{ uri: optimizedUri }}
-        style={[styles.image, style]}
-        contentFit={contentFit}
-        cachePolicy="memory-disk"
-        priority={priority}
-        allowDownscaling={true}
+        style={[styles.image, style] as any}
+        resizeMode={contentFit === 'cover' ? 'cover' : 'contain'}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
-        placeholder={placeholder}
       />
 
       {/* Loading state - only show for non-cached images */}
