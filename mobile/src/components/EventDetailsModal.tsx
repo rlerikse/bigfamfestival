@@ -230,7 +230,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   const startTimeFormatted = formatTime(event.startTime);
   const endTimeFormatted = formatTime(event.endTime ?? undefined);
   const dateFormatted = formatDate(event.date);
-  const description = resolvedDescription || "No description available";
+  const description = resolvedDescription || null;
 
 
   debugLog('Rendering EventDetailsModal for:', { eventName: eventName, eventId: event.id });
@@ -307,12 +307,16 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   </SafeText>
                 )}
                 
-                <SafeText style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</SafeText>
-                {description && description.length > 100 && (
-                  <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)}>
-                    <SafeText style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</SafeText>
-                  </TouchableOpacity>
-                )}
+                {description ? (
+                  <>
+                    <SafeText style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</SafeText>
+                    {description.length > 100 && (
+                      <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)}>
+                        <SafeText style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</SafeText>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : null}
 
                 {resolvedSocials.websiteUrl && typeof resolvedSocials.websiteUrl === 'string' && (
                   <TouchableOpacity onPress={() => handleSocialLink(resolvedSocials.websiteUrl)} style={styles.websiteLink}>
