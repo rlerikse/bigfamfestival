@@ -151,7 +151,8 @@ const getFullImageUrl = (imagePath?: string) => {
     if (firstSlashIndex > 0) {
       const bucket = gsPath.substring(0, firstSlashIndex);
       const objectPath = gsPath.substring(firstSlashIndex + 1);
-      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+      // Use direct GCS URL — faster than Firebase Storage REST API
+      return `https://storage.googleapis.com/${bucket}/${objectPath}`;
     }
     debugLog('getFullImageUrl: Malformed gs:// path, using fallback placeholder.', { imagePath });
     // Fallback for malformed gs:// path

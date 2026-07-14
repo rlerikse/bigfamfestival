@@ -756,7 +756,7 @@ const ScheduleScreen = () => {
           if (firstSlashIndex > 0) {
             const bucket = gsPath.substring(0, firstSlashIndex);
             const objectPath = gsPath.substring(firstSlashIndex + 1);
-            processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+            processedUri = `https://storage.googleapis.com/${bucket}/${objectPath}`;
           }
         } else if (!processedUri.startsWith('http') && processedUri.trim()) {
           processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${processedUri}`;
@@ -806,7 +806,7 @@ const ScheduleScreen = () => {
         if (firstSlashIndex > 0) {
           const bucket = gsPath.substring(0, firstSlashIndex);
           const objectPath = gsPath.substring(firstSlashIndex + 1);
-          processedUri = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+          processedUri = `https://storage.googleapis.com/${bucket}/${objectPath}`;
         }
       } else if (!uri.startsWith('http') && uri.trim()) {
         processedUri = `https://big-fam-app.S3.us-east-2.amazonaws.com/${uri}`;

@@ -67,7 +67,7 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
       if (firstSlashIndex > 0) {
         const bucket = gsPath.substring(0, firstSlashIndex);
         const objectPath = gsPath.substring(firstSlashIndex + 1);
-        const resolved = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
+        const resolved = `https://storage.googleapis.com/${bucket}/${objectPath}`;
         return resolved;
       }
     } else if (uri.startsWith('http')) {

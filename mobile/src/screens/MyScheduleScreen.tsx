@@ -175,7 +175,7 @@ const MyScheduleScreen = () => {
           const bucket = gsPath.substring(0, firstSlashIndex);
           const objectPath = gsPath.substring(firstSlashIndex + 1);
           const encodedPath = encodeURIComponent(objectPath);
-          displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+          displayImageUrl = `https://storage.googleapis.com/${bucket}/${objectPath}`;
         }
       } else if (item.imageUrl.startsWith('http')) {
         displayImageUrl = item.imageUrl;
@@ -183,7 +183,7 @@ const MyScheduleScreen = () => {
         const bucket = 'bigfamfestival.firebasestorage.app'; 
         const objectPath = item.imageUrl.startsWith('/') ? item.imageUrl.substring(1) : item.imageUrl;
         const encodedPath = encodeURIComponent(objectPath);
-        displayImageUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media`;
+        displayImageUrl = `https://storage.googleapis.com/${bucket}/${objectPath}`;
       }
     }
 
