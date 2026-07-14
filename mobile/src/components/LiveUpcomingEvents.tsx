@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, ImageRequireSource, TouchableOpacity } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { fetchEvents as fetchEventsData } from '../services/eventsService';
+import { getArtistsBySlugs } from '../services/artistService';
 import { useTheme } from '../contexts/ThemeContext';
 import EventCard from '../components/EventCard';
 import { ScheduleEvent } from '../types/event';
@@ -36,6 +37,20 @@ const LiveUpcomingEvents: React.FC<LiveUpcomingEventsProps> = ({ onEventPress })
       try {
         // Fetch events using eventsService (has offline cache fallback)
         const { events: fetchedEvents } = await fetchEventsData();
+
+        // Enrich events missing imageUrl from their artist profiles
+        const eventsToEnrich = fetchedEvents.filter(e => !e.imageUrl && e.artists?.length > 0);
+        if (eventsToEnrich.length > 0) {
+          const allSlugs = [...new Set(eventsToEnrich.flatMap(e => e.artists))];
+          try {
+            const artists = await getArtistsBySlugs(allSlugs);
+            const artistMap = new Map(artists.filter(Boolean).map(a => [a!.slug || a!.id, a!]));
+            for (const ev of eventsToEnrich) {
+              const artist = artistMap.get(ev.artists[0]);
+              if (artist?.imageUrl) ev.imageUrl = artist.imageUrl;
+            }
+          } catch { /* non-blocking */ }
+        }
 
         // Fetch user schedule in parallel (only for authenticated users)
         let scheduleResponse: ScheduleEvent[] = [];

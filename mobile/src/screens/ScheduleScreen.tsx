@@ -28,6 +28,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { fetchEvents as fetchEventsFromService } from '../services/eventsService';
+import { getArtistsBySlugs } from '../services/artistService';
 import { getIdToken } from '../services/firebaseAuthService';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -346,6 +347,21 @@ const ScheduleScreen = () => {
     setError(null);
     try {
       const { events: fetchedEvents, fromCache } = await fetchEventsFromService();
+
+      // Enrich events missing imageUrl from artist profiles
+      const toEnrich = fetchedEvents.filter(e => !e.imageUrl && e.artists?.length > 0);
+      if (toEnrich.length > 0) {
+        try {
+          const slugs = [...new Set(toEnrich.flatMap(e => e.artists))];
+          const artists = await getArtistsBySlugs(slugs);
+          const map = new Map(artists.filter(Boolean).map(a => [a!.slug || a!.id, a!]));
+          for (const ev of toEnrich) {
+            const artist = map.get(ev.artists[0]);
+            if (artist?.imageUrl) ev.imageUrl = artist.imageUrl;
+          }
+        } catch { /* non-blocking */ }
+      }
+
       setEvents(fetchedEvents);
       setEventsFromCache(fromCache);
     } catch (err) {

@@ -68,7 +68,6 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
         const bucket = gsPath.substring(0, firstSlashIndex);
         const objectPath = gsPath.substring(firstSlashIndex + 1);
         const resolved = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(objectPath)}?alt=media`;
-        if (__DEV__) console.log('[OptimizedImage] gs:// resolved:', uri, '->', resolved);
         return resolved;
       }
     } else if (uri.startsWith('http')) {
@@ -78,6 +77,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     }
     return null;
   }, [uri]);
+
+  useEffect(() => {
+    if (__DEV__) console.log('[OptimizedImage] uri:', uri, '-> optimizedUri:', optimizedUri);
+  }, [uri, optimizedUri]);
 
   // Check if image was already loaded successfully
   const isImageCached = useMemo(() => {
@@ -113,10 +116,10 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
     onLoad?.();
   }, [optimizedUri, onLoad]);
 
-  const handleError = useCallback(() => {
+  const handleError = useCallback((e: any) => {
     setIsLoading(false);
     setHasError(true);
-    if (__DEV__) console.warn('[OptimizedImage] Failed to load:', optimizedUri);
+    if (__DEV__) console.warn('[OptimizedImage] Failed to load:', optimizedUri, 'error:', JSON.stringify(e?.nativeEvent));
     onError?.();
   }, [optimizedUri, onError]);
 
