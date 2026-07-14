@@ -89,6 +89,9 @@ export class EventsService {
       events = await this.firestoreService.getAll<Event>(this.collection);
     }
 
+    // Only return current year (2026) events — 2025 events are archived
+    events = events.filter((e) => !e.year || e.year === 2026);
+
     // Sort events by date and start time with error handling
     return events.sort((a, b) => {
       try {

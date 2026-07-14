@@ -15,6 +15,7 @@ export interface Artist {
   facebookUrl?: string;
   instagramUrl?: string;
   websiteUrl?: string;
+  year?: number;
   createdAt: Date | FieldValue;
   updatedAt: Date | FieldValue;
 }

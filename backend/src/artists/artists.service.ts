@@ -44,7 +44,9 @@ export class ArtistsService {
   }
 
   async findAll(): Promise<Artist[]> {
-    return this.firestoreService.getAll<Artist>(this.collection);
+    const artists = await this.firestoreService.getAll<Artist>(this.collection);
+    // Only return current year (2026) artists — 2025 artists are archived
+    return artists.filter((a) => !a.year || a.year === 2026);
   }
 
   async findOne(id: string): Promise<Artist | null> {
