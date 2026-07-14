@@ -212,7 +212,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 
   // Resolve display data: prefer artist data over event-level data
   const primaryArtist = artists[0] ?? null;
-  const resolvedImageUrl = primaryArtist?.imageUrl || event.imageUrl;
+  const resolvedImageUrl = event.imageUrl || primaryArtist?.imageUrl;
   const resolvedDescription = primaryArtist?.bio || (typeof event.description === 'string' ? event.description : null);
   const resolvedSocials = {
     soundcloudUrl: primaryArtist?.soundcloudUrl || (event as any).soundcloud_url,
