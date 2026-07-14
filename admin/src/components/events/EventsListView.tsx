@@ -13,7 +13,7 @@ import type { Event } from '@/types';
 function EventImageCell({ imageUrl }: { imageUrl?: string }) {
   const resolved = useStorageUrl(imageUrl);
   if (!resolved) return <span className="text-muted-foreground text-xs">—</span>;
-  return <img src={resolved} alt="" className="h-8 w-8 min-w-8 rounded object-cover aspect-square" />;
+  return <img src={resolved} alt="" className="h-8 w-8 min-w-8 rounded-full object-cover aspect-square" />;
 }
 
 interface Props {
