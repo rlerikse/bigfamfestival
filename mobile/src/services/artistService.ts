@@ -11,6 +11,7 @@ export interface ArtistProfile {
   spotifyUrl?: string;
   facebookUrl?: string;
   instagramUrl?: string;
+  websiteUrl?: string;
   userId?: string;
   userDisplayName?: string;
 }

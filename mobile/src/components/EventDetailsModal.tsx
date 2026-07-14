@@ -219,6 +219,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
     spotifyUrl: primaryArtist?.spotifyUrl || (event as any).spotify_url,
     facebookUrl: primaryArtist?.facebookUrl || (event as any).facebook_url,
     instagramUrl: primaryArtist?.instagramUrl || (event as any).instagram_url,
+    websiteUrl: primaryArtist?.websiteUrl || (event as any).website_url,
   };
 
   // Ensure event properties used for display are strings or provide fallbacks
@@ -342,6 +343,15 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                         style={styles.socialIcon}
                       >
                         <Ionicons name="musical-notes" size={24} color="#fff" />
+                      </TouchableOpacity>
+                    )}
+                    
+                    {resolvedSocials.websiteUrl && typeof resolvedSocials.websiteUrl === 'string' && (
+                      <TouchableOpacity 
+                        onPress={() => handleSocialLink(resolvedSocials.websiteUrl)} 
+                        style={styles.socialIcon}
+                      >
+                        <Ionicons name="globe-outline" size={24} color="#fff" />
                       </TouchableOpacity>
                     )}
                   </View>
