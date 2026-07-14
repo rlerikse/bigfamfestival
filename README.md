@@ -20,14 +20,20 @@ A full-stack festival management application with a NestJS backend API and React
 This application consists of:
 
 - **Backend** (`/backend`): NestJS REST API with Firestore database
-- **Mobile** (`/mobile`): React Native app built with Expo SDK 52
+- **Mobile** (`/mobile`): React Native app built with Expo SDK 54
+- **Admin** (`/admin`): React + Vite admin panel (Firebase Hosting)
 - **Infrastructure** (`/infrastructure`): Terraform configurations for Google Cloud Platform
 
 ### Key Features
 
-- User authentication and authorization (JWT)
-- Festival event management
+- User authentication and authorization (Firebase Auth + JWT)
+- Festival event management with artist profiles
 - Personal schedule management
+- Interactive festival map
+- Push notifications
+- Admin panel for event/artist CRUD
+- Artist bios, social links, and website URLs
+- Image management via Firebase Storage
 - Push notifications (Expo + Firebase Cloud Messaging)
 - Artist and campsite information
 - Festival map integration
