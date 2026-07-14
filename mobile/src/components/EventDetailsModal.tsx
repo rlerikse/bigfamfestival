@@ -190,9 +190,11 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
   onToggleSchedule,
 }) => {
   const [artists, setArtists] = useState<ArtistProfile[]>([]);
+  const [bioExpanded, setBioExpanded] = useState(false);
 
   // Fetch artist profiles when event changes
   useEffect(() => {
+    setBioExpanded(false);
     if (!event || !event.artists || event.artists.length === 0) {
       setArtists([]);
       return;
@@ -305,7 +307,12 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   </SafeText>
                 )}
                 
-                <SafeText style={styles.bioText}>{description}</SafeText>
+                <SafeText style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</SafeText>
+                {description && description.length > 100 && (
+                  <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)}>
+                    <SafeText style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</SafeText>
+                  </TouchableOpacity>
+                )}
 
                 {resolvedSocials.websiteUrl && typeof resolvedSocials.websiteUrl === 'string' && (
                   <TouchableOpacity onPress={() => handleSocialLink(resolvedSocials.websiteUrl)} style={styles.websiteLink}>
@@ -527,6 +534,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#aaa',
     textDecorationLine: 'underline',
+  },
+  readMoreText: {
+    fontSize: 13,
+    color: '#8ab4f8',
+    textAlign: 'center',
+    marginTop: 4,
   },
   actionsContainer: {
     flexDirection: 'row',
