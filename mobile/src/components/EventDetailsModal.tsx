@@ -36,6 +36,10 @@ interface SafeTextProps extends TextProps {
 }
 
 const SafeText: React.FC<SafeTextProps> = ({ children, ...props }) => {
+  // Fast path: if children is a string or number, skip processing
+  if (typeof children === 'string' || typeof children === 'number' || children === null || children === undefined) {
+    return <Text {...props}>{children}</Text>;
+  }
   const processChildren = (childNodes: React.ReactNode): React.ReactNode => {
     return React.Children.map(childNodes, (child, index) => {
       if (child === null || typeof child === 'undefined') {
@@ -307,10 +311,10 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                 
                 {description ? (
                   <>
-                    <SafeText style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</SafeText>
+                    <Text style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</Text>
                     {description.length > 100 && (
                       <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}>
-                        <SafeText style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</SafeText>
+                        <Text style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</Text>
                       </TouchableOpacity>
                     )}
                   </>
