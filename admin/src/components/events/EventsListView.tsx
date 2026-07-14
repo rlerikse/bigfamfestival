@@ -7,7 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil } from 'lucide-react';
 import { usePaginatedQuery, useCreateEvent, useUpdateEvent } from '@/hooks/useApi';
+import { useStorageUrl } from '@/hooks/useStorageUrl';
 import type { Event } from '@/types';
+
+function EventImageCell({ imageUrl }: { imageUrl?: string }) {
+  const resolved = useStorageUrl(imageUrl);
+  if (!resolved) return <span className="text-muted-foreground text-xs">—</span>;
+  return <img src={resolved} alt="" className="h-8 w-8 rounded object-cover" />;
+}
 
 interface Props {
   search: string;
@@ -70,6 +77,12 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
 
   const columns: ColumnDef<Event, unknown>[] = useMemo(() => [
     {
+      id: 'image',
+      header: '',
+      cell: ({ row }) => <EventImageCell imageUrl={row.original.imageUrl} />,
+      size: 40,
+    },
+    {
       accessorKey: 'name',
       header: 'Event',
       enableSorting: true,
@@ -97,6 +110,15 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
       accessorKey: 'artists',
       header: 'Artists',
       cell: ({ row }) => row.original.artists?.join(', ') || '—',
+    },
+    {
+      accessorKey: 'description',
+      header: 'Description',
+      cell: ({ row }) => {
+        const desc = row.original.description;
+        if (!desc) return <span className="text-muted-foreground text-xs">—</span>;
+        return <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">{desc}</span>;
+      },
     },
     {
       id: 'actions',
