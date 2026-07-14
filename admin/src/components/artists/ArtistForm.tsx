@@ -20,7 +20,7 @@ function nameToSlug(name: string): string {
 
 interface ArtistFormProps {
   artist?: Artist;
-  onSubmit: (data: { name: string; slug: string; genres: string[]; bio: string; imageUrl: string; userId: string | null; soundcloudUrl: string; spotifyUrl: string; facebookUrl: string; instagramUrl: string }) => Promise<void>;
+  onSubmit: (data: { name: string; slug: string; genres: string[]; bio: string; imageUrl: string; userId: string | null; soundcloudUrl: string; spotifyUrl: string; facebookUrl: string; instagramUrl: string; websiteUrl: string }) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -39,6 +39,7 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
   const [spotifyUrl, setSpotifyUrl] = useState(artist?.spotifyUrl ?? '');
   const [facebookUrl, setFacebookUrl] = useState(artist?.facebookUrl ?? '');
   const [instagramUrl, setInstagramUrl] = useState(artist?.instagramUrl ?? '');
+  const [websiteUrl, setWebsiteUrl] = useState(artist?.websiteUrl ?? '');
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
         imageUrl = await uploadArtistImage(imageFile, slug);
       }
 
-      await onSubmit({ name: name.trim(), slug: slug.trim(), genres, bio: bio.trim(), imageUrl, userId, soundcloudUrl: soundcloudUrl.trim(), spotifyUrl: spotifyUrl.trim(), facebookUrl: facebookUrl.trim(), instagramUrl: instagramUrl.trim() });
+      await onSubmit({ name: name.trim(), slug: slug.trim(), genres, bio: bio.trim(), imageUrl, userId, soundcloudUrl: soundcloudUrl.trim(), spotifyUrl: spotifyUrl.trim(), facebookUrl: facebookUrl.trim(), instagramUrl: instagramUrl.trim(), websiteUrl: websiteUrl.trim() });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -257,6 +258,15 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
               placeholder="https://instagram.com/..."
+              className="flex-1"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-8 flex justify-center" title="Website">🌐</span>
+            <Input
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+              placeholder="https://artist-website.com"
               className="flex-1"
             />
           </div>
