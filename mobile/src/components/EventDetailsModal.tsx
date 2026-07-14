@@ -21,7 +21,7 @@ const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = 
 };
 // filepath: e:\repos\bigfamfestival\mobile\src\components\EventDetailsModal.tsx
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
@@ -29,9 +29,6 @@ import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
 // Debug logging utility for this component
 const debugLog = (_message: string, _data?: any) => {};
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 // Local SafeText component for robust text rendering
 interface SafeTextProps extends TextProps {
@@ -312,7 +309,7 @@ const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
                   <>
                     <SafeText style={styles.bioText} numberOfLines={bioExpanded ? undefined : 3}>{description}</SafeText>
                     {description.length > 100 && (
-                      <TouchableOpacity onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setBioExpanded(!bioExpanded); }} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}>
+                      <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)} hitSlop={{ top: 10, bottom: 10, left: 20, right: 20 }}>
                         <SafeText style={styles.readMoreText}>{bioExpanded ? 'Read Less' : 'Read More...'}</SafeText>
                       </TouchableOpacity>
                     )}
