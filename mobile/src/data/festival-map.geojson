@@ -1,0 +1,330 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "front-gate",
+        "name": "Front Gate / Check-In",
+        "category": "infrastructure",
+        "icon": "entrance",
+        "color": "#FF6B35",
+        "description": "Main entrance and check-in area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25850, 42.05580],
+          [-84.25780, 42.05580],
+          [-84.25780, 42.05620],
+          [-84.25850, 42.05620],
+          [-84.25850, 42.05580]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "powered-rv-camping",
+        "name": "Powered RV Camping",
+        "category": "camping",
+        "icon": "rv",
+        "color": "#8B5CF6",
+        "description": "Powered camping for RVs"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.26100, 42.05650],
+          [-84.25950, 42.05650],
+          [-84.25950, 42.05820],
+          [-84.26100, 42.05820],
+          [-84.26100, 42.05650]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "vendor-row",
+        "name": "Vendor Row",
+        "category": "vendors",
+        "icon": "shopping",
+        "color": "#F59E0B",
+        "description": "Food and merchandise vendors"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25900, 42.05750],
+          [-84.25750, 42.05750],
+          [-84.25750, 42.05850],
+          [-84.25900, 42.05850],
+          [-84.25900, 42.05750]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ga-camping-main",
+        "name": "GA Camping",
+        "category": "camping",
+        "icon": "tent",
+        "color": "#10B981",
+        "description": "General admission camping area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25900, 42.05620],
+          [-84.25750, 42.05620],
+          [-84.25750, 42.05750],
+          [-84.25900, 42.05750],
+          [-84.25900, 42.05620]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "apogee",
+        "name": "Apogee",
+        "category": "stage",
+        "icon": "stage",
+        "color": "#EF4444",
+        "description": "Apogee stage — facing inward toward GA and Vendor Row"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25720, 42.05700]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "staff-camping",
+        "name": "Staff Camping",
+        "category": "staff",
+        "icon": "restricted",
+        "color": "#6B7280",
+        "description": "Staff camping area — within roads up to the tower"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25720, 42.05700],
+          [-84.25580, 42.05700],
+          [-84.25580, 42.05950],
+          [-84.25650, 42.05950],
+          [-84.25720, 42.05850],
+          [-84.25720, 42.05700]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "staff-bathroom",
+        "name": "Staff Bathroom",
+        "category": "staff",
+        "icon": "restroom",
+        "color": "#6B7280",
+        "description": "Staff restroom facilities"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25650, 42.05780]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "staff-entrance",
+        "name": "Staff Entrance",
+        "category": "staff",
+        "icon": "entrance",
+        "color": "#6B7280",
+        "description": "Staff entry point"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25600, 42.05720]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "hq",
+        "name": "HQ",
+        "category": "staff",
+        "icon": "building",
+        "color": "#6B7280",
+        "description": "Festival headquarters"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25630, 42.05810]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "media-tent",
+        "name": "Media Tent",
+        "category": "staff",
+        "icon": "media",
+        "color": "#6B7280",
+        "description": "Press and media operations"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25650, 42.05830]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "artist-relations",
+        "name": "Artist Relations",
+        "category": "staff",
+        "icon": "star",
+        "color": "#6B7280",
+        "description": "Artist relations and green room area"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25670, 42.05850]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "quiet-camping",
+        "name": "Quiet Camping",
+        "category": "camping",
+        "icon": "tent",
+        "color": "#3B82F6",
+        "description": "Quiet camping zone — no loud music or generators"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25750, 42.05900],
+          [-84.25550, 42.05900],
+          [-84.25550, 42.06050],
+          [-84.25750, 42.06050],
+          [-84.25750, 42.05900]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "ga-camping-north",
+        "name": "GA Camping (North)",
+        "category": "camping",
+        "icon": "tent",
+        "color": "#10B981",
+        "description": "General admission camping — north field"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25750, 42.05850],
+          [-84.25550, 42.05850],
+          [-84.25550, 42.05900],
+          [-84.25750, 42.05900],
+          [-84.25750, 42.05850]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "sanctuary",
+        "name": "The Sanctuary",
+        "category": "stage",
+        "icon": "stage",
+        "color": "#EF4444",
+        "description": "The Sanctuary stage"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25700, 42.05920]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "medical",
+        "name": "Medical",
+        "category": "infrastructure",
+        "icon": "medical",
+        "color": "#DC2626",
+        "description": "Medical and first aid station"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25680, 42.05880]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "the-gallery",
+        "name": "The Gallery",
+        "category": "stage",
+        "icon": "stage",
+        "color": "#EF4444",
+        "description": "The Gallery — art gallery and performance space"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-84.25800, 42.05950]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "the-bayou",
+        "name": "The Bayou",
+        "category": "stage",
+        "icon": "stage",
+        "color": "#EF4444",
+        "description": "Katfish Esekandu's Bayou — main wooded stage area"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25800, 42.05950],
+          [-84.25550, 42.05950],
+          [-84.25550, 42.06150],
+          [-84.25800, 42.06150],
+          [-84.25800, 42.05950]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "artist-camping",
+        "name": "Artist Camping",
+        "category": "camping",
+        "icon": "tent",
+        "color": "#A855F7",
+        "description": "Camping area for performing artists"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-84.25900, 42.05920],
+          [-84.25800, 42.05920],
+          [-84.25800, 42.06050],
+          [-84.25900, 42.06050],
+          [-84.25900, 42.05920]
+        ]]
+      }
+    }
+  ]
+}
