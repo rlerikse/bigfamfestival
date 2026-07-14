@@ -10,6 +10,7 @@ import { SchedulePage } from '@/pages/SchedulePage';
 import { ShiftsPage } from '@/pages/ShiftsPage';
 import { NotificationsPage } from '@/pages/NotificationsPage';
 import { VendorsPage } from '@/pages/VendorsPage';
+import { MapEditorPage } from '@/pages/MapEditorPage';
 import { LoginPage } from '@/pages/LoginPage';
 
 export default function App() {
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="shifts" element={<ShiftsPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="vendors" element={<VendorsPage />} />
+          <Route path="map" element={<MapEditorPage />} />
         </Route>
 
         {/* Catch-all */}

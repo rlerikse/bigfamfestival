@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>BigFam Zone Editor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; }
+#sidebar {
+  position: absolute; top: 0; left: 0; bottom: 0; width: 280px;
+  background: rgba(15,15,20,0.95); color: #fff; padding: 16px;
+  overflow-y: auto; z-index: 2; font-size: 13px;
+}
+#sidebar h2 { font-size: 16px; margin-bottom: 12px; }
+.zone-item {
+  padding: 8px 10px; margin: 4px 0; border-radius: 6px;
+  cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: background 0.15s;
+}
+.zone-item:hover { background: rgba(255,255,255,0.1); }
+.zone-item.active { background: rgba(255,255,255,0.2); outline: 1px solid rgba(255,255,255,0.3); }
+.zone-swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.zone-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid #fff; }
+.zone-name { flex: 1; }
+.zone-type { font-size: 10px; color: #888; }
+.btn {
+  display: block; width: 100%; padding: 10px; margin: 6px 0;
+  border: none; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+}
+.btn-primary { background: #3B82F6; color: #fff; }
+.btn-success { background: #10B981; color: #fff; }
+.btn-danger { background: #EF4444; color: #fff; }
+.btn:hover { opacity: 0.9; }
+hr { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 12px 0; }
+#coords-display {
+  position: absolute; bottom: 30px; left: 300px;
+  background: rgba(0,0,0,0.8); color: #0f0; padding: 6px 12px;
+  border-radius: 6px; font-family: monospace; font-size: 12px; z-index: 1;
+}
+#toast {
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  background: #10B981; color: #fff; padding: 10px 20px; border-radius: 8px;
+  font-weight: 600; z-index: 10; display: none; font-size: 14px;
+}
+.instructions {
+  background: rgba(255,255,255,0.05); padding: 8px; border-radius: 6px;
+  font-size: 11px; color: #aaa; line-height: 1.4; margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="sidebar">
+  <h2>🎪 BigFam Zone Editor</h2>
+  <div class="instructions">
+    <strong>How to use:</strong><br>
+    • Click a zone to select it<br>
+    • Drag corners/edges to reshape<br>
+    • Click "Export GeoJSON" when done<br>
+    • Point markers: click to drag
+  </div>
+  <div id="zone-list"></div>
+  <hr>
+  <button class="btn btn-success" onclick="exportGeoJSON()">📋 Export GeoJSON</button>
+  <button class="btn btn-primary" onclick="resetView()">🎯 Reset View</button>
+  <hr>
+  <div style="font-size:11px;color:#666">Coordinates are live-updated as you drag.</div>
+</div>
+<div id="coords-display">Move mouse over map</div>
+<div id="toast"></div>
+
+<script>
+mapboxgl.accessToken = window.MAPBOX_TOKEN || prompt('Enter Mapbox token:');
+
+const festivalCenter = [-84.2570, 42.0580];
+
+const zones = [
+  {
+    id: "front-gate", name: "Front Gate / Check-In", category: "infrastructure",
+    color: "#FF6B35", type: "polygon",
+    coords: [[-84.25850,42.05580],[-84.25780,42.05580],[-84.25780,42.05620],[-84.25850,42.05620],[-84.25850,42.05580]]
+  },
+  {
+    id: "powered-rv-camping", name: "Powered RV Camping", category: "camping",
+    color: "#8B5CF6", type: "polygon",
+    coords: [[-84.26100,42.05650],[-84.25950,42.05650],[-84.25950,42.05820],[-84.26100,42.05820],[-84.26100,42.05650]]
+  },
+  {
+    id: "vendor-row", name: "Vendor Row", category: "vendors",
+    color: "#F59E0B", type: "polygon",
+    coords: [[-84.25900,42.05750],[-84.25750,42.05750],[-84.25750,42.05850],[-84.25900,42.05850],[-84.25900,42.05750]]
+  },
+  {
+    id: "ga-camping-main", name: "GA Camping (South)", category: "camping",
+    color: "#10B981", type: "polygon",
+    coords: [[-84.25900,42.05620],[-84.25750,42.05620],[-84.25750,42.05750],[-84.25900,42.05750],[-84.25900,42.05620]]
+  },
+  {
+    id: "staff-camping", name: "Staff Camping", category: "staff",
+    color: "#6B7280", type: "polygon",
+    coords: [[-84.25720,42.05700],[-84.25580,42.05700],[-84.25580,42.05950],[-84.25650,42.05950],[-84.25720,42.05850],[-84.25720,42.05700]]
+  },
+  {
+    id: "quiet-camping", name: "Quiet Camping", category: "camping",
+    color: "#3B82F6", type: "polygon",
+    coords: [[-84.25750,42.05900],[-84.25550,42.05900],[-84.25550,42.06050],[-84.25750,42.06050],[-84.25750,42.05900]]
+  },
+  {
+    id: "ga-camping-north", name: "GA Camping (North)", category: "camping",
+    color: "#10B981", type: "polygon",
+    coords: [[-84.25750,42.05850],[-84.25550,42.05850],[-84.25550,42.05900],[-84.25750,42.05900],[-84.25750,42.05850]]
+  },
+  {
+    id: "the-bayou", name: "The Bayou", category: "stage",
+    color: "#EF4444", type: "polygon",
+    coords: [[-84.25800,42.05950],[-84.25550,42.05950],[-84.25550,42.06150],[-84.25800,42.06150],[-84.25800,42.05950]]
+  },
+  {
+    id: "artist-camping", name: "Artist Camping", category: "camping",
+    color: "#A855F7", type: "polygon",
+    coords: [[-84.25900,42.05920],[-84.25800,42.05920],[-84.25800,42.06050],[-84.25900,42.06050],[-84.25900,42.05920]]
+  },
+  {
+    id: "apogee", name: "Apogee", category: "stage",
+    color: "#EF4444", type: "point", coords: [-84.25720, 42.05700]
+  },
+  {
+    id: "sanctuary", name: "The Sanctuary", category: "stage",
+    color: "#EF4444", type: "point", coords: [-84.25700, 42.05920]
+  },
+  {
+    id: "the-gallery", name: "The Gallery", category: "stage",
+    color: "#EF4444", type: "point", coords: [-84.25800, 42.05950]
+  },
+  {
+    id: "medical", name: "Medical", category: "infrastructure",
+    color: "#DC2626", type: "point", coords: [-84.25680, 42.05880]
+  },
+  {
+    id: "staff-bathroom", name: "Staff Bathroom", category: "staff",
+    color: "#6B7280", type: "point", coords: [-84.25650, 42.05780]
+  },
+  {
+    id: "staff-entrance", name: "Staff Entrance", category: "staff",
+    color: "#6B7280", type: "point", coords: [-84.25600, 42.05720]
+  },
+  {
+    id: "hq", name: "HQ", category: "staff",
+    color: "#6B7280", type: "point", coords: [-84.25630, 42.05810]
+  },
+  {
+    id: "media-tent", name: "Media Tent", category: "staff",
+    color: "#6B7280", type: "point", coords: [-84.25650, 42.05830]
+  },
+  {
+    id: "artist-relations", name: "Artist Relations", category: "staff",
+    color: "#6B7280", type: "point", coords: [-84.25670, 42.05850]
+  }
+];
+
+// Convert to Mapbox GL Draw features
+function zonesToDrawFeatures() {
+  return zones.map(z => {
+    if (z.type === 'polygon') {
+      return {
+        id: z.id, type: 'Feature',
+        properties: { zoneId: z.id, name: z.name, color: z.color, category: z.category, zoneType: 'polygon' },
+        geometry: { type: 'Polygon', coordinates: [z.coords] }
+      };
+    } else {
+      return {
+        id: z.id, type: 'Feature',
+        properties: { zoneId: z.id, name: z.name, color: z.color, category: z.category, zoneType: 'point' },
+        geometry: { type: 'Point', coordinates: z.coords }
+      };
+    }
+  });
+}
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/satellite-streets-v12',
+  center: festivalCenter,
+  zoom: 16,
+  pitch: 0
+});
+
+const draw = new MapboxDraw({
+  displayControlsDefault: false,
+  controls: {},
+  styles: [
+    // Polygon fill
+    { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
+      paint: { 'fill-color': ['coalesce', ['get', 'user_color'], '#088'], 'fill-opacity': 0.12 } },
+    // Polygon outline inactive
+    { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['all', ['==', '$type', 'Polygon'], ['!=', 'mode', 'static']],
+      paint: { 'line-color': ['coalesce', ['get', 'user_color'], '#088'], 'line-width': 2.5, 'line-opacity': 0.9 } },
+    // Polygon fill active (selected)
+    { id: 'gl-draw-polygon-fill-active', type: 'fill', filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'true']],
+      paint: { 'fill-color': '#fbb03b', 'fill-opacity': 0.15 } },
+    // Polygon outline active
+    { id: 'gl-draw-polygon-stroke-active', type: 'line', filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'true']],
+      paint: { 'line-color': '#fbb03b', 'line-width': 3, 'line-dasharray': [2, 1] } },
+    // Vertices
+    { id: 'gl-draw-polygon-and-line-vertex-active', type: 'circle',
+      filter: ['all', ['==', 'meta', 'vertex'], ['==', '$type', 'Point']],
+      paint: { 'circle-radius': 6, 'circle-color': '#fff', 'circle-stroke-width': 2, 'circle-stroke-color': '#fbb03b' } },
+    // Midpoints
+    { id: 'gl-draw-polygon-midpoint', type: 'circle',
+      filter: ['all', ['==', 'meta', 'midpoint'], ['==', '$type', 'Point']],
+      paint: { 'circle-radius': 4, 'circle-color': '#fbb03b' } },
+    // Points
+    { id: 'gl-draw-point', type: 'circle',
+      filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'feature'], ['!=', 'mode', 'static']],
+      paint: { 'circle-radius': 8, 'circle-color': ['coalesce', ['get', 'user_color'], '#088'], 'circle-stroke-width': 2, 'circle-stroke-color': '#fff' } },
+    // Point active
+    { id: 'gl-draw-point-active', type: 'circle',
+      filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'feature'], ['==', 'active', 'true']],
+      paint: { 'circle-radius': 10, 'circle-color': '#fbb03b', 'circle-stroke-width': 3, 'circle-stroke-color': '#fff' } }
+  ]
+});
+
+map.addControl(draw, 'top-right');
+map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+map.on('load', () => {
+  const features = zonesToDrawFeatures();
+  features.forEach(f => draw.add(f));
+  buildZoneList();
+
+  // Add labels layer for zone names
+  updateLabels();
+});
+
+// Track mouse position
+map.on('mousemove', (e) => {
+  document.getElementById('coords-display').textContent =
+    `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
+});
+
+// Update labels when features change
+map.on('draw.update', updateLabels);
+map.on('draw.selectionchange', (e) => {
+  document.querySelectorAll('.zone-item').forEach(el => el.classList.remove('active'));
+  if (e.features.length > 0) {
+    const el = document.querySelector(`[data-zone="${e.features[0].id}"]`);
+    if (el) el.classList.add('active');
+  }
+});
+
+function updateLabels() {
+  const all = draw.getAll();
+  const labelData = {
+    type: 'FeatureCollection',
+    features: all.features.map(f => {
+      let center;
+      if (f.geometry.type === 'Point') {
+        center = f.geometry.coordinates;
+      } else {
+        // Centroid of polygon
+        const coords = f.geometry.coordinates[0];
+        const len = coords.length - 1;
+        let cx = 0, cy = 0;
+        for (let i = 0; i < len; i++) { cx += coords[i][0]; cy += coords[i][1]; }
+        center = [cx / len, cy / len];
+      }
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: center },
+        properties: { name: f.properties.name || f.id }
+      };
+    })
+  };
+
+  if (map.getSource('zone-labels-src')) {
+    map.getSource('zone-labels-src').setData(labelData);
+  } else {
+    map.addSource('zone-labels-src', { type: 'geojson', data: labelData });
+    map.addLayer({
+      id: 'zone-labels-layer', type: 'symbol', source: 'zone-labels-src',
+      layout: {
+        'text-field': ['get', 'name'], 'text-size': 11,
+        'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+        'text-allow-overlap': true
+      },
+      paint: { 'text-color': '#fff', 'text-halo-color': '#000', 'text-halo-width': 1.5 }
+    });
+  }
+}
+
+function buildZoneList() {
+  const list = document.getElementById('zone-list');
+  list.innerHTML = '';
+  zones.forEach(z => {
+    const div = document.createElement('div');
+    div.className = 'zone-item';
+    div.dataset.zone = z.id;
+    const swatch = document.createElement('div');
+    swatch.className = z.type === 'point' ? 'zone-dot' : 'zone-swatch';
+    swatch.style.background = z.color;
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'zone-name';
+    nameSpan.textContent = z.name;
+    const typeSpan = document.createElement('span');
+    typeSpan.className = 'zone-type';
+    typeSpan.textContent = z.category;
+    div.appendChild(swatch);
+    div.appendChild(nameSpan);
+    div.appendChild(typeSpan);
+    div.addEventListener('click', () => {
+      draw.changeMode('simple_select', { featureIds: [z.id] });
+      // Fly to feature
+      const feat = draw.get(z.id);
+      if (feat) {
+        if (feat.geometry.type === 'Point') {
+          map.flyTo({ center: feat.geometry.coordinates, zoom: 17 });
+        } else {
+          const coords = feat.geometry.coordinates[0];
+          const bounds = coords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+          map.fitBounds(bounds, { padding: 80 });
+        }
+      }
+      document.querySelectorAll('.zone-item').forEach(el => el.classList.remove('active'));
+      div.classList.add('active');
+    });
+    list.appendChild(div);
+  });
+}
+
+function exportGeoJSON() {
+  const all = draw.getAll();
+  // Rebuild into our format
+  const output = {
+    type: 'FeatureCollection',
+    features: all.features.map(f => {
+      const zone = zones.find(z => z.id === f.id);
+      return {
+        type: 'Feature',
+        properties: {
+          id: f.id,
+          name: zone ? zone.name : f.id,
+          category: zone ? zone.category : 'unknown',
+          color: zone ? zone.color : '#888',
+          description: zone ? (zone.description || zone.name) : ''
+        },
+        geometry: f.geometry
+      };
+    })
+  };
+
+  const json = JSON.stringify(output, null, 2);
+
+  // Copy to clipboard
+  navigator.clipboard.writeText(json).then(() => {
+    showToast('📋 GeoJSON copied to clipboard!');
+  }).catch(() => {
+    // Fallback: show in console
+    console.log(json);
+    showToast('GeoJSON logged to console (clipboard blocked)');
+  });
+}
+
+function resetView() {
+  map.flyTo({ center: festivalCenter, zoom: 16, pitch: 0, bearing: 0 });
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  setTimeout(() => toast.style.display = 'none', 3000);
+}
+</script>
+</body>
+</html>

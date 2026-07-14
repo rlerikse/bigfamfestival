@@ -8,6 +8,7 @@ import {
   Clock,
   Bell,
   Store,
+  MapPin,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -23,6 +24,7 @@ const navItems = [
   { to: '/shifts', icon: Clock, label: 'Shifts' },
   { to: '/notifications', icon: Bell, label: 'Notifications' },
   { to: '/vendors', icon: Store, label: 'Vendors' },
+  { to: '/map', icon: MapPin, label: 'Map' },
 ];
 
 export function Sidebar() {
