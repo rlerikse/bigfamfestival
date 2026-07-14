@@ -30,8 +30,8 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
   const [horizonGlow] = useState(new Animated.Value(0));
   const [auroraOpacity] = useState(new Animated.Value(0));  // Multiple cloud layers for depth
   const [cloudLayer1] = useState(new Animated.Value(0));
-  const [cloudLayer2] = useState(new Animated.Value(0.3));
-  const [cloudLayer3] = useState(new Animated.Value(0.7));
+  const [cloudLayer2] = useState(new Animated.Value(0));
+  const [cloudLayer3] = useState(new Animated.Value(0));
   const [bigBackgroundCloud] = useState(new Animated.Value(0));
   const sunRayAnimation = useRef(new Animated.Value(0)).current; // Added for ray animation
   const starTwinkleRefs = useRef<Animated.Value[]>([]);
@@ -148,34 +148,41 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
     ).start();
 
     // Layer 2 - Medium speed clouds (12 minutes), moves opposite direction
-    Animated.loop(
-      Animated.timing(cloudLayer2, {
-        toValue: 1,
-        duration: 720000,
-        useNativeDriver: true,
-        easing: Easing.linear,
-      })
-    ).start();
+    // Stagger start so clouds don't all appear at once
+    setTimeout(() => {
+      Animated.loop(
+        Animated.timing(cloudLayer2, {
+          toValue: 1,
+          duration: 720000,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        })
+      ).start();
+    }, 30000); // 30s delay
 
     // Layer 3 - Slower moving low clouds (15 minutes)
-    Animated.loop(
-      Animated.timing(cloudLayer3, {
-        toValue: 1,
-        duration: 900000,
-        useNativeDriver: true,
-        easing: Easing.linear,
-      })
-    ).start();
+    setTimeout(() => {
+      Animated.loop(
+        Animated.timing(cloudLayer3, {
+          toValue: 1,
+          duration: 900000,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        })
+      ).start();
+    }, 60000); // 60s delay
 
     // Big Background Cloud - Very slow background movement (25 minutes)
-    Animated.loop(
-      Animated.timing(bigBackgroundCloud, {
-        toValue: 1,
-        duration: 1500000,
-        useNativeDriver: true,
-        easing: Easing.linear,
-      })
-    ).start();
+    setTimeout(() => {
+      Animated.loop(
+        Animated.timing(bigBackgroundCloud, {
+          toValue: 1,
+          duration: 1500000,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        })
+      ).start();
+    }, 15000); // 15s delay
   }, [cloudLayer1, cloudLayer2, cloudLayer3, bigBackgroundCloud, height]);
   // Update time every 1 second for smooth countdown and animation sync
   useEffect(() => {
