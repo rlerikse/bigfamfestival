@@ -62,4 +62,7 @@ export class UpdateArtistDto {
   @IsString()
   @IsOptional()
   instagramUrl?: string;
+
+  @IsOptional()
+  websiteUrl?: string;
 }
