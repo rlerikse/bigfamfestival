@@ -61,27 +61,30 @@ export default function MapScreen() {
 
   const loadMapData = async () => {
     try {
-      const zonesSnap = await getDoc(doc(firestore, 'config', 'mapZones'));
+      const [zonesSnap, stagesSnap] = await Promise.all([
+        getDoc(doc(firestore, 'config', 'mapZones')),
+        getDoc(doc(firestore, 'config', 'mapStages')),
+      ]);
+
       if (zonesSnap.exists()) {
         const data = zonesSnap.data();
-        if (data.geojson) {
+        if (data?.geojson) {
           const parsed = JSON.parse(data.geojson);
           setZones(parsed.features || []);
+        }
+      }
+
+      if (stagesSnap.exists()) {
+        const data = stagesSnap.data();
+        if (data?.stages) {
+          const stageList: StageLocation[] = Object.values(data.stages);
+          setStages(stageList);
         }
       }
 
       const poisSnap = await getDocs(collection(firestore, 'mapPOIs'));
       const poiList: MapPOI[] = poisSnap.docs.map(d => ({ id: d.id, ...d.data() } as MapPOI));
       setPois(poiList);
-
-      const stagesSnap = await getDoc(doc(firestore, 'config', 'mapStages'));
-      if (stagesSnap.exists()) {
-        const data = stagesSnap.data();
-        if (data.stages) {
-          const stageList: StageLocation[] = Object.values(data.stages);
-          setStages(stageList);
-        }
-      }
     } catch (err) {
       console.error('Failed to load map data:', err);
     } finally {
@@ -162,9 +165,11 @@ export default function MapScreen() {
       <Mapbox.MapView
         style={StyleSheet.absoluteFill}
         styleURL="mapbox://styles/mapbox/satellite-streets-v12"
-        compassEnabled={true}
+        compassEnabled={false}
         logoEnabled={true}
         attributionEnabled={true}
+        attributionPosition={{bottom: 80, left: 8}}
+        logoPosition={{bottom: 80, left: 8}}
         onCameraChanged={(state) => {
           if (state?.properties?.zoom != null) {
             setCurrentZoom(state.properties.zoom);
@@ -254,7 +259,12 @@ export default function MapScreen() {
       </View>
 
       {/* Map Controls — right side */}
-      <View style={[styles.mapControls, { top: insets.top + 60 }]}>
+      <View style={[styles.mapControls, { top: insets.top + 110 }]}>
+        <TouchableOpacity style={styles.controlButton} onPress={() => {
+          cameraRef.current?.setCamera({ heading: 0, animationDuration: 300 });
+        }} activeOpacity={0.7}>
+          <Ionicons name="compass-outline" size={24} color="#F5F5DC" />
+        </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={handleZoomIn} activeOpacity={0.7}>
           <Ionicons name="add" size={24} color="#F5F5DC" />
         </TouchableOpacity>

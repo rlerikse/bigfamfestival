@@ -11,7 +11,7 @@
  */
 
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 import firebase from 'firebase/compat/app';
@@ -62,7 +62,9 @@ const firebaseConfig = getFirebaseConfig();
 
 // Initialize Firebase (guard against double-init in dev fast-refresh)
 const app: FirebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const firestore = getFirestore(app);
+const firestore = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 const storage = getStorage(app);
 
 // Also initialize the compat version (needed for AsyncStorage persistence)

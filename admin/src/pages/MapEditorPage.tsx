@@ -4,7 +4,7 @@ import mapboxgl from 'mapbox-gl';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
-import { Copy, Download, MousePointer, Save, Loader2 } from 'lucide-react';
+import { Copy, Download, MousePointer, Save, Loader2, Plus, Trash2, ChevronDown, ChevronRight, Music } from 'lucide-react';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { POIManager, POI } from '@/components/POIManager';
@@ -99,6 +99,15 @@ const drawStyles = [
 // Map from Draw's internal IDs back to our feature properties
 const drawIdToProps: Record<string, Record<string, unknown>> = {};
 
+// Stage type
+interface Stage {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  color: string;
+}
+
 export function MapEditorPage() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -109,6 +118,7 @@ export function MapEditorPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loadedFromFirestore, setLoadedFromFirestore] = useState(false);
+  const [loadedFeatures, setLoadedFeatures] = useState<GeoJSON.Feature[]>([]);
   const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string } | null>(null);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
   const [newName, setNewName] = useState('');
@@ -117,10 +127,15 @@ export function MapEditorPage() {
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPOIId, setSelectedPOIId] = useState<string | null>(null);
   const poiMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [stagesCollapsed, setStagesCollapsed] = useState(false);
+  const [savingStages, setSavingStages] = useState(false);
+  const [placingStage, setPlacingStage] = useState(false);
+  const stageMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const features = festivalGeoJSON.features;
 
   const grouped = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = features.filter((f) => f.properties?.category === cat);
+    acc[cat] = loadedFeatures.filter((f) => f.properties?.category === cat);
     return acc;
   }, {} as Record<string, typeof features>);
 
@@ -139,12 +154,28 @@ export function MapEditorPage() {
 
   const flyTo = useCallback((feature: GeoJSON.Feature) => {
     const map = mapRef.current;
+    const draw = drawRef.current;
     if (!map) return;
+    // Use Draw's live geometry (reflects drag edits)
+    let geo = feature.geometry;
+    if (draw) {
+      const targetId = feature.properties?.id;
+      if (targetId) {
+        // Find the Draw feature whose drawId maps to this property id
+        const drawId = Object.keys(drawIdToProps).find(
+          (k) => (drawIdToProps[k] as Record<string, unknown>)?.id === targetId
+        );
+        if (drawId) {
+          const live = draw.get(drawId);
+          if (live) geo = live.geometry;
+        }
+      }
+    }
     let center: [number, number];
-    if (feature.geometry.type === 'Point') {
-      center = feature.geometry.coordinates as [number, number];
-    } else if (feature.geometry.type === 'Polygon') {
-      center = getCentroid((feature.geometry as GeoJSON.Polygon).coordinates[0]);
+    if (geo.type === 'Point') {
+      center = (geo as GeoJSON.Point).coordinates as [number, number];
+    } else if (geo.type === 'Polygon') {
+      center = getCentroid(((geo as GeoJSON.Polygon).coordinates)[0]);
     } else return;
     map.flyTo({ center, zoom: 17, duration: 800 });
     selectFeature(feature.properties?.id);
@@ -256,18 +287,112 @@ export function MapEditorPage() {
     }
   }, []);
 
-  const loadFromFirestore = useCallback(async (): Promise<GeoJSON.FeatureCollection | null> => {
+  // --- Stage management ---
+  const saveStages = useCallback(async (updatedStages: Stage[]) => {
+    setSavingStages(true);
     try {
-      const snap = await getDoc(doc(db, 'config', 'mapZones'));
+      const stagesMap: Record<string, { lat: number; lng: number; name: string; color: string }> = {};
+      for (const s of updatedStages) {
+        stagesMap[s.id] = { lat: s.lat, lng: s.lng, name: s.name, color: s.color };
+      }
+      await setDoc(doc(db, 'config', 'mapStages'), {
+        stages: stagesMap,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Failed to save stages:', err);
+    } finally {
+      setSavingStages(false);
+    }
+  }, []);
+
+  const loadStages = useCallback(async () => {
+    try {
+      const snap = await getDoc(doc(db, 'config', 'mapStages'));
       if (snap.exists()) {
         const data = snap.data();
+        if (data.stages) {
+          const loaded: Stage[] = Object.entries(data.stages).map(([id, val]: [string, any]) => ({
+            id,
+            name: val.name,
+            lat: val.lat,
+            lng: val.lng,
+            color: val.color,
+          }));
+          setStages(loaded);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load stages:', err);
+    }
+  }, []);
+
+  const addStage = useCallback(() => {
+    const map = mapRef.current;
+    const draw = drawRef.current;
+    if (!map) return;
+    setPlacingStage(true);
+    if (draw) {
+      try { map.removeControl(draw); } catch (_) {}
+    }
+    map.getCanvas().style.cursor = 'crosshair';
+    map.once('click', (e: mapboxgl.MapMouseEvent) => {
+      const id = 'stage-' + Date.now();
+      const newStage: Stage = {
+        id,
+        name: 'New Stage',
+        lat: e.lngLat.lat,
+        lng: e.lngLat.lng,
+        color: '#EF4444',
+      };
+      setStages(prev => {
+        const updated = [...prev, newStage];
+        saveStages(updated);
+        return updated;
+      });
+      map.getCanvas().style.cursor = '';
+      setPlacingStage(false);
+      if (draw) {
+        map.addControl(draw, 'top-right');
+      }
+    });
+  }, [saveStages]);
+
+  const updateStage = useCallback((id: string, field: keyof Stage, value: string) => {
+    setStages(prev => {
+      const updated = prev.map(s => s.id === id ? { ...s, [field]: value } : s);
+      saveStages(updated);
+      return updated;
+    });
+  }, [saveStages]);
+
+  const deleteStage = useCallback((id: string) => {
+    setStages(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      saveStages(updated);
+      return updated;
+    });
+  }, [saveStages]);
+
+  const loadFromFirestore = useCallback(async (): Promise<GeoJSON.FeatureCollection | null> => {
+    try {
+      console.log('[MapEditor] Loading from Firestore config/mapZones...');
+      const snap = await getDoc(doc(db, 'config', 'mapZones'));
+      console.log('[MapEditor] Firestore snap exists:', snap.exists());
+      if (snap.exists()) {
+        const data = snap.data();
+        console.log('[MapEditor] Firestore data keys:', Object.keys(data));
+        console.log('[MapEditor] updatedAt:', data.updatedAt, 'featureCount:', data.featureCount);
         if (data.geojson) {
-          return JSON.parse(data.geojson) as GeoJSON.FeatureCollection;
+          const parsed = JSON.parse(data.geojson) as GeoJSON.FeatureCollection;
+          console.log('[MapEditor] Parsed', parsed.features.length, 'features from Firestore');
+          return parsed;
         }
       }
     } catch (err) {
       console.error('Failed to load map zones:', err);
     }
+    console.warn('[MapEditor] Firestore load returned null — using defaults');
     return null;
   }, []);
 
@@ -372,10 +497,20 @@ export function MapEditorPage() {
     });
 
     map.on('load', async () => {
+      // Load stages
+      loadStages();
       // Try loading from Firestore first
       const firestoreData = await loadFromFirestore();
       const featuresToLoad = firestoreData ? firestoreData.features : features;
-      if (firestoreData) setLoadedFromFirestore(true);
+      if (firestoreData) {
+        setLoadedFromFirestore(true);
+        setLoadedFeatures(firestoreData.features);
+        console.log('[MapEditor] Loaded', firestoreData.features.length, 'features from Firestore');
+        console.log('[MapEditor] First feature coords:', JSON.stringify(firestoreData.features[0]?.geometry?.coordinates?.[0]?.[0] || firestoreData.features[0]?.geometry?.coordinates));
+      } else {
+        console.log('[MapEditor] Using hardcoded defaults');
+        setLoadedFeatures(features);
+      }
 
       // Add ALL features (both polygons and points) to Draw so they're all draggable
       for (const f of featuresToLoad) {
@@ -440,6 +575,45 @@ export function MapEditorPage() {
       mapRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Render stage markers on map
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    // Clear old stage markers
+    stageMarkersRef.current.forEach(m => m.remove());
+    stageMarkersRef.current = [];
+    for (const stage of stages) {
+      const el = document.createElement('div');
+      el.style.width = '32px';
+      el.style.height = '32px';
+      el.style.borderRadius = '6px';
+      el.style.backgroundColor = stage.color;
+      el.style.border = '3px solid white';
+      el.style.cursor = 'grab';
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.justifyContent = 'center';
+      el.style.fontSize = '16px';
+      el.innerHTML = '🎵';
+      el.title = stage.name;
+      const marker = new mapboxgl.Marker({ element: el, draggable: true })
+        .setLngLat([stage.lng, stage.lat])
+        .addTo(map);
+      marker.on('dragend', () => {
+        const lngLat = marker.getLngLat();
+        setStages(prev => {
+          const updated = prev.map(s =>
+            s.id === stage.id ? { ...s, lat: lngLat.lat, lng: lngLat.lng } : s
+          );
+          saveStages(updated);
+          return updated;
+        });
+      });
+      stageMarkersRef.current.push(marker);
+    }
+  }, [stages, saveStages]);
 
   // Render POI markers on map
   useEffect(() => {
@@ -535,6 +709,61 @@ export function MapEditorPage() {
             </div>
           </div>
         )}
+
+        {/* Stage Manager */}
+        <div className="border-t border-[#F5F5DC]/10">
+          <button
+            onClick={() => setStagesCollapsed(!stagesCollapsed)}
+            className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-bold text-[#F5F5DC]/80 hover:bg-white/5"
+          >
+            {stagesCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <Music className="h-4 w-4" />
+            Stages ({stages.length})
+            {savingStages && <Loader2 className="h-3 w-3 animate-spin ml-auto" />}
+          </button>
+          {!stagesCollapsed && (
+            <div className="px-3 pb-3 space-y-2">
+              {stages.map(stage => (
+                <div key={stage.id} className="bg-[#2E4031]/50 rounded-lg p-2 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={stage.color}
+                      onChange={e => updateStage(stage.id, 'color', e.target.value)}
+                      className="w-6 h-6 rounded border border-[#F5F5DC]/20 bg-transparent cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="text"
+                      value={stage.name}
+                      onChange={e => updateStage(stage.id, 'name', e.target.value)}
+                      className="flex-1 px-2 py-1 rounded bg-[#1C2B20] border border-[#F5F5DC]/10 text-[#F5F5DC] text-sm focus:outline-none focus:ring-1 focus:ring-[#6BBF59]/50"
+                    />
+                    <button
+                      onClick={() => deleteStage(stage.id)}
+                      className="text-red-400/60 hover:text-red-400 p-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-[#F5F5DC]/40 font-mono px-1">
+                    {stage.lat.toFixed(6)}, {stage.lng.toFixed(6)}
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={addStage}
+                disabled={placingStage}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-dashed border-[#F5F5DC]/20 text-[#F5F5DC]/60 text-sm hover:bg-white/5 hover:text-[#F5F5DC]/80 disabled:opacity-50"
+              >
+                {placingStage ? (
+                  <>Click map to place stage...</>
+                ) : (
+                  <><Plus className="h-3.5 w-3.5" /> Add Stage</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* POI Manager */}
         <POIManager
