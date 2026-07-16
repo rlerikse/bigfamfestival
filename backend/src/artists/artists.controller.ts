@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -30,10 +31,11 @@ export class ArtistsController {
 
   @Get()
   @Public()
-  @ApiOperation({ summary: 'Get all artists' })
-  @ApiResponse({ status: 200, description: 'Returns list of all artists' })
-  async findAll(): Promise<Artist[]> {
-    return this.artistsService.findAll();
+  @ApiOperation({ summary: 'Get all artists. Pass ?year=YYYY to filter by festival year (e.g. public app). Omit for all artists (e.g. admin).' })
+  @ApiResponse({ status: 200, description: 'Returns list of artists' })
+  async findAll(@Query('year') year?: string): Promise<Artist[]> {
+    const yearNum = year ? parseInt(year, 10) : undefined;
+    return this.artistsService.findAll(yearNum);
   }
 
   @Get(':id')
