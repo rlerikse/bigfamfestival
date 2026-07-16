@@ -145,8 +145,10 @@ const ForecastAndClock: React.FC = () => {
   const forecastDays = (weather.daily || []).slice(0, 5);
 
   const toggleForecast = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded(!expanded);
+    requestAnimationFrame(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpanded(prev => !prev);
+    });
   };
 
   // Check if doors are open: between 10am and 6:15am next day
@@ -214,8 +216,10 @@ const Countdown: React.FC<CountdownProps> = ({ targetDate, festivalPhase }) => {
   const forecastDays = (weather.daily || []).slice(0, 5);
 
   const toggleForecast = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded(!expanded);
+    requestAnimationFrame(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpanded(prev => !prev);
+    });
   };
 
   const weatherLine = (
