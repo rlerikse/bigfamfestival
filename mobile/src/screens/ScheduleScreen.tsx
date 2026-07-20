@@ -982,9 +982,10 @@ const ScheduleScreen = () => {
                 marginRight: 8, 
                 flexDirection: 'row', 
                 alignItems: 'center', 
+                justifyContent: 'center',
                 paddingHorizontal: 12, 
                 paddingVertical: 8, 
-                minWidth: 110,
+                flex: 1,
                 height: 36,
               }
             ]}
@@ -1016,6 +1017,7 @@ const ScheduleScreen = () => {
             placeholder="All Stages"
             allOptionValue="all"
             icon="location-outline"
+            dropdownMinWidth={200}
             style={{
               flex: 1,
               marginRight: 4,
