@@ -38,6 +38,8 @@ import TopNavBar from '../components/TopNavBar';
 import MultiSelectDropdown from '../components/MultiSelectDropdown';
 import { homeScreenStyles as filterStyles } from './HomeScreen.styles';
 import EventCard from '../components/EventCard';
+import HorizontalScheduleView from '../components/HorizontalScheduleView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
 import firestore, { collection, getDocs } from '../utils/firebaseCompat';
@@ -244,6 +246,10 @@ const ScheduleScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [filterState, dispatchFilter] = useReducer(filterReducer, initialFilterState);
   const { selectedDay, selectedStages, selectedGenres, showMySchedule } = filterState;
+  // View mode: vertical list (default/original) or Shambhala-style horizontal grid.
+  // Filters (day/stage/genre/my-schedule) are shared state above and apply to both views,
+  // so switching modes never resets or loses filter selections.
+  const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
   // Current time ticker for countdown badges
   const [now, setNow] = useState<number>(Date.now());
   // FlatList ref for programmatic scrolling to live events
@@ -254,6 +260,23 @@ const ScheduleScreen = () => {
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Restore the user's last-used view mode on mount so the toggle sticks across sessions.
+  useEffect(() => {
+    AsyncStorage.getItem('scheduleViewMode').then(saved => {
+      if (saved === 'horizontal' || saved === 'vertical') {
+        setViewMode(saved);
+      }
+    }).catch(() => { /* non-critical, default to vertical */ });
+  }, []);
+
+  const handleToggleViewMode = useCallback(() => {
+    setViewMode(prev => {
+      const next = prev === 'vertical' ? 'horizontal' : 'vertical';
+      AsyncStorage.setItem('scheduleViewMode', next).catch(() => { /* non-critical */ });
+      return next;
+    });
   }, []);
 
   // Helper function to check if user has staff privileges
@@ -923,7 +946,30 @@ const ScheduleScreen = () => {
             <MaterialCommunityIcons name="view-grid-outline" size={28} color={theme.text} />
           </TouchableOpacity>
           */}
-          
+
+          {/* View mode toggle: vertical list vs Shambhala-style horizontal grid (#120) */}
+          <TouchableOpacity
+            style={{
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.4)',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              marginRight: 8,
+              width: 36,
+              height: 36,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onPress={handleToggleViewMode}
+            accessibilityLabel={viewMode === 'vertical' ? 'Switch to horizontal schedule view' : 'Switch to vertical schedule view'}
+          >
+            <Ionicons
+              name={viewMode === 'vertical' ? 'swap-horizontal' : 'list'}
+              size={18}
+              color="#fff"
+            />
+          </TouchableOpacity>
+
           {/* My Schedule filter */}
           <TouchableOpacity
             style={[
@@ -1043,6 +1089,16 @@ const ScheduleScreen = () => {
             </TouchableOpacity>
           </View>
         ) : (
+          viewMode === 'horizontal' ? (
+            <HorizontalScheduleView
+              events={filteredEvents}
+              userSchedule={userSchedule}
+              onEventPress={handleEventPress}
+              onToggleSchedule={handleToggleSchedule}
+              currentTime={now}
+              selectedDay={selectedDay}
+            />
+          ) : (
           <FlatList
             ref={flatListRef}
             data={filteredEvents}
@@ -1104,6 +1160,7 @@ const ScheduleScreen = () => {
               />
             }
           />
+          )
         )}
       </View>
       </View>
