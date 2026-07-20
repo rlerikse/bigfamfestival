@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import OptimizedImage from './OptimizedImage';
 import { ScheduleEvent } from '../types/event';
 
 // ─── Layout constants ──────────────────────────────────────────────────────
@@ -71,6 +72,32 @@ function stageLogoSource(stage: string): ImageRequireSource | null {
   if (normalized === 'bayou') return require('../assets/images/bayou-logo-trans.png');
   if (normalized === 'the gallery' || normalized === 'gallery') return require('../assets/images/the-gallery-logo-trans.png');
   return null;
+}
+
+// Minimum block width (px) below which the thumbnail image is hidden to avoid
+// squishing short-set blocks into an unreadable sliver.
+const MIN_WIDTH_FOR_THUMBNAIL = 90;
+
+function formatTimeUntil(ev: ScheduleEvent, currentTime: number): string {
+  if (!ev.date || !ev.startTime) return '';
+  const startTs = new Date(`${ev.date}T${ev.startTime}`).getTime();
+  const diff = startTs - currentTime;
+  if (diff <= 0) return '';
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < hour) {
+    const mins = Math.ceil(diff / minute);
+    return `${mins}m`;
+  }
+  if (diff < day) {
+    const hrs = Math.floor(diff / hour);
+    const mins = Math.ceil((diff % hour) / minute);
+    return `${hrs}h${mins > 0 ? ` ${mins}m` : ''}`;
+  }
+  const days = Math.floor(diff / day);
+  const hrs = Math.floor((diff % day) / hour);
+  return `${days}d${hrs > 0 ? ` ${hrs}h` : ''}`;
 }
 
 const HorizontalScheduleView: React.FC<Props> = ({
@@ -249,6 +276,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
                       const left = (startMin - GRID_START_MINUTES) * PX_PER_MINUTE;
                       const width = Math.max((endMin - startMin) * PX_PER_MINUTE, 44);
                       const isInSchedule = Boolean(userSchedule[ev.id]);
+                      const timeUntil = formatTimeUntil(ev, currentTime);
+                      const showThumbnail = width >= MIN_WIDTH_FOR_THUMBNAIL;
                       return (
                         <TouchableOpacity
                           key={ev.id}
@@ -268,11 +297,38 @@ const HorizontalScheduleView: React.FC<Props> = ({
                           onLongPress={() => onToggleSchedule(ev)}
                           accessibilityLabel={`${ev.name}, ${ev.startTime} on ${stage}`}
                         >
-                          <Text style={styles.eventBlockTitle} numberOfLines={2}>{ev.name}</Text>
-                          <Text style={styles.eventBlockTime} numberOfLines={1}>{ev.startTime}</Text>
-                          {isInSchedule && (
-                            <Ionicons name="heart" size={12} color="#B87333" style={styles.eventBlockHeart} />
+                          <View style={styles.eventBlockRow}>
+                            {showThumbnail && (
+                              <OptimizedImage
+                                uri={ev.imageUrl}
+                                style={styles.eventBlockImage}
+                                containerStyle={styles.eventBlockImage}
+                                contentFit="cover"
+                                showLoadingIndicator={false}
+                                fallbackImage={require('../assets/images/logo.png')}
+                              />
+                            )}
+                            <View style={styles.eventBlockInfo}>
+                              <Text style={styles.eventBlockTitle} numberOfLines={2}>{ev.name}</Text>
+                              <Text style={styles.eventBlockTime} numberOfLines={1}>{stage} · {ev.startTime}</Text>
+                            </View>
+                          </View>
+                          {!!timeUntil && (
+                            <View style={styles.eventBlockTimeUntil} pointerEvents="none">
+                              <Text style={styles.eventBlockTimeUntilText} numberOfLines={1}>{timeUntil}</Text>
+                            </View>
                           )}
+                          <TouchableOpacity
+                            style={styles.eventBlockHeartTouchable}
+                            onPress={(e) => { e.stopPropagation(); onToggleSchedule(ev); }}
+                            accessibilityLabel={isInSchedule ? 'Remove from schedule' : 'Add to schedule'}
+                          >
+                            <Ionicons
+                              name={isInSchedule ? 'heart' : 'heart-outline'}
+                              size={14}
+                              color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.6)'}
+                            />
+                          </TouchableOpacity>
                         </TouchableOpacity>
                       );
                     })}
@@ -359,9 +415,23 @@ const styles = StyleSheet.create({
     bottom: 8,
     borderRadius: 12,
     padding: 6,
-    justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     overflow: 'hidden',
+  },
+  eventBlockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  eventBlockImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    marginRight: 6,
+  },
+  eventBlockInfo: {
+    flex: 1,
+    justifyContent: 'center',
   },
   eventBlockTitle: {
     color: '#fff',
@@ -373,10 +443,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '500',
   },
-  eventBlockHeart: {
+  eventBlockTimeUntil: {
     position: 'absolute',
     top: 4,
     right: 4,
+  },
+  eventBlockTimeUntilText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  eventBlockHeartTouchable: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    padding: 2,
   },
   emptyContainer: {
     flex: 1,

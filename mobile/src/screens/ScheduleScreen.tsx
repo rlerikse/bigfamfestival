@@ -982,9 +982,10 @@ const ScheduleScreen = () => {
                 marginRight: 8, 
                 flexDirection: 'row', 
                 alignItems: 'center', 
-                paddingHorizontal: 12, 
+                justifyContent: 'center',
+                paddingHorizontal: 6, 
                 paddingVertical: 8, 
-                minWidth: 110,
+                flex: 1,
                 height: 36,
               }
             ]}
@@ -995,15 +996,21 @@ const ScheduleScreen = () => {
               name={showMySchedule ? 'heart' : 'heart-outline'}
               size={16}
               color={showMySchedule ? '#B87333' : '#fff'}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 4 }}
             />
-            <Text style={[
-              {
-                fontSize: 14,
-                fontWeight: '500',
-                color: '#fff'
-              }
-            ]}>
+            <Text
+              style={[
+                {
+                  fontSize: 13,
+                  fontWeight: '500',
+                  color: '#fff',
+                  flexShrink: 1,
+                }
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               My Schedule
             </Text>
           </TouchableOpacity>
@@ -1016,6 +1023,7 @@ const ScheduleScreen = () => {
             placeholder="All Stages"
             allOptionValue="all"
             icon="location-outline"
+            dropdownMinWidth={200}
             style={{
               flex: 1,
               marginRight: 4,
