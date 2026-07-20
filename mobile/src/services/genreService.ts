@@ -31,7 +31,7 @@ class GenreService {
     try {
       // Process events with a timeout — if Firestore genre lookups hang
       // (e.g., client-side Firestore rules block reads), return events without genres
-      const GENRE_TIMEOUT_MS = 5000;
+      const GENRE_TIMEOUT_MS = 10000; // 10s — generous for cold load; cache handles repeat loads
       const genrePromise = Promise.all(
         events.map(event => this.populateSingleEventGenres(event))
       );
@@ -60,9 +60,9 @@ class GenreService {
     try {
       const allGenres: string[] = [];
 
-      // Fetch genres for each artist in parallel
-      const artistGenresPromises = event.artists.map(artistId => 
-        this.getArtistGenres(artistId)
+      // Fetch genres for each artist in parallel (use cache to avoid N+1 Firestore reads)
+      const artistGenresPromises = event.artists.map(artistId =>
+        this.getArtistGenresWithCache(artistId)
       );
 
       const artistGenresArrays = await Promise.all(artistGenresPromises);
