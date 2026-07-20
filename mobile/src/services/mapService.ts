@@ -7,7 +7,7 @@ import NetInfo from '@react-native-community/netinfo';
 // POI interface (Point Of Interest)
 export interface POI {
   id: string;
-  type: 'stage' | 'vendor' | 'facility' | 'campsite' | 'friend_campsite' | 'friend_location';
+  type: 'stage' | 'food_vendor' | 'shop_and_service' | 'beverage_vendor' | 'staff_and_medical' | 'friend_campsite' | 'friend_location';
   name: string;
   location: {
     lat: number;
@@ -206,39 +206,39 @@ const getMockPOIs = async (): Promise<POI[]> => {
       description: 'South Field, by the forest',
     },
     {
-      id: 'vendor-1',
-      type: 'vendor',
+      id: 'food-vendor-1',
+      type: 'food_vendor',
       name: 'Food Truck Alley',
       location: { lat: baseLat + 0.001, long: baseLong - 0.001 },
-      description: 'Various food options and drinks',
+      description: 'Various food options',
     },
     {
-      id: 'vendor-2',
-      type: 'vendor',
+      id: 'beverage-vendor-1',
+      type: 'beverage_vendor',
+      name: 'Beverage Bar',
+      location: { lat: baseLat + 0.0018, long: baseLong - 0.0015 },
+      description: 'Drinks and beverages',
+    },
+    {
+      id: 'shop-1',
+      type: 'shop_and_service',
       name: 'Craft Marketplace',
       location: { lat: baseLat - 0.0015, long: baseLong - 0.002 },
       description: 'Local crafts and festival merchandise',
     },
     {
-      id: 'facility-1',
-      type: 'facility',
+      id: 'staff-1',
+      type: 'staff_and_medical',
       name: 'First Aid Tent',
       location: { lat: baseLat + 0.0005, long: baseLong + 0.002 },
       description: 'Medical assistance available 24/7',
     },
     {
-      id: 'facility-2',
-      type: 'facility',
-      name: 'Water Station',
+      id: 'staff-2',
+      type: 'staff_and_medical',
+      name: 'Staff HQ',
       location: { lat: baseLat - 0.002, long: baseLong + 0.0015 },
-      description: 'Free water refill station',
-    },
-    {
-      id: 'facility-3',
-      type: 'facility',
-      name: 'Restrooms',
-      location: { lat: baseLat + 0.003, long: baseLong - 0.0025 },
-      description: 'Clean facilities with hand washing stations',
+      description: 'Festival staff and information',
     }
   ];
 };
