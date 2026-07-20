@@ -328,6 +328,11 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               size={14}
                               color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.6)'}
                             />
+                            {showThumbnail && (
+                              <Text style={styles.eventBlockHeartLabel} numberOfLines={1}>
+                                {isInSchedule ? 'Added' : 'Add'}
+                              </Text>
+                            )}
                           </TouchableOpacity>
                         </TouchableOpacity>
                       );
@@ -458,6 +463,14 @@ const styles = StyleSheet.create({
     bottom: 4,
     right: 4,
     padding: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eventBlockHeartLabel: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 9,
+    fontWeight: '600',
+    marginLeft: 3,
   },
   emptyContainer: {
     flex: 1,
