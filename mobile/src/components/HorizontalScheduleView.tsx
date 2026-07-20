@@ -19,8 +19,10 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ImageRequireSource,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image as ExpoImage } from 'expo-image';
 import { ScheduleEvent } from '../types/event';
 
 // ─── Layout constants ──────────────────────────────────────────────────────
@@ -59,6 +61,16 @@ const STAGE_COLORS = [
 
 function stageColor(stage: string, index: number): string {
   return STAGE_COLORS[index % STAGE_COLORS.length];
+}
+
+// Stage logo lookup — falls back to plain text label when no dedicated
+// artwork exists for a stage (keeps this future-proof for new/temp stages).
+function stageLogoSource(stage: string): ImageRequireSource | null {
+  const normalized = stage.trim().toLowerCase();
+  if (normalized === 'apogee') return require('../assets/images/apogee-logo-trans.png');
+  if (normalized === 'bayou') return require('../assets/images/bayou-logo-trans.png');
+  if (normalized === 'the gallery' || normalized === 'gallery') return require('../assets/images/the-gallery-logo-trans.png');
+  return null;
 }
 
 const HorizontalScheduleView: React.FC<Props> = ({
@@ -187,11 +199,23 @@ const HorizontalScheduleView: React.FC<Props> = ({
         <View style={{ flexDirection: 'row' }}>
           {/* Sticky stage label column */}
           <View style={styles.stageLabelColumn}>
-            {stages.map((stage, idx) => (
-              <View key={stage} style={[styles.stageLabelCell, { height: ROW_HEIGHT, borderLeftColor: stageColor(stage, idx), borderLeftWidth: 4 }]}>
-                <Text style={styles.stageLabelText} numberOfLines={2}>{stage.replace(/^The /i, '')}</Text>
-              </View>
-            ))}
+            {stages.map((stage, idx) => {
+              const logoSource = stageLogoSource(stage);
+              return (
+                <View key={stage} style={[styles.stageLabelCell, { height: ROW_HEIGHT, borderLeftColor: stageColor(stage, idx), borderLeftWidth: 4 }]}>
+                  {logoSource ? (
+                    <ExpoImage
+                      source={logoSource}
+                      style={styles.stageLabelLogo}
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
+                    />
+                  ) : (
+                    <Text style={styles.stageLabelText} numberOfLines={2}>{stage.replace(/^The /i, '')}</Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
 
           {/* Horizontally scrollable grid of event blocks, one row per stage */}
@@ -296,8 +320,13 @@ const styles = StyleSheet.create({
   stageLabelCell: {
     width: STAGE_LABEL_WIDTH,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 8,
-    backgroundColor: 'rgba(20, 34, 28, 0.9)',
+    backgroundColor: 'transparent',
+  },
+  stageLabelLogo: {
+    width: STAGE_LABEL_WIDTH - 16,
+    height: ROW_HEIGHT - 24,
   },
   stageLabelText: {
     color: '#F5F5DC',

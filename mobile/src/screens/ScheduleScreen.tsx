@@ -1016,7 +1016,7 @@ const ScheduleScreen = () => {
             placeholder="All Stages"
             allOptionValue="all"
             style={{
-              minWidth: 110,
+              flex: 1,
               marginRight: 4,
               height: 36,
             }}
