@@ -257,8 +257,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
                             {
                               left,
                               width,
-                              backgroundColor: stageColor(stage, rowIdx),
-                              borderColor: isInSchedule ? '#F5F5DC' : 'rgba(0,0,0,0.25)',
+                              borderLeftColor: stageColor(stage, rowIdx),
+                              borderLeftWidth: 4,
+                              borderColor: isInSchedule ? '#B87333' : 'rgba(255, 255, 255, 0.2)',
                               borderWidth: isInSchedule ? 2 : 1,
                             },
                           ]}
@@ -270,7 +271,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
                           <Text style={styles.eventBlockTitle} numberOfLines={2}>{ev.name}</Text>
                           <Text style={styles.eventBlockTime} numberOfLines={1}>{ev.startTime}</Text>
                           {isInSchedule && (
-                            <Ionicons name="heart" size={12} color="#F5F5DC" style={styles.eventBlockHeart} />
+                            <Ionicons name="heart" size={12} color="#B87333" style={styles.eventBlockHeart} />
                           )}
                         </TouchableOpacity>
                       );
@@ -356,19 +357,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     bottom: 8,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 6,
     justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    overflow: 'hidden',
   },
   eventBlockTitle: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: 'bold',
   },
   eventBlockTime: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   eventBlockHeart: {
     position: 'absolute',
