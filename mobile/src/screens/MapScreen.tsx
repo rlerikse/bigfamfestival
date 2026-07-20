@@ -130,6 +130,7 @@ export default function MapScreen() {
   const [selectedPOI, setSelectedPOI] = useState<(MapPOI | StageLocation) | null>(null);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
+  const [currentBearing, setCurrentBearing] = useState(0);
 
   // All categories visible by default
   const [visibleCategories, setVisibleCategories] = useState<Set<POICategory>>(
@@ -239,6 +240,12 @@ export default function MapScreen() {
 
   const stagesVisible = visibleCategories.has('stage');
 
+  // Round to nearest degree for the compass label; treat near-0/360 as "N"
+  const compassHeadingLabel = (() => {
+    const normalized = ((currentBearing % 360) + 360) % 360;
+    return `${Math.round(normalized)}°`;
+  })();
+
   const filteredPOIs = pois.filter(poi => {
     const cat = resolveCategory(poi.category);
     return visibleCategories.has(cat);
@@ -270,6 +277,9 @@ export default function MapScreen() {
         onCameraChanged={(state) => {
           if (state?.properties?.zoom != null) {
             setCurrentZoom(state.properties.zoom);
+          }
+          if (state?.properties?.heading != null) {
+            setCurrentBearing(state.properties.heading);
           }
         }}
       >
@@ -381,14 +391,27 @@ export default function MapScreen() {
         <TopNavBar showSearchBar={false} whiteIcons />
       </View>
 
-      {/* Map Controls — right side */}
+      {/* Map Controls — right side (filters, compass, zoom, locate — all in-line) */}
       <View style={[styles.mapControls, { top: insets.top + 110 }]}>
+        <TouchableOpacity
+          style={styles.controlButton}
+          onPress={() => setLegendOpen(v => !v)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name={legendOpen ? 'layers' : 'layers-outline'} size={22} color="#F5F5DC" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.controlButton}
           onPress={() => cameraRef.current?.setCamera({ heading: 0, animationDuration: 300 })}
           activeOpacity={0.7}
+          accessibilityLabel={`Compass, heading ${compassHeadingLabel}. Tap to reset to north.`}
         >
-          <Ionicons name="compass-outline" size={24} color="#F5F5DC" />
+          <Ionicons
+            name="compass"
+            size={24}
+            color="#F5F5DC"
+            style={{ transform: [{ rotate: `${-currentBearing}deg` }] }}
+          />
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={handleZoomIn} activeOpacity={0.7}>
           <Ionicons name="add" size={24} color="#F5F5DC" />
@@ -400,15 +423,6 @@ export default function MapScreen() {
           <Ionicons name="navigate" size={22} color="#F5F5DC" />
         </TouchableOpacity>
       </View>
-
-      {/* Filter / Legend toggle button */}
-      <TouchableOpacity
-        style={[styles.legendToggleButton, { top: insets.top + 110 }]}
-        onPress={() => setLegendOpen(v => !v)}
-        activeOpacity={0.85}
-      >
-        <Ionicons name={legendOpen ? 'layers' : 'layers-outline'} size={22} color="#F5F5DC" />
-      </TouchableOpacity>
 
       {/* Filter / Legend panel */}
       {legendOpen && (
@@ -539,30 +553,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
 
-  // ── Legend toggle ─────────────────────────────────────────────────────────
-  legendToggleButton: {
-    position: 'absolute',
-    left: 12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(28, 43, 32, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(245, 245, 220, 0.2)',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-
   // ── Legend panel ──────────────────────────────────────────────────────────
   legendPanel: {
     position: 'absolute',
-    left: 12,
+    right: 12,
     width: 210,
     backgroundColor: 'rgba(20, 34, 24, 0.95)',
     borderRadius: 14,
