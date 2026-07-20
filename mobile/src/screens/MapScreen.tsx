@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { firestore } from '../config/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import { useNavigation } from '@react-navigation/native';
+import { getFriendLocations, getFriendCampsites, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
 
 const FESTIVAL_CENTER: [number, number] = [-84.2575, 42.0577];
 const DEFAULT_ZOOM = 16;
@@ -123,6 +125,7 @@ interface StageLocation {
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [zones, setZones] = useState<MapZone[]>([]);
   const [pois, setPois] = useState<MapPOI[]>([]);
   const [stages, setStages] = useState<StageLocation[]>([]);
@@ -131,6 +134,12 @@ export default function MapScreen() {
   const cameraRef = useRef<Mapbox.Camera>(null);
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
   const [currentBearing, setCurrentBearing] = useState(0);
+
+  // Friends — live locations + campsites (privacy: backend only returns
+  // entries for accepted friends who have opted in to sharing)
+  const [friendLocations, setFriendLocations] = useState<FriendLocation[]>([]);
+  const [friendCampsites, setFriendCampsites] = useState<FriendCampsite[]>([]);
+  const [selectedFriend, setSelectedFriend] = useState<(FriendLocation | FriendCampsite) | null>(null);
 
   // All categories visible by default
   const [visibleCategories, setVisibleCategories] = useState<Set<POICategory>>(
@@ -141,6 +150,28 @@ export default function MapScreen() {
   useEffect(() => {
     loadMapData();
   }, []);
+
+  // Load friend campsites + live locations. Locations are refreshed on an
+  // interval since friends' positions can change; campsites are more static.
+  const loadFriendData = useCallback(async () => {
+    try {
+      const [locations, campsites] = await Promise.all([
+        getFriendLocations(),
+        getFriendCampsites(),
+      ]);
+      setFriendLocations(locations);
+      setFriendCampsites(campsites);
+    } catch (err) {
+      // Non-fatal: friends layer failing shouldn't block the rest of the map
+      console.error('[MapScreen] Failed to load friend locations/campsites:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadFriendData();
+    const interval = setInterval(loadFriendData, 30000); // refresh every 30s
+    return () => clearInterval(interval);
+  }, [loadFriendData]);
 
   const loadMapData = async () => {
     try {
@@ -250,6 +281,33 @@ export default function MapScreen() {
     const cat = resolveCategory(poi.category);
     return visibleCategories.has(cat);
   });
+
+  // Merge friend markers: prefer live location over campsite when both exist
+  // for the same friend, so we don't render two overlapping pins.
+  const friendMarkers: Array<(FriendLocation | FriendCampsite) & { isLive: boolean }> = (() => {
+    const liveIds = new Set(friendLocations.map(f => f.userId));
+    const live = friendLocations.map(f => ({ ...f, isLive: true }));
+    const campsitesOnly = friendCampsites
+      .filter(f => !liveIds.has(f.userId))
+      .map(f => ({ ...f, isLive: false }));
+    return [...live, ...campsitesOnly];
+  })();
+
+  const handleOpenFriendsList = useCallback(() => {
+    (navigation as unknown as { navigate: (name: string, params?: unknown) => void }).navigate('Friends', {
+      onSelectFriend: (friend: FriendEntry) => {
+        const match = friendMarkers.find(f => f.userId === friend.userId);
+        if (match) {
+          cameraRef.current?.setCamera({
+            centerCoordinate: [match.lng, match.lat],
+            zoomLevel: Math.max(currentZoom, 17),
+            animationDuration: 700,
+          });
+          setSelectedFriend(match);
+        }
+      },
+    });
+  }, [navigation, friendMarkers, currentZoom]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -384,6 +442,27 @@ export default function MapScreen() {
             </Mapbox.PointAnnotation>
           );
         })}
+
+        {/* Friend markers — accepted friends only, opted-in to location/campsite sharing (per backend privacy rules) */}
+        {friendMarkers.map(friend => (
+          <Mapbox.PointAnnotation
+            key={`friend-${friend.userId}`}
+            id={`friend-${friend.userId}`}
+            coordinate={[friend.lng, friend.lat]}
+            onSelected={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
+          >
+            <View style={[styles.friendMarker, friend.isLive && styles.friendMarkerLive]}>
+              {friend.profilePictureUrl ? (
+                <Text style={styles.friendMarkerInitial}>👤</Text>
+              ) : (
+                <Text style={styles.friendMarkerInitial}>
+                  {friend.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
+                </Text>
+              )}
+            </View>
+            <Mapbox.Callout title={`${friend.name}${friend.isLive ? ' • Live' : ' • Campsite'}`} />
+          </Mapbox.PointAnnotation>
+        ))}
       </Mapbox.MapView>
 
       {/* Top NavBar */}
@@ -421,6 +500,9 @@ export default function MapScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={handleCenterOnUser} activeOpacity={0.7}>
           <Ionicons name="navigate" size={22} color="#F5F5DC" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.controlButton} onPress={handleOpenFriendsList} activeOpacity={0.7}>
+          <Ionicons name="person" size={22} color="#F5F5DC" />
         </TouchableOpacity>
       </View>
 
@@ -528,6 +610,34 @@ const styles = StyleSheet.create({
   },
   staffMarkerEmojiLarge: {
     fontSize: 18,
+  },
+
+  // ── Friend markers ───────────────────────────────────────────────────
+  friendMarker: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#3B82F6',
+    borderWidth: 3,
+    borderColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  friendMarkerLive: {
+    borderColor: '#6BBF59',
+    shadowColor: '#6BBF59',
+    shadowOpacity: 0.7,
+    shadowRadius: 6,
+  },
+  friendMarkerInitial: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
 
   // ── Map Controls ──────────────────────────────────────────────────────────
