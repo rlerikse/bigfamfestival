@@ -76,10 +76,10 @@ export const POI_CATEGORIES: Record<POICategory, CategoryConfig> = {
 function resolveCategory(raw: string): POICategory {
   const s = (raw ?? '').toLowerCase().trim();
   if (s === 'stage' || s === 'stages') return 'stage';
-  if (s === 'food' || s === 'food vendor' || s === 'food vendors') return 'food';
-  if (s === 'shop' || s === 'shops' || s === 'services' || s === 'shops & services') return 'shop';
-  if (s === 'beverage' || s === 'beverages' || s === 'beverage vendor' || s === 'beverage vendors') return 'beverage';
-  if (s === 'staff' || s === 'medical' || s === 'staff & medical' || s === 'first aid') return 'staff';
+  if (s === 'food' || s === 'food vendor' || s === 'food vendors' || s === 'food_vendor') return 'food';
+  if (s === 'shop' || s === 'shops' || s === 'services' || s === 'shops & services' || s === 'shop_and_service') return 'shop';
+  if (s === 'beverage' || s === 'beverages' || s === 'beverage vendor' || s === 'beverage vendors' || s === 'beverage_vendor') return 'beverage';
+  if (s === 'staff' || s === 'medical' || s === 'staff & medical' || s === 'first aid' || s === 'staff_and_medical') return 'staff';
   return 'food'; // safe default
 }
 
