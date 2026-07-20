@@ -154,6 +154,7 @@ export default function MapScreen() {
   // Load friend campsites + live locations. Locations are refreshed on an
   // interval since friends' positions can change; campsites are more static.
   const loadFriendData = useCallback(async () => {
+    console.log('[Map] Loading friend locations/campsites...');
     try {
       const [locations, campsites] = await Promise.all([
         getFriendLocations(),
@@ -161,6 +162,9 @@ export default function MapScreen() {
       ]);
       setFriendLocations(locations);
       setFriendCampsites(campsites);
+      console.log(
+        `[Map] Loaded ${locations.length} live friend location(s), ${campsites.length} friend campsite(s)`
+      );
     } catch (err) {
       // Non-fatal: friends layer failing shouldn't block the rest of the map
       console.error('[MapScreen] Failed to load friend locations/campsites:', err);
@@ -293,17 +297,31 @@ export default function MapScreen() {
     return [...live, ...campsitesOnly];
   })();
 
+  useEffect(() => {
+    if (friendMarkers.length > 0) {
+      friendMarkers.forEach(friend => {
+        console.log(
+          `[Map] Rendering friend marker for ${friend.name} (${friend.isLive ? 'live' : 'campsite'})`
+        );
+      });
+    }
+  }, [friendMarkers]);
+
   const handleOpenFriendsList = useCallback(() => {
+    console.log('[Map] Opening friend list...');
     (navigation as unknown as { navigate: (name: string, params?: unknown) => void }).navigate('Friends', {
       onSelectFriend: (friend: FriendEntry) => {
         const match = friendMarkers.find(f => f.userId === friend.userId);
         if (match) {
+          console.log(`[Map] Rendering friend marker for ${friend.name} — centering camera`);
           cameraRef.current?.setCamera({
             centerCoordinate: [match.lng, match.lat],
             zoomLevel: Math.max(currentZoom, 17),
             animationDuration: 700,
           });
           setSelectedFriend(match);
+        } else {
+          console.log(`[Map] No marker found for selected friend ${friend.name} (no location/campsite data)`);
         }
       },
     });
