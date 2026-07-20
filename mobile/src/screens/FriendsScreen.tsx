@@ -64,6 +64,7 @@ const FriendsScreen: React.FC = () => {
   const [pendingRequestIds, setPendingRequestIds] = useState<Set<string>>(new Set());
 
   const loadAll = useCallback(async () => {
+    console.log('[Friends UI] Loading friend list...');
     setLoading(true);
     try {
       const [friendsRes, incomingRes, outgoingRes] = await Promise.all([
@@ -74,6 +75,9 @@ const FriendsScreen: React.FC = () => {
       setFriends(friendsRes);
       setIncoming(incomingRes);
       setOutgoing(outgoingRes);
+      console.log(
+        `[Friends UI] Loaded ${friendsRes.length} friend(s), ${incomingRes.length} incoming request(s), ${outgoingRes.length} outgoing request(s)`
+      );
     } catch (err) {
       console.error('[FriendsScreen] Failed to load friends data', err);
     } finally {
@@ -103,9 +107,11 @@ const FriendsScreen: React.FC = () => {
     }
     setSearching(true);
     const t = setTimeout(async () => {
+      console.log(`[Friends UI] Searching users for "${searchQuery.trim()}"...`);
       try {
         const results = await searchUsers(searchQuery);
         if (!cancelled) setSearchResults(results);
+        console.log(`[Friends UI] Search returned ${results.length} result(s)`);
       } catch (err) {
         console.error('[FriendsScreen] Search failed', err);
         if (!cancelled) setSearchResults([]);
@@ -120,9 +126,11 @@ const FriendsScreen: React.FC = () => {
   }, [searchQuery]);
 
   const handleSendRequest = useCallback(async (userId: string) => {
+    console.log(`[Friends UI] Sending friend request to user ${userId}...`);
     setPendingRequestIds(prev => new Set(prev).add(userId));
     try {
       await sendFriendRequest(userId);
+      console.log(`[Friends UI] Friend request sent to user ${userId}`);
       const outgoingRes = await getOutgoingRequests();
       setOutgoing(outgoingRes);
     } catch (err) {
@@ -138,8 +146,10 @@ const FriendsScreen: React.FC = () => {
   }, []);
 
   const handleAccept = useCallback(async (requestId: string) => {
+    console.log(`[Friends UI] Accepting friend request ${requestId}...`);
     try {
       await acceptFriendRequest(requestId);
+      console.log(`[Friends UI] Accepted friend request ${requestId}`);
       await loadAll();
     } catch (err) {
       console.error('[FriendsScreen] Failed to accept request', err);
@@ -148,8 +158,10 @@ const FriendsScreen: React.FC = () => {
   }, [loadAll]);
 
   const handleDecline = useCallback(async (requestId: string) => {
+    console.log(`[Friends UI] Declining friend request ${requestId}...`);
     try {
       await declineFriendRequest(requestId);
+      console.log(`[Friends UI] Declined friend request ${requestId}`);
       setIncoming(prev => prev.filter(r => r.id !== requestId));
     } catch (err) {
       console.error('[FriendsScreen] Failed to decline request', err);
@@ -158,8 +170,10 @@ const FriendsScreen: React.FC = () => {
   }, []);
 
   const handleCancelOutgoing = useCallback(async (requestId: string) => {
+    console.log(`[Friends UI] Cancelling outgoing request ${requestId}...`);
     try {
       await cancelFriendRequest(requestId);
+      console.log(`[Friends UI] Cancelled outgoing request ${requestId}`);
       setOutgoing(prev => prev.filter(r => r.id !== requestId));
     } catch (err) {
       console.error('[FriendsScreen] Failed to cancel request', err);
@@ -177,8 +191,10 @@ const FriendsScreen: React.FC = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
+            console.log(`[Friends UI] Removing friend ${friend.name} (${friend.userId})...`);
             try {
               await removeFriend(friend.userId);
+              console.log(`[Friends UI] Removed friend ${friend.name}`);
               setFriends(prev => prev.filter(f => f.userId !== friend.userId));
             } catch (err) {
               console.error('[FriendsScreen] Failed to remove friend', err);
@@ -192,6 +208,7 @@ const FriendsScreen: React.FC = () => {
 
   const handleFriendPress = useCallback((friend: FriendEntry) => {
     if (onSelectFriend) {
+      console.log(`[Friends UI] Selected friend ${friend.name} — routing back to map`);
       onSelectFriend(friend);
       navigation.goBack();
     }
