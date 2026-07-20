@@ -22,6 +22,8 @@ import { AdminEventEditScreen } from '../screens/admin/AdminEventEditScreen';
 import { AdminShiftsScreen } from '../screens/admin/AdminShiftsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import FriendsScreen from '../screens/FriendsScreen';
+import type { FriendEntry } from '../services/friendService';
 import DebugScreen from '../screens/DebugScreen';
 import GrassBottomTabBar from '../components/GrassBottomTabBar';
 import DayNightCycle from '../components/DayNightCycle';
@@ -41,6 +43,7 @@ export type RootStackParamList = {
   AdminEvents: undefined;
   AdminEventEdit: { eventId?: string };
   AdminShifts: undefined;
+  Friends: { onSelectFriend?: (friend: FriendEntry) => void } | undefined;
 };
 
 export type AuthStackParamList = {
@@ -312,6 +315,15 @@ export default function Navigation() {
               headerShown: false,
               presentation: 'fullScreenModal',
               contentStyle: { backgroundColor },
+            }}
+          />
+          <Stack.Screen
+            name="Friends"
+            component={FriendsScreen}
+            options={{
+              headerShown: false,
+              presentation: 'modal',
+              contentStyle: { backgroundColor: '#14221C' },
             }}
           />
         </>
