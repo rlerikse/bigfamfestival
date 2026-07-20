@@ -16,17 +16,31 @@ export interface POI {
 }
 
 const POI_CATEGORIES = [
-  'stage', 'food', 'water', 'bathrooms', 'medical', 'vendors', 'info', 'parking', 'shuttle'
+  'stage', 'food_vendor', 'beverage_vendor', 'shop_and_service', 'staff_and_medical'
 ] as const;
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  stage: '🎵', food: '🍔', water: '💧', bathrooms: '🚻',
-  medical: '🏥', vendors: '🛒', info: 'ℹ️', parking: '🅿️', shuttle: '🚌',
+  stage: '🎵',
+  food_vendor: '🍔',
+  beverage_vendor: '🍺',
+  shop_and_service: '🛒',
+  staff_and_medical: '🏥',
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  stage: 'Stage',
+  food_vendor: 'Food Vendor',
+  beverage_vendor: 'Beverage Vendor',
+  shop_and_service: 'Shop & Service',
+  staff_and_medical: 'Staff & Medical',
 };
 
 const DEFAULT_COLORS: Record<string, string> = {
-  stage: '#EF4444', food: '#F59E0B', water: '#3B82F6', bathrooms: '#8B5CF6',
-  medical: '#DC2626', vendors: '#F59E0B', info: '#6BBF59', parking: '#6B7280', shuttle: '#10B981',
+  stage: '#EF4444',
+  food_vendor: '#F59E0B',
+  beverage_vendor: '#3B82F6',
+  shop_and_service: '#8B5CF6',
+  staff_and_medical: '#DC2626',
 };
 
 interface POIManagerProps {
@@ -42,7 +56,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '', category: 'info', color: '#6BBF59', icon: 'ℹ️',
+    name: '', category: 'stage', color: '#EF4444', icon: '🎵',
     lat: 0, lng: 0, description: '', vendorId: '',
   });
   const [pickingLocation, setPickingLocation] = useState(false);
@@ -61,7 +75,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   useEffect(() => { fetchPOIs(); }, [fetchPOIs]);
 
   const resetForm = () => {
-    setFormData({ name: '', category: 'info', color: '#6BBF59', icon: 'ℹ️', lat: 0, lng: 0, description: '', vendorId: '' });
+    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '' });
     setEditingId(null);
     setShowForm(false);
     setPickingLocation(false);
@@ -172,7 +186,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
               }}
               className="flex-1 px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none"
             >
-              {POI_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_EMOJI[c]} {c}</option>)}
+              {POI_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_EMOJI[c]} {CATEGORY_LABEL[c]}</option>)}
             </select>
             <input
               type="color" value={formData.color}
