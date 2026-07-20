@@ -1015,6 +1015,7 @@ const ScheduleScreen = () => {
             onSelectionChange={handleStagesChange}
             placeholder="All Stages"
             allOptionValue="all"
+            icon="location-outline"
             style={{
               flex: 1,
               marginRight: 4,
@@ -1029,6 +1030,7 @@ const ScheduleScreen = () => {
             placeholder="All Genres"
             allOptionValue="all"
             dropdownMinWidth={200}
+            icon="musical-notes-outline"
             style={{
               flex: 1,
               marginRight: 4,
