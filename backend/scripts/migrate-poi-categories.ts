@@ -29,6 +29,7 @@ const CATEGORY_MAP: Record<string, string> = {
 
   // Old admin POI categories
   food: 'food_vendor',
+  beverage: 'beverage_vendor',
   water: 'staff_and_medical',
   bathrooms: 'staff_and_medical',
   medical: 'staff_and_medical',
