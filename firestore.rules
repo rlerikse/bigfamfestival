@@ -3,8 +3,19 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Users collection
+    // TODO: follow-up ticket — `allow read, write: if true` is overly permissive;
+    // exposes location-sharing prefs (shareMyCampsite, shareMyLocation) and PII
+    // to unauthenticated clients. Should be tightened to owner-write + auth-read
+    // at minimum. Tracked separately — out of scope for PR #133.
     match /users/{userId} {
       allow read, write: if true;
+
+      // Friends subcollection: owner read only.
+      // Write is backend-only (service account) — triggered on friend request accept.
+      match /friends/{friendId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false; // backend (service account) only
+      }
     }
 
     // Artists collection (public read)
@@ -34,6 +45,22 @@ service cloud.firestore {
     // Map POIs (public read)
     match /mapPOIs/{document} {
       allow read: if true;
+    }
+
+    // Campsites: owner write only; reads via backend API only.
+    // Friends read campsites through GET /friends/campsites (backend enforces
+    // opt-in check), never directly from Firestore.
+    match /campsites/{userId} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // User live locations: owner write only; reads via backend API only.
+    // Friends read locations through GET /friends/locations (backend enforces
+    // opt-in + friend check), never directly from Firestore.
+    match /userLocations/{userId} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
     }
 
     // Default: authenticated users can read/write everything else
