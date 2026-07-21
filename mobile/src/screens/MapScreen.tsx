@@ -143,6 +143,10 @@ export default function MapScreen() {
   // ── Routing (walking directions to a POI/friend) ──────────────────────────
   const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
   const [routeLabel, setRouteLabel] = useState<string | null>(null);
+  // When routing to a friend (who moves), track their userId + label so we can
+  // silently re-draw the route as their position updates. null = no active
+  // route or a static POI route (POIs don't move, so no live re-route needed).
+  const routedFriendRef = useRef<{ userId: string; label: string } | null>(null);
   const [routing, setRouting] = useState(false);
   // Always-current friend markers, so the navigation callback never uses a
   // stale snapshot (functions passed via nav params capture their closure).
@@ -207,9 +211,13 @@ export default function MapScreen() {
 
   useEffect(() => {
     loadFriendData();
-    const interval = setInterval(loadFriendData, 30000); // refresh every 30s
+    // Poll faster (8s) while actively routing to a friend so the line tracks
+    // them; otherwise 30s is plenty.
+    const activeFriendRoute = !!activeRoute && !!routedFriendRef.current;
+    const intervalMs = activeFriendRoute ? 8000 : 30000;
+    const interval = setInterval(loadFriendData, intervalMs);
     return () => clearInterval(interval);
-  }, [loadFriendData]);
+  }, [loadFriendData, activeRoute]);
 
   const loadMapData = async () => {
     try {
@@ -323,10 +331,12 @@ export default function MapScreen() {
   const clearRoute = useCallback(() => {
     setActiveRoute(null);
     setRouteLabel(null);
+    routedFriendRef.current = null;
   }, []);
 
   /** Fetch + draw a walking route from the user to a destination pin. */
-  const routeToDestination = useCallback(async (dest: LngLat, label: string) => {
+  const routeToDestination = useCallback(async (dest: LngLat, label: string, opts?: { fitCamera?: boolean }) => {
+    const fitCamera = opts?.fitCamera !== false;
     if (routing) return;
     setRouting(true);
     try {
@@ -345,13 +355,33 @@ export default function MapScreen() {
       }
       setActiveRoute(route);
       setRouteLabel(`${label} • ${formatRouteSummary(route)}`);
-      // Fit the camera to the whole route so both ends are visible.
-      const b = routeBounds(route);
-      cameraRef.current?.fitBounds(b.ne, b.sw, 90, 700);
+      // Fit the camera to the whole route so both ends are visible — but only on
+      // the initial draw, not on live re-routes (would yank the view around).
+      if (fitCamera) {
+        const b = routeBounds(route);
+        cameraRef.current?.fitBounds(b.ne, b.sw, 90, 700);
+      }
     } finally {
       setRouting(false);
     }
   }, [routing, getUserCoords]);
+
+  // Silent live re-route: re-fetch + redraw the walking line to a friend's new
+  // position without touching the camera or showing alerts. Used while a
+  // friend-route is active and the friend moves. Bypasses the `routing` guard
+  // so a periodic refresh isn't blocked; keeps the last good line on failure.
+  const reRouteToCoords = useCallback(async (dest: LngLat, label: string) => {
+    try {
+      const origin = await getUserCoords();
+      if (!origin) return;
+      const route = await getWalkingRoute(origin, dest);
+      if (!route) return; // keep the previous line rather than clearing
+      setActiveRoute(route);
+      setRouteLabel(`${label} • ${formatRouteSummary(route)}`);
+    } catch {
+      /* keep last good route */
+    }
+  }, [getUserCoords]);
 
   // ── Derived ───────────────────────────────────────────────────────────────────
 
@@ -390,6 +420,29 @@ export default function MapScreen() {
     }
   }, [friendMarkers]);
 
+  // Live re-route: while routing to a moving friend, redraw the walking line
+  // whenever their marker position updates beyond a small threshold. Camera is
+  // left alone so the view doesn't jump; only the line + ETA refresh.
+  const lastRoutedFriendPos = useRef<{ lng: number; lat: number } | null>(null);
+  useEffect(() => {
+    const tracked = routedFriendRef.current;
+    if (!tracked || !activeRoute) {
+      lastRoutedFriendPos.current = null;
+      return;
+    }
+    const marker = friendMarkers.find(f => f.userId === tracked.userId && f.isLive);
+    if (!marker) return;
+    const prev = lastRoutedFriendPos.current;
+    // ~0.00005 deg ~= 5m; skip re-route if they've barely moved.
+    const moved =
+      !prev ||
+      Math.abs(prev.lng - marker.lng) > 0.00005 ||
+      Math.abs(prev.lat - marker.lat) > 0.00005;
+    if (!moved) return;
+    lastRoutedFriendPos.current = { lng: marker.lng, lat: marker.lat };
+    void reRouteToCoords([marker.lng, marker.lat], tracked.label);
+  }, [friendMarkers, activeRoute, reRouteToCoords]);
+
   const handleOpenFriendsList = useCallback(() => {
     console.log('[Map] Opening friend list...');
     (navigation as unknown as { navigate: (name: string, params?: unknown) => void }).navigate('Friends', {
@@ -401,7 +454,13 @@ export default function MapScreen() {
           console.log(`[Map] Routing to friend ${friend.name}`);
           setSelectedFriend(match);
           setSelectedPOI(null);
-          void routeToDestination([match.lng, match.lat], friend.name || 'friend');
+          const label = friend.name || 'friend';
+          // Only track for live re-routing if this is a live location (moves);
+          // campsites are static, so no need to keep re-fetching.
+          routedFriendRef.current = match.isLive
+            ? { userId: friend.userId, label }
+            : null;
+          void routeToDestination([match.lng, match.lat], label);
         } else {
           console.log(`[Map] No marker found for selected friend ${friend.name} (no location/campsite data)`);
           Alert.alert(
@@ -733,7 +792,11 @@ export default function MapScreen() {
               style={[styles.directionsBtn, routing && styles.directionsBtnDisabled]}
               disabled={routing}
               activeOpacity={0.85}
-              onPress={() => routeToDestination([selectedPOI.lng, selectedPOI.lat], selectedPOI.name)}
+              onPress={() => {
+                // POIs don't move — static route, no live tracking.
+                routedFriendRef.current = null;
+                routeToDestination([selectedPOI.lng, selectedPOI.lat], selectedPOI.name);
+              }}
             >
               {routing ? (
                 <ActivityIndicator size="small" color="#0B3D2E" />
