@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import { RootStackParamList } from '../navigation';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import { festivalConfig } from '../config/festival.config';
+import FakeClockOverlay from '../components/FakeClockOverlay';
 
 type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Settings'>;
 
@@ -385,6 +387,11 @@ const SettingsScreen = () => {
       <ScrollView contentContainerStyle={styles.content}>
         {settingsOptions.map(renderSettingsSection)}
       </ScrollView>
+      {isAdmin && (
+        <View style={styles.fakeClockDock}>
+          <FakeClockOverlay isAdmin={isAdmin} />
+        </View>
+      )}
     </View>
   );
 };
@@ -498,6 +505,15 @@ const styles = StyleSheet.create({
   scheduledMeta: {
     fontSize: 12,
     marginTop: 4,
+  },
+  fakeClockDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    paddingTop: 8,
   },
 });
 
