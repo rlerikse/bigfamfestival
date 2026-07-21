@@ -39,7 +39,8 @@ interface FakeClockContextValue {
 const FakeClockContext = createContext<FakeClockContextValue>({
   now: Date.now(),
   fakeTime: null,
-  setFakeTime: () => {},
+  // no-op default; real implementation supplied by FakeClockProvider
+  setFakeTime: () => undefined,
   isFakeClock: false,
 });
 
