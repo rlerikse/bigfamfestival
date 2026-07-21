@@ -12,7 +12,7 @@
  * filters are applied upstream) — this component is purely a presentational
  * alternate view over the same data + interaction handlers as the vertical list.
  */
-import React, { useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useMemo, useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -200,27 +200,36 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // shrinks; iOS's UIScrollView does NOT — it keeps the stale contentOffset, so
   // after a filter tap the visible rows on iOS correspond to the *previous*
   // scroll position mapped onto the *new* (shorter) content, landing on the
-  // wrong stage/section, while Android "just works". This effect explicitly
-  // resets scroll position on real filter changes (not day changes, which have
-  // their own intentional now/first-event scroll below) so both platforms
-  // deterministically land in the same place: top of the grid.
+  // wrong stage/section, while Android "just works".
+  //
+  // Previous approach (fixed in PR #152) called scrollTo({x:0,y:0}) imperatively
+  // inside a requestAnimationFrame. That worked most of the time but was a race:
+  // if the user's finger was still on the ScrollView, or iOS momentum/deceleration
+  // was still in flight when the filter landed, the imperative scrollTo could be
+  // stomped by the in-progress native scroll animation completing a frame later —
+  // "works a few times then random", exactly as reported. Imperative scrollTo
+  // calls race arbitrary native scroll/gesture state; there's no way to guarantee
+  // ordering against it.
+  //
+  // Fix: force a full remount of the three ScrollViews on a genuine filter change
+  // (via `key`), rather than nudging an existing one. A freshly-mounted
+  // ScrollView always starts at offset {0,0} — there's no stale native scroll
+  // state left to race against, because the old native scroll view instance is
+  // torn down. bumping `scrollResetKey` in useLayoutEffect (synchronous, before
+  // paint) rather than useEffect+rAF also removes the extra frame of delay where
+  // the old (stale-offset) content could still be visible/interactive.
+  const [scrollResetKey, setScrollResetKey] = useState(0);
   const previousEventsRef = useRef<ScheduleEvent[] | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const isDayChange = previousDayRef.current !== null && previousDayRef.current !== selectedDay;
     const isFirstRun = previousEventsRef.current === null;
     if (!isDayChange && !isFirstRun && previousEventsRef.current !== events) {
-      // Gate behind a frame so this runs after iOS has committed the new layout
-      // (raw setTimeout(0) can still race iOS's layout pass; requestAnimationFrame
-      // reliably runs post-layout on both platforms).
-      requestAnimationFrame(() => {
-        currentOffsetRef.current = { x: 0, y: 0 };
-        bodyScrollRef.current?.scrollTo({ x: 0, animated: false });
-        headerScrollRef.current?.scrollTo({ x: 0, animated: false });
-        verticalScrollRef.current?.scrollTo({ y: 0, animated: false });
-      });
+      currentOffsetRef.current = { x: 0, y: 0 };
+      setScrollResetKey(k => k + 1);
     }
     previousEventsRef.current = events;
   }, [events, selectedDay]);
+
 
   // On day change, auto-scroll horizontally to the live "now" position if the day
   // is in progress, otherwise to the first event of the day — mirrors the vertical
@@ -268,6 +277,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
         <View style={[styles.stageLabelCell, styles.headerCorner]} />
         <ScrollView
           ref={headerScrollRef}
+          key={`header-${scrollResetKey}`}
           horizontal
           showsHorizontalScrollIndicator={false}
           onScroll={handleHeaderScroll}
@@ -287,6 +297,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       {/* Body: sticky stage labels (left) + horizontally scrollable event grid */}
       <ScrollView
         ref={verticalScrollRef}
+        key={`vertical-${scrollResetKey}`}
         showsVerticalScrollIndicator={false}
         style={styles.bodyVerticalScroll}
       >
@@ -315,6 +326,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
           {/* Horizontally scrollable grid of event blocks, one row per stage */}
           <ScrollView
             ref={bodyScrollRef}
+            key={`body-${scrollResetKey}`}
             horizontal
             showsHorizontalScrollIndicator
             onScroll={handleBodyScroll}
