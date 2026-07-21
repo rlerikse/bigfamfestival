@@ -25,7 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import OptimizedImage from './OptimizedImage';
 import { ScheduleEvent } from '../types/event';
-import { isEventLive } from '../utils/scheduleUtils';
+import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
 
 // ─── Layout constants ──────────────────────────────────────────────────────
 const PX_PER_MINUTE = 2.6; // horizontal density — tuned for readable set-length blocks
@@ -231,25 +231,28 @@ const HorizontalScheduleView: React.FC<Props> = ({
   }, [events, selectedDay]);
 
 
-  // On day change, auto-scroll horizontally to the live "now" position if the day
-  // is in progress, otherwise to the first event of the day — mirrors the vertical
-  // list's behavior (reuses the same isEventLive helper from scheduleUtils, not
-  // reimplemented here).
+  // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
+  // to the live "now" position if the day is in progress, to the LAST event if
+  // the day is fully over, or to the FIRST event if the day hasn't started yet —
+  // mirrors the vertical list's behavior (reuses the same shared helper from
+  // scheduleUtils, not reimplemented here).
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
       setTimeout(() => {
         const nowMs = currentTime;
-        const liveEvent = events.find(ev => ev.stage && isEventLive(ev, nowMs));
+        const stageEvents = events.filter(ev => ev.stage && ev.startTime);
+        const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
         let targetMin: number | null = null;
-        if (liveEvent) {
-          targetMin = adjustedStartMinutes(liveEvent.startTime);
-        } else {
-          // Day hasn't started (or is over) — scroll to the earliest event of the day.
-          const sorted = [...events]
-            .filter(ev => ev.stage && ev.startTime)
-            .sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
-          if (sorted.length > 0) targetMin = adjustedStartMinutes(sorted[0].startTime);
+        if (target === 'live') {
+          const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
+          if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
+        } else if (target === 'first' || target === 'last') {
+          const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
+          if (sorted.length > 0) {
+            const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
+            targetMin = adjustedStartMinutes(targetEvent.startTime);
+          }
         }
         if (targetMin !== null) {
           const targetX = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);

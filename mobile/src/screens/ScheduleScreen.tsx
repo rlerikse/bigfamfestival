@@ -42,7 +42,7 @@ import HorizontalScheduleView from '../components/HorizontalScheduleView';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
-import { isEventLive } from '../utils/scheduleUtils';
+import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
 import firestore, { collection, getDocs } from '../utils/firebaseCompat';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -722,15 +722,23 @@ const ScheduleScreen = () => {
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress, now]);
 
-  // On day change (after initial set), auto-scroll to first live event if present,
-  // otherwise to the first event of the day (matches list-view behavior; horizontal
-  // grid view reuses the same isEventLive helper from scheduleUtils).
+  // On day change (after initial set), auto-scroll per resolveScheduleDayScrollTarget:
+  // live event if the day is in progress, LAST event if the day is fully over, or
+  // FIRST event if the day hasn't started yet (matches list-view behavior; horizontal
+  // grid view reuses the same shared helper from scheduleUtils).
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
       const nowMs = now;
-      let targetIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
-      if (targetIndex < 0) targetIndex = filteredEvents.length > 0 ? 0 : -1;
+      const target = resolveScheduleDayScrollTarget(filteredEvents, nowMs);
+      let targetIndex = -1;
+      if (target === 'live') {
+        targetIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
+      } else if (target === 'first') {
+        targetIndex = filteredEvents.length > 0 ? 0 : -1;
+      } else if (target === 'last') {
+        targetIndex = filteredEvents.length > 0 ? filteredEvents.length - 1 : -1;
+      }
       if (targetIndex >= 0) {
         // Defer to ensure FlatList rendered new data
         setTimeout(() => {
