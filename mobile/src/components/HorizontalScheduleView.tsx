@@ -30,7 +30,7 @@ import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUt
 // ─── Layout constants ──────────────────────────────────────────────────────
 // Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
 // ~1 hour visible). Lower density → wider time span left→right per screen.
-const PX_PER_MINUTE = 3.5; // ~90 min (1.5h) visible left-to-right on a typical phone (screen width - 96px stage column)
+const PX_PER_MINUTE = 6.5; // zoomed in more — ~45 min visible left-to-right; very long blocks
 const ROW_HEIGHT = 108; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
@@ -164,7 +164,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
     const markers: { label: string; offset: number }[] = [];
     for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) {
       const hourOfDay = Math.floor((m % (24 * 60)) / 60);
-      const suffix = hourOfDay === 0 ? '12A' : hourOfDay === 12 ? '12P' : hourOfDay > 12 ? `${hourOfDay - 12}P` : `${hourOfDay}A`;
+      const ampm = hourOfDay >= 12 ? 'PM' : 'AM';
+      const hour12 = hourOfDay % 12 || 12;
+      const suffix = `${hour12} ${ampm}`;
       markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * PX_PER_MINUTE });
     }
     return markers;
@@ -408,6 +410,17 @@ const HorizontalScheduleView: React.FC<Props> = ({
                       const isLive = startTs > 0 && currentTime >= startTs && currentTime < endTs;
                       const isPast = startTs > 0 && currentTime >= endTs;
                       const genreLine = ev.genres && ev.genres.length > 0 ? ev.genres.join(' • ') : '';
+                      const fmt12 = (t?: string) => {
+                        if (!t || !t.trim()) return '';
+                        const [h, m] = t.split(':');
+                        const hour = parseInt(h, 10);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const hour12 = hour % 12 || 12;
+                        return `${hour12}:${m} ${ampm}`;
+                      };
+                      const timeLabel = ev.endTime && ev.endTime.trim()
+                        ? `${fmt12(ev.startTime)} – ${fmt12(ev.endTime)}`
+                        : fmt12(ev.startTime);
                       return (
                         <TouchableOpacity
                           key={ev.id}
@@ -441,7 +454,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
                             )}
                             <View style={styles.eventBlockInfo}>
                               <Text style={styles.eventBlockTitle} numberOfLines={1}>{ev.name}</Text>
-                              <Text style={styles.eventBlockTime} numberOfLines={1}>{stage} · {ev.startTime}</Text>
+                              <Text style={styles.eventBlockTime} numberOfLines={1}>{timeLabel}</Text>
                               {!!genreLine && (
                                 <Text style={styles.eventBlockGenres} numberOfLines={1}>{genreLine}</Text>
                               )}
