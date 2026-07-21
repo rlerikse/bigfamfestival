@@ -12,7 +12,7 @@
  * filters are applied upstream) — this component is purely a presentational
  * alternate view over the same data + interaction handlers as the vertical list.
  */
-import React, { useMemo, useRef, useCallback } from 'react';
+import React, { useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import { ScheduleEvent } from '../types/event';
+import { isEventLive } from '../utils/scheduleUtils';
 
 // ─── Layout constants ──────────────────────────────────────────────────────
 const PX_PER_MINUTE = 2.6; // horizontal density — tuned for readable set-length blocks
@@ -87,6 +88,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // Guards against the two horizontal ScrollViews (header ruler + body) fighting
   // over sync-scroll events and causing jitter.
   const isSyncingScroll = useRef(false);
+  const previousDayRef = useRef<string | null>(null);
 
   const stages = useMemo(() => {
     const set = new Set<string>();
@@ -157,6 +159,36 @@ const HorizontalScheduleView: React.FC<Props> = ({
     isSyncingScroll.current = true;
     bodyScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
   }, []);
+
+  // On day change, auto-scroll horizontally to the live "now" position if the day
+  // is in progress, otherwise to the first event of the day — mirrors the vertical
+  // list's behavior (reuses the same isEventLive helper from scheduleUtils, not
+  // reimplemented here).
+  useEffect(() => {
+    if (!selectedDay) return;
+    if (previousDayRef.current && previousDayRef.current !== selectedDay) {
+      setTimeout(() => {
+        const nowMs = currentTime;
+        const liveEvent = events.find(ev => ev.stage && isEventLive(ev, nowMs));
+        let targetMin: number | null = null;
+        if (liveEvent) {
+          targetMin = adjustedStartMinutes(liveEvent.startTime);
+        } else {
+          // Day hasn't started (or is over) — scroll to the earliest event of the day.
+          const sorted = [...events]
+            .filter(ev => ev.stage && ev.startTime)
+            .sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
+          if (sorted.length > 0) targetMin = adjustedStartMinutes(sorted[0].startTime);
+        }
+        if (targetMin !== null) {
+          const targetX = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
+          bodyScrollRef.current?.scrollTo({ x: targetX, animated: true });
+          headerScrollRef.current?.scrollTo({ x: targetX, animated: true });
+        }
+      }, 0);
+    }
+    previousDayRef.current = selectedDay;
+  }, [selectedDay, events, currentTime]);
 
   if (stages.length === 0) {
     return (
