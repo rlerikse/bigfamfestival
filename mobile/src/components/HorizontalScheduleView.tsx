@@ -30,7 +30,7 @@ import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUt
 // ─── Layout constants ──────────────────────────────────────────────────────
 // Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
 // ~1 hour visible). Lower density → wider time span left→right per screen.
-const PX_PER_MINUTE = 3.2; // zoomed in so blocks are long enough to fit name/genres/time
+const PX_PER_MINUTE = 3.5; // ~90 min (1.5h) visible left-to-right on a typical phone (screen width - 96px stage column)
 const ROW_HEIGHT = 108; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
@@ -118,6 +118,20 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // over sync-scroll events and causing jitter.
   const isSyncingScroll = useRef(false);
   const previousDayRef = useRef<string | null>(null);
+  // Pending horizontal auto-scroll target (px) queued on day change, consumed
+  // once the remounted body ScrollView lays out its content (onContentSizeChange).
+  const pendingScrollXRef = useRef<number | null>(null);
+  const pendingRafRef = useRef<number | null>(null);
+  // Consume a pending auto-scroll target (declared before the day-change effects
+  // that reference it). Scrolls header + body in sync, then clears the target.
+  const applyPendingScrollImpl = () => {
+    const x = pendingScrollXRef.current;
+    if (x == null) return;
+    pendingScrollXRef.current = null;
+    bodyScrollRef.current?.scrollTo({ x, animated: true });
+    headerScrollRef.current?.scrollTo({ x, animated: true });
+  };
+  const applyPendingScroll = useCallback(applyPendingScrollImpl, []);
   // Tracks the last known scroll offsets so a filter change (Stage/Genre) can
   // re-clamp to a valid position instead of relying on the native ScrollView to
   // do it implicitly (see currentOffsetRef usage below for why this matters).
@@ -235,36 +249,58 @@ const HorizontalScheduleView: React.FC<Props> = ({
 
   // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
   // to the live "now" position if the day is in progress, to the LAST event if
-  // the day is fully over, or to the FIRST event if the day hasn't started yet —
-  // mirrors the vertical list's behavior (reuses the same shared helper from
-  // scheduleUtils, not reimplemented here).
+  // the day is fully over, or to the FIRST event if the day hasn't started yet.
+  //
+  // ROBUSTNESS (iOS "breaks after ~4 switches"): a day change ALSO bumps
+  // scrollResetKey, which REMOUNTS the three ScrollViews. A fire-and-forget
+  // setTimeout(scrollTo) here raced that remount — it would grab a torn-down or
+  // not-yet-laid-out ScrollView ref and silently no-op after a few rapid
+  // switches. Instead we COMPUTE the target and stash it in pendingScrollXRef;
+  // the freshly-mounted body ScrollView performs the scroll from its
+  // onContentSizeChange (fires once its content is laid out and actually
+  // scrollable). No timing guess, no ref race.
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
-      setTimeout(() => {
-        const nowMs = currentTime;
-        const stageEvents = events.filter(ev => ev.stage && ev.startTime);
-        const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
-        let targetMin: number | null = null;
-        if (target === 'live') {
-          const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
-          if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
-        } else if (target === 'first' || target === 'last') {
-          const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
-          if (sorted.length > 0) {
-            const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
-            targetMin = adjustedStartMinutes(targetEvent.startTime);
-          }
+      const nowMs = currentTime;
+      const stageEvents = events.filter(ev => ev.stage && ev.startTime);
+      const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
+      let targetMin: number | null = null;
+      if (target === 'live') {
+        const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
+        if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
+      } else if (target === 'first' || target === 'last') {
+        const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
+        if (sorted.length > 0) {
+          const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
+          targetMin = adjustedStartMinutes(targetEvent.startTime);
         }
-        if (targetMin !== null) {
-          const targetX = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
-          bodyScrollRef.current?.scrollTo({ x: targetX, animated: true });
-          headerScrollRef.current?.scrollTo({ x: targetX, animated: true });
-        }
-      }, 0);
+      }
+      if (targetMin !== null) {
+        pendingScrollXRef.current = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
+      } else {
+        pendingScrollXRef.current = null;
+      }
     }
     previousDayRef.current = selectedDay;
   }, [selectedDay, events, currentTime]);
+
+  // Fallback consumer: if the body ScrollView's content size does NOT change on
+  // a day switch (e.g. the new day happens to have identical layout dimensions),
+  // onContentSizeChange won't fire — so also flush any pending scroll on the next
+  // frame after selectedDay settles. Double-flush is harmless (target is nulled
+  // after the first consumer runs). rAF is cleaned up to avoid stacking.
+  useEffect(() => {
+    if (pendingScrollXRef.current == null) return;
+    const raf = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(applyPendingScroll);
+      pendingRafRef.current = raf2;
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (pendingRafRef.current != null) cancelAnimationFrame(pendingRafRef.current);
+    };
+  }, [selectedDay, applyPendingScroll]);
 
   if (stages.length === 0) {
     return (
@@ -335,6 +371,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
             horizontal
             showsHorizontalScrollIndicator
             onScroll={handleBodyScroll}
+            onContentSizeChange={applyPendingScroll}
             scrollEventThrottle={16}
             bounces={false}
           >
