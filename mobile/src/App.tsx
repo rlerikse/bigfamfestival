@@ -28,6 +28,7 @@ import { FakeClockProvider } from './contexts/FakeClockContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MapboxProvider } from './providers/MapboxProvider';
 import { LocationSharingProvider } from './providers/LocationSharingProvider';
+import './tasks/locationTask'; // registers the background location task (side effect)
 import { initSentry } from './config/sentry';
 import useCachedResources from './hooks/useCachedResources';
 

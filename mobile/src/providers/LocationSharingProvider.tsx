@@ -2,26 +2,42 @@ import React, { useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import { useAuth } from '../contexts/AuthContext';
 import { uploadMyLocation } from '../services/friendService';
+import { BACKGROUND_LOCATION_TASK } from '../tasks/locationTask';
 
 /**
  * LocationSharingProvider — app-wide live-location uploader.
  *
- * When the signed-in user has `shareMyLocation === true`, this watches their
- * position and POSTs it to the backend (`POST /friends/location`) so friends'
- * `GET /friends/locations` actually returns something. Without this, the app
- * only tracked location locally and never uploaded it — which is why the
- * friends-location feature always came back empty.
+ * When the signed-in user has `shareMyLocation === true`, uploads their position
+ * to the backend (`POST /friends/location`) so friends' `GET /friends/locations`
+ * actually returns data. Without this the app only tracked location locally.
  *
- * Behavior:
- *  - Foreground only (battery/privacy): uses watchPositionAsync, no background task.
- *  - Uploads on meaningful movement (>=10m) and at most ~every 25s (throttle).
- *  - Starts/stops reactively when the toggle or auth state changes.
- *  - Fails soft: an upload error is logged, never thrown (no crash, retry on
- *    the next tick).
+ * Strategy:
+ *  - Foreground fix pushed immediately on enable (friends see you right away).
+ *  - If background-location permission is granted, we run a background task
+ *    (startLocationUpdatesAsync) so updates continue when the app is
+ *    backgrounded — with a persistent Android foreground-service notification
+ *    (required by the OS). Coarser cadence (~30s / ~50m) to save battery.
+ *  - If background permission is denied/unavailable, we fall back to a
+ *    foreground-only watchPositionAsync (~25s / ~10m).
+ *  - Everything fails soft: errors are logged, never thrown.
+ *  - Starts/stops reactively on the toggle + auth state.
  */
 
-const MIN_UPLOAD_INTERVAL_MS = 25_000;
-const MOVEMENT_DISTANCE_M = 10;
+const FG_MIN_UPLOAD_INTERVAL_MS = 25_000;
+const FG_MOVEMENT_DISTANCE_M = 10;
+const BG_TIME_INTERVAL_MS = 30_000;
+const BG_DISTANCE_M = 50;
+
+async function stopBackgroundUpdates(): Promise<void> {
+  try {
+    const started = await Location.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+    if (started) {
+      await Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
+    }
+  } catch (err) {
+    console.warn('[LocationSharing] Failed to stop background updates:', err);
+  }
+}
 
 export const LocationSharingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -29,57 +45,92 @@ export const LocationSharingProvider: React.FC<{ children: React.ReactNode }> = 
   const lastUploadRef = useRef<number>(0);
 
   useEffect(() => {
-    if (!shareEnabled) return;
+    if (!shareEnabled) {
+      // Ensure any lingering background task is stopped when sharing is off.
+      void stopBackgroundUpdates();
+      return;
+    }
 
-    let sub: Location.LocationSubscription | undefined;
+    let fgSub: Location.LocationSubscription | undefined;
     let cancelled = false;
+    let usingBackground = false;
 
-    const push = async (lat: number, lng: number) => {
+    const pushForeground = async (lat: number, lng: number) => {
       const now = Date.now();
-      if (now - lastUploadRef.current < MIN_UPLOAD_INTERVAL_MS) return;
+      if (now - lastUploadRef.current < FG_MIN_UPLOAD_INTERVAL_MS) return;
       lastUploadRef.current = now;
       try {
         await uploadMyLocation(lat, lng);
       } catch (err) {
-        // Soft-fail: reset throttle a bit so we retry sooner next movement.
-        lastUploadRef.current = now - MIN_UPLOAD_INTERVAL_MS / 2;
-        console.warn('[LocationSharing] Upload failed (will retry):', err);
+        lastUploadRef.current = now - FG_MIN_UPLOAD_INTERVAL_MS / 2;
+        console.warn('[LocationSharing] Foreground upload failed (will retry):', err);
       }
     };
 
     (async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted' || cancelled) return;
+        const fg = await Location.requestForegroundPermissionsAsync();
+        if (fg.status !== 'granted' || cancelled) return;
 
-        // Push an immediate first fix so friends see us right away.
+        // Immediate first fix so friends see us right away.
         try {
           const initial = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
-          if (!cancelled) await push(initial.coords.latitude, initial.coords.longitude);
+          if (!cancelled) await pushForeground(initial.coords.latitude, initial.coords.longitude);
         } catch {
-          /* ignore initial fix failure; the watcher will catch up */
+          /* ignore initial-fix failure; watchers will catch up */
         }
 
-        sub = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: MIN_UPLOAD_INTERVAL_MS,
-            distanceInterval: MOVEMENT_DISTANCE_M,
-          },
-          (loc) => {
-            void push(loc.coords.latitude, loc.coords.longitude);
-          },
-        );
+        // Try to upgrade to background updates.
+        try {
+          const bg = await Location.requestBackgroundPermissionsAsync();
+          if (bg.status === 'granted' && !cancelled) {
+            const alreadyRunning = await Location.hasStartedLocationUpdatesAsync(
+              BACKGROUND_LOCATION_TASK,
+            );
+            if (!alreadyRunning) {
+              await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+                accuracy: Location.Accuracy.Balanced,
+                timeInterval: BG_TIME_INTERVAL_MS,
+                distanceInterval: BG_DISTANCE_M,
+                pausesUpdatesAutomatically: true,
+                showsBackgroundLocationIndicator: true,
+                foregroundService: {
+                  notificationTitle: 'Big Fam Festival — location sharing on',
+                  notificationBody: 'Sharing your location with friends. Turn off in Settings.',
+                  notificationColor: '#6BBF59',
+                },
+              });
+            }
+            usingBackground = true;
+          }
+        } catch (err) {
+          console.warn('[LocationSharing] Background start failed, using foreground only:', err);
+        }
+
+        // If background didn't take, run the foreground watcher.
+        if (!usingBackground && !cancelled) {
+          fgSub = await Location.watchPositionAsync(
+            {
+              accuracy: Location.Accuracy.Balanced,
+              timeInterval: FG_MIN_UPLOAD_INTERVAL_MS,
+              distanceInterval: FG_MOVEMENT_DISTANCE_M,
+            },
+            (loc) => {
+              void pushForeground(loc.coords.latitude, loc.coords.longitude);
+            },
+          );
+        }
       } catch (err) {
-        console.error('[LocationSharing] Failed to start location watch:', err);
+        console.error('[LocationSharing] Failed to start location sharing:', err);
       }
     })();
 
     return () => {
       cancelled = true;
-      sub?.remove();
+      fgSub?.remove();
+      void stopBackgroundUpdates();
     };
   }, [shareEnabled]);
 
