@@ -41,6 +41,7 @@ mobile/ios/
 mobile/android/
 mobile/google-play-service-account.json
 mobile/.env
+mobile/.env*.local
 
 # Additional ignores
 admin/node_modules
