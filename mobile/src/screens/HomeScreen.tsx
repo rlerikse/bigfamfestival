@@ -118,7 +118,7 @@ const HomeScreen = () => {
       {/* Main content — flex:1 preserves tab bar */}
       <ScrollView
         style={{ flex: 1, zIndex: 1 }}
-        contentContainerStyle={{ paddingTop: 40, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 55 + 12, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Festival-style countdown — "UNTIL GATES OPEN" */}
