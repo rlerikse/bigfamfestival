@@ -9,6 +9,8 @@ import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { getFriendLocations, getFriendCampsites, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
+import { useAuth } from '../contexts/AuthContext';
+import OptimizedImage from '../components/OptimizedImage';
 
 const FESTIVAL_CENTER: [number, number] = [-84.2575, 42.0577];
 const DEFAULT_ZOOM = 16;
@@ -126,6 +128,8 @@ interface StageLocation {
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const [selfCoords, setSelfCoords] = useState<[number, number] | null>(null);
   const [zones, setZones] = useState<MapZone[]>([]);
   const [pois, setPois] = useState<MapPOI[]>([]);
   const [stages, setStages] = useState<StageLocation[]>([]);
@@ -149,6 +153,27 @@ export default function MapScreen() {
 
   useEffect(() => {
     loadMapData();
+  }, []);
+
+  // Track the current user's own coordinates so their marker can render their
+  // profile-pic avatar (instead of relying solely on the anonymous LocationPuck).
+  useEffect(() => {
+    let subscription: Location.LocationSubscription | undefined;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      try {
+        const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        setSelfCoords([initial.coords.longitude, initial.coords.latitude]);
+      } catch (err) {
+        console.error('[MapScreen] Failed to get initial self location:', err);
+      }
+      subscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 10000, distanceInterval: 10 },
+        (loc) => setSelfCoords([loc.coords.longitude, loc.coords.latitude])
+      );
+    })();
+    return () => subscription?.remove();
   }, []);
 
   // Load friend campsites + live locations. Locations are refreshed on an
@@ -374,6 +399,36 @@ export default function MapScreen() {
           pulsing={{ isEnabled: true, color: '#6BBF59', radius: 40 }}
         />
 
+        {/* Self avatar marker — rendered on top of the LocationPuck so the user
+            sees their own profile picture at their live position, matching the
+            friend-marker treatment (see friendMarkers below). Falls back to
+            initials/icon (never a plain dot) if no profilePictureUrl is set. */}
+        {selfCoords && (
+          <Mapbox.PointAnnotation
+            key="self-marker"
+            id="self-marker"
+            coordinate={selfCoords}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <View style={[styles.friendMarker, styles.friendMarkerLive, styles.selfMarker]}>
+              {user?.profilePictureUrl ? (
+                <OptimizedImage
+                  uri={user.profilePictureUrl}
+                  style={styles.friendMarkerImage}
+                  containerStyle={styles.friendMarkerImage}
+                  contentFit="cover"
+                  showLoadingIndicator={false}
+                  fallbackIcon="person-circle-outline"
+                />
+              ) : (
+                <Text style={styles.friendMarkerInitial}>
+                  {user?.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
+                </Text>
+              )}
+            </View>
+          </Mapbox.PointAnnotation>
+        )}
+
         {/* Zone polygons */}
         {zoneGeoJSON.features.length > 0 && (
           <Mapbox.ShapeSource id="zones" shape={zoneGeoJSON as GeoJSON.FeatureCollection}>
@@ -467,11 +522,19 @@ export default function MapScreen() {
             key={`friend-${friend.userId}`}
             id={`friend-${friend.userId}`}
             coordinate={[friend.lng, friend.lat]}
+            anchor={{ x: 0.5, y: 0.5 }}
             onSelected={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
           >
             <View style={[styles.friendMarker, friend.isLive && styles.friendMarkerLive]}>
               {friend.profilePictureUrl ? (
-                <Text style={styles.friendMarkerInitial}>👤</Text>
+                <OptimizedImage
+                  uri={friend.profilePictureUrl}
+                  style={styles.friendMarkerImage}
+                  containerStyle={styles.friendMarkerImage}
+                  contentFit="cover"
+                  showLoadingIndicator={false}
+                  fallbackIcon="person-circle-outline"
+                />
               ) : (
                 <Text style={styles.friendMarkerInitial}>
                   {friend.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
@@ -640,11 +703,20 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
+  },
+  friendMarkerImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 17,
+  },
+  selfMarker: {
+    backgroundColor: '#6BBF59',
   },
   friendMarkerLive: {
     borderColor: '#6BBF59',
