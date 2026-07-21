@@ -116,6 +116,10 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // over sync-scroll events and causing jitter.
   const isSyncingScroll = useRef(false);
   const previousDayRef = useRef<string | null>(null);
+  // Tracks the last known scroll offsets so a filter change (Stage/Genre) can
+  // re-clamp to a valid position instead of relying on the native ScrollView to
+  // do it implicitly (see currentOffsetRef usage below for why this matters).
+  const currentOffsetRef = useRef({ x: 0, y: 0 });
 
   const stages = useMemo(() => {
     const set = new Set<string>();
@@ -170,6 +174,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // Keep the time-ruler header in lockstep with the body's horizontal scroll,
   // and vice versa, without feedback loops.
   const handleBodyScroll = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
+    currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
     if (isSyncingScroll.current) {
       isSyncingScroll.current = false;
       return;
@@ -186,6 +191,36 @@ const HorizontalScheduleView: React.FC<Props> = ({
     isSyncingScroll.current = true;
     bodyScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
   }, []);
+
+  // On Stage/Genre filter changes, `events` gets a new (shorter/reshaped) array
+  // from ScheduleScreen while `selectedDay` stays the same. That shrinks the
+  // vertical content height (fewer stage rows) without changing the horizontal
+  // grid width (grid always spans the full day). Android's ScrollView clamps an
+  // out-of-range contentOffset back into bounds automatically when content
+  // shrinks; iOS's UIScrollView does NOT — it keeps the stale contentOffset, so
+  // after a filter tap the visible rows on iOS correspond to the *previous*
+  // scroll position mapped onto the *new* (shorter) content, landing on the
+  // wrong stage/section, while Android "just works". This effect explicitly
+  // resets scroll position on real filter changes (not day changes, which have
+  // their own intentional now/first-event scroll below) so both platforms
+  // deterministically land in the same place: top of the grid.
+  const previousEventsRef = useRef<ScheduleEvent[] | null>(null);
+  useEffect(() => {
+    const isDayChange = previousDayRef.current !== null && previousDayRef.current !== selectedDay;
+    const isFirstRun = previousEventsRef.current === null;
+    if (!isDayChange && !isFirstRun && previousEventsRef.current !== events) {
+      // Gate behind a frame so this runs after iOS has committed the new layout
+      // (raw setTimeout(0) can still race iOS's layout pass; requestAnimationFrame
+      // reliably runs post-layout on both platforms).
+      requestAnimationFrame(() => {
+        currentOffsetRef.current = { x: 0, y: 0 };
+        bodyScrollRef.current?.scrollTo({ x: 0, animated: false });
+        headerScrollRef.current?.scrollTo({ x: 0, animated: false });
+        verticalScrollRef.current?.scrollTo({ y: 0, animated: false });
+      });
+    }
+    previousEventsRef.current = events;
+  }, [events, selectedDay]);
 
   // On day change, auto-scroll horizontally to the live "now" position if the day
   // is in progress, otherwise to the first event of the day — mirrors the vertical
