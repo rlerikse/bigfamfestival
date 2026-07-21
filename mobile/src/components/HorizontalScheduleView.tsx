@@ -30,7 +30,7 @@ import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUt
 // ─── Layout constants ──────────────────────────────────────────────────────
 // Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
 // ~1 hour visible). Lower density → wider time span left→right per screen.
-const PX_PER_MINUTE = 6.5; // zoomed in more — ~45 min visible left-to-right; very long blocks
+const PX_PER_MINUTE = 6.0; // zoomed in — final shipping value; Android gets a touch more breathing room than 6.5
 const ROW_HEIGHT = 108; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
