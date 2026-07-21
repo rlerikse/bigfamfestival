@@ -24,6 +24,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DebugProvider } from './contexts/DebugContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
+import { FakeClockProvider } from './contexts/FakeClockContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MapboxProvider } from './providers/MapboxProvider';
 import { initSentry } from './config/sentry';
@@ -87,6 +88,7 @@ export default function App() {
           <ThemeProvider>
             <AuthProvider>
               <AppSettingsProvider>
+                <FakeClockProvider>
                 <DebugProvider>
                   <NavigationContainer ref={navigationRef}>
                     <Navigation />
@@ -94,6 +96,7 @@ export default function App() {
                     <StatusBar style="auto" />
                   </NavigationContainer>
                 </DebugProvider>
+                </FakeClockProvider>
               </AppSettingsProvider>
             </AuthProvider>
           </ThemeProvider>

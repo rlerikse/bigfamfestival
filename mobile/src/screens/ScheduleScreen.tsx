@@ -87,6 +87,7 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
 }
 
 import { festivalConfig } from '../config/festival.config';
+import { useNow } from '../contexts/FakeClockContext';
 
 // Days to show in the filter buttons - loaded from festival config
 const festivalDays = festivalConfig.dates;
@@ -251,17 +252,11 @@ const ScheduleScreen = () => {
   // Filters (day/stage/genre/my-schedule) are shared state above and apply to both views,
   // so switching modes never resets or loses filter selections.
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
-  // Current time ticker for countdown badges
-  const [now, setNow] = useState<number>(Date.now());
+  // Current time — reads from FakeClockContext (supports admin fake-clock override)
+  const now = useNow();
   // FlatList ref for programmatic scrolling to live events
   const flatListRef = useRef<FlatList<ScheduleEvent>>(null);
   const previousDayRef = useRef<string | null>(null);
-
-  // Update current time every minute to refresh countdowns
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Restore the user's last-used view mode on mount so the toggle sticks across sessions.
   useEffect(() => {
