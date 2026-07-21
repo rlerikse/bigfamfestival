@@ -25,11 +25,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import OptimizedImage from './OptimizedImage';
 import { ScheduleEvent } from '../types/event';
-import { isEventLive } from '../utils/scheduleUtils';
+import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
 
 // ─── Layout constants ──────────────────────────────────────────────────────
-const PX_PER_MINUTE = 2.6; // horizontal density — tuned for readable set-length blocks
-const ROW_HEIGHT = 92;
+// Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
+// ~1 hour visible). Lower density → wider time span left→right per screen.
+const PX_PER_MINUTE = 3.2; // zoomed in so blocks are long enough to fit name/genres/time
+const ROW_HEIGHT = 108; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
 const CUTOFF_MINUTES = 6 * 60 + 30; // 6:30am — day boundary, matches ScheduleScreen logic
@@ -75,9 +77,9 @@ function stageLogoSource(stage: string): ImageRequireSource | null {
   return null;
 }
 
-// Minimum block width (px) below which the thumbnail image is hidden to avoid
+// Minimum block width (px) below which the full-height photo is hidden to avoid
 // squishing short-set blocks into an unreadable sliver.
-const MIN_WIDTH_FOR_THUMBNAIL = 90;
+const MIN_WIDTH_FOR_THUMBNAIL = 70;
 
 function formatTimeUntil(ev: ScheduleEvent, currentTime: number): string {
   if (!ev.date || !ev.startTime) return '';
@@ -231,25 +233,28 @@ const HorizontalScheduleView: React.FC<Props> = ({
   }, [events, selectedDay]);
 
 
-  // On day change, auto-scroll horizontally to the live "now" position if the day
-  // is in progress, otherwise to the first event of the day — mirrors the vertical
-  // list's behavior (reuses the same isEventLive helper from scheduleUtils, not
-  // reimplemented here).
+  // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
+  // to the live "now" position if the day is in progress, to the LAST event if
+  // the day is fully over, or to the FIRST event if the day hasn't started yet —
+  // mirrors the vertical list's behavior (reuses the same shared helper from
+  // scheduleUtils, not reimplemented here).
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
       setTimeout(() => {
         const nowMs = currentTime;
-        const liveEvent = events.find(ev => ev.stage && isEventLive(ev, nowMs));
+        const stageEvents = events.filter(ev => ev.stage && ev.startTime);
+        const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
         let targetMin: number | null = null;
-        if (liveEvent) {
-          targetMin = adjustedStartMinutes(liveEvent.startTime);
-        } else {
-          // Day hasn't started (or is over) — scroll to the earliest event of the day.
-          const sorted = [...events]
-            .filter(ev => ev.stage && ev.startTime)
-            .sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
-          if (sorted.length > 0) targetMin = adjustedStartMinutes(sorted[0].startTime);
+        if (target === 'live') {
+          const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
+          if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
+        } else if (target === 'first' || target === 'last') {
+          const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
+          if (sorted.length > 0) {
+            const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
+            targetMin = adjustedStartMinutes(targetEvent.startTime);
+          }
         }
         if (targetMin !== null) {
           const targetX = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
@@ -357,6 +362,15 @@ const HorizontalScheduleView: React.FC<Props> = ({
                       const isInSchedule = Boolean(userSchedule[ev.id]);
                       const timeUntil = formatTimeUntil(ev, currentTime);
                       const showThumbnail = width >= MIN_WIDTH_FOR_THUMBNAIL;
+                      // Mirror the vertical card's live/finished status.
+                      const startTs = ev.date && ev.startTime ? new Date(`${ev.date}T${ev.startTime}`).getTime() : 0;
+                      let endTs = ev.date && ev.endTime && ev.endTime.trim()
+                        ? new Date(`${ev.date}T${ev.endTime}`).getTime()
+                        : startTs + 2 * 60 * 60 * 1000;
+                      if (endTs <= startTs) endTs += 24 * 60 * 60 * 1000;
+                      const isLive = startTs > 0 && currentTime >= startTs && currentTime < endTs;
+                      const isPast = startTs > 0 && currentTime >= endTs;
+                      const genreLine = ev.genres && ev.genres.length > 0 ? ev.genres.join(' • ') : '';
                       return (
                         <TouchableOpacity
                           key={ev.id}
@@ -367,8 +381,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               width,
                               borderLeftColor: stageColor(stage, rowIdx),
                               borderLeftWidth: 4,
-                              borderColor: isInSchedule ? '#B87333' : 'rgba(255, 255, 255, 0.2)',
-                              borderWidth: isInSchedule ? 2 : 1,
+                              borderColor: isLive ? '#FF3B30' : isInSchedule ? '#B87333' : 'rgba(255, 255, 255, 0.2)',
+                              borderWidth: isLive ? 2 : isInSchedule ? 2 : 1,
+                              opacity: isPast ? 0.5 : 1,
                             },
                           ]}
                           activeOpacity={0.8}
@@ -388,12 +403,23 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               />
                             )}
                             <View style={styles.eventBlockInfo}>
-                              <Text style={styles.eventBlockTitle} numberOfLines={2}>{ev.name}</Text>
+                              <Text style={styles.eventBlockTitle} numberOfLines={1}>{ev.name}</Text>
                               <Text style={styles.eventBlockTime} numberOfLines={1}>{stage} · {ev.startTime}</Text>
+                              {!!genreLine && (
+                                <Text style={styles.eventBlockGenres} numberOfLines={1}>{genreLine}</Text>
+                              )}
                             </View>
                           </View>
-                          {!!timeUntil && (
-                            <View style={styles.eventBlockTimeUntil} pointerEvents="none">
+                          {isLive ? (
+                            <View style={styles.eventBlockStatus} pointerEvents="none">
+                              <Text style={styles.eventBlockStatusLive} numberOfLines={1}>LIVE</Text>
+                            </View>
+                          ) : isPast ? (
+                            <View style={styles.eventBlockStatus} pointerEvents="none">
+                              <Text style={styles.eventBlockStatusFinished} numberOfLines={1}>FINISHED</Text>
+                            </View>
+                          ) : !!timeUntil && (
+                            <View style={styles.eventBlockStatus} pointerEvents="none">
                               <Text style={styles.eventBlockTimeUntilText} numberOfLines={1}>{timeUntil}</Text>
                             </View>
                           )}
@@ -495,42 +521,62 @@ const styles = StyleSheet.create({
   },
   eventBlock: {
     position: 'absolute',
-    top: 8,
-    bottom: 8,
+    top: 6,
+    bottom: 6,
     borderRadius: 12,
-    padding: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     overflow: 'hidden',
   },
   eventBlockRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     flex: 1,
   },
   eventBlockImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    marginRight: 6,
+    width: ROW_HEIGHT - 12, // square-ish, fills the full block height
+    height: '100%',
+    marginRight: 8,
   },
   eventBlockInfo: {
     flex: 1,
     justifyContent: 'center',
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   eventBlockTitle: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
+    marginBottom: 2,
   },
   eventBlockTime: {
     color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  eventBlockGenres: {
+    color: '#B87333',
     fontSize: 10,
     fontWeight: '500',
+    fontStyle: 'italic',
   },
-  eventBlockTimeUntil: {
+  eventBlockStatus: {
     position: 'absolute',
     top: 4,
-    right: 4,
+    right: 6,
+  },
+  eventBlockStatusLive: {
+    color: '#FF3B30',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.75,
+  },
+  eventBlockStatusFinished: {
+    color: '#9E9E9E',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.75,
   },
   eventBlockTimeUntilText: {
     color: 'rgba(255, 255, 255, 0.7)',
@@ -541,7 +587,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 4,
     right: 4,
-    padding: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     flexDirection: 'row',
     alignItems: 'center',
   },
