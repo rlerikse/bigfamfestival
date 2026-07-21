@@ -1,9 +1,9 @@
 import React from 'react';
 import {
   View,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
 import TopNavBar from '../components/TopNavBar';
@@ -106,7 +106,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
 
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
