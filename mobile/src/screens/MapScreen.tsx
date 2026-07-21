@@ -453,12 +453,9 @@ export default function MapScreen() {
           }}
         />
 
-        {/* User location */}
-        <Mapbox.LocationPuck
-          puckBearingEnabled
-          puckBearing="heading"
-          pulsing={{ isEnabled: true, color: '#6BBF59', radius: 40 }}
-        />
+        {/* User location — no default LocationPuck: the blue dot would cover our
+            profile-pic avatar marker below. The self-marker (green ring +
+            profile pic / initials) is the sole "you are here" indicator. */}
 
         {/* Self avatar marker — rendered on top of the LocationPuck so the user
             sees their own profile picture at their live position, matching the
