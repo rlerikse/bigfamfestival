@@ -11,8 +11,6 @@ backend/.env.production
 backend/bigfamfestival-*.json
 backend/bigfam-*-serviceaccount.json
 backend/bigfam-dev-serviceaccount.json
-# Dev Firebase credentials (never commit)
-mobile/GoogleService-Info.dev.plist
 /backend/dist
 /mobile/android
 mobile/package-lock.backup.json

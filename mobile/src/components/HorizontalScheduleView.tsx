@@ -262,7 +262,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
 
   // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
   // to the live "now" position if the day is in progress, to the LAST event if
-  // the day is fully over, or to the FIRST event if the day hasn't started yet.
+  // the day is fully over, or to the FIRST event if the day hasn't started yet —
+  // mirrors the vertical list's behavior (reuses the same shared helper from
+  // scheduleUtils, not reimplemented here).
   //
   // ROBUSTNESS (iOS "breaks after ~4 switches"): a day change ALSO bumps
   // scrollResetKey, which REMOUNTS the three ScrollViews. A fire-and-forget
