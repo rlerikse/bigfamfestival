@@ -1,5 +1,5 @@
 // Commit: Show scheduled notifications under Admin in Settings
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
+import * as Location from 'expo-location';
+import { updateUserProfile } from '../services/userService';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { DarkModeToggle } from '../components/DarkModeToggle';
@@ -29,8 +31,63 @@ type SettingsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 const SettingsScreen = () => {
   const { theme, isDark, isPerformanceMode, togglePerformanceMode } = useTheme();
   const navigation = useNavigation<SettingsScreenNavigationProp>();
-  const { isGuestUser, deleteAccount, user } = useAuth();
+  const { isGuestUser, deleteAccount, user, updateUser } = useAuth();
   const isAdmin = user?.role?.toLowerCase() === 'admin';
+
+  // Location sharing prefs — backed by the user profile (shareMyLocation /
+  // shareMyCampsite). Optimistic local state so the switch feels instant; on
+  // failure we revert and surface an alert.
+  const [shareMyLocation, setShareMyLocation] = useState<boolean>(!!user?.shareMyLocation);
+  const [shareMyCampsite, setShareMyCampsite] = useState<boolean>(!!user?.shareMyCampsite);
+  const [locationSavePending, setLocationSavePending] = useState(false);
+
+  useEffect(() => {
+    setShareMyLocation(!!user?.shareMyLocation);
+    setShareMyCampsite(!!user?.shareMyCampsite);
+  }, [user?.shareMyLocation, user?.shareMyCampsite]);
+
+  const persistLocationPref = useCallback(
+    async (patch: { shareMyLocation?: boolean; shareMyCampsite?: boolean }) => {
+      if (!user?.id) return;
+      // If enabling live location sharing, make sure OS permission is granted.
+      if (patch.shareMyLocation) {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setShareMyLocation(false);
+          Alert.alert(
+            'Location Permission Needed',
+            'To share your live location with friends, allow location access for Big Fam in your device settings.'
+          );
+          return;
+        }
+      }
+      setLocationSavePending(true);
+      try {
+        const updated = await updateUserProfile(user.id, patch);
+        updateUser({ ...patch, ...(updated || {}) });
+      } catch (err) {
+        // Revert optimistic state on failure.
+        if (patch.shareMyLocation !== undefined) setShareMyLocation(!patch.shareMyLocation);
+        if (patch.shareMyCampsite !== undefined) setShareMyCampsite(!patch.shareMyCampsite);
+        Alert.alert('Could not update', 'Your location sharing preference could not be saved. Please try again.');
+      } finally {
+        setLocationSavePending(false);
+      }
+    },
+    [user?.id, updateUser]
+  );
+
+  const toggleShareMyLocation = useCallback(() => {
+    const next = !shareMyLocation;
+    setShareMyLocation(next);
+    persistLocationPref({ shareMyLocation: next });
+  }, [shareMyLocation, persistLocationPref]);
+
+  const toggleShareMyCampsite = useCallback(() => {
+    const next = !shareMyCampsite;
+    setShareMyCampsite(next);
+    persistLocationPref({ shareMyCampsite: next });
+  }, [shareMyCampsite, persistLocationPref]);
   const { 
     scheduleNotificationsEnabled, 
     toggleScheduleNotifications,
@@ -200,10 +257,33 @@ const SettingsScreen = () => {
         */
       ].filter(Boolean), // Remove any undefined items
     },
+    // Location & Privacy — only meaningful for signed-in users (guests can't share)
+    ...(!isGuestUser() ? [{
+      title: 'Location & Privacy',
+      items: [
+        {
+          icon: 'location-outline',
+          label: 'Share My Live Location',
+          hasSwitch: true,
+          switchValue: shareMyLocation,
+          onSwitchToggle: toggleShareMyLocation,
+          disabled: locationSavePending,
+          description: 'Let accepted friends see your live position on the map',
+        },
+        {
+          icon: 'bonfire-outline',
+          label: 'Share My Campsite',
+          hasSwitch: true,
+          switchValue: shareMyCampsite,
+          onSwitchToggle: toggleShareMyCampsite,
+          disabled: locationSavePending,
+          description: 'Let accepted friends find your campsite on the map',
+        },
+      ],
+    }] : []),
     {
       title: 'Notifications',
       items: [
-        // Schedule notifications toggle (only for non-guest users)
         ...(!isGuestUser() ? [
           {
             icon: 'calendar-outline',

@@ -14,6 +14,7 @@
  */
 import React, { useMemo, useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -28,8 +29,10 @@ import { ScheduleEvent } from '../types/event';
 import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
 
 // ─── Layout constants ──────────────────────────────────────────────────────
-const PX_PER_MINUTE = 2.6; // horizontal density — tuned for readable set-length blocks
-const ROW_HEIGHT = 92;
+// Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
+// ~1 hour visible). Lower density → wider time span left→right per screen.
+const PX_PER_MINUTE = 6.0; // zoomed in — final shipping value; Android gets a touch more breathing room than 6.5
+const ROW_HEIGHT = 108; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
 const CUTOFF_MINUTES = 6 * 60 + 30; // 6:30am — day boundary, matches ScheduleScreen logic
@@ -75,9 +78,9 @@ function stageLogoSource(stage: string): ImageRequireSource | null {
   return null;
 }
 
-// Minimum block width (px) below which the thumbnail image is hidden to avoid
+// Minimum block width (px) below which the full-height photo is hidden to avoid
 // squishing short-set blocks into an unreadable sliver.
-const MIN_WIDTH_FOR_THUMBNAIL = 90;
+const MIN_WIDTH_FOR_THUMBNAIL = 70;
 
 function formatTimeUntil(ev: ScheduleEvent, currentTime: number): string {
   if (!ev.date || !ev.startTime) return '';
@@ -110,12 +113,57 @@ const HorizontalScheduleView: React.FC<Props> = ({
   selectedDay,
 }) => {
   const verticalScrollRef = useRef<ScrollView>(null);
-  const headerScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
-  // Guards against the two horizontal ScrollViews (header ruler + body) fighting
-  // over sync-scroll events and causing jitter.
-  const isSyncingScroll = useRef(false);
   const previousDayRef = useRef<string | null>(null);
+  // Pending horizontal auto-scroll target (px) queued on day change, consumed
+  // once the remounted body ScrollView lays out its content (onContentSizeChange).
+  const pendingScrollXRef = useRef<number | null>(null);
+  const pendingRafRef = useRef<number | null>(null);
+  // Header-ruler sync, driven entirely on the native/UI thread.
+  //
+  // Previously the header ruler was its own horizontal ScrollView, kept in sync
+  // with the body grid via onScroll handlers that called the *other* view's
+  // imperative scrollTo() on the JS thread. Every scroll frame round-tripped
+  // JS -> bridge -> native -> JS -> bridge -> native, which is fine on iOS but
+  // visibly laggy on Android (dropped frames / rubber-banding while dragging).
+  //
+  // Fix: the header ruler is now a plain (non-scrollable) Animated.View whose
+  // horizontal translateX is bound to a native Animated.Value that's driven
+  // directly off the body ScrollView's onScroll via Animated.event({ useNativeDriver:
+  // true }). That wiring runs entirely on the native/UI thread -- no JS round
+  // trip, no bridge traffic per frame, no isSyncingScroll feedback-loop guard
+  // needed at all (there's only one source of truth now: the body scroll
+  // position), which removes the historical race entirely rather than papering
+  // over it.
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const handleBodyScrollNative = useMemo(
+    () =>
+      Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+        {
+          useNativeDriver: true,
+          // Also mirrors the latest offset into a plain ref (JS thread, throttled
+          // by scrollEventThrottle) purely for the filter-change re-clamp check
+          // below -- this does NOT gate the header-sync animation itself, which
+          // stays 100% native-driven.
+          listener: (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+            currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
+          },
+        }
+      ),
+    [scrollX]
+  );
+  // Consume a pending auto-scroll target (declared before the day-change effects
+  // that reference it). scrollX (and therefore the header ruler) follows the
+  // body ScrollView automatically once it moves -- no separate header scrollTo
+  // needed.
+  const applyPendingScrollImpl = () => {
+    const x = pendingScrollXRef.current;
+    if (x == null) return;
+    pendingScrollXRef.current = null;
+    bodyScrollRef.current?.scrollTo({ x, animated: true });
+  };
+  const applyPendingScroll = useCallback(applyPendingScrollImpl, []);
   // Tracks the last known scroll offsets so a filter change (Stage/Genre) can
   // re-clamp to a valid position instead of relying on the native ScrollView to
   // do it implicitly (see currentOffsetRef usage below for why this matters).
@@ -148,7 +196,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
     const markers: { label: string; offset: number }[] = [];
     for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) {
       const hourOfDay = Math.floor((m % (24 * 60)) / 60);
-      const suffix = hourOfDay === 0 ? '12A' : hourOfDay === 12 ? '12P' : hourOfDay > 12 ? `${hourOfDay - 12}P` : `${hourOfDay}A`;
+      const ampm = hourOfDay >= 12 ? 'PM' : 'AM';
+      const hour12 = hourOfDay % 12 || 12;
+      const suffix = `${hour12} ${ampm}`;
       markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * PX_PER_MINUTE });
     }
     return markers;
@@ -170,27 +220,6 @@ const HorizontalScheduleView: React.FC<Props> = ({
 
     return (nowMinutesAdjusted - GRID_START_MINUTES) * PX_PER_MINUTE;
   }, [currentTime, selectedDay]);
-
-  // Keep the time-ruler header in lockstep with the body's horizontal scroll,
-  // and vice versa, without feedback loops.
-  const handleBodyScroll = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
-    currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
-    if (isSyncingScroll.current) {
-      isSyncingScroll.current = false;
-      return;
-    }
-    isSyncingScroll.current = true;
-    headerScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-  }, []);
-
-  const handleHeaderScroll = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
-    if (isSyncingScroll.current) {
-      isSyncingScroll.current = false;
-      return;
-    }
-    isSyncingScroll.current = true;
-    bodyScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-  }, []);
 
   // On Stage/Genre filter changes, `events` gets a new (shorter/reshaped) array
   // from ScheduleScreen while `selectedDay` stays the same. That shrinks the
@@ -236,33 +265,57 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // the day is fully over, or to the FIRST event if the day hasn't started yet —
   // mirrors the vertical list's behavior (reuses the same shared helper from
   // scheduleUtils, not reimplemented here).
+  //
+  // ROBUSTNESS (iOS "breaks after ~4 switches"): a day change ALSO bumps
+  // scrollResetKey, which REMOUNTS the three ScrollViews. A fire-and-forget
+  // setTimeout(scrollTo) here raced that remount — it would grab a torn-down or
+  // not-yet-laid-out ScrollView ref and silently no-op after a few rapid
+  // switches. Instead we COMPUTE the target and stash it in pendingScrollXRef;
+  // the freshly-mounted body ScrollView performs the scroll from its
+  // onContentSizeChange (fires once its content is laid out and actually
+  // scrollable). No timing guess, no ref race.
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
-      setTimeout(() => {
-        const nowMs = currentTime;
-        const stageEvents = events.filter(ev => ev.stage && ev.startTime);
-        const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
-        let targetMin: number | null = null;
-        if (target === 'live') {
-          const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
-          if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
-        } else if (target === 'first' || target === 'last') {
-          const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
-          if (sorted.length > 0) {
-            const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
-            targetMin = adjustedStartMinutes(targetEvent.startTime);
-          }
+      const nowMs = currentTime;
+      const stageEvents = events.filter(ev => ev.stage && ev.startTime);
+      const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
+      let targetMin: number | null = null;
+      if (target === 'live') {
+        const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
+        if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
+      } else if (target === 'first' || target === 'last') {
+        const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
+        if (sorted.length > 0) {
+          const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
+          targetMin = adjustedStartMinutes(targetEvent.startTime);
         }
-        if (targetMin !== null) {
-          const targetX = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
-          bodyScrollRef.current?.scrollTo({ x: targetX, animated: true });
-          headerScrollRef.current?.scrollTo({ x: targetX, animated: true });
-        }
-      }, 0);
+      }
+      if (targetMin !== null) {
+        pendingScrollXRef.current = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
+      } else {
+        pendingScrollXRef.current = null;
+      }
     }
     previousDayRef.current = selectedDay;
   }, [selectedDay, events, currentTime]);
+
+  // Fallback consumer: if the body ScrollView's content size does NOT change on
+  // a day switch (e.g. the new day happens to have identical layout dimensions),
+  // onContentSizeChange won't fire — so also flush any pending scroll on the next
+  // frame after selectedDay settles. Double-flush is harmless (target is nulled
+  // after the first consumer runs). rAF is cleaned up to avoid stacking.
+  useEffect(() => {
+    if (pendingScrollXRef.current == null) return;
+    const raf = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(applyPendingScroll);
+      pendingRafRef.current = raf2;
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (pendingRafRef.current != null) cancelAnimationFrame(pendingRafRef.current);
+    };
+  }, [selectedDay, applyPendingScroll]);
 
   if (stages.length === 0) {
     return (
@@ -278,23 +331,21 @@ const HorizontalScheduleView: React.FC<Props> = ({
       {/* Sticky time ruler header */}
       <View style={styles.headerRow}>
         <View style={[styles.stageLabelCell, styles.headerCorner]} />
-        <ScrollView
-          ref={headerScrollRef}
-          key={`header-${scrollResetKey}`}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleHeaderScroll}
-          scrollEventThrottle={16}
-          bounces={false}
-        >
-          <View style={{ width: gridWidth, height: 36 }}>
+        <View style={styles.headerRulerViewport}>
+          <Animated.View
+            style={{
+              width: gridWidth,
+              height: 36,
+              transform: [{ translateX: Animated.multiply(scrollX, -1) }],
+            }}
+          >
             {hourMarkers.map((marker, idx) => (
               <View key={idx} style={[styles.hourMarker, { left: marker.offset }]}>
                 <Text style={styles.hourMarkerText}>{marker.label}</Text>
               </View>
             ))}
-          </View>
-        </ScrollView>
+          </Animated.View>
+        </View>
       </View>
 
       {/* Body: sticky stage labels (left) + horizontally scrollable event grid */}
@@ -327,12 +378,13 @@ const HorizontalScheduleView: React.FC<Props> = ({
           </View>
 
           {/* Horizontally scrollable grid of event blocks, one row per stage */}
-          <ScrollView
+          <Animated.ScrollView
             ref={bodyScrollRef}
             key={`body-${scrollResetKey}`}
             horizontal
             showsHorizontalScrollIndicator
-            onScroll={handleBodyScroll}
+            onScroll={handleBodyScrollNative}
+            onContentSizeChange={applyPendingScroll}
             scrollEventThrottle={16}
             bounces={false}
           >
@@ -360,6 +412,26 @@ const HorizontalScheduleView: React.FC<Props> = ({
                       const isInSchedule = Boolean(userSchedule[ev.id]);
                       const timeUntil = formatTimeUntil(ev, currentTime);
                       const showThumbnail = width >= MIN_WIDTH_FOR_THUMBNAIL;
+                      // Mirror the vertical card's live/finished status.
+                      const startTs = ev.date && ev.startTime ? new Date(`${ev.date}T${ev.startTime}`).getTime() : 0;
+                      let endTs = ev.date && ev.endTime && ev.endTime.trim()
+                        ? new Date(`${ev.date}T${ev.endTime}`).getTime()
+                        : startTs + 2 * 60 * 60 * 1000;
+                      if (endTs <= startTs) endTs += 24 * 60 * 60 * 1000;
+                      const isLive = startTs > 0 && currentTime >= startTs && currentTime < endTs;
+                      const isPast = startTs > 0 && currentTime >= endTs;
+                      const genreLine = ev.genres && ev.genres.length > 0 ? ev.genres.join(' • ') : '';
+                      const fmt12 = (t?: string) => {
+                        if (!t || !t.trim()) return '';
+                        const [h, m] = t.split(':');
+                        const hour = parseInt(h, 10);
+                        const ampm = hour >= 12 ? 'PM' : 'AM';
+                        const hour12 = hour % 12 || 12;
+                        return `${hour12}:${m} ${ampm}`;
+                      };
+                      const timeLabel = ev.endTime && ev.endTime.trim()
+                        ? `${fmt12(ev.startTime)} – ${fmt12(ev.endTime)}`
+                        : fmt12(ev.startTime);
                       return (
                         <TouchableOpacity
                           key={ev.id}
@@ -370,8 +442,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               width,
                               borderLeftColor: stageColor(stage, rowIdx),
                               borderLeftWidth: 4,
-                              borderColor: isInSchedule ? '#B87333' : 'rgba(255, 255, 255, 0.2)',
-                              borderWidth: isInSchedule ? 2 : 1,
+                              borderColor: isLive ? '#FF3B30' : isInSchedule ? '#B87333' : 'rgba(255, 255, 255, 0.2)',
+                              borderWidth: isLive ? 2 : isInSchedule ? 2 : 1,
+                              opacity: isPast ? 0.5 : 1,
                             },
                           ]}
                           activeOpacity={0.8}
@@ -391,12 +464,23 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               />
                             )}
                             <View style={styles.eventBlockInfo}>
-                              <Text style={styles.eventBlockTitle} numberOfLines={2}>{ev.name}</Text>
-                              <Text style={styles.eventBlockTime} numberOfLines={1}>{stage} · {ev.startTime}</Text>
+                              <Text style={styles.eventBlockTitle} numberOfLines={1}>{ev.name}</Text>
+                              <Text style={styles.eventBlockTime} numberOfLines={1}>{timeLabel}</Text>
+                              {!!genreLine && (
+                                <Text style={styles.eventBlockGenres} numberOfLines={1}>{genreLine}</Text>
+                              )}
                             </View>
                           </View>
-                          {!!timeUntil && (
-                            <View style={styles.eventBlockTimeUntil} pointerEvents="none">
+                          {isLive ? (
+                            <View style={styles.eventBlockStatus} pointerEvents="none">
+                              <Text style={styles.eventBlockStatusLive} numberOfLines={1}>LIVE</Text>
+                            </View>
+                          ) : isPast ? (
+                            <View style={styles.eventBlockStatus} pointerEvents="none">
+                              <Text style={styles.eventBlockStatusFinished} numberOfLines={1}>FINISHED</Text>
+                            </View>
+                          ) : !!timeUntil && (
+                            <View style={styles.eventBlockStatus} pointerEvents="none">
                               <Text style={styles.eventBlockTimeUntilText} numberOfLines={1}>{timeUntil}</Text>
                             </View>
                           )}
@@ -423,7 +507,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
                 );
               })}
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -443,6 +527,11 @@ const styles = StyleSheet.create({
   headerCorner: {
     height: 36,
     backgroundColor: 'transparent',
+  },
+  headerRulerViewport: {
+    flex: 1,
+    height: 36,
+    overflow: 'hidden',
   },
   hourMarker: {
     position: 'absolute',
@@ -498,42 +587,62 @@ const styles = StyleSheet.create({
   },
   eventBlock: {
     position: 'absolute',
-    top: 8,
-    bottom: 8,
+    top: 6,
+    bottom: 6,
     borderRadius: 12,
-    padding: 6,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     overflow: 'hidden',
   },
   eventBlockRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     flex: 1,
   },
   eventBlockImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    marginRight: 6,
+    width: ROW_HEIGHT - 12, // square-ish, fills the full block height
+    height: '100%',
+    marginRight: 8,
   },
   eventBlockInfo: {
     flex: 1,
     justifyContent: 'center',
+    paddingVertical: 6,
+    paddingRight: 8,
   },
   eventBlockTitle: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
+    marginBottom: 2,
   },
   eventBlockTime: {
     color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  eventBlockGenres: {
+    color: '#B87333',
     fontSize: 10,
     fontWeight: '500',
+    fontStyle: 'italic',
   },
-  eventBlockTimeUntil: {
+  eventBlockStatus: {
     position: 'absolute',
     top: 4,
-    right: 4,
+    right: 6,
+  },
+  eventBlockStatusLive: {
+    color: '#FF3B30',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.75,
+  },
+  eventBlockStatusFinished: {
+    color: '#9E9E9E',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.75,
   },
   eventBlockTimeUntilText: {
     color: 'rgba(255, 255, 255, 0.7)',
@@ -544,7 +653,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 4,
     right: 4,
-    padding: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     flexDirection: 'row',
     alignItems: 'center',
   },

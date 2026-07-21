@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { getFriendLocations, getFriendCampsites, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
+import { getWalkingRoute, formatRouteSummary, routeBounds, RouteResult, LngLat } from '../services/routingService';
 import { useAuth } from '../contexts/AuthContext';
 import OptimizedImage from '../components/OptimizedImage';
 
@@ -138,6 +139,14 @@ export default function MapScreen() {
   const cameraRef = useRef<Mapbox.Camera>(null);
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
   const [currentBearing, setCurrentBearing] = useState(0);
+
+  // ── Routing (walking directions to a POI/friend) ──────────────────────────
+  const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
+  const [routeLabel, setRouteLabel] = useState<string | null>(null);
+  const [routing, setRouting] = useState(false);
+  // Always-current friend markers, so the navigation callback never uses a
+  // stale snapshot (functions passed via nav params capture their closure).
+  const friendMarkersRef = useRef<Array<(FriendLocation | FriendCampsite) & { isLive: boolean }>>([]);
 
   // Friends — live locations + campsites (privacy: backend only returns
   // entries for accepted friends who have opted in to sharing)
@@ -296,7 +305,55 @@ export default function MapScreen() {
     }
   }, [currentZoom]);
 
-  // ─── Derived ─────────────────────────────────────────────────────────────
+  // ── Routing helpers ───────────────────────────────────────────
+  /** Best-effort current user coordinate: live selfCoords, else a fresh fix. */
+  const getUserCoords = useCallback(async (): Promise<LngLat | null> => {
+    if (selfCoords) return selfCoords;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return null;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      return [loc.coords.longitude, loc.coords.latitude];
+    } catch (err) {
+      console.error('[Map] Could not get user location for routing:', err);
+      return null;
+    }
+  }, [selfCoords]);
+
+  const clearRoute = useCallback(() => {
+    setActiveRoute(null);
+    setRouteLabel(null);
+  }, []);
+
+  /** Fetch + draw a walking route from the user to a destination pin. */
+  const routeToDestination = useCallback(async (dest: LngLat, label: string) => {
+    if (routing) return;
+    setRouting(true);
+    try {
+      const origin = await getUserCoords();
+      if (!origin) {
+        Alert.alert(
+          'Location needed',
+          'Enable location access so we can route you from where you are.'
+        );
+        return;
+      }
+      const route = await getWalkingRoute(origin, dest);
+      if (!route) {
+        Alert.alert('No route found', `Couldn't find a walking route to ${label}. Try again.`);
+        return;
+      }
+      setActiveRoute(route);
+      setRouteLabel(`${label} • ${formatRouteSummary(route)}`);
+      // Fit the camera to the whole route so both ends are visible.
+      const b = routeBounds(route);
+      cameraRef.current?.fitBounds(b.ne, b.sw, 90, 700);
+    } finally {
+      setRouting(false);
+    }
+  }, [routing, getUserCoords]);
+
+  // ── Derived ───────────────────────────────────────────────────────────────────
 
   const stagesVisible = visibleCategories.has('stage');
 
@@ -323,6 +380,7 @@ export default function MapScreen() {
   })();
 
   useEffect(() => {
+    friendMarkersRef.current = friendMarkers;
     if (friendMarkers.length > 0) {
       friendMarkers.forEach(friend => {
         console.log(
@@ -336,21 +394,24 @@ export default function MapScreen() {
     console.log('[Map] Opening friend list...');
     (navigation as unknown as { navigate: (name: string, params?: unknown) => void }).navigate('Friends', {
       onSelectFriend: (friend: FriendEntry) => {
-        const match = friendMarkers.find(f => f.userId === friend.userId);
+        // Read markers from the ref, not a captured snapshot, so a friend whose
+        // location loaded/changed while the list was open still resolves.
+        const match = friendMarkersRef.current.find(f => f.userId === friend.userId);
         if (match) {
-          console.log(`[Map] Rendering friend marker for ${friend.name} — centering camera`);
-          cameraRef.current?.setCamera({
-            centerCoordinate: [match.lng, match.lat],
-            zoomLevel: Math.max(currentZoom, 17),
-            animationDuration: 700,
-          });
+          console.log(`[Map] Routing to friend ${friend.name}`);
           setSelectedFriend(match);
+          setSelectedPOI(null);
+          void routeToDestination([match.lng, match.lat], friend.name || 'friend');
         } else {
           console.log(`[Map] No marker found for selected friend ${friend.name} (no location/campsite data)`);
+          Alert.alert(
+            'No location for this friend',
+            `${friend.name || 'They'} isn't sharing a live location or campsite right now.`
+          );
         }
       },
     });
-  }, [navigation, friendMarkers, currentZoom]);
+  }, [navigation, routeToDestination]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -392,12 +453,9 @@ export default function MapScreen() {
           }}
         />
 
-        {/* User location */}
-        <Mapbox.LocationPuck
-          puckBearingEnabled
-          puckBearing="heading"
-          pulsing={{ isEnabled: true, color: '#6BBF59', radius: 40 }}
-        />
+        {/* User location — no default LocationPuck: the blue dot would cover our
+            profile-pic avatar marker below. The self-marker (green ring +
+            profile pic / initials) is the sole "you are here" indicator. */}
 
         {/* Self avatar marker — rendered on top of the LocationPuck so the user
             sees their own profile picture at their live position, matching the
@@ -544,6 +602,31 @@ export default function MapScreen() {
             <Mapbox.Callout title={`${friend.name}${friend.isLive ? ' • Live' : ' • Campsite'}`} />
           </Mapbox.PointAnnotation>
         ))}
+
+        {/* Active walking route line (user → selected POI/friend) */}
+        {activeRoute && (
+          <Mapbox.ShapeSource id="active-route" shape={activeRoute.geojson}>
+            <Mapbox.LineLayer
+              id="active-route-casing"
+              style={{
+                lineColor: '#0B3D2E',
+                lineWidth: 8,
+                lineCap: 'round',
+                lineJoin: 'round',
+                lineOpacity: 0.9,
+              }}
+            />
+            <Mapbox.LineLayer
+              id="active-route-line"
+              style={{
+                lineColor: '#6BBF59',
+                lineWidth: 4.5,
+                lineCap: 'round',
+                lineJoin: 'round',
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
       </Mapbox.MapView>
 
       {/* Top NavBar */}
@@ -626,11 +709,14 @@ export default function MapScreen() {
           : 'stage';
         const cfg = POI_CATEGORIES[cat];
         return (
-          <TouchableOpacity
-            style={styles.infoCard}
-            onPress={() => setSelectedPOI(null)}
-            activeOpacity={0.9}
-          >
+          <View style={styles.infoCard}>
+            <TouchableOpacity
+              style={styles.infoCardClose}
+              onPress={() => setSelectedPOI(null)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={20} color="#F5F5DC" />
+            </TouchableOpacity>
             <View style={styles.infoCardHeader}>
               <View style={[styles.infoCardDot, { backgroundColor: cfg.color }]}>
                 <Text style={styles.infoCardDotEmoji}>{cfg.emoji}</Text>
@@ -643,9 +729,38 @@ export default function MapScreen() {
             <Text style={[styles.infoCardCategory, { color: cfg.color }]}>
               {cfg.label.toUpperCase()}
             </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.directionsBtn, routing && styles.directionsBtnDisabled]}
+              disabled={routing}
+              activeOpacity={0.85}
+              onPress={() => routeToDestination([selectedPOI.lng, selectedPOI.lat], selectedPOI.name)}
+            >
+              {routing ? (
+                <ActivityIndicator size="small" color="#0B3D2E" />
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={18} color="#0B3D2E" />
+                  <Text style={styles.directionsBtnText}>Directions</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         );
       })()}
+
+      {/* Active route summary + clear control */}
+      {activeRoute && routeLabel && (
+        <View style={styles.routeBanner}>
+          <Ionicons name="walk" size={18} color="#0B3D2E" />
+          <Text style={styles.routeBannerText} numberOfLines={1}>{routeLabel}</Text>
+          <TouchableOpacity
+            onPress={clearRoute}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close-circle" size={22} color="#0B3D2E" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
@@ -854,5 +969,54 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 8,
     letterSpacing: 1,
+  },
+  infoCardClose: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    zIndex: 2,
+    padding: 2,
+  },
+  directionsBtn: {
+    marginTop: 14,
+    backgroundColor: '#6BBF59',
+    borderRadius: 10,
+    paddingVertical: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  directionsBtnDisabled: {
+    opacity: 0.6,
+  },
+  directionsBtnText: {
+    color: '#0B3D2E',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  routeBanner: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 96,
+    backgroundColor: '#6BBF59',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  routeBannerText: {
+    flex: 1,
+    color: '#0B3D2E',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
