@@ -42,6 +42,7 @@ import HorizontalScheduleView from '../components/HorizontalScheduleView';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
+import { isEventLive } from '../utils/scheduleUtils';
 import firestore, { collection, getDocs } from '../utils/firebaseCompat';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -726,40 +727,29 @@ const ScheduleScreen = () => {
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress, now]);
 
-  // Determine if event is currently live (mirrors logic inside EventCard)
-  const isEventLive = useCallback((ev: ScheduleEvent, nowMs: number) => {
-    if (!ev.date || !ev.startTime) return false;
-    const startTs = new Date(`${ev.date}T${ev.startTime}`).getTime();
-    let endTs: number;
-    if (ev.endTime && ev.endTime.trim()) {
-      endTs = new Date(`${ev.date}T${ev.endTime}`).getTime();
-      if (endTs <= startTs) endTs += 24 * 60 * 60 * 1000; // crosses midnight
-    } else {
-      endTs = startTs + 2 * 60 * 60 * 1000; // fallback 2h
-    }
-    return nowMs >= startTs && nowMs < endTs;
-  }, []);
-
-  // On day change (after initial set), auto-scroll to first live event if present
+  // On day change (after initial set), auto-scroll to first live event if present,
+  // otherwise to the first event of the day (matches list-view behavior; horizontal
+  // grid view reuses the same isEventLive helper from scheduleUtils).
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
       const nowMs = now;
-      const liveIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
-      if (liveIndex >= 0) {
+      let targetIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
+      if (targetIndex < 0) targetIndex = filteredEvents.length > 0 ? 0 : -1;
+      if (targetIndex >= 0) {
         // Defer to ensure FlatList rendered new data
         setTimeout(() => {
           try {
-            flatListRef.current?.scrollToIndex({ index: liveIndex, animated: true });
+            flatListRef.current?.scrollToIndex({ index: targetIndex, animated: true });
           } catch (err) {
             // Fallback to offset scroll if measurement not ready
-            flatListRef.current?.scrollToOffset({ offset: liveIndex * 112, animated: true });
+            flatListRef.current?.scrollToOffset({ offset: targetIndex * 112, animated: true });
           }
         }, 0);
       }
     }
     previousDayRef.current = selectedDay;
-  }, [selectedDay, filteredEvents, now, isEventLive]);
+  }, [selectedDay, filteredEvents, now]);
 
   // Aggressive initial image preloading for first screen
   const preloadInitialImages = useCallback((events: ScheduleEvent[]) => {
