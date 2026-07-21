@@ -14,6 +14,7 @@
  */
 import React, { useMemo, useRef, useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -112,24 +113,55 @@ const HorizontalScheduleView: React.FC<Props> = ({
   selectedDay,
 }) => {
   const verticalScrollRef = useRef<ScrollView>(null);
-  const headerScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
-  // Guards against the two horizontal ScrollViews (header ruler + body) fighting
-  // over sync-scroll events and causing jitter.
-  const isSyncingScroll = useRef(false);
   const previousDayRef = useRef<string | null>(null);
   // Pending horizontal auto-scroll target (px) queued on day change, consumed
   // once the remounted body ScrollView lays out its content (onContentSizeChange).
   const pendingScrollXRef = useRef<number | null>(null);
   const pendingRafRef = useRef<number | null>(null);
+  // Header-ruler sync, driven entirely on the native/UI thread.
+  //
+  // Previously the header ruler was its own horizontal ScrollView, kept in sync
+  // with the body grid via onScroll handlers that called the *other* view's
+  // imperative scrollTo() on the JS thread. Every scroll frame round-tripped
+  // JS -> bridge -> native -> JS -> bridge -> native, which is fine on iOS but
+  // visibly laggy on Android (dropped frames / rubber-banding while dragging).
+  //
+  // Fix: the header ruler is now a plain (non-scrollable) Animated.View whose
+  // horizontal translateX is bound to a native Animated.Value that's driven
+  // directly off the body ScrollView's onScroll via Animated.event({ useNativeDriver:
+  // true }). That wiring runs entirely on the native/UI thread -- no JS round
+  // trip, no bridge traffic per frame, no isSyncingScroll feedback-loop guard
+  // needed at all (there's only one source of truth now: the body scroll
+  // position), which removes the historical race entirely rather than papering
+  // over it.
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const handleBodyScrollNative = useMemo(
+    () =>
+      Animated.event(
+        [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+        {
+          useNativeDriver: true,
+          // Also mirrors the latest offset into a plain ref (JS thread, throttled
+          // by scrollEventThrottle) purely for the filter-change re-clamp check
+          // below -- this does NOT gate the header-sync animation itself, which
+          // stays 100% native-driven.
+          listener: (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+            currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
+          },
+        }
+      ),
+    [scrollX]
+  );
   // Consume a pending auto-scroll target (declared before the day-change effects
-  // that reference it). Scrolls header + body in sync, then clears the target.
+  // that reference it). scrollX (and therefore the header ruler) follows the
+  // body ScrollView automatically once it moves -- no separate header scrollTo
+  // needed.
   const applyPendingScrollImpl = () => {
     const x = pendingScrollXRef.current;
     if (x == null) return;
     pendingScrollXRef.current = null;
     bodyScrollRef.current?.scrollTo({ x, animated: true });
-    headerScrollRef.current?.scrollTo({ x, animated: true });
   };
   const applyPendingScroll = useCallback(applyPendingScrollImpl, []);
   // Tracks the last known scroll offsets so a filter change (Stage/Genre) can
@@ -188,27 +220,6 @@ const HorizontalScheduleView: React.FC<Props> = ({
 
     return (nowMinutesAdjusted - GRID_START_MINUTES) * PX_PER_MINUTE;
   }, [currentTime, selectedDay]);
-
-  // Keep the time-ruler header in lockstep with the body's horizontal scroll,
-  // and vice versa, without feedback loops.
-  const handleBodyScroll = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
-    currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
-    if (isSyncingScroll.current) {
-      isSyncingScroll.current = false;
-      return;
-    }
-    isSyncingScroll.current = true;
-    headerScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-  }, []);
-
-  const handleHeaderScroll = useCallback((e: { nativeEvent: { contentOffset: { x: number } } }) => {
-    if (isSyncingScroll.current) {
-      isSyncingScroll.current = false;
-      return;
-    }
-    isSyncingScroll.current = true;
-    bodyScrollRef.current?.scrollTo({ x: e.nativeEvent.contentOffset.x, animated: false });
-  }, []);
 
   // On Stage/Genre filter changes, `events` gets a new (shorter/reshaped) array
   // from ScheduleScreen while `selectedDay` stays the same. That shrinks the
@@ -318,23 +329,21 @@ const HorizontalScheduleView: React.FC<Props> = ({
       {/* Sticky time ruler header */}
       <View style={styles.headerRow}>
         <View style={[styles.stageLabelCell, styles.headerCorner]} />
-        <ScrollView
-          ref={headerScrollRef}
-          key={`header-${scrollResetKey}`}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleHeaderScroll}
-          scrollEventThrottle={16}
-          bounces={false}
-        >
-          <View style={{ width: gridWidth, height: 36 }}>
+        <View style={styles.headerRulerViewport}>
+          <Animated.View
+            style={{
+              width: gridWidth,
+              height: 36,
+              transform: [{ translateX: Animated.multiply(scrollX, -1) }],
+            }}
+          >
             {hourMarkers.map((marker, idx) => (
               <View key={idx} style={[styles.hourMarker, { left: marker.offset }]}>
                 <Text style={styles.hourMarkerText}>{marker.label}</Text>
               </View>
             ))}
-          </View>
-        </ScrollView>
+          </Animated.View>
+        </View>
       </View>
 
       {/* Body: sticky stage labels (left) + horizontally scrollable event grid */}
@@ -367,12 +376,12 @@ const HorizontalScheduleView: React.FC<Props> = ({
           </View>
 
           {/* Horizontally scrollable grid of event blocks, one row per stage */}
-          <ScrollView
+          <Animated.ScrollView
             ref={bodyScrollRef}
             key={`body-${scrollResetKey}`}
             horizontal
             showsHorizontalScrollIndicator
-            onScroll={handleBodyScroll}
+            onScroll={handleBodyScrollNative}
             onContentSizeChange={applyPendingScroll}
             scrollEventThrottle={16}
             bounces={false}
@@ -496,7 +505,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
                 );
               })}
             </View>
-          </ScrollView>
+          </Animated.ScrollView>
         </View>
       </ScrollView>
     </View>
@@ -516,6 +525,11 @@ const styles = StyleSheet.create({
   headerCorner: {
     height: 36,
     backgroundColor: 'transparent',
+  },
+  headerRulerViewport: {
+    flex: 1,
+    height: 36,
+    overflow: 'hidden',
   },
   hourMarker: {
     position: 'absolute',
