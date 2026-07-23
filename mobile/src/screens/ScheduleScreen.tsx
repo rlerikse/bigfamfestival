@@ -257,6 +257,13 @@ const ScheduleScreen = () => {
   // FlatList ref for programmatic scrolling to live events
   const flatListRef = useRef<FlatList<ScheduleEvent>>(null);
   const previousDayRef = useRef<string | null>(null);
+  // Last known horizontal scroll offset from the grid view, kept alive across
+  // unmounts of HorizontalScheduleView (it fully unmounts when switching back to
+  // list view) so toggling back to grid restores exactly where the user left off.
+  const horizontalScrollXRef = useRef<number | null>(null);
+  const handleHorizontalScrollPositionChange = useCallback((x: number) => {
+    horizontalScrollXRef.current = x;
+  }, []);
 
   // Restore the user's last-used view mode on mount so the toggle sticks across sessions.
   useEffect(() => {
@@ -1100,6 +1107,8 @@ const ScheduleScreen = () => {
               onToggleSchedule={handleToggleSchedule}
               currentTime={now}
               selectedDay={selectedDay}
+              initialScrollX={horizontalScrollXRef.current}
+              onScrollPositionChange={handleHorizontalScrollPositionChange}
             />
           ) : (
           <FlatList
