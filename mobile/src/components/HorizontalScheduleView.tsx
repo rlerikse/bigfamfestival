@@ -46,6 +46,14 @@ interface Props {
   onToggleSchedule: (event: ScheduleEvent) => void;
   currentTime: number;
   selectedDay: string;
+  // Last horizontal scroll offset (px) from a previous mount of this view, lifted
+  // up to the parent (ScheduleScreen) since this component unmounts entirely when
+  // the user toggles back to list view. When present, restores that exact scroll
+  // position on (re)mount instead of the "next upcoming / last event" default.
+  initialScrollX?: number | null;
+  // Fired (throttled by scrollEventThrottle) as the body grid scrolls, so the
+  // parent can remember the latest offset for the next time this view mounts.
+  onScrollPositionChange?: (x: number) => void;
 }
 
 function timeStringToMinutes(time: string): number {
@@ -111,6 +119,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
   onToggleSchedule,
   currentTime,
   selectedDay,
+  initialScrollX,
+  onScrollPositionChange,
 }) => {
   const verticalScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
@@ -148,10 +158,11 @@ const HorizontalScheduleView: React.FC<Props> = ({
           // stays 100% native-driven.
           listener: (e: { nativeEvent: { contentOffset: { x: number } } }) => {
             currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
+            onScrollPositionChange?.(e.nativeEvent.contentOffset.x);
           },
         }
       ),
-    [scrollX]
+    [scrollX, onScrollPositionChange]
   );
   // Consume a pending auto-scroll target (declared before the day-change effects
   // that reference it). scrollX (and therefore the header ruler) follows the
@@ -274,31 +285,48 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // the freshly-mounted body ScrollView performs the scroll from its
   // onContentSizeChange (fires once its content is laid out and actually
   // scrollable). No timing guess, no ref race.
+  // Shared "where should the grid land" resolver — live event position, else
+  // first/last event of the day per resolveScheduleDayScrollTarget. Used both on
+  // day-change and as the mount-time fallback when there's no saved scroll offset
+  // to restore.
+  const computeDefaultScrollX = useCallback((nowMs: number): number | null => {
+    const stageEvents = events.filter(ev => ev.stage && ev.startTime);
+    const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
+    let targetMin: number | null = null;
+    if (target === 'live') {
+      const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
+      if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
+    } else if (target === 'first' || target === 'last') {
+      const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
+      if (sorted.length > 0) {
+        const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
+        targetMin = adjustedStartMinutes(targetEvent.startTime);
+      }
+    }
+    if (targetMin === null) return null;
+    return Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
+  }, [events]);
+
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
-      const nowMs = currentTime;
-      const stageEvents = events.filter(ev => ev.stage && ev.startTime);
-      const target = resolveScheduleDayScrollTarget(stageEvents, nowMs);
-      let targetMin: number | null = null;
-      if (target === 'live') {
-        const liveEvent = stageEvents.find(ev => isEventLive(ev, nowMs));
-        if (liveEvent) targetMin = adjustedStartMinutes(liveEvent.startTime);
-      } else if (target === 'first' || target === 'last') {
-        const sorted = [...stageEvents].sort((a, b) => adjustedStartMinutes(a.startTime) - adjustedStartMinutes(b.startTime));
-        if (sorted.length > 0) {
-          const targetEvent = target === 'first' ? sorted[0] : sorted[sorted.length - 1];
-          targetMin = adjustedStartMinutes(targetEvent.startTime);
-        }
-      }
-      if (targetMin !== null) {
-        pendingScrollXRef.current = Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
-      } else {
-        pendingScrollXRef.current = null;
-      }
+      pendingScrollXRef.current = computeDefaultScrollX(currentTime);
     }
     previousDayRef.current = selectedDay;
-  }, [selectedDay, events, currentTime]);
+  }, [selectedDay, computeDefaultScrollX, currentTime]);
+
+  // On (re)mount — e.g. the user toggled from list view back to grid view — restore
+  // the last horizontal scroll position if one was handed down from the parent
+  // (ScheduleScreen keeps it alive across unmounts of this component). Otherwise
+  // fall back to the same "next upcoming event, or last if the day's over" default
+  // used on a day switch. Runs once per mount only (empty dep array — a later day
+  // change is handled by the effect above, not this one).
+  useEffect(() => {
+    pendingScrollXRef.current = initialScrollX != null
+      ? initialScrollX
+      : computeDefaultScrollX(currentTime);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fallback consumer: if the body ScrollView's content size does NOT change on
   // a day switch (e.g. the new day happens to have identical layout dimensions),
@@ -494,11 +522,6 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               size={14}
                               color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.6)'}
                             />
-                            {showThumbnail && (
-                              <Text style={styles.eventBlockHeartLabel} numberOfLines={1}>
-                                {isInSchedule ? 'Added' : 'Add'}
-                              </Text>
-                            )}
                           </TouchableOpacity>
                         </TouchableOpacity>
                       );
@@ -651,14 +674,15 @@ const styles = StyleSheet.create({
   },
   eventBlockHeartTouchable: {
     position: 'absolute',
-    bottom: 4,
+    top: 0,
+    bottom: 0,
     right: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   eventBlockHeartLabel: {
     color: 'rgba(255, 255, 255, 0.7)',
