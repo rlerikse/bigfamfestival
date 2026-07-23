@@ -522,11 +522,6 @@ const HorizontalScheduleView: React.FC<Props> = ({
                               size={14}
                               color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.6)'}
                             />
-                            {showThumbnail && (
-                              <Text style={styles.eventBlockHeartLabel} numberOfLines={1}>
-                                {isInSchedule ? 'Added' : 'Add'}
-                              </Text>
-                            )}
                           </TouchableOpacity>
                         </TouchableOpacity>
                       );
@@ -679,14 +674,15 @@ const styles = StyleSheet.create({
   },
   eventBlockHeartTouchable: {
     position: 'absolute',
-    bottom: 4,
+    top: 0,
+    bottom: 0,
     right: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   eventBlockHeartLabel: {
     color: 'rgba(255, 255, 255, 0.7)',

@@ -61,13 +61,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     marginRight: 4,
-  paddingTop: 5,
-  },
-  favoriteText: {
-    marginLeft: 0,
-    marginTop: 2,
-    fontSize: 10,
-    fontWeight: '600',
   },
 });
 
@@ -358,12 +351,6 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
           size={24}
           color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
         />
-        <Text style={[
-          styles.favoriteText,
-          { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }
-        ]}>
-          {isInUserSchedule ? 'Added' : 'Add'}
-        </Text>
       </TouchableOpacity>
     </AnimatedTouchableOpacity>
   );
