@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventsService } from './events.service';
 import { FirestoreService } from '../config/firestore/firestore.service';
+import { ArtistsService } from '../artists/artists.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('EventsService', () => {
@@ -39,6 +40,11 @@ describe('EventsService', () => {
     delete: jest.fn(),
   };
 
+  // Create a mock ArtistsService (used to build the denormalized artistsCache)
+  const mockArtistsService = {
+    findOne: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -46,6 +52,10 @@ describe('EventsService', () => {
         {
           provide: FirestoreService,
           useValue: mockFirestoreService,
+        },
+        {
+          provide: ArtistsService,
+          useValue: mockArtistsService,
         },
       ],
     }).compile();
@@ -62,17 +72,19 @@ describe('EventsService', () => {
     it('should create a new event', async () => {
       mockFirestoreService.create.mockResolvedValue({
         id: 'new-event-id',
-        data: mockCreateEventDto,
+        data: { ...mockCreateEventDto, artistsCache: [] },
       });
+      mockArtistsService.findOne.mockResolvedValue(null);
 
       const result = await service.create(mockCreateEventDto);
       expect(result).toEqual({
         id: 'new-event-id',
         ...mockCreateEventDto,
+        artistsCache: [],
       });
       expect(mockFirestoreService.create).toHaveBeenCalledWith(
         'events',
-        mockCreateEventDto,
+        { ...mockCreateEventDto, artistsCache: [] },
       );
     });
   });

@@ -13,6 +13,14 @@ export interface User {
   disabled: boolean;
 }
 
+export interface ArtistCacheEntry {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  bio?: string;
+  genres?: string[];
+}
+
 export interface Event {
   id: string;
   name: string;
@@ -21,6 +29,7 @@ export interface Event {
   startTime: string;  // HH:MM
   endTime: string;    // HH:MM
   artists: string[];
+  artistsCache?: ArtistCacheEntry[]; // denormalized cache, source of truth = Artist record
   description?: string;
   imageUrl?: string;
 }

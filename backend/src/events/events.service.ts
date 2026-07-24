@@ -2,23 +2,60 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
 import { CreateEventDto } from '../auth/dto/create-event.dto';
 import { UpdateEventDto } from '../auth/dto/update-event.dto';
-import { Event } from './event.interface';
+import { Event, EventArtistCacheEntry } from './event.interface';
+import { ArtistsService } from '../artists/artists.service';
 
 @Injectable()
 export class EventsService {
   private readonly collection = 'events';
   private readonly logger = new Logger(EventsService.name);
 
-  constructor(private readonly firestoreService: FirestoreService) {}
+  constructor(
+    private readonly firestoreService: FirestoreService,
+    private readonly artistsService: ArtistsService,
+  ) {}
+
+  /**
+   * Build the denormalized artistsCache array from the current Artist records
+   * for the given artist slugs/IDs. Source of truth remains the Artist doc —
+   * this is a read-time snapshot cached onto the Event for N+1-free lineups.
+   */
+  private async buildArtistsCache(
+    artistIds: string[],
+  ): Promise<EventArtistCacheEntry[]> {
+    const entries = await Promise.all(
+      artistIds.map(async (id) => {
+        try {
+          const artist = await this.artistsService.findOne(id);
+          if (!artist) return null;
+          const entry: EventArtistCacheEntry = {
+            id: artist.slug ?? artist.id ?? id,
+            name: artist.name,
+          };
+          if (artist.imageUrl) entry.imageUrl = artist.imageUrl;
+          if (artist.bio) entry.bio = artist.bio;
+          if (artist.genres) entry.genres = artist.genres;
+          return entry;
+        } catch {
+          // Artist not found — skip rather than fail the event save
+          return null;
+        }
+      }),
+    );
+    return entries.filter((e): e is EventArtistCacheEntry => e !== null);
+  }
 
   /**
    * Create a new event
    */
   async create(createEventDto: CreateEventDto): Promise<Event> {
-    const { id, data } = await this.firestoreService.create<CreateEventDto>(
-      this.collection,
-      createEventDto,
-    );
+    const artistsCache = createEventDto.artists?.length
+      ? await this.buildArtistsCache(createEventDto.artists)
+      : [];
+
+    const { id, data } = await this.firestoreService.create<
+      CreateEventDto & { artistsCache: EventArtistCacheEntry[] }
+    >(this.collection, { ...createEventDto, artistsCache });
 
     return { id, ...data } as Event;
   }
@@ -125,9 +162,14 @@ export class EventsService {
     }
 
     // Strip undefined/null values — Firestore rejects undefined
-    const cleanData = Object.fromEntries(
+    const cleanData: Record<string, unknown> = Object.fromEntries(
       Object.entries(updateEventDto).filter(([_, v]) => v !== undefined && v !== null),
     );
+
+    // Refresh the artist cache whenever the artists array changes (or is present)
+    if (updateEventDto.artists) {
+      cleanData.artistsCache = await this.buildArtistsCache(updateEventDto.artists);
+    }
 
     if (Object.keys(cleanData).length === 0) {
       return event;
@@ -168,6 +210,21 @@ export class EventsService {
     );
 
     return events;
+  }
+
+  /**
+   * Refresh artistsCache on every event that references the given artist slug/ID.
+   * Called by ArtistsService whenever an artist is edited, so admins never need
+   * to manually re-save events for the cache to reflect artist changes.
+   */
+  async refreshArtistsCacheForArtist(artistId: string): Promise<void> {
+    const events = await this.findByArtist(artistId);
+    for (const event of events) {
+      const artistsCache = await this.buildArtistsCache(event.artists);
+      await this.firestoreService.update<Event>(this.collection, event.id, {
+        artistsCache,
+      });
+    }
   }
 
   /**

@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { GenreSelect } from '@/components/artists/GenreSelect';
 import { UserSearch } from '@/components/artists/UserSearch';
+import { ArtistEventsChips } from '@/components/artists/ArtistEventsChips';
 import { SoundCloudIcon, SpotifyIcon, FacebookIcon, InstagramIcon } from '@/components/artists/SocialIcons';
 import { validateImageFile, uploadArtistImage } from '@/lib/storage';
 import { useStorageUrl } from '@/hooks/useStorageUrl';
@@ -283,6 +284,11 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
           rows={4}
         />
       </div>
+
+      {/* Appears in — read-only reverse view of events referencing this artist */}
+      {isEdit && artist && (
+        <ArtistEventsChips artistId={artist.slug ?? artist.id} />
+      )}
 
       {/* Error */}
       {error && (
