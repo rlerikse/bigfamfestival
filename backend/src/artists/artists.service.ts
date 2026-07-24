@@ -1,14 +1,19 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
 import { Artist } from './interfaces/artist.interface';
 import { UpdateArtistDto } from './dto/update-artist.dto';
 import { FieldValue } from '@google-cloud/firestore';
+import { EventsService } from '../events/events.service';
 
 @Injectable()
 export class ArtistsService {
   private readonly collection = 'artists';
 
-  constructor(private readonly firestoreService: FirestoreService) {}
+  constructor(
+    private readonly firestoreService: FirestoreService,
+    @Inject(forwardRef(() => EventsService))
+    private readonly eventsService: EventsService,
+  ) {}
 
   /**
    * Generate a URL-friendly slug from an artist name.
@@ -128,11 +133,18 @@ export class ArtistsService {
       // Delete old doc
       await this.firestoreService.delete(this.collection, currentSlug);
 
+      // Refresh denormalized artistsCache on all events now referencing the new slug
+      await this.eventsService.refreshArtistsCacheForArtist(newSlug);
+
       return await this.findOne(newSlug);
     } else {
       // Simple update in place
       if (updateData.slug) payload.slug = updateData.slug;
       await this.firestoreService.update(this.collection, currentSlug, payload);
+
+      // Refresh denormalized artistsCache on all events referencing this artist
+      await this.eventsService.refreshArtistsCacheForArtist(currentSlug);
+
       return await this.findOne(currentSlug);
     }
   }

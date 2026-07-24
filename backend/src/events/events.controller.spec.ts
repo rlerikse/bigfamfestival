@@ -40,6 +40,7 @@ describe('EventsController', () => {
     update: jest.fn(),
     remove: jest.fn(),
     findByArtist: jest.fn(),
+    backfillScheduleFields: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -146,6 +147,41 @@ describe('EventsController', () => {
         eventId,
         mockUpdateEventDto,
       );
+    });
+  });
+
+  describe('patchEvent (#168 move/resize)', () => {
+    it('delegates a partial payload to service.update (resize)', async () => {
+      const eventId = 'event-id-1';
+      const resize = { endTime: '23:00' };
+      const updated = { ...mockEvent, endTime: '23:00' };
+      mockEventsService.update.mockResolvedValue(updated);
+
+      const result = await controller.patchEvent(eventId, resize);
+      expect(result).toEqual(updated);
+      expect(mockEventsService.update).toHaveBeenCalledWith(eventId, resize);
+    });
+
+    it('delegates a move payload to service.update', async () => {
+      const move = {
+        stage: 'Bayou',
+        date: '2025-06-21',
+        startTime: '02:00',
+        endTime: '03:00',
+      };
+      mockEventsService.update.mockResolvedValue({ ...mockEvent, ...move });
+      await controller.patchEvent('event-id-1', move);
+      expect(mockEventsService.update).toHaveBeenCalledWith('event-id-1', move);
+    });
+  });
+
+  describe('backfillScheduleFields', () => {
+    it('delegates to the service', async () => {
+      const summary = { scanned: 3, updated: 2, skipped: 1 };
+      mockEventsService.backfillScheduleFields.mockResolvedValue(summary);
+      const result = await controller.backfillScheduleFields();
+      expect(result).toEqual(summary);
+      expect(mockEventsService.backfillScheduleFields).toHaveBeenCalled();
     });
   });
 

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X } from 'lucide-react';
-import { useApiQuery } from '@/hooks/useApi';
+import { Search, X, Plus } from 'lucide-react';
+import { useApiQuery, useCreateArtist } from '@/hooks/useApi';
 import type { Artist } from '@/types';
+import { QuickCreateArtistModal } from '@/components/events/QuickCreateArtistModal';
 
 interface ArtistSelectProps {
   value: string[]; // array of slugs
@@ -16,12 +17,14 @@ export function ArtistSelect({ value, onChange }: ArtistSelectProps) {
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch all artists
-  const { data: artistsData } = useApiQuery<Artist[]>(['artists-all'], '/artists');
+  const { data: artistsData, refetch: refetchArtists } = useApiQuery<Artist[]>(['artists-all'], '/artists');
   const allArtists = Array.isArray(artistsData) ? artistsData : [];
+  const createArtistMutation = useCreateArtist();
 
   // Filter artists based on input (search by name), exclude already-selected
   const filtered = input.length >= 1
@@ -38,6 +41,9 @@ export function ArtistSelect({ value, onChange }: ArtistSelectProps) {
     return artist?.name ?? slug;
   };
 
+  // Whether to show the "+ Create '<name>'" option (no exact/partial match found)
+  const showCreateOption = input.trim().length > 0 && filtered.length === 0;
+
   const addArtist = useCallback((artist: Artist) => {
     const slug = artist.slug ?? artist.id;
     if (!value.includes(slug)) {
@@ -49,14 +55,27 @@ export function ArtistSelect({ value, onChange }: ArtistSelectProps) {
     inputRef.current?.focus();
   }, [value, onChange]);
 
+  const handleArtistCreated = useCallback((artist: Artist) => {
+    const slug = artist.slug ?? artist.id;
+    if (!value.includes(slug)) {
+      onChange([...value, slug]);
+    }
+    refetchArtists();
+    setShowCreateModal(false);
+    setInput('');
+    setShowDropdown(false);
+    inputRef.current?.focus();
+  }, [value, onChange, refetchArtists]);
+
   const removeArtist = (slug: string) => {
     onChange(value.filter((s) => s !== slug));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    const totalOptions = filtered.length + (showCreateOption ? 1 : 0);
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setHighlightedIndex((i) => Math.min(i + 1, filtered.length - 1));
+      setHighlightedIndex((i) => Math.min(i + 1, totalOptions - 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setHighlightedIndex((i) => Math.max(i - 1, -1));
@@ -64,6 +83,8 @@ export function ArtistSelect({ value, onChange }: ArtistSelectProps) {
       e.preventDefault();
       if (highlightedIndex >= 0 && highlightedIndex < filtered.length) {
         addArtist(filtered[highlightedIndex]);
+      } else if (highlightedIndex === filtered.length && showCreateOption) {
+        setShowCreateModal(true);
       }
     } else if (e.key === 'Backspace' && input === '' && value.length > 0) {
       // Remove last artist on backspace with empty input
@@ -132,7 +153,7 @@ export function ArtistSelect({ value, onChange }: ArtistSelectProps) {
       </p>
 
       {/* Dropdown */}
-      {showDropdown && filtered.length > 0 && (
+      {showDropdown && (filtered.length > 0 || showCreateOption) && (
         <div className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md max-h-48 overflow-y-auto">
           {filtered.map((artist, i) => (
             <button
@@ -147,14 +168,31 @@ export function ArtistSelect({ value, onChange }: ArtistSelectProps) {
               <span className="text-xs text-muted-foreground">{artist.slug ?? artist.id}</span>
             </button>
           ))}
+          {showCreateOption && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className={`w-full text-left px-3 py-2 text-sm border-t border-border transition-colors flex items-center gap-2 ${
+                highlightedIndex === filtered.length ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'
+              }`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="font-medium">Create "{input.trim()}"</span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* No results */}
-      {showDropdown && input.length >= 1 && filtered.length === 0 && (
-        <div className="absolute z-50 w-full mt-1 rounded-md border border-border bg-popover shadow-md px-3 py-2 text-sm text-muted-foreground text-center">
-          No artists found
-        </div>
+      {showCreateModal && (
+        <QuickCreateArtistModal
+          initialName={input.trim()}
+          onCreate={async (data) => {
+            const created = await createArtistMutation.mutateAsync(data as { name: string; slug: string; bio?: string; genres?: string[]; imageUrl?: string });
+            return created as Artist;
+          }}
+          onCreated={handleArtistCreated}
+          onCancel={() => setShowCreateModal(false)}
+        />
       )}
     </div>
   );
