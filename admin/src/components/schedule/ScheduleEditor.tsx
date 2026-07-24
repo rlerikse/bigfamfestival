@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
 import { mockScheduleEvents } from './scheduleMockData';
@@ -86,6 +86,16 @@ export function ScheduleEditor({ events, onUpdateEvent, checkOverlap = defaultCh
   const dragRef = useRef<ActiveDrag | null>(null);
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Re-sync local working copy whenever the upstream `events` prop changes
+  // (e.g. real API data arriving after initial mount, or a refetch after a
+  // successful move/resize). Skipped while a drag is actively in-flight so we
+  // don't yank a block out from under the user's pointer mid-drag.
+  useEffect(() => {
+    if (events && !dragRef.current) {
+      setLocalEvents(events);
+    }
+  }, [events]);
+
   const showError = (msg: string) => {
     setErrorBanner(msg);
     if (errorTimeoutRef.current) clearTimeout(errorTimeoutRef.current);
@@ -98,6 +108,10 @@ export function ScheduleEditor({ events, onUpdateEvent, checkOverlap = defaultCh
     const byKey = new Map<string, Event[]>();
 
     for (const ev of localEvents) {
+      // Skip events missing the fields required to place them on the grid
+      // (e.g. artist-metadata-only records without stage/date/time, seen from
+      // real API data that predates the schedule fields).
+      if (!ev.stage || !ev.startTime || !ev.endTime || !(ev.festivalDay ?? ev.date)) continue;
       const day = ev.festivalDay ?? ev.date;
       days.add(day);
       const key = `${day}::${ev.stage}`;
@@ -126,10 +140,11 @@ export function ScheduleEditor({ events, onUpdateEvent, checkOverlap = defaultCh
     // Optimistic update
     setLocalEvents((prev) => prev.map((e) => (e.id === id ? candidate : e)));
 
-    Promise.resolve(onUpdateEvent?.(id, patch)).catch(() => {
-      // Rollback on API rejection
+    Promise.resolve(onUpdateEvent?.(id, patch)).catch((err: unknown) => {
+      // Rollback on API rejection (e.g. server-side overlap validation from #167)
       setLocalEvents(prevEvents);
-      showError(`Failed to save changes to "${target.name}" — reverted.`);
+      const message = err instanceof Error && err.message ? err.message : `Failed to save changes to "${target.name}" — reverted.`;
+      showError(message);
     });
   }
 
