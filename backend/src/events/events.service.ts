@@ -1,9 +1,17 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
 import { CreateEventDto } from '../auth/dto/create-event.dto';
 import { UpdateEventDto } from '../auth/dto/update-event.dto';
 import { Event, EventArtistCacheEntry } from './event.interface';
 import { ArtistsService } from '../artists/artists.service';
+import { computeFestivalDay, rangesOverlap } from './festival-day.util';
+
+const DEFAULT_BLOCK_TYPE = 'artist_set' as const;
 
 @Injectable()
 export class EventsService {
@@ -46,6 +54,39 @@ export class EventsService {
   }
 
   /**
+   * Hard-reject (issue #167) any event whose time range overlaps an existing
+   * event on the same stage + festivalDay. Checked against festivalDay (not raw
+   * `date`) so cross-midnight conflicts are caught — e.g. an 11pm–1am block and
+   * a 12:30am–2am block on the same festival night conflict despite differing
+   * calendar `date` values.
+   *
+   * @param excludeId event id to ignore (the event being updated).
+   */
+  private async assertNoOverlap(
+    stage: string,
+    festivalDay: string,
+    startTime: string,
+    endTime: string,
+    excludeId?: string,
+  ): Promise<void> {
+    const peers = await this.queryCompound<Event>(this.collection, [
+      { field: 'stage', operator: '==', value: stage },
+      { field: 'festivalDay', operator: '==', value: festivalDay },
+    ]);
+
+    for (const peer of peers) {
+      if (peer.id === excludeId) continue;
+      if (!peer.startTime || !peer.endTime) continue;
+      if (rangesOverlap(startTime, endTime, peer.startTime, peer.endTime)) {
+        throw new BadRequestException(
+          `Time conflict on stage "${stage}": overlaps "${peer.name}" ` +
+            `(${peer.startTime}–${peer.endTime}) on festival day ${festivalDay}.`,
+        );
+      }
+    }
+  }
+
+  /**
    * Create a new event
    */
   async create(createEventDto: CreateEventDto): Promise<Event> {
@@ -53,9 +94,36 @@ export class EventsService {
       ? await this.buildArtistsCache(createEventDto.artists)
       : [];
 
+    // Server-computed schedule fields (issue #166). festivalDay is derived,
+    // never accepted from the client; blockType defaults to artist_set.
+    const festivalDay = computeFestivalDay(
+      createEventDto.date,
+      createEventDto.startTime,
+    );
+    const blockType = createEventDto.blockType ?? DEFAULT_BLOCK_TYPE;
+
+    // Reject overlapping same-stage/same-festivalDay events (#167).
+    await this.assertNoOverlap(
+      createEventDto.stage,
+      festivalDay,
+      createEventDto.startTime,
+      createEventDto.endTime,
+    );
+
     const { id, data } = await this.firestoreService.create<
-      CreateEventDto & { artistsCache: EventArtistCacheEntry[] }
-    >(this.collection, { ...createEventDto, artistsCache });
+      CreateEventDto & {
+        artistsCache: EventArtistCacheEntry[];
+        festivalDay: string;
+        blockType:
+          | typeof DEFAULT_BLOCK_TYPE
+          | NonNullable<CreateEventDto['blockType']>;
+      }
+    >(this.collection, {
+      ...createEventDto,
+      blockType,
+      festivalDay,
+      artistsCache,
+    });
 
     return { id, ...data } as Event;
   }
@@ -163,23 +231,57 @@ export class EventsService {
 
     // Strip undefined/null values — Firestore rejects undefined
     const cleanData: Record<string, unknown> = Object.fromEntries(
-      Object.entries(updateEventDto).filter(([_, v]) => v !== undefined && v !== null),
+      Object.entries(updateEventDto).filter(
+        ([_, v]) => v !== undefined && v !== null,
+      ),
     );
 
     // Refresh the artist cache whenever the artists array changes (or is present)
     if (updateEventDto.artists) {
-      cleanData.artistsCache = await this.buildArtistsCache(updateEventDto.artists);
+      cleanData.artistsCache = await this.buildArtistsCache(
+        updateEventDto.artists,
+      );
+    }
+
+    // Recompute festivalDay if date or startTime changed. festivalDay is
+    // always derived server-side (issue #166) — never trusted from the client
+    // even if a stray value is sent.
+    const timingChanged =
+      updateEventDto.date !== undefined ||
+      updateEventDto.startTime !== undefined;
+    const nextDate = updateEventDto.date ?? event.date;
+    const nextStart = updateEventDto.startTime ?? event.startTime;
+    const nextEnd = updateEventDto.endTime ?? event.endTime;
+    const nextStage = updateEventDto.stage ?? event.stage;
+    const nextFestivalDay = timingChanged
+      ? computeFestivalDay(nextDate, nextStart)
+      : event.festivalDay ?? computeFestivalDay(nextDate, nextStart);
+
+    if (timingChanged) {
+      cleanData.festivalDay = nextFestivalDay;
+    }
+
+    // Re-check overlap (#167) whenever stage or any time field changes.
+    if (
+      updateEventDto.stage !== undefined ||
+      updateEventDto.date !== undefined ||
+      updateEventDto.startTime !== undefined ||
+      updateEventDto.endTime !== undefined
+    ) {
+      await this.assertNoOverlap(
+        nextStage,
+        nextFestivalDay,
+        nextStart,
+        nextEnd,
+        id,
+      );
     }
 
     if (Object.keys(cleanData).length === 0) {
       return event;
     }
 
-    await this.firestoreService.update<Event>(
-      this.collection,
-      id,
-      cleanData,
-    );
+    await this.firestoreService.update<Event>(this.collection, id, cleanData);
 
     // Return updated event
     return { ...event, ...cleanData };
@@ -225,6 +327,64 @@ export class EventsService {
         artistsCache,
       });
     }
+  }
+
+  /**
+   * Backfill `festivalDay` (computed) and `blockType` (default 'artist_set')
+   * onto existing events that predate the Schedule Editor (issue #166).
+   * Idempotent: only writes docs missing/stale on either field, so it is safe
+   * to run repeatedly. Returns a small summary for operational visibility.
+   */
+  async backfillScheduleFields(): Promise<{
+    scanned: number;
+    updated: number;
+    skipped: number;
+  }> {
+    const events = await this.firestoreService.getAll<Event>(this.collection);
+    let updated = 0;
+    let skipped = 0;
+
+    for (const event of events) {
+      const patch: Record<string, unknown> = {};
+
+      if (!event.blockType) {
+        patch.blockType = DEFAULT_BLOCK_TYPE;
+      }
+
+      // Only compute when we have the inputs; malformed legacy docs are skipped
+      // rather than throwing and aborting the whole backfill.
+      if (event.date && event.startTime) {
+        try {
+          const expected = computeFestivalDay(event.date, event.startTime);
+          if (event.festivalDay !== expected) {
+            patch.festivalDay = expected;
+          }
+        } catch (err) {
+          this.logger.warn(
+            `backfill: skipping festivalDay for event ${event.id}: ${
+              (err as Error).message
+            }`,
+          );
+        }
+      }
+
+      if (Object.keys(patch).length === 0) {
+        skipped++;
+        continue;
+      }
+
+      await this.firestoreService.update<Event>(
+        this.collection,
+        event.id,
+        patch,
+      );
+      updated++;
+    }
+
+    this.logger.log(
+      `backfillScheduleFields: scanned=${events.length} updated=${updated} skipped=${skipped}`,
+    );
+    return { scanned: events.length, updated, skipped };
   }
 
   /**
