@@ -21,17 +21,21 @@ export interface ArtistCacheEntry {
   genres?: string[];
 }
 
+export type EventBlockType = 'artist_set' | 'workshop' | 'setup' | 'special';
+
 export interface Event {
   id: string;
   name: string;
   stage: string;
-  date: string;       // YYYY-MM-DD
+  date: string;       // YYYY-MM-DD (real wall-clock date, drives mobile push scheduling)
   startTime: string;  // HH:MM
   endTime: string;    // HH:MM
   artists: string[];
   artistsCache?: ArtistCacheEntry[]; // denormalized cache, source of truth = Artist record
   description?: string;
   imageUrl?: string;
+  blockType?: EventBlockType; // drives color-coding; default 'artist_set'
+  festivalDay?: string;       // YYYY-MM-DD computed field: date if startTime>=06:00, else previous calendar date
 }
 
 export interface Artist {
