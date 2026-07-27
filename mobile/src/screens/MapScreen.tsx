@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -431,6 +431,12 @@ export default function MapScreen() {
       <Mapbox.MapView
         style={StyleSheet.absoluteFill}
         styleURL="mapbox://styles/mapbox/satellite-streets-v12"
+        // Android: use a TextureView (surfaceView=false) instead of the default
+        // GLSurfaceView. A GLSurfaceView punches through the React Native view
+        // hierarchy, so overlaid RN views (our absolute TopNavBar / controls)
+        // are hidden behind the map on Android — that's why the top nav was
+        // missing on Android only. TextureView composites within the RN tree.
+        surfaceView={Platform.OS === 'android' ? false : undefined}
         compassEnabled={false}
         logoEnabled={true}
         attributionEnabled={true}
@@ -451,6 +457,15 @@ export default function MapScreen() {
             centerCoordinate: FESTIVAL_CENTER,
             zoomLevel: DEFAULT_ZOOM,
           }}
+          // Explicit centerCoordinate/zoomLevel in addition to defaultSettings:
+          // on Android release builds defaultSettings alone frequently fails to
+          // apply the initial frame, leaving the map at the world/default view
+          // ("in the ocean"). Setting them directly frames the festival grounds
+          // on first render. followUserLocation stays off so we don't yank the
+          // camera away from the site.
+          centerCoordinate={FESTIVAL_CENTER}
+          zoomLevel={DEFAULT_ZOOM}
+          animationDuration={0}
         />
 
         {/* User location — no default LocationPuck: the blue dot would cover our
@@ -629,10 +644,12 @@ export default function MapScreen() {
         )}
       </Mapbox.MapView>
 
-      {/* Top NavBar */}
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
-        <TopNavBar showSearchBar={false} whiteIcons />
-      </View>
+      {/* Top NavBar — rendered as a direct child of the map container (not
+          wrapped in another absolute View). TopNavBar already positions itself
+          absolute at top:0 with elevation:2000; nesting it inside a second
+          absolute+elevated wrapper broke Android compositing over the native
+          Mapbox TextureView (nav vanished on Android only). */}
+      <TopNavBar showSearchBar={false} whiteIcons />
 
       {/* Map Controls — right side (filters, compass, zoom, locate — all in-line) */}
       <View style={[styles.mapControls, { top: insets.top + 110 }]}>
@@ -850,6 +867,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     zIndex: 10,
+    elevation: 10,
     gap: 8,
   },
   controlButton: {
