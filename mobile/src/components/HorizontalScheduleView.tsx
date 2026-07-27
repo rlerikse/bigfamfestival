@@ -451,11 +451,16 @@ const HorizontalScheduleView: React.FC<Props> = ({
                       const genreLine = ev.genres && ev.genres.length > 0 ? ev.genres.join(' • ') : '';
                       const fmt12 = (t?: string) => {
                         if (!t || !t.trim()) return '';
-                        const [h, m] = t.split(':');
-                        const hour = parseInt(h, 10);
+                        const parts = t.trim().split(':');
+                        if (parts.length < 2) return '';
+                        const hour = parseInt(parts[0], 10);
+                        const rawMin = parts[1];
+                        const minute = parseInt(rawMin, 10);
+                        if (!Number.isFinite(hour) || !Number.isFinite(minute)) return '';
+                        const mm = String(minute).padStart(2, '0');
                         const ampm = hour >= 12 ? 'PM' : 'AM';
                         const hour12 = hour % 12 || 12;
-                        return `${hour12}:${m} ${ampm}`;
+                        return `${hour12}:${mm} ${ampm}`;
                       };
                       const timeLabel = ev.endTime && ev.endTime.trim()
                         ? `${fmt12(ev.startTime)} – ${fmt12(ev.endTime)}`
@@ -515,12 +520,14 @@ const HorizontalScheduleView: React.FC<Props> = ({
                           <TouchableOpacity
                             style={styles.eventBlockHeartTouchable}
                             onPress={(e) => { e.stopPropagation(); onToggleSchedule(ev); }}
+                            onLongPress={(e) => { e.stopPropagation(); onToggleSchedule(ev); }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             accessibilityLabel={isInSchedule ? 'Remove from schedule' : 'Add to schedule'}
                           >
                             <Ionicons
                               name={isInSchedule ? 'heart' : 'heart-outline'}
-                              size={14}
-                              color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.6)'}
+                              size={18}
+                              color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.85)'}
                             />
                           </TouchableOpacity>
                         </TouchableOpacity>
@@ -630,7 +637,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingVertical: 6,
-    paddingRight: 8,
+    paddingRight: 34,
   },
   eventBlockTitle: {
     color: '#fff',
@@ -676,10 +683,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    right: 4,
+    right: 0,
+    minWidth: 34,
+    zIndex: 5,
+    elevation: 5,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     backgroundColor: 'rgba(0,0,0,0.35)',
