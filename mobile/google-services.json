@@ -10,13 +10,42 @@
       "client_info": {
         "mobilesdk_app_id": "1:292369452544:android:17f9722d7b63ca421c12e5",
         "android_client_info": {
-          "package_name": "com.eriksensolutions.bigfam",
-          "certificate_hash": [
-            "6f9dffe74db33b830e136a674690eddcc7ed1920271b0a2f85e0a871fcc56cb8"
-          ]
+          "package_name": "com.eriksensolutions.bigfam"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "292369452544-5lljtk7mq23hhv6dpvvleemg7s6v3ms1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eriksensolutions.bigfam",
+            "certificate_hash": "6d3582984aff039a02f47d7d4f574849e68e1803"
+          }
+        },
+        {
+          "client_id": "292369452544-7ie3u7b9mvo43ve5m0htk734sq4jv4m7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eriksensolutions.bigfam",
+            "certificate_hash": "c3ae11a9d8a674beb8206d9c54e584e8b7da7042"
+          }
+        },
+        {
+          "client_id": "292369452544-93eo768prj84di1tj58inhgr22h9qn0c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eriksensolutions.bigfam",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "292369452544-vmfjl0e6t1eovvuoen834d2kqja8s6sk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eriksensolutions.bigfam",
+            "certificate_hash": "9b50418d93abf3494ff14ab7f6e39c561e81b2ff"
+          }
+        },
         {
           "client_id": "292369452544-gk9gjbugtgulecojj42pekg6o2dsq2m7.apps.googleusercontent.com",
           "client_type": 3

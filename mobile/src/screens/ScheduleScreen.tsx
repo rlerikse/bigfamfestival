@@ -92,6 +92,22 @@ import { useNow } from '../contexts/FakeClockContext';
 // Days to show in the filter buttons - loaded from festival config
 const festivalDays = festivalConfig.dates;
 
+/**
+ * Safely parse an event's "HH:MM" startTime into minutes-since-midnight.
+ * Returns null for missing/malformed values so callers can skip/sort-last
+ * instead of throwing (a bad startTime previously crashed the Schedule tab
+ * via an unguarded .split(':') inside a useMemo).
+ */
+function parseStartMinutes(startTime: string | undefined | null): number | null {
+  if (typeof startTime !== 'string') return null;
+  const parts = startTime.split(':');
+  if (parts.length < 2) return null;
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
 // All days we need to fetch events for (includes Monday for late-night events)
 // Currently not used since API fetches all events at once
 /*
@@ -497,12 +513,17 @@ const ScheduleScreen = () => {
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
     return [...events].sort((a, b) => {
-      const [aHours, aMinutes] = a.startTime.split(':').map(Number);
-      const aTimeInMinutes = aHours * 60 + aMinutes;
-      const [bHours, bMinutes] = b.startTime.split(':').map(Number);
-      const bTimeInMinutes = bHours * 60 + bMinutes;
-      const adjustedA = aTimeInMinutes < dateConstants.cutoffTimeInMinutes ? aTimeInMinutes + (24 * 60) : aTimeInMinutes;
-      const adjustedB = bTimeInMinutes < dateConstants.cutoffTimeInMinutes ? bTimeInMinutes + (24 * 60) : bTimeInMinutes;
+      // Guard against events with missing/malformed startTime. A null/undefined
+      // startTime here previously threw a TypeError inside this useMemo, which
+      // propagated to the app-level error boundary and crashed the whole Schedule
+      // tab. Malformed events sort last instead of crashing the screen.
+      const aParsed = parseStartMinutes(a.startTime);
+      const bParsed = parseStartMinutes(b.startTime);
+      if (aParsed === null && bParsed === null) return 0;
+      if (aParsed === null) return 1;
+      if (bParsed === null) return -1;
+      const adjustedA = aParsed < dateConstants.cutoffTimeInMinutes ? aParsed + (24 * 60) : aParsed;
+      const adjustedB = bParsed < dateConstants.cutoffTimeInMinutes ? bParsed + (24 * 60) : bParsed;
       return adjustedA - adjustedB;
     });
   }, [events, dateConstants.cutoffTimeInMinutes]);
@@ -518,8 +539,10 @@ const ScheduleScreen = () => {
     // Filter by selected day (including late-night events from next day)
     if (selectedDay) {
       filtered = filtered.filter(ev => {
-        const [eventHours, eventMinutes] = ev.startTime.split(':').map(Number);
-        const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
+        const eventStartTimeInMinutes = parseStartMinutes(ev.startTime);
+        // Exclude events with missing/malformed startTime from day filtering
+        // rather than letting a bad value throw.
+        if (eventStartTimeInMinutes === null) return false;
         
         // Get the next day after the filter day (avoid UTC parsing bug)
         const [y, m, d] = selectedDay.split('-').map(Number);
