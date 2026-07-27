@@ -128,6 +128,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // Pending horizontal auto-scroll target (px) queued on day change, consumed
   // once the remounted body ScrollView lays out its content (onContentSizeChange).
   const pendingScrollXRef = useRef<number | null>(null);
+  // When true, the next pending-scroll flush is a position-preserving restore
+  // (instant, no animation) rather than a day-change navigation (animated).
+  const pendingScrollInstantRef = useRef(false);
   const pendingRafRef = useRef<number | null>(null);
   // Header-ruler sync, driven entirely on the native/UI thread.
   //
@@ -172,7 +175,11 @@ const HorizontalScheduleView: React.FC<Props> = ({
     const x = pendingScrollXRef.current;
     if (x == null) return;
     pendingScrollXRef.current = null;
-    bodyScrollRef.current?.scrollTo({ x, animated: true });
+    // Position-preservation restores (favorite toggle / filter re-clamp) must be
+    // instant so the grid doesn't visibly glide; day-change navigation animates.
+    const animated = !pendingScrollInstantRef.current;
+    pendingScrollInstantRef.current = false;
+    bodyScrollRef.current?.scrollTo({ x, animated });
   };
   const applyPendingScroll = useCallback(applyPendingScrollImpl, []);
   // Tracks the last known scroll offsets so a filter change (Stage/Genre) can
@@ -259,16 +266,39 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // paint) rather than useEffect+rAF also removes the extra frame of delay where
   // the old (stale-offset) content could still be visible/interactive.
   const [scrollResetKey, setScrollResetKey] = useState(0);
-  const previousEventsRef = useRef<ScheduleEvent[] | null>(null);
+  const previousEventsSignatureRef = useRef<string | null>(null);
+  // Content signature (ids in order), NOT array reference. Toggling a favorite
+  // (heart) causes ScheduleScreen's filteredEvents useMemo to produce a brand
+  // new array reference (userSchedule is a dependency there for the "my
+  // schedule" filter), even though the actual set/order of visible events is
+  // unchanged. Comparing by reference falsely treated that as a Stage/Genre
+  // filter change, forcing a scroll-to-{0,0} + full ScrollView remount on every
+  // heart tap -- the reported "jumps to a random scroll position" bug. Comparing
+  // by a cheap ids-joined signature instead means a pure favorite toggle (same
+  // events, same order) is a no-op here, and a genuine filter change (different
+  // ids/order) still resets scroll as intended.
+  const eventsSignature = useMemo(() => events.map(ev => ev.id).join(','), [events]);
   useLayoutEffect(() => {
     const isDayChange = previousDayRef.current !== null && previousDayRef.current !== selectedDay;
-    const isFirstRun = previousEventsRef.current === null;
-    if (!isDayChange && !isFirstRun && previousEventsRef.current !== events) {
-      currentOffsetRef.current = { x: 0, y: 0 };
+    const isFirstRun = previousEventsSignatureRef.current === null;
+    if (!isDayChange && !isFirstRun && previousEventsSignatureRef.current !== eventsSignature) {
+      // A genuine content change (Stage/Genre filter, OR a favorite toggle while
+      // the "My Schedule" filter is active — which drops/re-adds the tapped event
+      // from the visible set). PRESERVE the user's horizontal scroll position
+      // across the forced ScrollView remount instead of snapping to {0,0}.
+      // The grid always spans the full day, so the x offset stays valid; only
+      // the set of visible blocks changes. Re-mounting at the same x keeps the
+      // clock/blocks under the user's eye rather than jumping to the start.
+      // (#5: "favorite tap jumps to a random scroll position" — the reset itself
+      // was the jump.) currentOffsetRef holds the last native offset from onScroll.
+      const preservedX = Math.max(0, currentOffsetRef.current.x);
+      pendingScrollXRef.current = preservedX;
+      pendingScrollInstantRef.current = true;
+      currentOffsetRef.current = { x: preservedX, y: 0 };
       setScrollResetKey(k => k + 1);
     }
-    previousEventsRef.current = events;
-  }, [events, selectedDay]);
+    previousEventsSignatureRef.current = eventsSignature;
+  }, [eventsSignature, selectedDay]);
 
 
   // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
@@ -526,8 +556,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
                           >
                             <Ionicons
                               name={isInSchedule ? 'heart' : 'heart-outline'}
-                              size={18}
-                              color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.85)'}
+                              size={20}
+                              color={isInSchedule ? '#B87333' : 'rgba(255,255,255,0.6)'}
                             />
                           </TouchableOpacity>
                         </TouchableOpacity>
@@ -680,6 +710,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   eventBlockHeartTouchable: {
+    // Cosmetic parity with list-view (EventCard) heart: no pill/box background,
+    // vertically centered on the right edge of the card. #4 is cosmetic only.
     position: 'absolute',
     top: 0,
     bottom: 0,
@@ -691,8 +723,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   eventBlockHeartLabel: {
     color: 'rgba(255, 255, 255, 0.7)',
