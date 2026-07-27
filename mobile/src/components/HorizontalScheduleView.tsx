@@ -19,6 +19,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ImageRequireSource,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
