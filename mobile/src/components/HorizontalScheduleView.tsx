@@ -138,9 +138,16 @@ const HorizontalScheduleView: React.FC<Props> = ({
   const gridWidth = totalGridMinutes * PX_PER_MINUTE;
 
   // Hour markers for the time ruler header.
+  // GRID_START_MINUTES (6:30am cutoff) is not hour-aligned, so we must start
+  // marker generation at the next full clock hour after the grid start rather
+  // than at GRID_START_MINUTES itself — otherwise each marker's screen offset
+  // (computed relative to the non-hour-aligned grid start) lands 30min later
+  // than the clock hour it's labeled with, e.g. a line labeled "2A" would
+  // visually sit at 2:30am instead of 2:00am.
   const hourMarkers = useMemo(() => {
     const markers: { label: string; offset: number }[] = [];
-    for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) {
+    const firstFullHour = Math.ceil(GRID_START_MINUTES / 60) * 60;
+    for (let m = firstFullHour; m <= GRID_END_MINUTES; m += 60) {
       const hourOfDay = Math.floor((m % (24 * 60)) / 60);
       const suffix = hourOfDay === 0 ? '12A' : hourOfDay === 12 ? '12P' : hourOfDay > 12 ? `${hourOfDay - 12}P` : `${hourOfDay}A`;
       markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * PX_PER_MINUTE });
