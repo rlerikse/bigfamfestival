@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
+import { FieldValue } from '@google-cloud/firestore';
 import {
   FriendRequest,
   FriendEntry,
@@ -211,10 +212,21 @@ export class FriendsService {
       .collection('friends')
       .get();
 
-    return snapshot.docs.map((doc) => ({
-      userId: doc.id,
-      ...(doc.data() as Omit<FriendEntry, 'userId'>),
-    }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as Omit<FriendEntry, 'userId'>;
+      // addedAt is stored as a Firestore Timestamp; serialize it to an ISO
+      // string so the mobile client's `new Date(item.addedAt)` doesn't get
+      // an object (which produces "Invalid Date").
+      const addedAt =
+        data.addedAt && typeof (data.addedAt as unknown as { toDate?: () => Date }).toDate === 'function'
+          ? (data.addedAt as unknown as { toDate: () => Date }).toDate().toISOString()
+          : data.addedAt;
+      return {
+        userId: doc.id,
+        ...data,
+        addedAt: addedAt as unknown as Date,
+      };
+    });
   }
 
   /**
@@ -340,6 +352,43 @@ export class FriendsService {
     );
 
     return results;
+  }
+
+  /**
+   * Upsert the caller's own live location into userLocations/{userId}.
+   * This is what GET /friends/locations reads back for opted-in friends.
+   * Requires the user to have shareMyLocation=true (defense-in-depth: we do
+   * not persist a location the user hasn't consented to share).
+   */
+  async updateMyLocation(
+    userId: string,
+    lat: number,
+    lng: number,
+  ): Promise<{ ok: true }> {
+    const db = this.firestoreService.db;
+
+    const userDoc = await db.collection(this.usersCollection).doc(userId).get();
+    const userData = userDoc.data() as User | undefined;
+    if (!userData?.shareMyLocation) {
+      throw new BadRequestException(
+        'Location sharing is disabled. Enable shareMyLocation before posting a location.',
+      );
+    }
+
+    await db
+      .collection('userLocations')
+      .doc(userId)
+      .set(
+        {
+          userId,
+          lat,
+          lng,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+    return { ok: true };
   }
 
   // ─── Internal ─────────────────────────────────────────────────────────────

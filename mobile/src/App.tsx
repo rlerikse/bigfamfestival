@@ -24,8 +24,11 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { DebugProvider } from './contexts/DebugContext';
 import { AppSettingsProvider } from './contexts/AppSettingsContext';
+import { FakeClockProvider } from './contexts/FakeClockContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MapboxProvider } from './providers/MapboxProvider';
+import { LocationSharingProvider } from './providers/LocationSharingProvider';
+import './tasks/locationTask'; // registers the background location task (side effect)
 import { initSentry } from './config/sentry';
 import useCachedResources from './hooks/useCachedResources';
 
@@ -86,7 +89,9 @@ export default function App() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
+              <LocationSharingProvider>
               <AppSettingsProvider>
+                <FakeClockProvider>
                 <DebugProvider>
                   <NavigationContainer ref={navigationRef}>
                     <Navigation />
@@ -94,7 +99,9 @@ export default function App() {
                     <StatusBar style="auto" />
                   </NavigationContainer>
                 </DebugProvider>
+                </FakeClockProvider>
               </AppSettingsProvider>
+              </LocationSharingProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

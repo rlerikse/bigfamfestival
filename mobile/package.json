@@ -1,6 +1,6 @@
 {
   "name": "bigfam-festival-app",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "prebuild": "node scripts/pre-build.js",
@@ -14,7 +14,6 @@
     "test": "jest --config jest.config.js"
   },
   "dependencies": {
-    "@expo/metro-config": "^54.0.16",
     "@expo/vector-icons": "^15.0.2",
     "@firebase/auth-compat": "^0.6.0",
     "@invertase/react-native-apple-authentication": "^2.5.1",
@@ -30,7 +29,7 @@
     "@sentry/react-native": "~7.2.0",
     "@tanstack/react-query": "^5.59.0",
     "axios": "^1.12.2",
-    "expo": "~54.0.35",
+    "expo": "~54.0.36",
     "expo-asset": "~12.0.13",
     "expo-build-properties": "~1.0.10",
     "expo-constants": "~18.0.9",
@@ -47,6 +46,7 @@
     "expo-notifications": "~0.32.17",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-task-manager": "~14.0.9",
     "firebase": "^12.3.0",
     "lottie-react-native": "~7.3.1",
     "promise": "^8.3.0",

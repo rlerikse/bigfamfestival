@@ -83,6 +83,12 @@ eas submit --platform android --latest
 
 ## Versioning Strategy
 
+> **Note (v1.2.2+):** Store-track **Android** builds are now built locally
+> (`./gradlew bundleRelease`) and signed with the Play upload key, so
+> `android.versionCode` is set explicitly in `mobile/app.json` /
+> `android/app/build.gradle` and must be incremented by hand (last accepted: 80).
+> EAS remote auto-increment still applies to iOS and to non-store EAS builds.
+
 - **EAS Remote Versioning**: `appVersionSource: "remote"` with `autoIncrement: true`
 - EAS auto-increments `buildNumber` (iOS) and `versionCode` (Android) on each build
 - `app.json` values are ignored for actual builds but kept in sync for reference

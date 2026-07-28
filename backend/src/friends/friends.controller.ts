@@ -16,6 +16,7 @@ import { FriendsService } from './friends.service';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
 import { RespondFriendRequestDto } from './dto/respond-friend-request.dto';
+import { UpdateLocationDto } from './dto/update-location.dto';
 
 @Controller('friends')
 @UseGuards(FirebaseAuthGuard)
@@ -124,5 +125,16 @@ export class FriendsController {
   @Get('locations')
   async getFriendLocations(@Request() req) {
     return this.friendsService.getFriendLocations(req.user.uid);
+  }
+
+  /**
+   * POST /friends/location
+   * Upsert the caller's own live location (periodic ping from the client).
+   * Only persisted when the user has shareMyLocation=true.
+   */
+  @Post('location')
+  @HttpCode(HttpStatus.OK)
+  async updateMyLocation(@Request() req, @Body() dto: UpdateLocationDto) {
+    return this.friendsService.updateMyLocation(req.user.uid, dto.lat, dto.lng);
   }
 }

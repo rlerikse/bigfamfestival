@@ -28,7 +28,17 @@ export async function apiPatch<T>(path: string, body: Record<string, unknown>): 
     headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`);
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const errorBody = await res.json();
+      if (typeof errorBody?.message === 'string') message = errorBody.message;
+      else if (Array.isArray(errorBody?.message)) message = errorBody.message.join(', ');
+    } catch {
+      // response wasn't JSON — fall back to statusText
+    }
+    throw new Error(message);
+  }
   return res.json();
 }
 

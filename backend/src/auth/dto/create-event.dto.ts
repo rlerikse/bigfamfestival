@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
   IsDateString,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -9,6 +10,14 @@ import {
   MinLength,
   ArrayMinSize,
 } from 'class-validator';
+
+export const EVENT_BLOCK_TYPES = [
+  'artist_set',
+  'workshop',
+  'setup',
+  'special',
+] as const;
+export type EventBlockType = (typeof EVENT_BLOCK_TYPES)[number];
 
 export class CreateEventDto {
   @ApiProperty({
@@ -89,6 +98,18 @@ export class CreateEventDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
+
+  @ApiProperty({
+    example: 'artist_set',
+    enum: EVENT_BLOCK_TYPES,
+    description: "Type of schedule block. Defaults to 'artist_set' if omitted.",
+    required: false,
+  })
+  @IsEnum(EVENT_BLOCK_TYPES, {
+    message: `blockType must be one of: ${EVENT_BLOCK_TYPES.join(', ')}`,
+  })
+  @IsOptional()
+  blockType?: EventBlockType;
 
   // createdBy will be set by the controller based on the authenticated user
   createdBy?: string;

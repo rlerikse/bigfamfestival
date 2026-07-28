@@ -196,3 +196,12 @@ export async function getFriendLocations(): Promise<FriendLocation[]> {
   console.log(`[Friends] Friend locations loaded — ${response.data.length} sharing location`);
   return response.data;
 }
+
+/**
+ * Upload the current user's own live location to the backend.
+ * The server only persists it when the user has shareMyLocation=true.
+ */
+export async function uploadMyLocation(lat: number, lng: number): Promise<void> {
+  const headers = await authHeaders();
+  await api.post('/friends/location', { lat, lng }, { headers });
+}

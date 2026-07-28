@@ -1,9 +1,9 @@
 import React from 'react';
 import {
   View,
-  SafeAreaView,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '../contexts/ThemeContext';
 import TopNavBar from '../components/TopNavBar';
@@ -106,7 +106,7 @@ const HomeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }} edges={['top']}>
 
       <StatusBar style={isDark ? 'light' : 'dark'} />
 
@@ -118,7 +118,7 @@ const HomeScreen = () => {
       {/* Main content — flex:1 preserves tab bar */}
       <ScrollView
         style={{ flex: 1, zIndex: 1 }}
-        contentContainerStyle={{ paddingTop: 40, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingTop: 55 + 12, paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Festival-style countdown — "UNTIL GATES OPEN" */}

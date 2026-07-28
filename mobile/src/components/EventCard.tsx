@@ -61,13 +61,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     marginRight: 4,
-  paddingTop: 5,
-  },
-  favoriteText: {
-    marginLeft: 0,
-    marginTop: 2,
-    fontSize: 10,
-    fontWeight: '600',
   },
 });
 
@@ -96,9 +89,13 @@ const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpaci
 
 const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress, showStatusBadge = false, currentTime, blinkDurationMs = 1200, liveBorderMaxWidth = 2, liveGlowMaxOpacity = 0.35 }) => {
   const formattedTime = useMemo(() => {
-    if (!item.startTime) return '';
+    // Guard against missing/malformed startTime (e.g. non-string, no ':'),
+    // matching the parseStartMinutes() guard in ScheduleScreen.tsx that was
+    // added to fix the same class of crash there.
+    if (typeof item.startTime !== 'string' || !item.startTime.includes(':')) return '';
     const [hours, minutes] = item.startTime.split(':');
-    const hour = parseInt(hours);
+    const hour = parseInt(hours, 10);
+    if (!Number.isFinite(hour) || minutes === undefined) return '';
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const hour12 = hour % 12 || 12;
     return `${hour12}:${minutes} ${ampm}`;
@@ -358,12 +355,6 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
           size={24}
           color={isInUserSchedule ? '#B87333' : (theme.muted || '#666666')}
         />
-        <Text style={[
-          styles.favoriteText,
-          { color: isInUserSchedule ? '#B87333' : (theme.muted || '#666666') }
-        ]}>
-          {isInUserSchedule ? 'Added' : 'Add'}
-        </Text>
       </TouchableOpacity>
     </AnimatedTouchableOpacity>
   );
