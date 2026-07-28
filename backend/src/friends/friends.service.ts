@@ -212,10 +212,21 @@ export class FriendsService {
       .collection('friends')
       .get();
 
-    return snapshot.docs.map((doc) => ({
-      userId: doc.id,
-      ...(doc.data() as Omit<FriendEntry, 'userId'>),
-    }));
+    return snapshot.docs.map((doc) => {
+      const data = doc.data() as Omit<FriendEntry, 'userId'>;
+      // addedAt is stored as a Firestore Timestamp; serialize it to an ISO
+      // string so the mobile client's `new Date(item.addedAt)` doesn't get
+      // an object (which produces "Invalid Date").
+      const addedAt =
+        data.addedAt && typeof (data.addedAt as unknown as { toDate?: () => Date }).toDate === 'function'
+          ? (data.addedAt as unknown as { toDate: () => Date }).toDate().toISOString()
+          : data.addedAt;
+      return {
+        userId: doc.id,
+        ...data,
+        addedAt: addedAt as unknown as Date,
+      };
+    });
   }
 
   /**
