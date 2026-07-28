@@ -101,13 +101,18 @@ export async function getWalkingRoute(
   return null;
 }
 
-/** Human-friendly route summary, e.g. "0.4 mi · 6 min walk". */
-export function formatRouteSummary(r: RouteResult): string {
+/** Human-friendly route summary, e.g. "0.4 mi · 6 min walk" (or km, per Settings toggle). */
+export function formatRouteSummary(r: RouteResult, unit: 'mi' | 'km' = 'mi'): string {
+  const mins = Math.max(1, Math.round(r.durationSeconds / 60));
+  if (unit === 'km') {
+    const km = r.distanceMeters / 1000;
+    const distStr = km < 0.1 ? `${Math.round(r.distanceMeters)} m` : `${km.toFixed(1)} km`;
+    return `${distStr} · ${mins} min walk`;
+  }
   const miles = r.distanceMeters / 1609.34;
   const distStr = miles < 0.1
     ? `${Math.round(r.distanceMeters * 3.28084)} ft`
     : `${miles.toFixed(1)} mi`;
-  const mins = Math.max(1, Math.round(r.durationSeconds / 60));
   return `${distStr} · ${mins} min walk`;
 }
 
