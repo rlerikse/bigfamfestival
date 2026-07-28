@@ -6,6 +6,7 @@ import { scheduleAllUserEventsNotifications, cancelAllUserEventsNotifications } 
 import { registerForPushNotifications } from '../services/pushNotificationService';
 
 export type SupportedLanguage = 'en' | 'es' | 'fr';
+export type DistanceUnit = 'mi' | 'km';
 
 export interface LanguageOption {
   code: SupportedLanguage;
@@ -28,6 +29,8 @@ interface AppSettingsContextProps {
   getSupportedLanguages: () => LanguageOption[];
   globalNotificationsEnabled: boolean;
   toggleGlobalNotifications: () => Promise<void>;
+  distanceUnit: DistanceUnit;
+  toggleDistanceUnit: () => Promise<void>;
 }
 
 const AppSettingsContext = createContext<AppSettingsContextProps | undefined>(undefined);
@@ -44,6 +47,7 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [scheduleNotificationsEnabled, setScheduleNotificationsEnabled] = useState<boolean>(true);
   const [currentLanguage, setCurrentLanguage] = useState<SupportedLanguage>('en');
   const [globalNotificationsEnabled, setGlobalNotificationsEnabled] = useState<boolean>(true);
+  const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('mi');
   const { user, isGuestUser } = useAuth();
 
   // Load saved settings when the user changes
@@ -54,11 +58,14 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
           const savedNotificationSetting = await AsyncStorage.getItem(`schedule_notifications_enabled_${user.id}`);
           const savedLanguageSetting = await AsyncStorage.getItem(`app_language_${user.id}`);
           const savedGlobalNotifications = await AsyncStorage.getItem(`global_notifications_enabled_${user.id}`);
+          const savedDistanceUnit = await AsyncStorage.getItem(`distance_unit_${user.id}`);
           // Default to true if no setting is saved
           setScheduleNotificationsEnabled(savedNotificationSetting !== 'false');
           setGlobalNotificationsEnabled(savedGlobalNotifications !== 'false');
           // Set current language or default to English
           setCurrentLanguage((savedLanguageSetting as SupportedLanguage) || 'en');
+          // Distance unit — default to miles (mi)
+          setDistanceUnit((savedDistanceUnit as DistanceUnit) || 'mi');
         } catch (error) {
           console.error('Error loading settings:', error);
           // Default to true on error
@@ -70,11 +77,15 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         // Guest users don't have notification settings
         setScheduleNotificationsEnabled(false);
         setGlobalNotificationsEnabled(true); // Guests get global notifications by default
-        // Load global language setting for guests
+        // Load global language + distance unit settings for guests
         try {
           const savedLanguage = await AsyncStorage.getItem('global_language');
           if (savedLanguage && SUPPORTED_LANGUAGES.find(lang => lang.code === savedLanguage)) {
             setCurrentLanguage(savedLanguage as SupportedLanguage);
+          }
+          const savedGuestDistanceUnit = await AsyncStorage.getItem('global_distance_unit');
+          if (savedGuestDistanceUnit === 'mi' || savedGuestDistanceUnit === 'km') {
+            setDistanceUnit(savedGuestDistanceUnit);
           }
         } catch (error) {
           console.error('Error loading guest language setting:', error);
@@ -153,6 +164,21 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
     return SUPPORTED_LANGUAGES;
   };
 
+  // Toggle distance unit (mi <-> km) — used by Live Wayfinder distance labels
+  const toggleDistanceUnit = async () => {
+    try {
+      const newValue: DistanceUnit = distanceUnit === 'mi' ? 'km' : 'mi';
+      setDistanceUnit(newValue);
+      if (user && !isGuestUser()) {
+        await AsyncStorage.setItem(`distance_unit_${user.id}`, newValue);
+      } else {
+        await AsyncStorage.setItem('global_distance_unit', newValue);
+      }
+    } catch (error) {
+      console.error('Error toggling distance unit:', error);
+    }
+  };
+
   return (
     <AppSettingsContext.Provider
       value={{
@@ -162,7 +188,9 @@ export const AppSettingsProvider: React.FC<{ children: React.ReactNode }> = ({ c
         changeLanguage,
         getSupportedLanguages,
         globalNotificationsEnabled,
-        toggleGlobalNotifications
+        toggleGlobalNotifications,
+        distanceUnit,
+        toggleDistanceUnit
       }}
     >
       {children}

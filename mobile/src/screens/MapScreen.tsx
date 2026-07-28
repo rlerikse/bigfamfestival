@@ -11,10 +11,37 @@ import { useNavigation } from '@react-navigation/native';
 import { getFriendLocations, getFriendCampsites, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
 import { getWalkingRoute, formatRouteSummary, routeBounds, RouteResult, LngLat } from '../services/routingService';
 import { useAuth } from '../contexts/AuthContext';
+import { useAppSettings } from '../contexts/AppSettingsContext';
 import OptimizedImage from '../components/OptimizedImage';
+import { useDirectionalTracking } from '../hooks/useDirectionalTracking';
+import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
+import WayfinderHUD from '../components/WayfinderHUD';
 
 const FESTIVAL_CENTER: [number, number] = [-84.2575, 42.0577];
 const DEFAULT_ZOOM = 16;
+
+/** Distance in meters between two [lng, lat] points (haversine). */
+function haversineMeters(a: [number, number], b: [number, number]): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLon = toRad(b[0] - a[0]);
+  const lat1 = toRad(a[1]);
+  const lat2 = toRad(b[1]);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Human-friendly distance label honoring the Settings mi/km toggle. */
+function formatDistance(meters: number, unit: 'mi' | 'km'): string {
+  if (unit === 'km') {
+    const km = meters / 1000;
+    return km < 0.1 ? `${Math.round(meters)} m` : `${km.toFixed(1)} km`;
+  }
+  const miles = meters / 1609.34;
+  return miles < 0.1 ? `${Math.round(meters * 3.28084)} ft` : `${miles.toFixed(1)} mi`;
+}
 
 // ─── POI Category System ────────────────────────────────────────────────────
 
@@ -130,6 +157,7 @@ export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { distanceUnit } = useAppSettings();
   const [selfCoords, setSelfCoords] = useState<[number, number] | null>(null);
   const [zones, setZones] = useState<MapZone[]>([]);
   const [pois, setPois] = useState<MapPOI[]>([]);
@@ -144,6 +172,11 @@ export default function MapScreen() {
   const [activeRoute, setActiveRoute] = useState<RouteResult | null>(null);
   const [routeLabel, setRouteLabel] = useState<string | null>(null);
   const [routing, setRouting] = useState(false);
+  // Current route target — kept separately from the route result so we can
+  // live-recalculate as the user walks (routing was previously one-shot: it
+  // fetched once and never updated, so the line went stale mid-walk).
+  const routeTargetRef = useRef<{ dest: LngLat; label: string } | null>(null);
+  const lastRouteOriginRef = useRef<LngLat | null>(null);
   // Always-current friend markers, so the navigation callback never uses a
   // stale snapshot (functions passed via nav params capture their closure).
   const friendMarkersRef = useRef<Array<(FriendLocation | FriendCampsite) & { isLive: boolean }>>([]);
@@ -152,7 +185,21 @@ export default function MapScreen() {
   // entries for accepted friends who have opted in to sharing)
   const [friendLocations, setFriendLocations] = useState<FriendLocation[]>([]);
   const [friendCampsites, setFriendCampsites] = useState<FriendCampsite[]>([]);
-  const [selectedFriend, setSelectedFriend] = useState<(FriendLocation | FriendCampsite) | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<((FriendLocation | FriendCampsite) & { isLive: boolean }) | null>(null);
+
+  // ── Directional "hot/cold" tracking mode (per #159) ────────────────────────
+  // A separate per-friend focus state, layered ON TOP of the friend-radar HUD
+  // (radar markers keep rendering regardless — Robert confirmed both coexist).
+  const [trackingTarget, setTrackingTarget] = useState<(FriendLocation | FriendCampsite) & { isLive: boolean } | null>(null);
+  const trackingCoords: LngLat | null = trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null;
+  // Only stream the magnetometer when there's actually something to point at —
+  // either friends visible on the radar (icons need live heading to swing
+  // around the border) or an active tracking target. Avoids draining battery
+  // when the map has zero friends loaded. friendMarkers itself is derived
+  // later in render, so we track its presence via the same ref the HUD uses.
+  const [hasFriendMarkers, setHasFriendMarkers] = useState(false);
+  const needsHeading = hasFriendMarkers || trackingCoords !== null;
+  const { closeness, isLocked, heading } = useDirectionalTracking(selfCoords, trackingCoords, needsHeading);
 
   // All categories visible by default
   const [visibleCategories, setVisibleCategories] = useState<Set<POICategory>>(
@@ -323,6 +370,8 @@ export default function MapScreen() {
   const clearRoute = useCallback(() => {
     setActiveRoute(null);
     setRouteLabel(null);
+    routeTargetRef.current = null;
+    lastRouteOriginRef.current = null;
   }, []);
 
   /** Fetch + draw a walking route from the user to a destination pin. */
@@ -344,14 +393,47 @@ export default function MapScreen() {
         return;
       }
       setActiveRoute(route);
-      setRouteLabel(`${label} • ${formatRouteSummary(route)}`);
+      setRouteLabel(`${label} • ${formatRouteSummary(route, distanceUnit)}`);
+      // Remember the target + origin so the live-recalculation effect below
+      // can keep the line current as the user (or a live friend target) moves,
+      // instead of the old one-shot fetch-and-forget behavior.
+      routeTargetRef.current = { dest, label };
+      lastRouteOriginRef.current = origin;
       // Fit the camera to the whole route so both ends are visible.
       const b = routeBounds(route);
       cameraRef.current?.fitBounds(b.ne, b.sw, 90, 700);
     } finally {
       setRouting(false);
     }
-  }, [routing, getUserCoords]);
+  }, [routing, getUserCoords, distanceUnit]);
+
+  // Live route recalculation — re-fetch the walking route whenever the user's
+  // position moves meaningfully while a route is active. Previously routing
+  // was one-shot (fetched once, never updated), so the drawn line went stale
+  // the moment the user started walking. We debounce on a meter threshold so
+  // we're not hammering the Directions API on every GPS tick.
+  const RECALC_MIN_METERS = 25;
+  useEffect(() => {
+    if (!activeRoute || !routeTargetRef.current || !selfCoords) return;
+    const lastOrigin = lastRouteOriginRef.current;
+    if (lastOrigin) {
+      const moved = haversineMeters(lastOrigin, selfCoords);
+      if (moved < RECALC_MIN_METERS) return;
+    }
+    let cancelled = false;
+    (async () => {
+      const target = routeTargetRef.current;
+      if (!target) return;
+      const route = await getWalkingRoute(selfCoords, target.dest);
+      if (cancelled || !route || !routeTargetRef.current) return;
+      setActiveRoute(route);
+      setRouteLabel(`${target.label} • ${formatRouteSummary(route, distanceUnit)}`);
+      lastRouteOriginRef.current = selfCoords;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selfCoords, activeRoute, distanceUnit]);
 
   // ── Derived ───────────────────────────────────────────────────────────────────
 
@@ -381,6 +463,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     friendMarkersRef.current = friendMarkers;
+    setHasFriendMarkers(friendMarkers.length > 0);
     if (friendMarkers.length > 0) {
       friendMarkers.forEach(friend => {
         console.log(
@@ -598,7 +681,11 @@ export default function MapScreen() {
             anchor={{ x: 0.5, y: 0.5 }}
             onSelected={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
           >
-            <View style={[styles.friendMarker, friend.isLive && styles.friendMarkerLive]}>
+            <View style={[
+              styles.friendMarker,
+              friend.isLive && styles.friendMarkerLive,
+              trackingTarget?.userId === friend.userId && styles.friendMarkerTracking,
+            ]}>
               {friend.profilePictureUrl ? (
                 <OptimizedImage
                   uri={friend.profilePictureUrl}
@@ -643,6 +730,36 @@ export default function MapScreen() {
           </Mapbox.ShapeSource>
         )}
       </Mapbox.MapView>
+
+      {/* Friend-radar HUD — always-visible border-anchored icons for every
+          visible friend (per #159). This renders regardless of tracking
+          state; the gradient border below is an ADDITIVE focus layer for
+          whichever single friend is selected, never a replacement. */}
+      <WayfinderHUD
+        userCoords={selfCoords}
+        heading={heading}
+        friends={friendMarkers.map(f => ({
+          userId: f.userId,
+          name: f.name,
+          profilePictureUrl: f.profilePictureUrl,
+          lat: f.lat,
+          lng: f.lng,
+        }))}
+        trackedFriendId={trackingTarget?.userId ?? null}
+        distanceUnit={distanceUnit}
+        onSelectFriend={(f) => {
+          const match = friendMarkers.find(fm => fm.userId === f.userId);
+          if (match) setSelectedFriend(match);
+        }}
+      />
+
+      {/* Directional hot/cold gradient overlay — only while a friend is under
+          active tracking focus. Renders ON TOP of the map but BELOW the top
+          nav/controls, and does not affect the friend-radar HUD markers
+          above, which keep rendering regardless (both coexist per #159). */}
+      {trackingTarget && (
+        <DirectionalGradientBorder closeness={closeness} isLocked={isLocked} />
+      )}
 
       {/* Top NavBar — rendered as a direct child of the map container (not
           wrapped in another absolute View). TopNavBar already positions itself
@@ -765,6 +882,72 @@ export default function MapScreen() {
         );
       })()}
 
+      {/* Selected friend info card — route + track (hot/cold) toggle */}
+      {selectedFriend && (
+        <View style={styles.infoCard}>
+          <TouchableOpacity
+            style={styles.infoCardClose}
+            onPress={() => setSelectedFriend(null)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="close" size={20} color="#F5F5DC" />
+          </TouchableOpacity>
+          <View style={styles.infoCardHeader}>
+            <View style={[styles.infoCardDot, { backgroundColor: '#3B82F6' }]}>
+              <Ionicons name="person" size={16} color="#fff" />
+            </View>
+            <Text style={styles.infoCardTitle}>{selectedFriend.name}</Text>
+          </View>
+          <Text style={[styles.infoCardCategory, { color: selectedFriend.isLive ? '#6BBF59' : '#F59E0B' }]}>
+            {selectedFriend.isLive ? 'LIVE LOCATION' : 'CAMPSITE'}
+            {selfCoords ? ` • ${formatDistance(haversineMeters(selfCoords, [selectedFriend.lng, selectedFriend.lat]), distanceUnit)}` : ''}
+          </Text>
+          <View style={styles.friendCardActions}>
+            <TouchableOpacity
+              style={[styles.directionsBtn, routing && styles.directionsBtnDisabled, { flex: 1 }]}
+              disabled={routing}
+              activeOpacity={0.85}
+              onPress={() => routeToDestination([selectedFriend.lng, selectedFriend.lat], selectedFriend.name)}
+            >
+              {routing ? (
+                <ActivityIndicator size="small" color="#0B3D2E" />
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={18} color="#0B3D2E" />
+                  <Text style={styles.directionsBtnText}>Directions</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.trackBtn,
+                trackingTarget?.userId === selectedFriend.userId && styles.trackBtnActive,
+              ]}
+              activeOpacity={0.85}
+              onPress={() =>
+                setTrackingTarget(prev =>
+                  prev?.userId === selectedFriend.userId ? null : selectedFriend
+                )
+              }
+            >
+              <Ionicons
+                name={trackingTarget?.userId === selectedFriend.userId ? 'radio' : 'radio-outline'}
+                size={18}
+                color={trackingTarget?.userId === selectedFriend.userId ? '#0B3D2E' : '#F5F5DC'}
+              />
+              <Text
+                style={[
+                  styles.trackBtnText,
+                  trackingTarget?.userId === selectedFriend.userId && styles.trackBtnTextActive,
+                ]}
+              >
+                {trackingTarget?.userId === selectedFriend.userId ? 'Tracking' : 'Track'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Active route summary + clear control */}
       {activeRoute && routeLabel && (
         <View style={styles.routeBanner}>
@@ -855,6 +1038,14 @@ const styles = StyleSheet.create({
     shadowColor: '#6BBF59',
     shadowOpacity: 0.7,
     shadowRadius: 6,
+  },
+  friendMarkerTracking: {
+    borderColor: '#F59E0B',
+    borderWidth: 4,
+    shadowColor: '#F59E0B',
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 10, // Android has no shadow-glow equivalent — elevation gives visual parity for the tracking highlight.
   },
   friendMarkerInitial: {
     color: '#fff',
@@ -1012,6 +1203,35 @@ const styles = StyleSheet.create({
     color: '#0B3D2E',
     fontSize: 15,
     fontWeight: '700',
+  },
+  friendCardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  trackBtn: {
+    marginTop: 14,
+    backgroundColor: 'rgba(245, 245, 220, 0.12)',
+    borderRadius: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 245, 220, 0.3)',
+  },
+  trackBtnActive: {
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
+  },
+  trackBtnText: {
+    color: '#F5F5DC',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  trackBtnTextActive: {
+    color: '#0B3D2E',
   },
   routeBanner: {
     position: 'absolute',
