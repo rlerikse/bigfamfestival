@@ -12,7 +12,7 @@
  * selected for tracking. MapScreen renders both layers stacked together.
  */
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import OptimizedImage from './OptimizedImage';
 import { computeBearing } from '../hooks/useDirectionalTracking';
 import type { LngLat } from '../services/routingService';
@@ -124,9 +124,12 @@ export default function WayfinderHUD({
             pointerEvents="box-none"
             style={[styles.radarIcon, { left: pos.x - ICON_SIZE / 2, top: pos.y - ICON_SIZE / 2 }]}
           >
-            <View
+            <TouchableOpacity
               style={[styles.radarIconTouchable, isTracked && styles.radarIconTouchableTracked]}
-              onTouchEnd={() => onSelectFriend?.(friend)}
+              onPress={() => onSelectFriend?.(friend)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`${friend.name}, ${label} away`}
             >
               {friend.profilePictureUrl ? (
                 <OptimizedImage
@@ -142,7 +145,7 @@ export default function WayfinderHUD({
                   <Text style={styles.radarIconInitial}>{friend.name?.trim()?.charAt(0)?.toUpperCase() || '?'}</Text>
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
             <Text style={styles.radarLabel} numberOfLines={1}>
               {label}
             </Text>

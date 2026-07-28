@@ -140,6 +140,12 @@
       "expo-font",
       "./plugins/withModularHeaders",
       [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Big Fam Festival to use device motion sensors for the Live Wayfinder directional compass."
+        }
+      ],
+      [
         "@rnmapbox/maps",
         {
           "RNMapboxMapsImpl": "mapbox"

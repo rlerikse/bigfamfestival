@@ -192,7 +192,14 @@ export default function MapScreen() {
   // (radar markers keep rendering regardless — Robert confirmed both coexist).
   const [trackingTarget, setTrackingTarget] = useState<(FriendLocation | FriendCampsite) & { isLive: boolean } | null>(null);
   const trackingCoords: LngLat | null = trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null;
-  const { closeness, isLocked, heading } = useDirectionalTracking(selfCoords, trackingCoords, true);
+  // Only stream the magnetometer when there's actually something to point at —
+  // either friends visible on the radar (icons need live heading to swing
+  // around the border) or an active tracking target. Avoids draining battery
+  // when the map has zero friends loaded. friendMarkers itself is derived
+  // later in render, so we track its presence via the same ref the HUD uses.
+  const [hasFriendMarkers, setHasFriendMarkers] = useState(false);
+  const needsHeading = hasFriendMarkers || trackingCoords !== null;
+  const { closeness, isLocked, heading } = useDirectionalTracking(selfCoords, trackingCoords, needsHeading);
 
   // All categories visible by default
   const [visibleCategories, setVisibleCategories] = useState<Set<POICategory>>(
@@ -456,6 +463,7 @@ export default function MapScreen() {
 
   useEffect(() => {
     friendMarkersRef.current = friendMarkers;
+    setHasFriendMarkers(friendMarkers.length > 0);
     if (friendMarkers.length > 0) {
       friendMarkers.forEach(friend => {
         console.log(
@@ -1037,6 +1045,7 @@ const styles = StyleSheet.create({
     shadowColor: '#F59E0B',
     shadowOpacity: 0.9,
     shadowRadius: 8,
+    elevation: 10, // Android has no shadow-glow equivalent — elevation gives visual parity for the tracking highlight.
   },
   friendMarkerInitial: {
     color: '#fff',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 
 /**
@@ -49,6 +49,7 @@ function hexToRgb(hex: string) {
 export default function DirectionalGradientBorder({ closeness, isLocked }: Props) {
   const color = colorForCloseness(closeness);
   const borderWidth = isLocked ? 14 : 10;
+  const { width: screenW, height: screenH } = Dimensions.get('window');
 
   return (
     <Svg
@@ -65,12 +66,14 @@ export default function DirectionalGradientBorder({ closeness, isLocked }: Props
       </Defs>
       {/* Border frame drawn as a stroked rect, rather than four separate
           bars — keeps corners clean and gives a single continuous "pulse"
-          feel when isLocked flips the width. */}
+          feel when isLocked flips the width. Rect inset/sized by
+          borderWidth/2 on all sides so the stroke doesn't get clipped
+          asymmetrically at the right/bottom screen edges. */}
       <Rect
         x={borderWidth / 2}
         y={borderWidth / 2}
-        width="100%"
-        height="100%"
+        width={screenW - borderWidth}
+        height={screenH - borderWidth}
         fill="none"
         stroke="url(#edgeGlow)"
         strokeWidth={borderWidth}
