@@ -1,6 +1,6 @@
 # Big Fam Festival Application
 
-**Current Version:** 1.2.1 | **Platforms:** iOS, Android | **Status:** Production
+**Current Version:** 1.2.2 | **Platforms:** iOS, Android | **Status:** Production
 
 A full-stack festival management application with a NestJS backend API and React Native mobile app built with Expo.
 
@@ -308,6 +308,24 @@ The app uses EAS Build with configurations in `mobile/eas.json`:
    ```bash
    eas submit --platform android --profile production
    ```
+
+   > **Android signing — current path (as of v1.2.2):** Store-track Android
+   > builds are signed with the Play **upload key** (SHA-1
+   > `9B:50:41:8D:93:AB:F3:49:4F:F1:4A:B7:F6:E3:9C:56:1E:81:B2:FF`), whose
+   > keystore is managed remotely by EAS. For local release builds, export the
+   > EAS keystore and point the Gradle `BIGFAM_UPLOAD_*` properties in
+   > `~/.gradle/gradle.properties` at it, then build + upload:
+   >
+   > ```bash
+   > # from mobile/android
+   > JAVA_HOME=$(brew --prefix openjdk@17) ./gradlew bundleRelease
+   > # verify the signing cert before uploading:
+   > keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | grep SHA1
+   > # must print 9B:50:41:8D:...:B2:FF
+   > ```
+   >
+   > Do **not** sign with any other local keystore — Play rejects mismatched
+   > upload keys. `versionCode` must be strictly increasing (last accepted: 80).
 
 5. **Update app configuration:**
    

@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.2] - 2026-07-28
+
+### Fixed
+- **Google Sign-In**: corrected OAuth client configuration so Google authentication works on release builds
+- **Schedule tab crash**: added a guard on `startTime.split(':')` to prevent a crash when a start time is missing or malformed
+- **Map black screen**: fixed a Mapbox access-token initialization race that could leave the map rendering blank on startup
+
+### Changed (Android polish)
+- **Map camera**: default map camera now centers on `FESTIVAL_CENTER`
+- **Android top nav**: fixed a TextureView rendering issue in the top navigation bar
+- **Schedule hours**: schedule now shows full hours in 12-hour format
+- **Favorite heart**: cosmetic parity for the favorite-heart icon across list/grid views
+- **Favorite tap**: tapping favorite no longer jumps the horizontal scroll position
+
+### Release hardening
+- Removed the unused `ACCESS_BACKGROUND_LOCATION` (and `FOREGROUND_SERVICE_LOCATION`) permission — it was declared for a future v1.3 friend live-location feature but not used in 1.2.2; keeps only foreground `FINE`/`COARSE` location for the festival map. Clears the Play "undeclared background location" flag.
+- Corrected Android app signing to use the proper Play upload key (SHA-1 `9B:50:41:8D:...:B2:FF`), resolving the upload-key mismatch that blocked Play submissions.
+- Version: `versionCode` 79 → 80, versionName 1.2.2 (iOS buildNumber 36).
+
 ## [1.2.1] - 2026-07-14
 
 ### Fixed
