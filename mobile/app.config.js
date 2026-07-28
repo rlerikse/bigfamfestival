@@ -67,10 +67,35 @@ const ANDROID_PACKAGE = IS_DEV
 
 const APP_NAME = IS_DEV ? 'Big Fam (Dev)' : 'Big Fam Festival';
 
+// ── Mapbox download token injection ──────────────────────────────────────────
+// The @rnmapbox/maps plugin needs a SECRET download token (sk.…) at native
+// build time to fetch the Mapbox SDK from their Maven repo. We do NOT hardcode
+// it in app.json (would leak the sk into git). Instead we read it from env
+// (RNMapboxMapsDownloadToken, set as an EAS project secret) and merge it into
+// the plugin config object here at config-eval time.
+function injectMapboxDownloadToken(plugins) {
+  const downloadToken = process.env.RNMapboxMapsDownloadToken;
+  if (!Array.isArray(plugins)) return plugins;
+  return plugins.map((plugin) => {
+    if (Array.isArray(plugin) && plugin[0] === '@rnmapbox/maps') {
+      const [name, opts = {}] = plugin;
+      return [
+        name,
+        {
+          ...opts,
+          ...(downloadToken ? { RNMapboxMapsDownloadToken: downloadToken } : {}),
+        },
+      ];
+    }
+    return plugin;
+  });
+}
+
 // ── Export ──────────────────────────────────────────────────────────────────
 module.exports = ({ config }) => ({
   ...config,
   name: APP_NAME,
+  plugins: injectMapboxDownloadToken(config.plugins),
   ios: {
     ...config.ios,
     bundleIdentifier: IOS_BUNDLE_ID,
