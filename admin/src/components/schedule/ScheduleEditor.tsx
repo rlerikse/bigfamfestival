@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Event } from '@/types';
 import { cn } from '@/lib/utils';
-import { mockScheduleEvents } from './scheduleMockData';
 import {
   STAGE_COLUMNS,
   DAY_START_HOUR,
@@ -79,7 +78,7 @@ function defaultCheckOverlap(candidate: Event, allEvents: Event[]): Event | null
 }
 
 export function ScheduleEditor({ events, onUpdateEvent, checkOverlap = defaultCheckOverlap }: Props) {
-  const [localEvents, setLocalEvents] = useState<Event[]>(events ?? mockScheduleEvents);
+  const [localEvents, setLocalEvents] = useState<Event[]>(events ?? []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
