@@ -81,11 +81,16 @@ function circularAverage(samples: number[]): number {
  * @param userCoords Live user position, or null if unknown.
  * @param targetCoords Selected friend's position, or null if no active target
  *   (tracking mode inactive — hook returns neutral/idle state).
+ * @param needsHeading Whether the caller needs a live heading stream even with
+ *   no active target — e.g. the friend-radar HUD needs heading to position
+ *   border icons for any visible friend. Pass `false` (default) when there's
+ *   nothing to point at yet, so the magnetometer doesn't run and drain battery
+ *   for no reason.
  */
 export function useDirectionalTracking(
   userCoords: LngLat | null,
   targetCoords: LngLat | null,
-  alwaysTrackHeading = false
+  needsHeading = false
 ): DirectionalTrackingState {
   const [heading, setHeading] = useState(0);
   const [state, setState] = useState<DirectionalTrackingState>({
@@ -101,10 +106,12 @@ export function useDirectionalTracking(
   const hasTarget = targetCoords !== null;
 
   // Subscribe to the magnetometer while a target is active, OR when the caller
-  // needs heading regardless (e.g. the always-on friend-radar HUD needs a live
-  // heading to position border icons even with no tracking target selected).
+  // explicitly needs a live heading regardless (e.g. the friend-radar HUD, but
+  // only while there are actually friends to point at — gated by the caller
+  // passing `needsHeading` based on friend count, so we're not streaming
+  // sensor reads at 10Hz for nothing).
   useEffect(() => {
-    if (!hasTarget && !alwaysTrackHeading) return;
+    if (!hasTarget && !needsHeading) return;
 
     Magnetometer.setUpdateInterval(UPDATE_INTERVAL_MS);
     const sub = Magnetometer.addListener(({ x, y }) => {
@@ -126,7 +133,7 @@ export function useDirectionalTracking(
       sub.remove();
       headingSamplesRef.current = [];
     };
-  }, [hasTarget, alwaysTrackHeading]);
+  }, [hasTarget, needsHeading]);
 
   useEffect(() => {
     if (!targetCoords || !userCoords) {
