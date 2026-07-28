@@ -192,9 +192,9 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
         {icon && (
           <Ionicons
             name={icon}
-            size={16}
+            size={14}
             color={'#fff'}
-            style={{ marginRight: 8 }}
+            style={{ marginRight: 4 }}
           />
         )}
         <Text
@@ -206,12 +206,14 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({
             }
           ]}
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
         >
           {getDisplayText()}
         </Text>
         <Ionicons
           name={isVisible ? 'chevron-up' : 'chevron-down'}
-          size={18}
+          size={16}
           color={'#fff'}
         />
       </TouchableOpacity>
@@ -267,14 +269,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     minHeight: 36,
   },
   dropdownButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   modalOverlay: {

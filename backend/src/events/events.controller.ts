@@ -5,6 +5,7 @@ import {
   Get,
   Logger,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -125,6 +126,38 @@ export class EventsController {
   ) {
     // Admin can update any event
     return this.eventsService.update(id, updateEventDto);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Partial update / move / resize a schedule block (Admin only). ' +
+      'Send only changed fields (e.g. { endTime } to resize, ' +
+      '{ stage, date, startTime, endTime } to move). Same overlap + festivalDay ' +
+      'rules apply as PUT.',
+  })
+  @ApiResponse({ status: 200, description: 'Event updated successfully' })
+  @ApiResponse({ status: 400, description: 'Time conflict on stage' })
+  @ApiResponse({ status: 404, description: 'Event not found' })
+  async patchEvent(
+    @Param('id') id: string,
+    @Body() updateEventDto: UpdateEventDto,
+  ) {
+    return this.eventsService.update(id, updateEventDto);
+  }
+
+  @Post('backfill-schedule-fields')
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Backfill festivalDay + blockType on existing events (Admin only, idempotent)',
+  })
+  @ApiResponse({ status: 201, description: 'Backfill summary' })
+  async backfillScheduleFields() {
+    return this.eventsService.backfillScheduleFields();
   }
 
   @Delete(':id')

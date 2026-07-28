@@ -2,12 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
   IsDateString,
+  IsEnum,
   IsOptional,
   IsString,
   Matches,
   MinLength,
   ArrayMinSize,
 } from 'class-validator';
+import { EVENT_BLOCK_TYPES, EventBlockType } from './create-event.dto';
 
 export class UpdateEventDto {
   @ApiProperty({
@@ -95,4 +97,16 @@ export class UpdateEventDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
+
+  @ApiProperty({
+    example: 'workshop',
+    enum: EVENT_BLOCK_TYPES,
+    description: 'Updated type of schedule block.',
+    required: false,
+  })
+  @IsEnum(EVENT_BLOCK_TYPES, {
+    message: `blockType must be one of: ${EVENT_BLOCK_TYPES.join(', ')}`,
+  })
+  @IsOptional()
+  blockType?: EventBlockType;
 }

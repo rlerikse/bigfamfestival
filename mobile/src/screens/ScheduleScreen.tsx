@@ -42,6 +42,7 @@ import HorizontalScheduleView from '../components/HorizontalScheduleView';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
+import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
 import firestore, { collection, getDocs } from '../utils/firebaseCompat';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
@@ -86,9 +87,26 @@ function filterReducer(state: FilterState, action: FilterAction): FilterState {
 }
 
 import { festivalConfig } from '../config/festival.config';
+import { useNow } from '../contexts/FakeClockContext';
 
 // Days to show in the filter buttons - loaded from festival config
 const festivalDays = festivalConfig.dates;
+
+/**
+ * Safely parse an event's "HH:MM" startTime into minutes-since-midnight.
+ * Returns null for missing/malformed values so callers can skip/sort-last
+ * instead of throwing (a bad startTime previously crashed the Schedule tab
+ * via an unguarded .split(':') inside a useMemo).
+ */
+function parseStartMinutes(startTime: string | undefined | null): number | null {
+  if (typeof startTime !== 'string') return null;
+  const parts = startTime.split(':');
+  if (parts.length < 2) return null;
+  const hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return hours * 60 + minutes;
+}
 
 // All days we need to fetch events for (includes Monday for late-night events)
 // Currently not used since API fetches all events at once
@@ -250,16 +268,17 @@ const ScheduleScreen = () => {
   // Filters (day/stage/genre/my-schedule) are shared state above and apply to both views,
   // so switching modes never resets or loses filter selections.
   const [viewMode, setViewMode] = useState<'vertical' | 'horizontal'>('vertical');
-  // Current time ticker for countdown badges
-  const [now, setNow] = useState<number>(Date.now());
+  // Current time — reads from FakeClockContext (supports admin fake-clock override)
+  const now = useNow();
   // FlatList ref for programmatic scrolling to live events
   const flatListRef = useRef<FlatList<ScheduleEvent>>(null);
   const previousDayRef = useRef<string | null>(null);
-
-  // Update current time every minute to refresh countdowns
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(interval);
+  // Last known horizontal scroll offset from the grid view, kept alive across
+  // unmounts of HorizontalScheduleView (it fully unmounts when switching back to
+  // list view) so toggling back to grid restores exactly where the user left off.
+  const horizontalScrollXRef = useRef<number | null>(null);
+  const handleHorizontalScrollPositionChange = useCallback((x: number) => {
+    horizontalScrollXRef.current = x;
   }, []);
 
   // Restore the user's last-used view mode on mount so the toggle sticks across sessions.
@@ -494,12 +513,17 @@ const ScheduleScreen = () => {
   const sortedEvents = useMemo(() => {
     if (events.length === 0) return [];
     return [...events].sort((a, b) => {
-      const [aHours, aMinutes] = a.startTime.split(':').map(Number);
-      const aTimeInMinutes = aHours * 60 + aMinutes;
-      const [bHours, bMinutes] = b.startTime.split(':').map(Number);
-      const bTimeInMinutes = bHours * 60 + bMinutes;
-      const adjustedA = aTimeInMinutes < dateConstants.cutoffTimeInMinutes ? aTimeInMinutes + (24 * 60) : aTimeInMinutes;
-      const adjustedB = bTimeInMinutes < dateConstants.cutoffTimeInMinutes ? bTimeInMinutes + (24 * 60) : bTimeInMinutes;
+      // Guard against events with missing/malformed startTime. A null/undefined
+      // startTime here previously threw a TypeError inside this useMemo, which
+      // propagated to the app-level error boundary and crashed the whole Schedule
+      // tab. Malformed events sort last instead of crashing the screen.
+      const aParsed = parseStartMinutes(a.startTime);
+      const bParsed = parseStartMinutes(b.startTime);
+      if (aParsed === null && bParsed === null) return 0;
+      if (aParsed === null) return 1;
+      if (bParsed === null) return -1;
+      const adjustedA = aParsed < dateConstants.cutoffTimeInMinutes ? aParsed + (24 * 60) : aParsed;
+      const adjustedB = bParsed < dateConstants.cutoffTimeInMinutes ? bParsed + (24 * 60) : bParsed;
       return adjustedA - adjustedB;
     });
   }, [events, dateConstants.cutoffTimeInMinutes]);
@@ -515,8 +539,10 @@ const ScheduleScreen = () => {
     // Filter by selected day (including late-night events from next day)
     if (selectedDay) {
       filtered = filtered.filter(ev => {
-        const [eventHours, eventMinutes] = ev.startTime.split(':').map(Number);
-        const eventStartTimeInMinutes = eventHours * 60 + eventMinutes;
+        const eventStartTimeInMinutes = parseStartMinutes(ev.startTime);
+        // Exclude events with missing/malformed startTime from day filtering
+        // rather than letting a bad value throw.
+        if (eventStartTimeInMinutes === null) return false;
         
         // Get the next day after the filter day (avoid UTC parsing bug)
         const [y, m, d] = selectedDay.split('-').map(Number);
@@ -726,40 +752,37 @@ const ScheduleScreen = () => {
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress, now]);
 
-  // Determine if event is currently live (mirrors logic inside EventCard)
-  const isEventLive = useCallback((ev: ScheduleEvent, nowMs: number) => {
-    if (!ev.date || !ev.startTime) return false;
-    const startTs = new Date(`${ev.date}T${ev.startTime}`).getTime();
-    let endTs: number;
-    if (ev.endTime && ev.endTime.trim()) {
-      endTs = new Date(`${ev.date}T${ev.endTime}`).getTime();
-      if (endTs <= startTs) endTs += 24 * 60 * 60 * 1000; // crosses midnight
-    } else {
-      endTs = startTs + 2 * 60 * 60 * 1000; // fallback 2h
-    }
-    return nowMs >= startTs && nowMs < endTs;
-  }, []);
-
-  // On day change (after initial set), auto-scroll to first live event if present
+  // On day change (after initial set), auto-scroll per resolveScheduleDayScrollTarget:
+  // live event if the day is in progress, LAST event if the day is fully over, or
+  // FIRST event if the day hasn't started yet (matches list-view behavior; horizontal
+  // grid view reuses the same shared helper from scheduleUtils).
   useEffect(() => {
     if (!selectedDay) return;
     if (previousDayRef.current && previousDayRef.current !== selectedDay) {
       const nowMs = now;
-      const liveIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
-      if (liveIndex >= 0) {
+      const target = resolveScheduleDayScrollTarget(filteredEvents, nowMs);
+      let targetIndex = -1;
+      if (target === 'live') {
+        targetIndex = filteredEvents.findIndex(ev => isEventLive(ev, nowMs));
+      } else if (target === 'first') {
+        targetIndex = filteredEvents.length > 0 ? 0 : -1;
+      } else if (target === 'last') {
+        targetIndex = filteredEvents.length > 0 ? filteredEvents.length - 1 : -1;
+      }
+      if (targetIndex >= 0) {
         // Defer to ensure FlatList rendered new data
         setTimeout(() => {
           try {
-            flatListRef.current?.scrollToIndex({ index: liveIndex, animated: true });
+            flatListRef.current?.scrollToIndex({ index: targetIndex, animated: true });
           } catch (err) {
             // Fallback to offset scroll if measurement not ready
-            flatListRef.current?.scrollToOffset({ offset: liveIndex * 112, animated: true });
+            flatListRef.current?.scrollToOffset({ offset: targetIndex * 112, animated: true });
           }
         }, 0);
       }
     }
     previousDayRef.current = selectedDay;
-  }, [selectedDay, filteredEvents, now, isEventLive]);
+  }, [selectedDay, filteredEvents, now]);
 
   // Aggressive initial image preloading for first screen
   const preloadInitialImages = useCallback((events: ScheduleEvent[]) => {
@@ -982,9 +1005,10 @@ const ScheduleScreen = () => {
                 marginRight: 8, 
                 flexDirection: 'row', 
                 alignItems: 'center', 
-                paddingHorizontal: 12, 
+                justifyContent: 'center',
+                paddingHorizontal: 6, 
                 paddingVertical: 8, 
-                minWidth: 110,
+                flex: 1,
                 height: 36,
               }
             ]}
@@ -995,15 +1019,21 @@ const ScheduleScreen = () => {
               name={showMySchedule ? 'heart' : 'heart-outline'}
               size={16}
               color={showMySchedule ? '#B87333' : '#fff'}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 4 }}
             />
-            <Text style={[
-              {
-                fontSize: 14,
-                fontWeight: '500',
-                color: '#fff'
-              }
-            ]}>
+            <Text
+              style={[
+                {
+                  fontSize: 13,
+                  fontWeight: '500',
+                  color: '#fff',
+                  flexShrink: 1,
+                }
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
               My Schedule
             </Text>
           </TouchableOpacity>
@@ -1015,8 +1045,10 @@ const ScheduleScreen = () => {
             onSelectionChange={handleStagesChange}
             placeholder="All Stages"
             allOptionValue="all"
+            icon="location-outline"
+            dropdownMinWidth={200}
             style={{
-              minWidth: 110,
+              flex: 1,
               marginRight: 4,
               height: 36,
             }}
@@ -1029,6 +1061,7 @@ const ScheduleScreen = () => {
             placeholder="All Genres"
             allOptionValue="all"
             dropdownMinWidth={200}
+            icon="musical-notes-outline"
             style={{
               flex: 1,
               marginRight: 4,
@@ -1097,6 +1130,8 @@ const ScheduleScreen = () => {
               onToggleSchedule={handleToggleSchedule}
               currentTime={now}
               selectedDay={selectedDay}
+              initialScrollX={horizontalScrollXRef.current}
+              onScrollPositionChange={handleHorizontalScrollPositionChange}
             />
           ) : (
           <FlatList

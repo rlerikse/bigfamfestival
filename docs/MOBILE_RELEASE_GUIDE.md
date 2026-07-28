@@ -373,7 +373,7 @@ eas build --platform android --profile preview
 ### 6.1 Version Strategy
 
 - **version** (app.json): Marketing version shown to users (1.0.0, 1.1.0, 2.0.0)
-- **buildNumber/versionCode**: Internal build number (auto-incremented by EAS)
+- **buildNumber/versionCode**: Internal build number. iOS `buildNumber` is auto-incremented by EAS; **Android `versionCode` is set manually** for local store builds (v1.2.2+, current value 80) and must strictly increase.
 
 ### 6.2 Update Version
 

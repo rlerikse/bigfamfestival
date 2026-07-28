@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
+import { FieldValue } from '@google-cloud/firestore';
 import {
   FriendRequest,
   FriendEntry,
@@ -340,6 +341,43 @@ export class FriendsService {
     );
 
     return results;
+  }
+
+  /**
+   * Upsert the caller's own live location into userLocations/{userId}.
+   * This is what GET /friends/locations reads back for opted-in friends.
+   * Requires the user to have shareMyLocation=true (defense-in-depth: we do
+   * not persist a location the user hasn't consented to share).
+   */
+  async updateMyLocation(
+    userId: string,
+    lat: number,
+    lng: number,
+  ): Promise<{ ok: true }> {
+    const db = this.firestoreService.db;
+
+    const userDoc = await db.collection(this.usersCollection).doc(userId).get();
+    const userData = userDoc.data() as User | undefined;
+    if (!userData?.shareMyLocation) {
+      throw new BadRequestException(
+        'Location sharing is disabled. Enable shareMyLocation before posting a location.',
+      );
+    }
+
+    await db
+      .collection('userLocations')
+      .doc(userId)
+      .set(
+        {
+          userId,
+          lat,
+          lng,
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+    return { ok: true };
   }
 
   // ─── Internal ─────────────────────────────────────────────────────────────

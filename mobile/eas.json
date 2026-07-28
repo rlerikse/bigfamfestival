@@ -15,7 +15,8 @@
         // before running: APP_ENV=development EXPO_PUBLIC_API_URL=http://192.168.x.x:8080/api/v1 npx expo start
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "simulator": true
       },
       "android": {
         "buildType": "apk"

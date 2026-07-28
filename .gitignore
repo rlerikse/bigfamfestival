@@ -11,8 +11,6 @@ backend/.env.production
 backend/bigfamfestival-*.json
 backend/bigfam-*-serviceaccount.json
 backend/bigfam-dev-serviceaccount.json
-# Dev Firebase credentials (never commit)
-mobile/GoogleService-Info.dev.plist
 /backend/dist
 /mobile/android
 mobile/package-lock.backup.json
@@ -21,13 +19,6 @@ backend/scripts/import-artists-from-csv copy.ts
 backend/scripts/import-artists-from-csv.ts
 /mobile/bigfamfestival-4af9c9a24721.json
 /mobile/.expo
-
-# Customer PII — never commit
-assets/customers/*.csv
-assets/customers/*.xlsx
-backend/email-blast-failures.txt
-backend/bigfam-serviceaccount.json
-BFF-S1-01-notification-backend-audit.md
 
 # Customer PII — never commit
 assets/customers/*.csv
@@ -49,4 +40,3 @@ admin/node_modules
 functions/node_modules
 *.apk
 mobile/dist
-
