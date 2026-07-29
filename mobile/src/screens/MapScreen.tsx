@@ -165,6 +165,13 @@ export default function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedPOI, setSelectedPOI] = useState<(MapPOI | StageLocation) | null>(null);
   const cameraRef = useRef<Mapbox.Camera>(null);
+  const mapViewRef = useRef<Mapbox.MapView>(null);
+  // Current map viewport bounds [[rightLon, topLat], [leftLon, bottomLat]] —
+  // used so the friend-radar HUD can hide a friend's edge-icon once they're
+  // already visible within the on-map view (avoids the "two icons for one
+  // friend" bug where zooming out to include a friend still showed them
+  // pinned to the screen edge instead of merging into a single marker).
+  const [visibleBounds, setVisibleBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [currentZoom, setCurrentZoom] = useState(DEFAULT_ZOOM);
   const [currentBearing, setCurrentBearing] = useState(0);
 
@@ -512,6 +519,7 @@ export default function MapScreen() {
   return (
     <View style={styles.container}>
       <Mapbox.MapView
+        ref={mapViewRef}
         style={StyleSheet.absoluteFill}
         styleURL="mapbox://styles/mapbox/satellite-streets-v12"
         // Android: use a TextureView (surfaceView=false) instead of the default
@@ -532,6 +540,14 @@ export default function MapScreen() {
           if (state?.properties?.heading != null) {
             setCurrentBearing(state.properties.heading);
           }
+          // Refresh visible bounds on every camera move so the radar HUD
+          // knows which friends are already on-screen. getVisibleBounds()
+          // is async; fire-and-forget is fine here, it just updates state
+          // whenever it resolves (camera changes fire frequently enough
+          // that a slight lag doesn't matter for this UI purpose).
+          mapViewRef.current?.getVisibleBounds()
+            .then(bounds => setVisibleBounds(bounds as [[number, number], [number, number]]))
+            .catch(() => undefined);
         }}
       >
         <Mapbox.Camera
@@ -738,6 +754,7 @@ export default function MapScreen() {
       <WayfinderHUD
         userCoords={selfCoords}
         heading={heading}
+        visibleBounds={visibleBounds}
         friends={friendMarkers.map(f => ({
           userId: f.userId,
           name: f.name,
