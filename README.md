@@ -186,6 +186,21 @@ The mobile app uses Expo's configuration system. Key settings are in `app.json`:
 - `extra.apiUrl`: API endpoint URL (defaults to production)
 - Can be overridden with `EXPO_PUBLIC_API_URL` environment variable
 
+## 🌿 Branch Naming Convention
+
+All branches should follow one of these prefixes so CI, automation, and reviewers can quickly tell intent:
+
+| Prefix | Purpose | Example |
+|---|---|---|
+| `feature/` | New feature work | `feature/friend-radar-hud` |
+| `fix/` | Bug fix (non-urgent) | `fix/schedule-scroll-jump` |
+| `hotfix/` | Urgent production fix, typically branched from `main` | `hotfix/crash-on-launch` |
+| `wip/` | Work-in-progress / exploratory, not yet ready for review | `wip/map-routing` |
+| `release/` | Release-candidate branches (also gate EAS builds, see CI) | `release/1.3.0` |
+| `chore/` | Tooling, CI, docs, dependency bumps | `chore/branch-hygiene` |
+
+Older/legacy naming (e.g. bare `feat/...` without a slash-separated scope) is still tolerated but new branches should use the table above. A CI check on PR open flags non-conforming branch names as an advisory warning (does not block merge). A weekly scheduled job (`.github/workflows/prune-stale-branches.yml`) automatically deletes branches that have already been **merged** into `dev` or `main`, to keep the branch list clean — it never touches unmerged/open-PR branches.
+
 ## 🚢 Production Deployment
 
 ### Versioning & Releases
