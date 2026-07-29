@@ -1,0 +1,15 @@
+name: CI Gate
+
+on:
+  pull_request:
+    branches: [ main, dev ]
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI gate passed
+        run: echo "CI gate passed — this check always runs regardless of which paths a PR touches, so every PR has at least one required status to satisfy branch protection."
