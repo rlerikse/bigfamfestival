@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run eslint --fix locally on staged files before they're committed.
+# This keeps auto-fixing out of CI (CI should only verify, never mutate).
+#
+# Enable once per clone with:
+#   git config core.hooksPath .githooks
+#
+set -euo pipefail
+
+STAGED_MOBILE=$(git diff --cached --name-only --diff-filter=ACM -- 'mobile/*.ts' 'mobile/*.tsx' 'mobile/*.js' 'mobile/*.jsx' || true)
+STAGED_BACKEND=$(git diff --cached --name-only --diff-filter=ACM -- 'backend/*.ts' 'backend/*.tsx' 'backend/*.js' 'backend/*.jsx' || true)
+
+run_fix() {
+  local dir="$1"
+  shift
+  local files=("$@")
+  if [ "${#files[@]}" -eq 0 ]; then
+    return 0
+  fi
+  echo "Running eslint --fix on staged $dir files..."
+  (cd "$dir" && npx eslint --fix "${files[@]/#$dir\//}") || {
+    echo "eslint --fix failed in $dir; aborting commit." >&2
+    exit 1
+  }
+  # Re-stage any files eslint modified
+  git add "${files[@]}"
+}
+
+if [ -n "$STAGED_MOBILE" ]; then
+  mapfile -t mobile_files <<< "$STAGED_MOBILE"
+  run_fix "mobile" "${mobile_files[@]}"
+fi
+
+if [ -n "$STAGED_BACKEND" ]; then
+  mapfile -t backend_files <<< "$STAGED_BACKEND"
+  run_fix "backend" "${backend_files[@]}"
+fi
+
+exit 0
