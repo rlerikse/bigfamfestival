@@ -31,7 +31,10 @@ export class ArtistsController {
 
   @Get()
   @Public()
-  @ApiOperation({ summary: 'Get all artists. Pass ?year=YYYY to filter by festival year (e.g. public app). Omit for all artists (e.g. admin).' })
+  @ApiOperation({
+    summary:
+      'Get all artists. Pass ?year=YYYY to filter by festival year (e.g. public app). Omit for all artists (e.g. admin).',
+  })
   @ApiResponse({ status: 200, description: 'Returns list of artists' })
   async findAll(@Query('year') year?: string): Promise<Artist[]> {
     const yearNum = year ? parseInt(year, 10) : undefined;
@@ -66,11 +69,17 @@ export class ArtistsController {
   @Patch(':slug')
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update an artist by slug (Admin only). Changing slug renames the doc and updates event refs.' })
+  @ApiOperation({
+    summary:
+      'Update an artist by slug (Admin only). Changing slug renames the doc and updates event refs.',
+  })
   @ApiParam({ name: 'slug', description: 'Current artist slug' })
   @ApiResponse({ status: 200, description: 'Artist updated successfully' })
   @ApiResponse({ status: 404, description: 'Artist not found' })
-  @ApiResponse({ status: 409, description: 'New slug conflicts with existing artist' })
+  @ApiResponse({
+    status: 409,
+    description: 'New slug conflicts with existing artist',
+  })
   async update(
     @Param('slug') slug: string,
     @Body() updateArtistDto: UpdateArtistDto,

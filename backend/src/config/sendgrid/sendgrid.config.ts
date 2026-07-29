@@ -16,7 +16,9 @@ export function initSendGrid(configService: ConfigService): void {
 
   if (!apiKey) {
     if (nodeEnv === 'production') {
-      console.warn('[SendGrid] SENDGRID_API_KEY not set in production — transactional email disabled');
+      console.warn(
+        '[SendGrid] SENDGRID_API_KEY not set in production — transactional email disabled',
+      );
     }
     return;
   }
@@ -49,7 +51,10 @@ export async function sendEmail(
   }
 
   const from = {
-    email: configService.get<string>('EMAIL_FROM', 'noreply@bigfamfestival.com'),
+    email: configService.get<string>(
+      'EMAIL_FROM',
+      'noreply@bigfamfestival.com',
+    ),
     name: configService.get<string>('EMAIL_FROM_NAME', 'Big Fam Festival'),
   };
 
@@ -60,7 +65,9 @@ export async function sendEmail(
     ...(options.text && { text: options.text }),
     ...(options.html && { html: options.html }),
     ...(options.templateId && { templateId: options.templateId }),
-    ...(options.dynamicTemplateData && { dynamicTemplateData: options.dynamicTemplateData }),
+    ...(options.dynamicTemplateData && {
+      dynamicTemplateData: options.dynamicTemplateData,
+    }),
   };
 
   await sgMail.send(msg);

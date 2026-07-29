@@ -48,11 +48,25 @@ export class AdminController {
   // ── User Management ────────────────────────────────────────────────
 
   @Get('users')
-  @ApiOperation({ summary: 'List users with search, role filter, and pagination' })
-  @ApiQuery({ name: 'search', required: false, description: 'Search by name or email' })
+  @ApiOperation({
+    summary: 'List users with search, role filter, and pagination',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Search by name or email',
+  })
   @ApiQuery({ name: 'role', required: false, description: 'Filter by role' })
-  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 20)' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Items per page (default: 20)',
+  })
   @ApiResponse({ status: 200, description: 'Paginated user list' })
   async listUsers(
     @Query('search') search?: string,
@@ -77,10 +91,7 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'User ID' })
   @ApiResponse({ status: 200, description: 'Updated user' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async updateUser(
-    @Param('id') id: string,
-    @Body() dto: AdminUpdateUserDto,
-  ) {
+  async updateUser(@Param('id') id: string, @Body() dto: AdminUpdateUserDto) {
     return this.adminService.updateUser(id, dto);
   }
 
@@ -99,10 +110,7 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Event ID' })
   @ApiResponse({ status: 200, description: 'Event updated' })
   @ApiResponse({ status: 404, description: 'Event not found' })
-  async updateEvent(
-    @Param('id') id: string,
-    @Body() dto: UpdateEventDto,
-  ) {
+  async updateEvent(@Param('id') id: string, @Body() dto: UpdateEventDto) {
     return this.adminService.updateEvent(id, dto);
   }
 
@@ -119,13 +127,14 @@ export class AdminController {
 
   @Get('shifts')
   @ApiOperation({ summary: 'List shifts with optional date/role filter' })
-  @ApiQuery({ name: 'date', required: false, description: 'Filter by date (YYYY-MM-DD)' })
+  @ApiQuery({
+    name: 'date',
+    required: false,
+    description: 'Filter by date (YYYY-MM-DD)',
+  })
   @ApiQuery({ name: 'role', required: false, description: 'Filter by role' })
   @ApiResponse({ status: 200, description: 'List of shifts' })
-  async listShifts(
-    @Query('date') date?: string,
-    @Query('role') role?: string,
-  ) {
+  async listShifts(@Query('date') date?: string, @Query('role') role?: string) {
     return this.adminService.listShifts({ date, role });
   }
 
@@ -141,10 +150,7 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Shift ID' })
   @ApiResponse({ status: 200, description: 'Shift updated' })
   @ApiResponse({ status: 404, description: 'Shift not found' })
-  async updateShift(
-    @Param('id') id: string,
-    @Body() dto: UpdateShiftDto,
-  ) {
+  async updateShift(@Param('id') id: string, @Body() dto: UpdateShiftDto) {
     return this.adminService.updateShift(id, dto);
   }
 

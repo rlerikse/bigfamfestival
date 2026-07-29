@@ -48,6 +48,12 @@ This application consists of:
 - **Node.js** 18.x or higher
 - **npm** 9.x or higher (comes with Node.js)
 - **Git**
+
+After cloning, enable local pre-commit lint auto-fix (keeps `--fix` out of CI):
+
+```bash
+git config core.hooksPath .githooks
+```
 - **Expo CLI** (`npm install -g expo-cli`)
 - **Google Cloud SDK** (for production deployment)
 - **Terraform** (for infrastructure deployment)

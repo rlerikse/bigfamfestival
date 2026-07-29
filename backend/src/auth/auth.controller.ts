@@ -43,7 +43,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 201, description: 'User profile created' })
   @ApiResponse({ status: 409, description: 'User profile already exists' })
-  @ApiResponse({ status: 401, description: 'Invalid or missing Firebase token' })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or missing Firebase token',
+  })
   async register(@Request() req, @Body() createProfileDto: CreateProfileDto) {
     // Check if user already exists (by UID or email migration)
     const existing = await this.usersService
