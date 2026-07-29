@@ -86,9 +86,7 @@ export class AdminService {
     }
 
     // Sort by name
-    users.sort((a, b) =>
-      (a.name || '').localeCompare(b.name || ''),
-    );
+    users.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const total = users.length;
     const totalPages = Math.ceil(total / limit);
@@ -144,10 +142,7 @@ export class AdminService {
     return this.scheduleService.getSchedule(userId);
   }
 
-  async setUserSchedule(
-    userId: string,
-    eventIds: string[],
-  ): Promise<Event[]> {
+  async setUserSchedule(userId: string, eventIds: string[]): Promise<Event[]> {
     // Clear existing schedule
     const existing = await this.scheduleService.getSchedule(userId);
     await Promise.all(

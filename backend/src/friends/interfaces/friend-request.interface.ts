@@ -14,8 +14,8 @@ export interface FriendRequest {
  * Keyed by the friend's userId.
  */
 export interface FriendEntry {
-  userId: string;      // the friend's uid
-  name: string;        // denormalized for display — updated on profile change
+  userId: string; // the friend's uid
+  name: string; // denormalized for display — updated on profile change
   profilePictureUrl?: string;
   addedAt: Date;
 }
