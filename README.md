@@ -188,6 +188,16 @@ The mobile app uses Expo's configuration system. Key settings are in `app.json`:
 
 ## 🚢 Production Deployment
 
+### Versioning & Releases
+
+This project uses **unified semantic versioning** across the whole app — mobile and backend track together as one version (no independent per-package versions). Source of truth: `.release-please-manifest.json` (root), mirrored into `mobile/package.json`, `mobile/app.json` (`expo.version`), and `backend/package.json`.
+
+- Commits to `dev`/`main` must follow [Conventional Commits](https://www.conventionalcommits.org/) (already enforced) — `feat:`, `fix:`, `feat!:`/`BREAKING CHANGE:`, etc. drive the version bump type (minor/patch/major).
+- [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`) watches `main`. On merge, it opens/updates a standing **Release PR** with the version bump + generated `CHANGELOG.md`.
+- Nothing ships automatically — merging that Release PR is the explicit release trigger. On merge it creates git tag `vX.Y.Z` + a GitHub Release.
+- That tag push (`v*.*.*`) is what fires the EAS store build job in `.github/workflows/mobile-ci.yml` — see PR #113/#194 EAS gating.
+- Android's `versionCode` in `mobile/app.json` is a **separate** counter auto-incremented by EAS (`eas.json` `autoIncrement: true`) — release-please does not touch it.
+
 ### Backend Deployment
 
 The backend is deployed to **Google Cloud Run** using Docker containers.
