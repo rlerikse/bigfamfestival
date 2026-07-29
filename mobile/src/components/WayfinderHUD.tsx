@@ -38,6 +38,16 @@ interface Props {
   trackedFriendId?: string | null;
   /** Distance unit for radar labels, from Settings. */
   distanceUnit: 'mi' | 'km';
+  /**
+   * Current map viewport bounds as `[[rightLon, topLat], [leftLon, bottomLat]]`
+   * (matches @rnmapbox/maps `getVisibleBounds()` return shape). When a friend's
+   * coordinate already falls inside these bounds, they're visible as a normal
+   * on-map marker already — the radar edge-icon for that friend is suppressed
+   * so we don't show two icons (edge + on-map) for the same person at once.
+   * Pass null while bounds are unknown (radar behaves as before: always show
+   * every friend at the edge until we know better).
+   */
+  visibleBounds?: [[number, number], [number, number]] | null;
   onSelectFriend?: (friend: WayfinderFriend) => void;
 }
 
@@ -95,22 +105,35 @@ export default function WayfinderHUD({
   friends,
   trackedFriendId,
   distanceUnit,
+  visibleBounds,
   onSelectFriend,
 }: Props) {
   const radarEntries = useMemo(() => {
     if (!userCoords) return [];
-    return friends.map((f) => {
-      const target: LngLat = [f.lng, f.lat];
-      const bearing = computeBearing(userCoords, target);
-      const relative = (bearing - heading + 360) % 360;
-      const dist = distanceMeters(userCoords, target);
-      return {
-        friend: f,
-        pos: borderPositionForRelativeBearing(relative),
-        label: metersToDisplay(dist, distanceUnit),
-      };
-    });
-  }, [userCoords, friends, heading, distanceUnit]);
+    const [[rightLon, topLat], [leftLon, bottomLat]] = visibleBounds ?? [[NaN, NaN], [NaN, NaN]];
+    const hasBounds = visibleBounds != null;
+    return friends
+      .filter((f) => {
+        if (!hasBounds) return true; // bounds unknown yet — fall back to always-show
+        const withinLon = f.lng >= leftLon && f.lng <= rightLon;
+        const withinLat = f.lat >= bottomLat && f.lat <= topLat;
+        // If the friend is already inside the current map viewport, they're
+        // rendered as a normal on-map marker already — skip the radar edge-icon
+        // for them so we don't double up.
+        return !(withinLon && withinLat);
+      })
+      .map((f) => {
+        const target: LngLat = [f.lng, f.lat];
+        const bearing = computeBearing(userCoords, target);
+        const relative = (bearing - heading + 360) % 360;
+        const dist = distanceMeters(userCoords, target);
+        return {
+          friend: f,
+          pos: borderPositionForRelativeBearing(relative),
+          label: metersToDisplay(dist, distanceUnit),
+        };
+      });
+  }, [userCoords, friends, heading, distanceUnit, visibleBounds]);
 
   if (!userCoords || radarEntries.length === 0) return null;
 
