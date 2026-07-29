@@ -1,0 +1,24 @@
+name: Branch Naming Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [ main, dev ]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  check-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch name (advisory only)
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if echo "$HEAD_REF" | grep -qE '^(feature|fix|hotfix|wip|release|chore|feat)/.+'; then
+            echo "Branch name '$HEAD_REF' conforms to naming convention."
+          else
+            echo "::warning::Branch name '$HEAD_REF' doesn't match the convention (feature/, fix/, hotfix/, wip/, release/, chore/). See README > Branch Naming Convention. This is advisory only and does not block merge."
+          fi

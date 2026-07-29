@@ -1,0 +1,44 @@
+name: Prune Stale Merged Branches
+
+on:
+  schedule:
+    # Weekly, Monday 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Delete branches already merged into dev/main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch origin --prune
+
+          PROTECTED_REGEX='^(main|dev)$'
+
+          for base in main dev; do
+            echo "== Checking branches merged into origin/$base =="
+            git for-each-ref --format='%(refname:short)' "refs/remotes/origin" \
+              | sed 's#^origin/##' \
+              | grep -v -E "$PROTECTED_REGEX" \
+              | while read -r branch; do
+                  # Skip release/** branches — kept intentionally per branch-naming policy.
+                  case "$branch" in
+                    release/*) continue ;;
+                  esac
+                  if git merge-base --is-ancestor "origin/$branch" "origin/$base" 2>/dev/null; then
+                    echo "Deleting merged branch: $branch (merged into $base)"
+                    git push origin --delete "$branch" || echo "  (already gone or protected, skipping)"
+                  fi
+                done
+          done
