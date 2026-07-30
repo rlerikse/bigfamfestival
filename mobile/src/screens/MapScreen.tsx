@@ -20,6 +20,24 @@ import WayfinderHUD from '../components/WayfinderHUD';
 const FESTIVAL_CENTER: [number, number] = [-84.2575, 42.0577];
 const DEFAULT_ZOOM = 16;
 
+// Structural equality for map bounds ([[sw_lng, sw_lat], [ne_lng, ne_lat]]).
+// getVisibleBounds() returns a fresh array each call; comparing by value lets
+// us skip no-op setState calls that would otherwise cause an onCameraChanged
+// → setState → re-render → onCameraChanged infinite update loop on Android.
+function boundsEqual(
+  a: [[number, number], [number, number]] | null,
+  b: [[number, number], [number, number]] | null,
+): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  return (
+    a[0][0] === b[0][0] &&
+    a[0][1] === b[0][1] &&
+    a[1][0] === b[1][0] &&
+    a[1][1] === b[1][1]
+  );
+}
+
 /** Distance in meters between two [lng, lat] points (haversine). */
 function haversineMeters(a: [number, number], b: [number, number]): number {
   const R = 6371000;
@@ -545,8 +563,18 @@ export default function MapScreen() {
           // is async; fire-and-forget is fine here, it just updates state
           // whenever it resolves (camera changes fire frequently enough
           // that a slight lag doesn't matter for this UI purpose).
+          //
+          // IMPORTANT: getVisibleBounds() returns a brand-new array object on
+          // every call, so unconditionally calling setVisibleBounds() sets a
+          // fresh reference each time → re-render → (on Android/Mapbox the
+          // re-render re-emits onCameraChanged) → setState again → infinite
+          // "Maximum update depth exceeded" loop. Guard with a value-equality
+          // check so we only update state when the bounds actually change.
           mapViewRef.current?.getVisibleBounds()
-            .then(bounds => setVisibleBounds(bounds as [[number, number], [number, number]]))
+            .then(bounds => {
+              const next = bounds as [[number, number], [number, number]];
+              setVisibleBounds(prev => boundsEqual(prev, next) ? prev : next);
+            })
             .catch(() => undefined);
         }}
       >
