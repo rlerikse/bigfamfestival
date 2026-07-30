@@ -77,7 +77,7 @@ export function tiltCompensatedHeading(accel: Vec3, mag: Vec3): number {
   const yh =
     mag.x * sinRoll * sinPitch + mag.y * cosRoll - mag.z * sinRoll * cosPitch;
 
-  let heading = toDeg(Math.atan2(-yh, xh));
+  const heading = toDeg(Math.atan2(-yh, xh));
   return normalizeDeg(heading);
 }
 
