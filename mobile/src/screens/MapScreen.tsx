@@ -8,7 +8,8 @@ import { firestore } from '../config/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
-import { getFriendLocations, getFriendCampsites, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
+import { getFriendLocations, getFriendCampsites, subscribeFriendLocations, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
+import type { FriendLocationSubscription } from '../services/friendService';
 import { getWalkingRoute, formatRouteSummary, routeBounds, RouteResult, LngLat } from '../services/routingService';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -403,8 +404,9 @@ export default function MapScreen() {
     return () => subscription?.remove();
   }, []);
 
-  // Load friend campsites + live locations. Locations are refreshed on an
-  // interval since friends' positions can change; campsites are more static.
+  // Load friend campsites + live locations. Campsites are near-static (loaded
+  // once + slow refresh); live locations normally arrive via the SSE stream
+  // below, and this full fetch is also the fallback path when the stream errors.
   const loadFriendData = useCallback(async () => {
     console.log('[Map] Loading friend locations/campsites...');
     try {
@@ -423,10 +425,117 @@ export default function MapScreen() {
     }
   }, []);
 
+  // Realtime friend locations via SSE, replacing the old 30s poll. The server
+  // pushes opted-in friend locations on connect and whenever they change,
+  // reusing the exact same permission logic as the polled endpoint. Campsites
+  // stay on a slow poll (static data, no realtime benefit).
+  //
+  // Recovery is explicit rather than relying on react-native-sse's internal
+  // reconnect, for two reasons:
+  //  1. If the lib doesn't auto-reconnect on a given error, onData would never
+  //     fire again and we'd be silently stuck on fallback polling until remount.
+  //  2. The Bearer token is captured once at subscribe time; Firebase ID tokens
+  //     expire ~1h, so on a multi-hour session an internal reconnect would
+  //     replay a STALE token -> permanent 401. Re-subscribing through our
+  //     wrapper re-mints a fresh token via getIdToken() each attempt.
+  // On error we therefore close the stream, keep polling as the interim net,
+  // and schedule a fresh subscribe with capped exponential backoff.
   useEffect(() => {
+    let sub: FriendLocationSubscription | null = null;
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempt = 0;
+    let cancelled = false;
+
+    const RECONNECT_BASE_MS = 2000;
+    const RECONNECT_MAX_MS = 60000;
+
+    // Initial paint (locations + campsites) before the stream warms up.
     loadFriendData();
-    const interval = setInterval(loadFriendData, 30000); // refresh every 30s
-    return () => clearInterval(interval);
+
+    // Slow campsite refresh — campsites are near-static, so 5 min is plenty.
+    const campsiteTimer = setInterval(() => {
+      getFriendCampsites()
+        .then((c) => !cancelled && setFriendCampsites(c))
+        .catch((e) => console.error('[MapScreen] Campsite refresh failed:', e));
+    }, 300000);
+
+    const startFallbackPolling = () => {
+      if (fallbackTimer || cancelled) return;
+      console.warn('[Map] Friend-location stream down — polling until it recovers');
+      fallbackTimer = setInterval(() => {
+        getFriendLocations()
+          .then((locs) => !cancelled && setFriendLocations(locs))
+          .catch((e) => console.error('[MapScreen] Fallback location poll failed:', e));
+      }, 30000);
+    };
+
+    const stopFallbackPolling = () => {
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+
+    // Forward reference resolved via function hoisting: connect() may schedule
+    // a reconnect, and scheduleReconnect() calls connect() again.
+    function connect() {
+      if (cancelled) return;
+      subscribeFriendLocations(
+        (locations) => {
+          if (cancelled) return;
+          // Healthy data: stream is up, so drop the fallback poll and reset
+          // the backoff counter.
+          reconnectAttempt = 0;
+          stopFallbackPolling();
+          setFriendLocations(locations);
+        },
+        () => {
+          if (!cancelled) scheduleReconnect();
+        },
+      )
+        .then((s) => {
+          if (cancelled) {
+            s.close();
+            return;
+          }
+          sub = s;
+        })
+        .catch((err) => {
+          console.error('[MapScreen] Failed to open friend-location stream:', err);
+          if (!cancelled) scheduleReconnect();
+        });
+    }
+
+    function scheduleReconnect() {
+      if (cancelled || reconnectTimer) return;
+      // Tear down the current (broken) stream so we don't leak it or let the
+      // lib replay a stale token.
+      sub?.close();
+      sub = null;
+      // Keep the map fresh while we're between streams.
+      startFallbackPolling();
+      const delay = Math.min(
+        RECONNECT_BASE_MS * 2 ** reconnectAttempt,
+        RECONNECT_MAX_MS,
+      );
+      reconnectAttempt += 1;
+      console.warn(`[Map] Reconnecting friend-location stream in ${delay}ms`);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect(); // re-subscribe -> fresh getIdToken() -> fresh Bearer token
+      }, delay);
+    }
+
+    connect();
+
+    return () => {
+      cancelled = true;
+      sub?.close();
+      clearInterval(campsiteTimer);
+      if (fallbackTimer) clearInterval(fallbackTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
   }, [loadFriendData]);
 
   const loadMapData = async () => {
