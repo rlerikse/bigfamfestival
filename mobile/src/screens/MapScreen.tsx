@@ -15,6 +15,13 @@ import { useAppSettings } from '../contexts/AppSettingsContext';
 import OptimizedImage from '../components/OptimizedImage';
 import { useDirectionalTracking } from '../hooks/useDirectionalTracking';
 import { signedAngularDiff } from '../hooks/compassFusion';
+
+// Compass-mode camera throttle tuning. Commits are rate-limited to ~5Hz with a
+// 1deg deadband so a 150ms heading animation completes before the next starts
+// (prevents the animation-stacking lag from #201). Module scope so they aren't
+// re-created each render.
+const CAMERA_MIN_INTERVAL_MS = 200;
+const CAMERA_MIN_DELTA_DEG = 1;
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -236,24 +243,74 @@ export default function MapScreen() {
   // report). We instead throttle camera commits to ~5Hz and skip sub-degree
   // changes (deadband), so each animation can complete before the next and
   // tiny sensor jitter doesn't churn the camera.
+  //
+  // Trailing flush (Architect review, PR #202): a pure leading-edge throttle
+  // would permanently drop the LAST heading of a burst whenever the final
+  // update lands inside the interval guard — the camera would settle 1-2 deg
+  // off true, and slow continuous turns near the 5Hz boundary could
+  // under-sample. So when we skip a commit due to the interval guard, we
+  // schedule a deferred commit for the remainder of the interval; the newest
+  // heading always wins because the effect re-runs (and reschedules) on every
+  // heading change, and the timer reads from a ref holding the latest value.
   const lastCameraHeadingRef = useRef(0);
   const lastCameraCommitRef = useRef(0);
-  const CAMERA_MIN_INTERVAL_MS = 200;
-  const CAMERA_MIN_DELTA_DEG = 1;
+  const pendingHeadingRef = useRef(0);
+  const trailingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (orientationMode !== 'compass') return;
+
+    const commit = (h: number) => {
+      lastCameraCommitRef.current = Date.now();
+      lastCameraHeadingRef.current = h;
+      cameraRef.current?.setCamera({ heading: h, animationDuration: 150 });
+    };
+
+    pendingHeadingRef.current = heading;
     const now = Date.now();
+    const sinceLast = now - lastCameraCommitRef.current;
     const delta = Math.abs(signedAngularDiff(lastCameraHeadingRef.current, heading));
-    if (
-      now - lastCameraCommitRef.current < CAMERA_MIN_INTERVAL_MS ||
-      delta < CAMERA_MIN_DELTA_DEG
-    ) {
+
+    if (delta < CAMERA_MIN_DELTA_DEG) return;
+
+    if (sinceLast >= CAMERA_MIN_INTERVAL_MS) {
+      // Leading edge: enough time has passed, commit immediately and cancel any
+      // queued trailing commit (this one supersedes it).
+      if (trailingTimerRef.current) {
+        clearTimeout(trailingTimerRef.current);
+        trailingTimerRef.current = null;
+      }
+      commit(heading);
       return;
     }
-    lastCameraCommitRef.current = now;
-    lastCameraHeadingRef.current = heading;
-    cameraRef.current?.setCamera({ heading, animationDuration: 150 });
+
+    // Inside the interval guard: schedule a trailing commit for the remaining
+    // time so the final heading of the burst still lands. If one is already
+    // queued, leave it — it'll pick up the latest pendingHeadingRef when it
+    // fires.
+    if (!trailingTimerRef.current) {
+      trailingTimerRef.current = setTimeout(() => {
+        trailingTimerRef.current = null;
+        commit(pendingHeadingRef.current);
+      }, CAMERA_MIN_INTERVAL_MS - sinceLast);
+    }
   }, [orientationMode, heading]);
+
+  // Cancel any queued trailing camera commit when leaving compass mode or on
+  // unmount, so a stale heading can't fire after the mode switch/teardown.
+  useEffect(() => {
+    return () => {
+      if (trailingTimerRef.current) {
+        clearTimeout(trailingTimerRef.current);
+        trailingTimerRef.current = null;
+      }
+    };
+  }, []);
+  useEffect(() => {
+    if (orientationMode !== 'compass' && trailingTimerRef.current) {
+      clearTimeout(trailingTimerRef.current);
+      trailingTimerRef.current = null;
+    }
+  }, [orientationMode]);
 
   const toggleOrientationMode = useCallback(() => {
     setOrientationMode(prev => {
