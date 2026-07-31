@@ -15,6 +15,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import OptimizedImage from './OptimizedImage';
 import { computeBearing } from '../hooks/useDirectionalTracking';
+import { quantizeHeading } from '../hooks/compassFusion';
 import type { LngLat } from '../services/routingService';
 
 export interface WayfinderFriend {
@@ -54,6 +55,20 @@ interface Props {
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const RADAR_MARGIN = 14;
 const ICON_SIZE = 44; // 44px min touch target
+
+// Border icons are re-projected from (bearing - heading). Raw compass heading
+// updates ~10Hz with magnetometer noise, so we snap it to this step before
+// projecting — removes sub-step jitter (the "bouncing around the edge" report)
+// while staying responsive to real turns.
+const HEADING_QUANTIZE_STEP_DEG = 2;
+
+// Hysteresis margin (fraction of viewport span) applied to the visible-bounds
+// test that decides edge-icon vs on-map marker. A friend sitting right at the
+// viewport boundary would otherwise flip in/out between frames as bounds/
+// position jitter, popping the edge icon on and off. We only suppress the edge
+// icon once the friend is comfortably (this margin) INSIDE the viewport, so the
+// transition happens once, cleanly.
+const BOUNDS_HYSTERESIS_FRAC = 0.06;
 
 const EARTH_RADIUS_M = 6371000;
 function toRad(deg: number) {
@@ -112,20 +127,27 @@ export default function WayfinderHUD({
     if (!userCoords) return [];
     const [[rightLon, topLat], [leftLon, bottomLat]] = visibleBounds ?? [[NaN, NaN], [NaN, NaN]];
     const hasBounds = visibleBounds != null;
+    // Snap heading to a fixed step so sub-step compass jitter doesn't re-project
+    // every border icon each frame (the "bouncing around the edge" symptom).
+    const stableHeading = quantizeHeading(heading, HEADING_QUANTIZE_STEP_DEG);
+    // Shrink the viewport test inward by a hysteresis margin so a friend must be
+    // clearly inside before we drop their edge icon — prevents boundary flip-flop.
+    const lonMargin = hasBounds ? Math.abs(rightLon - leftLon) * BOUNDS_HYSTERESIS_FRAC : 0;
+    const latMargin = hasBounds ? Math.abs(topLat - bottomLat) * BOUNDS_HYSTERESIS_FRAC : 0;
     return friends
       .filter((f) => {
         if (!hasBounds) return true; // bounds unknown yet — fall back to always-show
-        const withinLon = f.lng >= leftLon && f.lng <= rightLon;
-        const withinLat = f.lat >= bottomLat && f.lat <= topLat;
-        // If the friend is already inside the current map viewport, they're
-        // rendered as a normal on-map marker already — skip the radar edge-icon
-        // for them so we don't double up.
+        const withinLon = f.lng >= leftLon + lonMargin && f.lng <= rightLon - lonMargin;
+        const withinLat = f.lat >= bottomLat + latMargin && f.lat <= topLat - latMargin;
+        // If the friend is already comfortably inside the current map viewport,
+        // they're rendered as a normal on-map marker already — skip the radar
+        // edge-icon for them so we don't double up.
         return !(withinLon && withinLat);
       })
       .map((f) => {
         const target: LngLat = [f.lng, f.lat];
         const bearing = computeBearing(userCoords, target);
-        const relative = (bearing - heading + 360) % 360;
+        const relative = (bearing - stableHeading + 360) % 360;
         const dist = distanceMeters(userCoords, target);
         return {
           friend: f,
