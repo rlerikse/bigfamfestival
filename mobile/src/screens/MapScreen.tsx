@@ -428,12 +428,27 @@ export default function MapScreen() {
   // Realtime friend locations via SSE, replacing the old 30s poll. The server
   // pushes opted-in friend locations on connect and whenever they change,
   // reusing the exact same permission logic as the polled endpoint. Campsites
-  // stay on a slow poll (static data, no realtime benefit). On stream error we
-  // fall back to periodic full fetches so the layer degrades gracefully.
+  // stay on a slow poll (static data, no realtime benefit).
+  //
+  // Recovery is explicit rather than relying on react-native-sse's internal
+  // reconnect, for two reasons:
+  //  1. If the lib doesn't auto-reconnect on a given error, onData would never
+  //     fire again and we'd be silently stuck on fallback polling until remount.
+  //  2. The Bearer token is captured once at subscribe time; Firebase ID tokens
+  //     expire ~1h, so on a multi-hour session an internal reconnect would
+  //     replay a STALE token -> permanent 401. Re-subscribing through our
+  //     wrapper re-mints a fresh token via getIdToken() each attempt.
+  // On error we therefore close the stream, keep polling as the interim net,
+  // and schedule a fresh subscribe with capped exponential backoff.
   useEffect(() => {
     let sub: FriendLocationSubscription | null = null;
     let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempt = 0;
     let cancelled = false;
+
+    const RECONNECT_BASE_MS = 2000;
+    const RECONNECT_MAX_MS = 60000;
 
     // Initial paint (locations + campsites) before the stream warms up.
     loadFriendData();
@@ -446,8 +461,8 @@ export default function MapScreen() {
     }, 300000);
 
     const startFallbackPolling = () => {
-      if (fallbackTimer) return;
-      console.warn('[Map] Friend-location stream unavailable — falling back to polling');
+      if (fallbackTimer || cancelled) return;
+      console.warn('[Map] Friend-location stream down — polling until it recovers');
       fallbackTimer = setInterval(() => {
         getFriendLocations()
           .then((locs) => !cancelled && setFriendLocations(locs))
@@ -455,37 +470,71 @@ export default function MapScreen() {
       }, 30000);
     };
 
-    subscribeFriendLocations(
-      (locations) => {
-        if (cancelled) return;
-        // Stream healthy — stop any fallback polling that had kicked in.
-        if (fallbackTimer) {
-          clearInterval(fallbackTimer);
-          fallbackTimer = null;
-        }
-        setFriendLocations(locations);
-      },
-      () => {
-        if (!cancelled) startFallbackPolling();
-      },
-    )
-      .then((s) => {
-        if (cancelled) {
-          s.close();
-          return;
-        }
-        sub = s;
-      })
-      .catch((err) => {
-        console.error('[MapScreen] Failed to open friend-location stream:', err);
-        if (!cancelled) startFallbackPolling();
-      });
+    const stopFallbackPolling = () => {
+      if (fallbackTimer) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+
+    // Forward reference resolved via function hoisting: connect() may schedule
+    // a reconnect, and scheduleReconnect() calls connect() again.
+    function connect() {
+      if (cancelled) return;
+      subscribeFriendLocations(
+        (locations) => {
+          if (cancelled) return;
+          // Healthy data: stream is up, so drop the fallback poll and reset
+          // the backoff counter.
+          reconnectAttempt = 0;
+          stopFallbackPolling();
+          setFriendLocations(locations);
+        },
+        () => {
+          if (!cancelled) scheduleReconnect();
+        },
+      )
+        .then((s) => {
+          if (cancelled) {
+            s.close();
+            return;
+          }
+          sub = s;
+        })
+        .catch((err) => {
+          console.error('[MapScreen] Failed to open friend-location stream:', err);
+          if (!cancelled) scheduleReconnect();
+        });
+    }
+
+    function scheduleReconnect() {
+      if (cancelled || reconnectTimer) return;
+      // Tear down the current (broken) stream so we don't leak it or let the
+      // lib replay a stale token.
+      sub?.close();
+      sub = null;
+      // Keep the map fresh while we're between streams.
+      startFallbackPolling();
+      const delay = Math.min(
+        RECONNECT_BASE_MS * 2 ** reconnectAttempt,
+        RECONNECT_MAX_MS,
+      );
+      reconnectAttempt += 1;
+      console.warn(`[Map] Reconnecting friend-location stream in ${delay}ms`);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect(); // re-subscribe -> fresh getIdToken() -> fresh Bearer token
+      }, delay);
+    }
+
+    connect();
 
     return () => {
       cancelled = true;
       sub?.close();
       clearInterval(campsiteTimer);
       if (fallbackTimer) clearInterval(fallbackTimer);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
     };
   }, [loadFriendData]);
 

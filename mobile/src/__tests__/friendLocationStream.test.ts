@@ -130,4 +130,46 @@ describe('subscribeFriendLocations (SSE realtime)', () => {
     const es = mockSse.last;
     expect(es.options.headers.Authorization).toBeUndefined();
   });
+
+  // Reconnect/recovery path (Architect PR #204 review): each subscribe must
+  // re-mint a token, so an explicit re-subscribe after a stale-token error
+  // recovers instead of replaying the expired Bearer token forever.
+  it('re-mints a fresh token on every (re)subscribe', async () => {
+    (getIdToken as jest.Mock)
+      .mockResolvedValueOnce('token-hour-1')
+      .mockResolvedValueOnce('token-hour-2');
+
+    const sub1 = await subscribeFriendLocations(jest.fn());
+    const es1 = mockSse.last;
+    expect(es1.options.headers.Authorization).toBe('Bearer token-hour-1');
+
+    // Simulate the stale-token error that triggers our explicit reconnect.
+    const onError = jest.fn();
+    es1.emit('error', { type: 'error', message: '401' });
+    sub1.close();
+
+    // Explicit re-subscribe (what MapScreen's reconnect loop does).
+    await subscribeFriendLocations(jest.fn(), onError);
+    const es2 = mockSse.last;
+    expect(es2).not.toBe(es1); // brand-new connection
+    expect(es2.options.headers.Authorization).toBe('Bearer token-hour-2');
+    expect(getIdToken).toHaveBeenCalledTimes(2);
+  });
+
+  it('a recovered stream delivers data on the new connection', async () => {
+    const onData = jest.fn();
+    // First stream errors out.
+    const sub1 = await subscribeFriendLocations(onData);
+    const es1 = mockSse.last;
+    es1.emit('error', { type: 'error' });
+    sub1.close();
+    expect(es1.closeCalled).toBe(true);
+
+    // Reconnect + a fresh push lands on the new connection.
+    await subscribeFriendLocations(onData);
+    const es2 = mockSse.last;
+    const locations = [{ userId: 'u9', name: 'Grace', lat: 3, lng: 4, updatedAt: 'now' }];
+    es2.emit('message', { data: JSON.stringify(locations) });
+    expect(onData).toHaveBeenCalledWith(locations);
+  });
 });
