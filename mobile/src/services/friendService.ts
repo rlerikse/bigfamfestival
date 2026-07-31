@@ -7,6 +7,8 @@
 
 import api from './api';
 import { getIdToken } from './firebaseAuthService';
+import EventSource from 'react-native-sse';
+import { API_URL } from '../config/constants';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -204,4 +206,71 @@ export async function getFriendLocations(): Promise<FriendLocation[]> {
 export async function uploadMyLocation(lat: number, lng: number): Promise<void> {
   const headers = await authHeaders();
   await api.post('/friends/location', { lat, lng }, { headers });
+}
+
+// ─── Realtime friend locations (SSE) ────────────────────────────────────────
+
+export interface FriendLocationSubscription {
+  /** Tear down the stream and stop reconnect attempts. */
+  close: () => void;
+}
+
+/**
+ * Subscribe to realtime friend location updates via Server-Sent Events
+ * (GET /friends/locations/stream). Replaces polling GET /friends/locations on
+ * a timer: the server pushes the caller's opted-in friend locations on connect
+ * and whenever they change, reusing the exact same permission/opt-in logic as
+ * the polled endpoint.
+ *
+ * Auth: uses react-native-sse (not the stock EventSource) specifically because
+ * it can attach the Authorization: Bearer header the backend guard requires.
+ *
+ * Resilience: on error the caller's onError runs so the screen can fall back to
+ * polling; the underlying EventSource also auto-reconnects. Always call
+ * `close()` on unmount.
+ *
+ * @param onData   Called with the latest friend-location array on every push.
+ * @param onError  Optional; called when the stream errors (e.g. token/network).
+ */
+export async function subscribeFriendLocations(
+  onData: (locations: FriendLocation[]) => void,
+  onError?: (err: unknown) => void,
+): Promise<FriendLocationSubscription> {
+  const token = await getIdToken();
+  const url = `${API_URL}/friends/locations/stream`;
+
+  const es = new EventSource(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    // Firebase ID tokens are short-lived; the lib reconnects on drop, and the
+    // screen-level fallback covers a hard failure.
+    pollingInterval: 0, // rely on server push, not client re-poll
+  });
+
+  es.addEventListener('message', (event) => {
+    if (!event.data) return;
+    try {
+      const parsed = JSON.parse(event.data);
+      if (parsed && typeof parsed === 'object' && 'error' in parsed) {
+        console.warn('[Friends] SSE stream reported error:', parsed.message);
+        onError?.(new Error(String(parsed.message ?? 'stream_error')));
+        return;
+      }
+      onData(parsed as FriendLocation[]);
+    } catch (err) {
+      console.warn('[Friends] Failed to parse SSE location payload', err);
+      onError?.(err);
+    }
+  });
+
+  es.addEventListener('error', (event) => {
+    console.warn('[Friends] SSE connection error', event);
+    onError?.(event);
+  });
+
+  return {
+    close: () => {
+      es.removeAllEventListeners();
+      es.close();
+    },
+  };
 }

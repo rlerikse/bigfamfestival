@@ -8,7 +8,8 @@ import { firestore } from '../config/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
-import { getFriendLocations, getFriendCampsites, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
+import { getFriendLocations, getFriendCampsites, subscribeFriendLocations, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
+import type { FriendLocationSubscription } from '../services/friendService';
 import { getWalkingRoute, formatRouteSummary, routeBounds, RouteResult, LngLat } from '../services/routingService';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
@@ -403,8 +404,9 @@ export default function MapScreen() {
     return () => subscription?.remove();
   }, []);
 
-  // Load friend campsites + live locations. Locations are refreshed on an
-  // interval since friends' positions can change; campsites are more static.
+  // Load friend campsites + live locations. Campsites are near-static (loaded
+  // once + slow refresh); live locations normally arrive via the SSE stream
+  // below, and this full fetch is also the fallback path when the stream errors.
   const loadFriendData = useCallback(async () => {
     console.log('[Map] Loading friend locations/campsites...');
     try {
@@ -423,10 +425,68 @@ export default function MapScreen() {
     }
   }, []);
 
+  // Realtime friend locations via SSE, replacing the old 30s poll. The server
+  // pushes opted-in friend locations on connect and whenever they change,
+  // reusing the exact same permission logic as the polled endpoint. Campsites
+  // stay on a slow poll (static data, no realtime benefit). On stream error we
+  // fall back to periodic full fetches so the layer degrades gracefully.
   useEffect(() => {
+    let sub: FriendLocationSubscription | null = null;
+    let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
+
+    // Initial paint (locations + campsites) before the stream warms up.
     loadFriendData();
-    const interval = setInterval(loadFriendData, 30000); // refresh every 30s
-    return () => clearInterval(interval);
+
+    // Slow campsite refresh — campsites are near-static, so 5 min is plenty.
+    const campsiteTimer = setInterval(() => {
+      getFriendCampsites()
+        .then((c) => !cancelled && setFriendCampsites(c))
+        .catch((e) => console.error('[MapScreen] Campsite refresh failed:', e));
+    }, 300000);
+
+    const startFallbackPolling = () => {
+      if (fallbackTimer) return;
+      console.warn('[Map] Friend-location stream unavailable — falling back to polling');
+      fallbackTimer = setInterval(() => {
+        getFriendLocations()
+          .then((locs) => !cancelled && setFriendLocations(locs))
+          .catch((e) => console.error('[MapScreen] Fallback location poll failed:', e));
+      }, 30000);
+    };
+
+    subscribeFriendLocations(
+      (locations) => {
+        if (cancelled) return;
+        // Stream healthy — stop any fallback polling that had kicked in.
+        if (fallbackTimer) {
+          clearInterval(fallbackTimer);
+          fallbackTimer = null;
+        }
+        setFriendLocations(locations);
+      },
+      () => {
+        if (!cancelled) startFallbackPolling();
+      },
+    )
+      .then((s) => {
+        if (cancelled) {
+          s.close();
+          return;
+        }
+        sub = s;
+      })
+      .catch((err) => {
+        console.error('[MapScreen] Failed to open friend-location stream:', err);
+        if (!cancelled) startFallbackPolling();
+      });
+
+    return () => {
+      cancelled = true;
+      sub?.close();
+      clearInterval(campsiteTimer);
+      if (fallbackTimer) clearInterval(fallbackTimer);
+    };
   }, [loadFriendData]);
 
   const loadMapData = async () => {

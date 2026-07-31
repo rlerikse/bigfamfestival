@@ -11,12 +11,23 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
+import { Observable, interval, from, concat, of } from 'rxjs';
+import { switchMap, distinctUntilChanged, catchError } from 'rxjs/operators';
 import { FriendsService } from './friends.service';
 import { FirebaseAuthGuard } from '../auth/guards/firebase-auth.guard';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
 import { RespondFriendRequestDto } from './dto/respond-friend-request.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+
+/**
+ * Server-side cadence for the friend-location SSE stream. 5s balances
+ * freshness against Firestore read volume (one getFriendLocations() per tick
+ * per connected client). Distinct-until-changed suppresses redundant emits.
+ */
+const FRIEND_LOCATION_STREAM_INTERVAL_MS = 5000;
 
 @Controller('friends')
 @UseGuards(FirebaseAuthGuard)
@@ -125,6 +136,55 @@ export class FriendsController {
   @Get('locations')
   async getFriendLocations(@Request() req) {
     return this.friendsService.getFriendLocations(req.user.uid);
+  }
+
+  /**
+   * GET /friends/locations/stream (Server-Sent Events)
+   * Realtime replacement for clients that would otherwise poll GET
+   * /friends/locations on a timer. Pushes the caller's opted-in friend
+   * locations on connect and every FRIEND_LOCATION_STREAM_INTERVAL_MS after,
+   * reusing getFriendLocations() verbatim so ALL opt-in / mutual-friend /
+   * shareMyLocation filtering stays identical to the polled endpoint.
+   *
+   * Auth is unchanged: the class-level FirebaseAuthGuard verifies the same
+   * Firebase Bearer token (the RN client uses react-native-sse to attach the
+   * Authorization header). No Firestore rule or permission-logic changes.
+   *
+   * Consecutive identical payloads are de-duplicated so we don't emit noise
+   * when nobody has moved; the client keeps its last render.
+   */
+  @Sse('locations/stream')
+  streamFriendLocations(@Request() req): Observable<MessageEvent> {
+    const uid = req.user.uid;
+    // Fetch + normalize to an SSE MessageEvent. Errors are surfaced as a
+    // discrete 'error' payload rather than tearing down the stream, so the
+    // client can fall back to its polling path without the connection dying.
+    const fetchEvent = (): Observable<MessageEvent> =>
+      from(this.friendsService.getFriendLocations(uid)).pipe(
+        switchMap((locations) => of({ data: locations } as MessageEvent)),
+        catchError((err) =>
+          of({
+            data: {
+              error: 'stream_error',
+              message: String(err?.message ?? err),
+            },
+          } as MessageEvent),
+        ),
+      );
+
+    // Emit immediately on connect, then on a fixed server-side cadence.
+    return concat(
+      fetchEvent(),
+      interval(FRIEND_LOCATION_STREAM_INTERVAL_MS).pipe(
+        switchMap(() => fetchEvent()),
+      ),
+    ).pipe(
+      // Only push when the serialized payload actually changed, so a stationary
+      // crowd doesn't generate redundant events.
+      distinctUntilChanged(
+        (a, b) => JSON.stringify(a.data) === JSON.stringify(b.data),
+      ),
+    );
   }
 
   /**
