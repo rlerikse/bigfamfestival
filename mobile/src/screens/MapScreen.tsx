@@ -14,6 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import OptimizedImage from '../components/OptimizedImage';
 import { useDirectionalTracking } from '../hooks/useDirectionalTracking';
+import { signedAngularDiff } from '../hooks/compassFusion';
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -227,8 +228,30 @@ export default function MapScreen() {
   // the map itself points "up" in the direction Robert is physically facing.
   // In north mode the camera heading stays pinned at 0 (map never rotates);
   // facing direction is instead shown via the self-marker's rotating arrow.
+  //
+  // The heading stream updates at ~10Hz (100ms). Firing a 150ms camera
+  // animation on every one of those made a fresh animation start before the
+  // previous finished — they stacked and the camera perpetually chased a
+  // target it never reached, which read as lag/rubber-banding (Robert's #201
+  // report). We instead throttle camera commits to ~5Hz and skip sub-degree
+  // changes (deadband), so each animation can complete before the next and
+  // tiny sensor jitter doesn't churn the camera.
+  const lastCameraHeadingRef = useRef(0);
+  const lastCameraCommitRef = useRef(0);
+  const CAMERA_MIN_INTERVAL_MS = 200;
+  const CAMERA_MIN_DELTA_DEG = 1;
   useEffect(() => {
     if (orientationMode !== 'compass') return;
+    const now = Date.now();
+    const delta = Math.abs(signedAngularDiff(lastCameraHeadingRef.current, heading));
+    if (
+      now - lastCameraCommitRef.current < CAMERA_MIN_INTERVAL_MS ||
+      delta < CAMERA_MIN_DELTA_DEG
+    ) {
+      return;
+    }
+    lastCameraCommitRef.current = now;
+    lastCameraHeadingRef.current = heading;
     cameraRef.current?.setCamera({ heading, animationDuration: 150 });
   }, [orientationMode, heading]);
 

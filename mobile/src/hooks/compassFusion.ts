@@ -94,17 +94,32 @@ export function tiltCompensatedHeading(accel: Vec3, mag: Vec3): number {
  * @param magHeading Tilt-compensated magnetometer heading for this sample.
  * @param alpha Weight given to the gyro-integrated estimate (0-1). Higher =
  *   more responsive/smooth but drifts further from true north over time;
- *   lower = snaps to the magnetometer faster but is noisier. 0.98 is a
- *   standard starting point for a ~100ms sample interval.
+ *   lower = snaps to the magnetometer faster but is noisier.
+ *
+ *   Default 0.92 (not the textbook 0.98): at our 10Hz / ~100ms sample rate,
+ *   0.98 corrects only 2% toward the magnetometer per sample, which a real
+ *   MEMS gyro's rest bias (~0.5-1°/s) can out-integrate — the heading then
+ *   keeps creeping after the user stops turning (Robert's #201 drift report).
+ *   0.92 gives the magnetometer enough authority to cancel that bias while
+ *   still smoothing frame-to-frame jitter.
+ * @param stationaryDeadbandDegPerSec Yaw rates with magnitude at or below this
+ *   are treated as zero, so gyro noise at rest isn't integrated into a slow
+ *   phantom rotation. This is what lets the heading actually *settle* when the
+ *   device is held still. Set to 0 to disable.
  */
 export function complementaryFilter(
   prevHeading: number,
   gyroYawRateDeg: number,
   dtSeconds: number,
   magHeading: number,
-  alpha = 0.98
+  alpha = 0.92,
+  stationaryDeadbandDegPerSec = 0.5
 ): number {
-  const gyroEstimate = normalizeDeg(prevHeading + gyroYawRateDeg * dtSeconds);
+  // Suppress rest-noise: below the deadband, don't integrate the gyro at all,
+  // so a still device settles onto the magnetometer instead of slowly drifting.
+  const effectiveYawRate =
+    Math.abs(gyroYawRateDeg) <= stationaryDeadbandDegPerSec ? 0 : gyroYawRateDeg;
+  const gyroEstimate = normalizeDeg(prevHeading + effectiveYawRate * dtSeconds);
   // Blend along the shortest angular path so we don't average across the
   // 359°/0° wraparound incorrectly.
   const diff = signedAngularDiff(gyroEstimate, magHeading);

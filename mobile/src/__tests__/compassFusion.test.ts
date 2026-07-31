@@ -186,10 +186,51 @@ describe('complementaryFilter — alpha boundaries', () => {
     expectAngleClose(fused, 5, 1e-9);
   });
 
-  it('default alpha (0.98) stays close to the gyro estimate but drifts toward mag', () => {
-    // prev=100, gyro 0 -> gyroEstimate=100; mag=110. With alpha 0.98 the
-    // fused value moves 2% of the 10° gap toward mag => ~100.2.
+  it('default alpha stays close to the gyro estimate but drifts toward mag', () => {
+    // prev=100, gyro 0 -> gyroEstimate=100; mag=110. With the default alpha
+    // (0.92) the fused value moves 8% of the 10° gap toward mag => ~100.8.
     const fused = complementaryFilter(100, 0, 0.1, 110);
-    expectAngleClose(fused, 100.2, 1e-9);
+    expectAngleClose(fused, 100.8, 1e-9);
+  });
+});
+
+describe('complementaryFilter — settle-after-stop (stationary deadband)', () => {
+  it('does not integrate sub-deadband gyro noise into a phantom rotation', () => {
+    // Device held still: mag steady at 90, gyro reads a tiny 0.3°/s of noise
+    // (below the 0.5°/s deadband). Heading must not creep away from 90 over
+    // many samples — it should settle onto the magnetometer.
+    let h = 90;
+    for (let i = 0; i < 200; i++) {
+      h = complementaryFilter(h, 0.3, 0.1, 90);
+    }
+    expectAngleClose(h, 90, 1e-6);
+  });
+
+  it('still integrates real motion above the deadband', () => {
+    // 5°/s is well above the 0.5°/s deadband and must be integrated normally
+    // (alpha=1 -> pure gyro): 100 + 5*1 = 105.
+    const fused = complementaryFilter(100, 5, 1, 999, 1);
+    expectAngleClose(fused, 105, 1e-9);
+  });
+
+  it('rejects a constant gyro bias, converging to the magnetometer', () => {
+    // Steady-state bias-rejection: mag pinned at 90, but the gyro carries a
+    // persistent 1°/s bias (above the deadband, so it IS integrated). The
+    // magnetometer correction must dominate so the heading converges to ~90
+    // rather than winding away indefinitely. Without enough mag authority
+    // (e.g. old alpha=0.98) this would run off.
+    let h = 90;
+    for (let i = 0; i < 500; i++) {
+      h = complementaryFilter(h, 1, 0.1, 90);
+    }
+    // At equilibrium the per-sample gyro drift (1*0.1=0.1°) is balanced by the
+    // mag pull ((1-0.92)*offset). Offset settles near 0.1/0.08 = 1.25°.
+    expect(Math.abs(signedAngularDiff(90, h))).toBeLessThan(2);
+  });
+
+  it('deadband can be disabled via the parameter', () => {
+    // With deadband=0, even tiny rates integrate (alpha=1, pure gyro).
+    const fused = complementaryFilter(100, 0.3, 1, 999, 1, 0);
+    expectAngleClose(fused, 100.3, 1e-9);
   });
 });
