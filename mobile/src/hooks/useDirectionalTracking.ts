@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Magnetometer } from 'expo-sensors';
+import { Accelerometer, Gyroscope, Magnetometer } from 'expo-sensors';
 import * as Haptics from 'expo-haptics';
 import type { LngLat } from '../services/routingService';
+import { complementaryFilter, tiltCompensatedHeading, type Vec3 } from './compassFusion';
 
 /**
  * useDirectionalTracking — "hot/cold" per-friend focus mode.
  *
  * Given the user's live position + a target friend's coordinate, this hook:
- *  - Reads the device magnetometer to derive a compass heading.
+ *  - Reads accelerometer + magnetometer + gyroscope, fused via a tilt-
+ *    compensated compass calc + complementary filter, to derive a stable
+ *    compass heading that only changes with yaw (turning left/right) — not
+ *    with pitch/roll (tilting the phone up/down), and stays north-referenced
+ *    without the gyro-only drift a single-sensor reading would have.
  *  - Computes the great-circle bearing from user → target (haversine-based).
  *  - Smooths both with a short moving average to kill jitter.
  *  - Returns the angular delta (0° = dead-on, 180° = facing directly away)
@@ -105,35 +110,82 @@ export function useDirectionalTracking(
   const wasLockedRef = useRef(false);
   const hasTarget = targetCoords !== null;
 
-  // Subscribe to the magnetometer while a target is active, OR when the caller
-  // explicitly needs a live heading regardless (e.g. the friend-radar HUD, but
-  // only while there are actually friends to point at — gated by the caller
-  // passing `needsHeading` based on friend count, so we're not streaming
-  // sensor reads at 10Hz for nothing).
+  // Latest raw readings from each sensor, updated independently as they
+  // arrive (accel/mag/gyro don't necessarily fire in lockstep), plus the
+  // fused heading estimate and its last-update timestamp for the
+  // complementary filter's dt calculation.
+  const latestAccelRef = useRef<Vec3>({ x: 0, y: 0, z: 1 });
+  const latestMagRef = useRef<Vec3>({ x: 0, y: 0, z: 0 });
+  const fusedHeadingRef = useRef(0);
+  const lastGyroTimestampRef = useRef<number | null>(null);
+
+  // Subscribe to Accelerometer + Magnetometer + Gyroscope together while a
+  // target is active, OR when the caller explicitly needs a live heading
+  // regardless (e.g. the friend-radar HUD, but only while there are actually
+  // friends to point at — gated by the caller passing `needsHeading` based on
+  // friend count, so we're not streaming sensor reads at 10Hz for nothing).
+  //
+  // Full accel+mag+gyro sensor fusion (per Robert's #159 follow-up, decided
+  // 2026-07-30 19:2x EDT) replaces both the original raw-Magnetometer reading
+  // (not tilt-compensated — pitch/roll bled into heading) and the interim
+  // DeviceMotion.rotation.alpha fix (fixed the tilt bug but wasn't guaranteed
+  // true-north-referenced on iOS). This pipeline:
+  //  1. Accelerometer → gravity vector → pitch/roll.
+  //  2. Magnetometer → raw field vector, tilt-compensated using that
+  //     pitch/roll → absolute magnetic-north heading, immune to tilt.
+  //  3. Gyroscope → instantaneous yaw rate, integrated and blended with the
+  //     tilt-compensated magnetometer heading via a complementary filter —
+  //     smooths out magnetometer jitter/interference (festival grounds have
+  //     plenty of metal/speakers/generators) without the lag a magnetometer-
+  //     only low-pass filter would introduce.
+  // See compassFusion.ts for the vector math itself.
   useEffect(() => {
     if (!hasTarget && !needsHeading) return;
 
+    Accelerometer.setUpdateInterval(UPDATE_INTERVAL_MS);
     Magnetometer.setUpdateInterval(UPDATE_INTERVAL_MS);
-    const sub = Magnetometer.addListener(({ x, y }) => {
-      // Screen-up heading from raw magnetometer x/y. Good enough for a
-      // festival wayfinding gradient (not aviation-grade nav).
-      let angle = toDeg(Math.atan2(y, x));
-      angle = (angle + 360) % 360;
-      // Magnetometer axes → compass heading offset; empirically 90° works
-      // for portrait phone-flat-in-hand orientation on iOS/Android.
-      const compassHeading = (angle + 90) % 360;
+    Gyroscope.setUpdateInterval(UPDATE_INTERVAL_MS);
+
+    const accelSub = Accelerometer.addListener(({ x, y, z }) => {
+      latestAccelRef.current = { x, y, z };
+    });
+    const magSub = Magnetometer.addListener(({ x, y, z }) => {
+      latestMagRef.current = { x, y, z };
+    });
+    // Gyroscope is the pacing sensor for the fused estimate: each reading
+    // both advances the complementary filter's integrated yaw AND pulls in
+    // whatever the latest accel/mag vectors happen to be, since expo-sensors
+    // fires each listener independently rather than as a synchronized frame.
+    const gyroSub = Gyroscope.addListener(({ z }) => {
+      const now = Date.now();
+      const last = lastGyroTimestampRef.current;
+      const dt = last != null ? Math.min((now - last) / 1000, 0.5) : UPDATE_INTERVAL_MS / 1000;
+      lastGyroTimestampRef.current = now;
+
+      // Gyroscope z is rad/s, positive = counter-clockwise about the device's
+      // Z axis; negate + convert to deg/s to match our clockwise-positive
+      // compass heading convention.
+      const yawRateDeg = -(z * 180) / Math.PI;
+
+      const magHeading = tiltCompensatedHeading(latestAccelRef.current, latestMagRef.current);
+      const fused = complementaryFilter(fusedHeadingRef.current, yawRateDeg, dt, magHeading);
+      fusedHeadingRef.current = fused;
 
       const samples = headingSamplesRef.current;
-      samples.push(compassHeading);
+      samples.push(fused);
       if (samples.length > SMOOTHING_SAMPLES) samples.shift();
       setHeading(circularAverage(samples));
     });
 
     return () => {
-      sub.remove();
+      accelSub.remove();
+      magSub.remove();
+      gyroSub.remove();
       headingSamplesRef.current = [];
+      lastGyroTimestampRef.current = null;
     };
   }, [hasTarget, needsHeading]);
+
 
   useEffect(() => {
     if (!targetCoords || !userCoords) {

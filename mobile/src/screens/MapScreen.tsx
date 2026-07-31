@@ -199,14 +199,67 @@ export default function MapScreen() {
   // (radar markers keep rendering regardless — Robert confirmed both coexist).
   const [trackingTarget, setTrackingTarget] = useState<(FriendLocation | FriendCampsite) & { isLive: boolean } | null>(null);
   const trackingCoords: LngLat | null = trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null;
+
+  // ── Orientation mode — CoD top-down mini-map model (per Robert's #159 refinement) ──
+  // Underlying location tracking + haptics are ALWAYS on regardless of mode —
+  // this toggle only controls what moves visually on screen:
+  //  - 'north': map stays fixed/north-up. Self marker shows a rotating
+  //    direction arrow (device heading) instead of moving the map. Friend
+  //    icons are visually frozen in place (snapshotted) — they do not
+  //    reposition on screen even though their underlying data keeps updating.
+  //  - 'compass' (default): map itself rotates to match device heading, self
+  //    marker points a fixed "up," and friend icons actively reposition as
+  //    their live location changes.
+  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('compass');
   // Only stream the magnetometer when there's actually something to point at —
   // either friends visible on the radar (icons need live heading to swing
   // around the border) or an active tracking target. Avoids draining battery
   // when the map has zero friends loaded. friendMarkers itself is derived
   // later in render, so we track its presence via the same ref the HUD uses.
   const [hasFriendMarkers, setHasFriendMarkers] = useState(false);
+  // Underlying tracking data (heading stream, bearing/closeness calc, haptics)
+  // stays fully live in BOTH orientation modes — north-lock only affects what
+  // repositions visually on screen, never the tracking data itself.
   const needsHeading = hasFriendMarkers || trackingCoords !== null;
   const { closeness, isLocked, heading } = useDirectionalTracking(selfCoords, trackingCoords, needsHeading);
+
+  // In compass mode, rotate the camera to match the live device heading so
+  // the map itself points "up" in the direction Robert is physically facing.
+  // In north mode the camera heading stays pinned at 0 (map never rotates);
+  // facing direction is instead shown via the self-marker's rotating arrow.
+  useEffect(() => {
+    if (orientationMode !== 'compass') return;
+    cameraRef.current?.setCamera({ heading, animationDuration: 150 });
+  }, [orientationMode, heading]);
+
+  const toggleOrientationMode = useCallback(() => {
+    setOrientationMode(prev => {
+      const next = prev === 'compass' ? 'north' : 'compass';
+      if (next === 'north') {
+        cameraRef.current?.setCamera({ heading: 0, animationDuration: 300 });
+      }
+      return next;
+    });
+  }, []);
+
+  // Friend-icon position freeze for north-lock mode: friend location DATA
+  // keeps updating live underneath (radar/tracking logic untouched), but the
+  // on-screen marker position is snapshotted the moment north-lock engages
+  // and held there until the user switches back to compass mode. This is the
+  // CoD mini-map behavior Robert asked for — map stays still, so friend
+  // blips shouldn't visually drift either.
+  const [frozenFriendPositions, setFrozenFriendPositions] = useState<Record<string, [number, number]> | null>(null);
+  useEffect(() => {
+    if (orientationMode === 'north' && !frozenFriendPositions) {
+      const snapshot: Record<string, [number, number]> = {};
+      friendMarkersRef.current.forEach(f => {
+        snapshot[f.userId] = [f.lng, f.lat];
+      });
+      setFrozenFriendPositions(snapshot);
+    } else if (orientationMode === 'compass' && frozenFriendPositions) {
+      setFrozenFriendPositions(null);
+    }
+  }, [orientationMode, frozenFriendPositions]);
 
   // All categories visible by default
   const [visibleCategories, setVisibleCategories] = useState<Set<POICategory>>(
@@ -597,6 +650,18 @@ export default function MapScreen() {
                   {user?.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
                 </Text>
               )}
+              {/* North-lock mode: map itself stays fixed, so facing direction
+                  is shown via this rotating arrow instead (CoD mini-map style).
+                  In compass mode the map rotates under the marker instead, so
+                  the arrow stays hidden — the marker itself always points "up." */}
+              {orientationMode === 'north' && (
+                <View
+                  pointerEvents="none"
+                  style={[styles.selfHeadingArrowWrap, { transform: [{ rotate: `${heading}deg` }] }]}
+                >
+                  <Ionicons name="caret-up" size={16} color="#6BBF59" style={styles.selfHeadingArrow} />
+                </View>
+              )}
             </View>
           </Mapbox.PointAnnotation>
         )}
@@ -689,11 +754,18 @@ export default function MapScreen() {
         })}
 
         {/* Friend markers — accepted friends only, opted-in to location/campsite sharing (per backend privacy rules) */}
-        {friendMarkers.map(friend => (
+        {friendMarkers.map(friend => {
+          // North-lock mode: visually freeze friend icons at the position
+          // snapshotted when the mode engaged, even though `friend.lng/lat`
+          // keeps updating live underneath. Compass mode always uses the
+          // live coordinate.
+          const frozen = orientationMode === 'north' ? frozenFriendPositions?.[friend.userId] : undefined;
+          const displayCoordinate: [number, number] = frozen ?? [friend.lng, friend.lat];
+          return (
           <Mapbox.PointAnnotation
             key={`friend-${friend.userId}`}
             id={`friend-${friend.userId}`}
-            coordinate={[friend.lng, friend.lat]}
+            coordinate={displayCoordinate}
             anchor={{ x: 0.5, y: 0.5 }}
             onSelected={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
           >
@@ -719,7 +791,8 @@ export default function MapScreen() {
             </View>
             <Mapbox.Callout title={`${friend.name}${friend.isLive ? ' • Live' : ' • Campsite'}`} />
           </Mapbox.PointAnnotation>
-        ))}
+          );
+        })}
 
         {/* Active walking route line (user → selected POI/friend) */}
         {activeRoute && (
@@ -796,15 +869,19 @@ export default function MapScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.controlButton}
-          onPress={() => cameraRef.current?.setCamera({ heading: 0, animationDuration: 300 })}
+          onPress={toggleOrientationMode}
           activeOpacity={0.7}
-          accessibilityLabel={`Compass, heading ${compassHeadingLabel}. Tap to reset to north.`}
+          accessibilityLabel={
+            orientationMode === 'compass'
+              ? `Compass mode, heading ${compassHeadingLabel}. Tap to lock to north.`
+              : 'North-locked. Tap to resume compass mode and friend tracking.'
+          }
         >
           <Ionicons
-            name="compass"
+            name={orientationMode === 'compass' ? 'compass' : 'compass-outline'}
             size={24}
-            color="#F5F5DC"
-            style={{ transform: [{ rotate: `${-currentBearing}deg` }] }}
+            color={orientationMode === 'compass' ? '#F5F5DC' : '#8A8A6E'}
+            style={orientationMode === 'compass' ? { transform: [{ rotate: `${-currentBearing}deg` }] } : undefined}
           />
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={handleZoomIn} activeOpacity={0.7}>
@@ -1049,6 +1126,19 @@ const styles = StyleSheet.create({
   },
   selfMarker: {
     backgroundColor: '#6BBF59',
+  },
+  selfHeadingArrowWrap: {
+    position: 'absolute',
+    top: -18,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selfHeadingArrow: {
+    textShadowColor: '#0B3D2E',
+    textShadowRadius: 3,
+    textShadowOffset: { width: 0, height: 0 },
   },
   friendMarkerLive: {
     borderColor: '#6BBF59',
