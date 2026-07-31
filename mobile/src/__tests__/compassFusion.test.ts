@@ -1,6 +1,7 @@
 import {
   normalizeDeg,
   signedAngularDiff,
+  quantizeHeading,
   tiltCompensatedHeading,
   complementaryFilter,
   unwrapHeading,
@@ -280,5 +281,39 @@ describe('unwrapHeading — continuous camera bearing (no full-spin at 0/360 sea
       expectAngleClose(normalizeDeg(unwrapped), h, 1e-9);
       prevNorm = h;
     }
+  });
+});
+
+describe('quantizeHeading — de-jitter for the border radar (friend-marker bounce)', () => {
+  it('snaps to the nearest step', () => {
+    expect(quantizeHeading(100.4, 2)).toBeCloseTo(100, 9);
+    expect(quantizeHeading(101.2, 2)).toBeCloseTo(102, 9);
+    expect(quantizeHeading(101.0, 2)).toBeCloseTo(102, 9); // round-half-up
+  });
+
+  it('returns an identical value for sub-step jitter (kills per-frame bounce)', () => {
+    // A cluster of noisy readings inside one 2° bucket must all map to the same
+    // output so the border projection does not move.
+    const noisy = [99.1, 99.6, 100.0, 100.4, 100.9];
+    const outputs = noisy.map((h) => quantizeHeading(h, 2));
+    const unique = new Set(outputs.map((v) => Number(v.toFixed(9))));
+    expect(unique.size).toBe(1);
+  });
+
+  it('still changes once heading crosses the next step boundary (stays responsive)', () => {
+    expect(quantizeHeading(100, 2)).not.toBeCloseTo(quantizeHeading(103, 2), 9);
+  });
+
+  it('normalizes and wraps: 359.5 snaps to 0, not 360', () => {
+    expectAngleClose(quantizeHeading(359.5, 2), 0, 1e-9);
+    expectAngleClose(quantizeHeading(-1, 2), 0, 1e-9);
+    // 361 == 1 deg, which snaps up to the 2 deg bucket (not 0).
+    expectAngleClose(quantizeHeading(361, 2), 2, 1e-9);
+    expectAngleClose(quantizeHeading(360.4, 2), 0, 1e-9);
+  });
+
+  it('step <= 0 disables quantization (returns normalized input)', () => {
+    expectAngleClose(quantizeHeading(123.456, 0), 123.456, 1e-9);
+    expectAngleClose(quantizeHeading(-10, -5), 350, 1e-9);
   });
 });

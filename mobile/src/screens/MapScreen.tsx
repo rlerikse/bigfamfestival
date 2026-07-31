@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
@@ -623,14 +623,41 @@ export default function MapScreen() {
 
   // Merge friend markers: prefer live location over campsite when both exist
   // for the same friend, so we don't render two overlapping pins.
-  const friendMarkers: Array<(FriendLocation | FriendCampsite) & { isLive: boolean }> = (() => {
+  //
+  // Memoized on [friendLocations, friendCampsites]: previously this was a bare
+  // IIFE that rebuilt a new array + new objects on EVERY render. Because the
+  // compass heading state updates at ~10Hz, MapScreen re-renders constantly, so
+  // an un-memoized friendMarkers handed a fresh `friends` array to WayfinderHUD
+  // every frame — busting the HUD's internal useMemo and re-projecting every
+  // border radar icon against the (noisy) live heading each tick. That churn
+  // was a primary driver of the "friend icons bouncing around the screen edge"
+  // report. A stable identity here lets the HUD only recompute when friend data
+  // actually changes.
+  const friendMarkers: Array<(FriendLocation | FriendCampsite) & { isLive: boolean }> = useMemo(() => {
     const liveIds = new Set(friendLocations.map(f => f.userId));
     const live = friendLocations.map(f => ({ ...f, isLive: true }));
     const campsitesOnly = friendCampsites
       .filter(f => !liveIds.has(f.userId))
       .map(f => ({ ...f, isLive: false }));
     return [...live, ...campsitesOnly];
-  })();
+  }, [friendLocations, friendCampsites]);
+
+  // Stable-identity friend list for the WayfinderHUD radar, derived from the
+  // memoized friendMarkers. Passing friendMarkers.map(...) inline created a new
+  // array every render (see note above) — memoizing keeps the HUD's `friends`
+  // prop identity stable so its internal radar useMemo only recomputes on real
+  // friend/heading changes, not on every parent re-render.
+  const wayfinderFriends = useMemo(
+    () =>
+      friendMarkers.map(f => ({
+        userId: f.userId,
+        name: f.name,
+        profilePictureUrl: f.profilePictureUrl,
+        lat: f.lat,
+        lng: f.lng,
+      })),
+    [friendMarkers]
+  );
 
   useEffect(() => {
     friendMarkersRef.current = friendMarkers;
@@ -939,13 +966,7 @@ export default function MapScreen() {
         userCoords={selfCoords}
         heading={heading}
         visibleBounds={visibleBounds}
-        friends={friendMarkers.map(f => ({
-          userId: f.userId,
-          name: f.name,
-          profilePictureUrl: f.profilePictureUrl,
-          lat: f.lat,
-          lng: f.lng,
-        }))}
+        friends={wayfinderFriends}
         trackedFriendId={trackingTarget?.userId ?? null}
         distanceUnit={distanceUnit}
         onSelectFriend={(f) => {

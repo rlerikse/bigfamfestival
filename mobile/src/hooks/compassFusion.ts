@@ -66,6 +66,26 @@ export function unwrapHeading(
 }
 
 /**
+ * Quantize a heading to a fixed angular step (degrees), returning a stable
+ * normalized value that only changes when the heading moves past the next step
+ * boundary. Used to de-jitter consumers that re-project on every heading tick
+ * (e.g. the WayfinderHUD border radar): raw compass heading updates ~10Hz and
+ * carries magnetometer noise, so feeding it straight into a screen-position
+ * calc makes border icons visibly bounce. Snapping to ~2 deg steps removes the
+ * sub-step jitter while staying responsive to real turns.
+ *
+ * @param headingDeg Raw heading in degrees (any range).
+ * @param stepDeg Quantization step in degrees (must be > 0). Default 2.
+ * @returns Normalized [0,360) heading snapped to the nearest step.
+ */
+export function quantizeHeading(headingDeg: number, stepDeg = 2): number {
+  if (!(stepDeg > 0)) return normalizeDeg(headingDeg);
+  const norm = normalizeDeg(headingDeg);
+  const snapped = Math.round(norm / stepDeg) * stepDeg;
+  return normalizeDeg(snapped);
+}
+
+/**
  * Tilt-compensated compass heading from raw accelerometer + magnetometer
  * vectors. Standard aerospace/robotics formulation (e.g. Freescale AN4248,
  * ST AN4508) — pitch/roll are derived from gravity, then used to rotate the
