@@ -27,7 +27,6 @@ import { complementaryFilter, tiltCompensatedHeading, type Vec3 } from './compas
  */
 
 const LOCK_THRESHOLD_DEG = 15;
-const SMOOTHING_SAMPLES = 5;
 const UPDATE_INTERVAL_MS = 100;
 
 export interface DirectionalTrackingState {
@@ -69,19 +68,6 @@ function angularDiff(a: number, b: number): number {
   return diff;
 }
 
-/** Circular moving average — avoids the 359°/1° wraparound bug of a naive mean. */
-function circularAverage(samples: number[]): number {
-  if (samples.length === 0) return 0;
-  let sumSin = 0;
-  let sumCos = 0;
-  for (const s of samples) {
-    sumSin += Math.sin(toRad(s));
-    sumCos += Math.cos(toRad(s));
-  }
-  const avg = toDeg(Math.atan2(sumSin, sumCos));
-  return (avg + 360) % 360;
-}
-
 /**
  * @param userCoords Live user position, or null if unknown.
  * @param targetCoords Selected friend's position, or null if no active target
@@ -106,7 +92,6 @@ export function useDirectionalTracking(
     isLocked: false,
   });
 
-  const headingSamplesRef = useRef<number[]>([]);
   const wasLockedRef = useRef(false);
   const hasTarget = targetCoords !== null;
 
@@ -171,17 +156,16 @@ export function useDirectionalTracking(
       const fused = complementaryFilter(fusedHeadingRef.current, yawRateDeg, dt, magHeading);
       fusedHeadingRef.current = fused;
 
-      const samples = headingSamplesRef.current;
-      samples.push(fused);
-      if (samples.length > SMOOTHING_SAMPLES) samples.shift();
-      setHeading(circularAverage(samples));
+      // The complementary filter already smooths frame-to-frame; a second
+      // moving-average pass on top just added phase lag and overshoot on fast
+      // turns (Robert's #201 report). Use the fused value directly.
+      setHeading(fused);
     });
 
     return () => {
       accelSub.remove();
       magSub.remove();
       gyroSub.remove();
-      headingSamplesRef.current = [];
       lastGyroTimestampRef.current = null;
     };
   }, [hasTarget, needsHeading]);
