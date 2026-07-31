@@ -45,6 +45,27 @@ export function signedAngularDiff(a: number, b: number): number {
 }
 
 /**
+ * Advance a continuous (unwrapped) bearing toward a new normalized heading via
+ * the shortest angular path. Used to drive a map camera without the "full spin"
+ * artifact that occurs when a normalized [0,360) heading crosses the 0/360 seam
+ * (e.g. 359 -> 1) and the camera animates the long way around.
+ *
+ * @param prevUnwrapped Previous continuous bearing (may be any real number).
+ * @param prevNormalized The [0,360) heading that produced prevUnwrapped.
+ * @param nextNormalized New target heading in [0,360).
+ * @returns The new continuous bearing = prevUnwrapped + shortest signed step.
+ *   Consecutive results never differ by more than 180 deg, so a camera
+ *   animating to them always takes the short visual path.
+ */
+export function unwrapHeading(
+  prevUnwrapped: number,
+  prevNormalized: number,
+  nextNormalized: number
+): number {
+  return prevUnwrapped + signedAngularDiff(prevNormalized, nextNormalized);
+}
+
+/**
  * Tilt-compensated compass heading from raw accelerometer + magnetometer
  * vectors. Standard aerospace/robotics formulation (e.g. Freescale AN4248,
  * ST AN4508) — pitch/roll are derived from gravity, then used to rotate the

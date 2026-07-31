@@ -3,6 +3,7 @@ import {
   signedAngularDiff,
   tiltCompensatedHeading,
   complementaryFilter,
+  unwrapHeading,
   Vec3,
 } from '../hooks/compassFusion';
 
@@ -232,5 +233,52 @@ describe('complementaryFilter — settle-after-stop (stationary deadband)', () =
     // With deadband=0, even tiny rates integrate (alpha=1, pure gyro).
     const fused = complementaryFilter(100, 0.3, 1, 999, 1, 0);
     expectAngleClose(fused, 100.3, 1e-9);
+  });
+});
+
+describe('unwrapHeading — continuous camera bearing (no full-spin at 0/360 seam)', () => {
+  it('advances by the shortest signed step for an in-range move', () => {
+    // 10 -> 40 is +30, no seam involved.
+    expect(unwrapHeading(10, 10, 40)).toBeCloseTo(40, 9);
+  });
+
+  it('unwinds forward across the 359->1 seam by only +2, not -358', () => {
+    // Camera was at continuous 359 (normalized 359); new heading 1. Naive
+    // normalized diff would be -358 (a full spin the long way); unwrap gives
+    // 359 + 2 = 361 so the camera animates a short +2 deg step.
+    expect(unwrapHeading(359, 359, 1)).toBeCloseTo(361, 9);
+  });
+
+  it('unwinds backward across the 1->359 seam by only -2, not +358', () => {
+    expect(unwrapHeading(1, 1, 359)).toBeCloseTo(-1, 9);
+  });
+
+  it('keeps accumulating continuously over multiple seam crossings', () => {
+    // Simulate a full clockwise rotation past north twice; the continuous
+    // bearing should climb monotonically (~+720) with every consecutive pair
+    // differing by <=180, never jumping the long way.
+    const normalizedPath = [350, 20, 90, 200, 350, 20, 90, 200, 350, 5];
+    let prevNorm = normalizedPath[0];
+    let unwrapped = prevNorm;
+    let prevUnwrapped = unwrapped;
+    for (let i = 1; i < normalizedPath.length; i++) {
+      unwrapped = unwrapHeading(unwrapped, prevNorm, normalizedPath[i]);
+      // No single step exceeds a half turn.
+      expect(Math.abs(unwrapped - prevUnwrapped)).toBeLessThanOrEqual(180);
+      prevUnwrapped = unwrapped;
+      prevNorm = normalizedPath[i];
+    }
+    // Normalizing the continuous bearing must still equal the final heading.
+    expectAngleClose(normalizeDeg(unwrapped), 5, 1e-9);
+  });
+
+  it('normalized(unwrapped) always equals the target heading', () => {
+    let prevNorm = 0;
+    let unwrapped = 0;
+    for (let h = 0; h < 360; h += 37) {
+      unwrapped = unwrapHeading(unwrapped, prevNorm, h);
+      expectAngleClose(normalizeDeg(unwrapped), h, 1e-9);
+      prevNorm = h;
+    }
   });
 });

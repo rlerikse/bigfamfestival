@@ -14,7 +14,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import OptimizedImage from '../components/OptimizedImage';
 import { useDirectionalTracking } from '../hooks/useDirectionalTracking';
-import { signedAngularDiff } from '../hooks/compassFusion';
+import { signedAngularDiff, unwrapHeading } from '../hooks/compassFusion';
 
 // Compass-mode camera throttle tuning. Commits are rate-limited to ~5Hz with a
 // 1deg deadband so a 150ms heading animation completes before the next starts
@@ -244,6 +244,16 @@ export default function MapScreen() {
   // changes (deadband), so each animation can complete before the next and
   // tiny sensor jitter doesn't churn the camera.
   //
+  // Wrap-around unwind (Robert's #202 retest — "full spin before settling"):
+  // the fused heading is normalized to [0,360), so when it crosses the 0/360
+  // seam (e.g. 359 -> 1) a naive setCamera({heading}) makes Mapbox animate the
+  // LONG way around (-358 deg) = a visible full spin. We feed the camera a
+  // CONTINUOUS/unwrapped bearing instead: track the last committed unwrapped
+  // value and advance it by the shortest signed delta each commit, so
+  // consecutive numbers never jump >180 deg and the camera always takes the
+  // short visual path. Mapbox normalizes the value internally, so the extra
+  // winding in the number is harmless.
+  //
   // Trailing flush (Architect review, PR #202): a pure leading-edge throttle
   // would permanently drop the LAST heading of a burst whenever the final
   // update lands inside the interval guard — the camera would settle 1-2 deg
@@ -253,6 +263,7 @@ export default function MapScreen() {
   // heading always wins because the effect re-runs (and reschedules) on every
   // heading change, and the timer reads from a ref holding the latest value.
   const lastCameraHeadingRef = useRef(0);
+  const unwrappedCameraHeadingRef = useRef(0);
   const lastCameraCommitRef = useRef(0);
   const pendingHeadingRef = useRef(0);
   const trailingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -260,9 +271,20 @@ export default function MapScreen() {
     if (orientationMode !== 'compass') return;
 
     const commit = (h: number) => {
+      // Advance the continuous bearing by the shortest signed step from the
+      // last normalized value, so a 0/360 seam crossing unwinds instead of
+      // spinning the long way.
+      unwrappedCameraHeadingRef.current = unwrapHeading(
+        unwrappedCameraHeadingRef.current,
+        lastCameraHeadingRef.current,
+        h
+      );
       lastCameraCommitRef.current = Date.now();
       lastCameraHeadingRef.current = h;
-      cameraRef.current?.setCamera({ heading: h, animationDuration: 150 });
+      cameraRef.current?.setCamera({
+        heading: unwrappedCameraHeadingRef.current,
+        animationDuration: 150,
+      });
     };
 
     pendingHeadingRef.current = heading;
@@ -306,9 +328,18 @@ export default function MapScreen() {
     };
   }, []);
   useEffect(() => {
-    if (orientationMode !== 'compass' && trailingTimerRef.current) {
-      clearTimeout(trailingTimerRef.current);
-      trailingTimerRef.current = null;
+    if (orientationMode !== 'compass') {
+      // Leaving compass: cancel any queued trailing commit. Camera is reset to
+      // heading 0 by the toggle, so re-seed the unwrapped bearing to 0 and
+      // clear the last-normalized reference. On re-entry the first commit then
+      // unwinds from 0 toward the live heading via the shortest path, instead
+      // of jumping by a stale accumulated offset.
+      if (trailingTimerRef.current) {
+        clearTimeout(trailingTimerRef.current);
+        trailingTimerRef.current = null;
+      }
+      unwrappedCameraHeadingRef.current = 0;
+      lastCameraHeadingRef.current = 0;
     }
   }, [orientationMode]);
 
