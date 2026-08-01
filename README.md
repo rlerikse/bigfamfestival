@@ -31,7 +31,7 @@ This application consists of:
 - User authentication and authorization (Firebase Auth + JWT)
 - Festival event management with artist profiles
 - Personal schedule management
-- Interactive festival map
+- Interactive festival map with live friend locations for opted-in friends
 - Push notifications
 - Admin panel for event/artist CRUD
 - Artist bios, social links, and website URLs
@@ -40,6 +40,12 @@ This application consists of:
 - Artist and campsite information
 - Festival map integration
 - Role-based access control (Admin, Staff, Artist, Vendor, Volunteer, Director, Attendee)
+
+### Map and friend-location experience
+
+- **Live friend locations:** opted-in friends appear on the festival map as their location changes. The app receives authenticated Server-Sent Events (SSE) updates rather than polling every 30 seconds; if the stream is unavailable, it temporarily falls back to polling while it reconnects.
+- **Stable compass and camera:** tilt-compensated compass fusion, seam-safe heading transitions, and throttled camera updates keep the map oriented smoothly without long spins, drift, or render lag.
+- **Stable friend markers and HUD:** friend radar markers are quantized and constrained at the map edge so they remain readable and do not bounce or jitter as the device heading changes.
 
 ## 🔧 Prerequisites
 
