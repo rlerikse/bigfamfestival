@@ -23,10 +23,10 @@ import { BACKGROUND_LOCATION_TASK } from '../tasks/locationTask';
  *  - Starts/stops reactively on the toggle + auth state.
  */
 
-const FG_MIN_UPLOAD_INTERVAL_MS = 25_000;
-const FG_MOVEMENT_DISTANCE_M = 10;
-const BG_TIME_INTERVAL_MS = 30_000;
-const BG_DISTANCE_M = 50;
+const FG_MIN_UPLOAD_INTERVAL_MS = 10_000;
+const FG_MOVEMENT_DISTANCE_M = 5;
+const BG_TIME_INTERVAL_MS = 15_000;
+const BG_DISTANCE_M = 25;
 
 async function stopBackgroundUpdates(): Promise<void> {
   try {
