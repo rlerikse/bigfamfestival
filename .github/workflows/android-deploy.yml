@@ -1,43 +1,61 @@
-name: Android Deploy — Closed Testing
+name: Android Deploy — Alpha Testing
 
-# Triggers after a successful EAS build on dev branch.
-# Submits the latest build to Google Play internal/closed testing track.
+# This workflow intentionally has no push/workflow_run trigger. Store submission
+# must name the exact EAS build that was approved for this commit or release tag;
+# never infer it from EAS's "latest" build.
 #
-# Required secrets (set in GitHub repo settings):
-#   EXPO_TOKEN              — Expo access token (create at expo.dev/accounts/[user]/settings/access-tokens)
-#   GOOGLE_PLAY_SA_KEY      — Google Play service account JSON key (raw JSON)
-#                             Created by Atlas (BFF-S3-02). Needs these Play Console permissions:
-#                             - Release manager on the app
-#                             - View app information
+# To submit an approved alpha candidate:
+#   1. Select the branch or tag containing the approved commit when dispatching.
+#   2. Supply that full 40-character commit SHA and the EAS Android build ID.
+#   3. This workflow verifies the build is a finished, non-expired, store beta
+#      build created from that exact commit before it can submit to the alpha track.
 #
-# This workflow only runs on push to dev (not PRs, not main).
-# Production deployments go through the manual release process.
+# Production promotion remains a separate manual release decision.
 
 on:
-  workflow_run:
-    workflows: ["Mobile CI"]
-    types: [completed]
-    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: Exact EAS Android build ID to submit (never use "latest")
+        required: true
+        type: string
+      expected_commit:
+        description: Full 40-character commit SHA represented by the selected branch/tag
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false  # Don't cancel in-flight deploys
+  group: android-alpha-deploy-${{ inputs.build_id }}
+  cancel-in-progress: false
 
 jobs:
-  deploy-to-closed-testing:
-    name: Deploy to Google Play — Closed Testing
+  deploy-to-alpha-testing:
+    name: Validate and deploy approved Android build to alpha
     runs-on: ubuntu-latest
-    # Only run if the triggering CI workflow succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Checkout code
+      - name: Validate dispatch commit
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          SELECTED_COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_commit must be a full 40-character lowercase Git SHA."
+            exit 1
+          fi
+          if [ "$EXPECTED_COMMIT" != "$SELECTED_COMMIT" ]; then
+            echo "::error::Selected ref resolves to $SELECTED_COMMIT, not requested commit $EXPECTED_COMMIT. Re-run from the approved branch or tag."
+            exit 1
+          fi
+
+      - name: Checkout approved commit
         uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: ${{ inputs.expected_commit }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -50,36 +68,81 @@ jobs:
         run: npm ci
         working-directory: mobile
 
-      - name: Setup EAS
+      - name: Set up EAS
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Write Google Play service account key
-        # Decode base64-encoded SA key from secret and write to disk
-        # Atlas creates this key (BFF-S3-02) and stores it as GOOGLE_PLAY_SA_KEY secret
+      - name: Validate the exact EAS build
+        id: validate-build
+        working-directory: mobile
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
-          printf '%s' '${{ secrets.GOOGLE_PLAY_SA_KEY }}' > mobile/google-play-service-account.json
-        shell: bash
+          set -euo pipefail
+          BUILD_JSON="$(eas build:view "$BUILD_ID" --json)"
+          export BUILD_JSON
+          python3 - <<'PY'
+          import datetime
+          import json
+          import os
+          import sys
+
+          build = json.loads(os.environ["BUILD_JSON"])
+          expected = os.environ["EXPECTED_COMMIT"]
+          errors = []
+
+          checks = {
+              "id": os.environ["BUILD_ID"],
+              "platform": "ANDROID",
+              "status": "FINISHED",
+              "distribution": "STORE",
+              "buildProfile": "beta",
+              "gitCommitHash": expected,
+          }
+          for field, wanted in checks.items():
+              actual = build.get(field)
+              if actual != wanted:
+                  errors.append(f"{field} is {actual!r}; expected {wanted!r}")
+
+          expires = build.get("expirationDate")
+          try:
+              expiry = datetime.datetime.fromisoformat(expires.replace("Z", "+00:00"))
+              if expiry <= datetime.datetime.now(datetime.timezone.utc):
+                  errors.append(f"expirationDate {expires!r} is expired")
+          except (AttributeError, TypeError, ValueError):
+              errors.append(f"expirationDate {expires!r} is missing or invalid")
+
+          artifacts = build.get("artifacts") or {}
+          if not (artifacts.get("applicationArchiveUrl") or artifacts.get("buildUrl")):
+              errors.append("build has no downloadable Android archive")
+
+          if errors:
+              print("::error::Refusing Play submission: selected EAS build is not an eligible approved alpha artifact.")
+              for error in errors:
+                  print(f"::error::{error}")
+              sys.exit(1)
+
+          print(f"Validated EAS build {build['id']} (version {build.get('appVersion')}, code {build.get('appBuildVersion')}).")
+          PY
+
+      - name: Write Google Play service account key
         env:
           GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
-
-      - name: Get latest Android build ID
-        id: get-build
         run: |
-          BUILD_ID=$(eas build:list --platform android --status finished --limit 1 --non-interactive --json | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'])")
-          echo "build_id=$BUILD_ID" >> "$GITHUB_OUTPUT"
-          echo "Latest build ID: $BUILD_ID"
-        working-directory: mobile
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          set -euo pipefail
+          umask 077
+          printf '%s' "$GOOGLE_PLAY_SA_KEY" > mobile/google-play-service-account.json
 
-      - name: Submit to Google Play — internal track
-        run: eas submit --platform android --profile beta --id ${{ steps.get-build.outputs.build_id }} --non-interactive
+      - name: Submit exact build to Google Play alpha track
         working-directory: mobile
         env:
+          BUILD_ID: ${{ inputs.build_id }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit --platform android --profile beta --id "$BUILD_ID" --non-interactive
 
       - name: Clean up service account key
         if: always()
@@ -87,6 +150,4 @@ jobs:
 
       - name: Notify success
         if: success()
-        run: |
-          echo "✅ Build submitted to Google Play closed testing track (internal)"
-          echo "Beta testers will receive an update notification shortly."
+        run: echo "✅ Validated build submitted to the Google Play alpha testing track."
