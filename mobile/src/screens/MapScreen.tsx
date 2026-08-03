@@ -148,6 +148,11 @@ interface MapPOI {
   category: string;
   color: string;
   icon: string;
+  /**
+   * Optional named asset to render as the marker instead of the emoji `icon`
+   * (e.g. 'bigfam-logo' for the front gate). When unset, fall back to `icon`.
+   */
+  markerAsset?: string;
   lat: number;
   lng: number;
   description?: string;
