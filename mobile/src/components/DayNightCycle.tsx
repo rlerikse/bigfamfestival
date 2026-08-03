@@ -184,11 +184,29 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
       ).start();
     }, 15000); // 15s delay
   }, [cloudLayer1, cloudLayer2, cloudLayer3, bigBackgroundCloud, height]);
-  // Update time every 1 second for smooth countdown and animation sync
+  // Update time to drive the day/night visuals. Nothing downstream of
+  // currentTime uses second-level precision - getTimeValues() only reads
+  // hours + minutes (timeDecimal = hours + minutes/60). The previous 1s
+  // interval forced a full re-render of this component (40 stars, SVG
+  // lines, gradients, sun/moon position math) every single second, and
+  // this component is mounted persistently behind the ENTIRE tab
+  // navigator (see navigation/index.tsx) - so it was re-rendering once a
+  // second even while the user was scrolling other screens (e.g.
+  // Schedule), directly competing with scroll/gesture handling on the JS
+  // thread. This was a major contributor to Android scroll frame drops.
+  // Only update state when the minute actually changes - cuts re-renders
+  // ~60x (3600/hr -> 60/hr) with zero visible difference (this is a slow
+  // ambient day/night backdrop, not a real-time clock).
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000); // Update every second
+      setCurrentTime(prev => {
+        const next = new Date();
+        if (prev.getHours() === next.getHours() && prev.getMinutes() === next.getMinutes()) {
+          return prev;
+        }
+        return next;
+      });
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
