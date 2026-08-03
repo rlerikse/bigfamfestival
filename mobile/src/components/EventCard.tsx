@@ -7,7 +7,6 @@ import {
   StyleSheet,
   GestureResponderEvent,
   Animated,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import OptimizedImage from './OptimizedImage';
@@ -134,15 +133,22 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
     return nowMs >= endTs;
   }, [item.date, item.startTime, item.endTime, currentTime]);
 
-  // Strobing border animation for LIVE events
+  // Pulsing glow for LIVE events — native-driven (opacity only) so the
+  // animation runs on the UI thread instead of competing with FlatList
+  // scroll handling on the JS thread. Previously this used
+  // useNativeDriver: false to interpolate borderColor/borderWidth, which
+  // meant every visible LIVE card ran a JS-thread animation loop on every
+  // frame — with multiple simultaneous live events this caused major
+  // scroll frame drops. Border is now a static live-red (no per-frame JS
+  // work); only opacity (glow) is animated, which IS native-drivable.
   const borderAnim = React.useRef(new Animated.Value(0)).current;
   React.useEffect(() => {
     let loop: Animated.CompositeAnimation | undefined;
     if (showStatusBadge && isLive) {
       loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(borderAnim, { toValue: 1, duration: blinkDurationMs, useNativeDriver: false }),
-          Animated.timing(borderAnim, { toValue: 0, duration: blinkDurationMs, useNativeDriver: false }),
+          Animated.timing(borderAnim, { toValue: 1, duration: blinkDurationMs, useNativeDriver: true }),
+          Animated.timing(borderAnim, { toValue: 0, duration: blinkDurationMs, useNativeDriver: true }),
         ])
       );
       loop.start();
@@ -152,19 +158,9 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
     };
   }, [borderAnim, showStatusBadge, isLive, blinkDurationMs]);
 
-  const animatedBorderColor = useMemo(() => {
-    return borderAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [theme.border, '#FF3B30'],
-    });
-  }, [borderAnim, theme.border]);
-
-  const animatedBorderWidth = useMemo(() => {
-    return borderAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1, liveBorderMaxWidth],
-    });
-  }, [borderAnim, liveBorderMaxWidth]);
+  // Static live border width/color (no JS-thread interpolation needed)
+  const liveBorderColor = '#FF3B30';
+  const liveBorderWidthValue = liveBorderMaxWidth;
 
   const glowOpacity = useMemo(() => {
     return borderAnim.interpolate({
@@ -212,15 +208,18 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
       style={[
         styles.eventCard,
         {
-          borderColor: isLive && showStatusBadge ? animatedBorderColor : 'rgba(255, 255, 255, 0.2)',
-          borderWidth: isLive && showStatusBadge ? (animatedBorderWidth as unknown as number) : 1,
+          borderColor: isLive && showStatusBadge ? liveBorderColor : 'rgba(255, 255, 255, 0.2)',
+          borderWidth: isLive && showStatusBadge ? liveBorderWidthValue : 1,
           backgroundColor: 'rgba(255, 255, 255, 0.18)',
           opacity: isPast ? 0.5 : 1,
         },
       ]}
       onPress={handleEventPress}
     >
-      {/* Soft glow overlay for LIVE events */}
+      {/* Soft glow overlay for LIVE events - opacity-only, native-driven.
+          Uses a solid red overlay faded by opacity instead of animating
+          shadowOpacity/borderColor (neither supports the native driver),
+          so this animation runs on the UI thread, not the JS thread. */}
       {isLive && showStatusBadge && (
         <Animated.View
           pointerEvents="none"
@@ -232,18 +231,8 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
             bottom: 0,
             borderRadius: 12,
             zIndex: 0,
-            ...(Platform.OS === 'ios'
-              ? {
-                  shadowColor: '#FF3B30',
-                  shadowOffset: { width: 0, height: 0 },
-                  shadowRadius: 12,
-                  shadowOpacity: glowOpacity as unknown as number,
-                }
-              : {
-                  borderWidth: 2,
-                  borderColor: 'rgba(255,59,48,0.35)',
-                  opacity: glowOpacity as unknown as number,
-                }),
+            backgroundColor: '#FF3B30',
+            opacity: glowOpacity,
           }}
         />
       )}

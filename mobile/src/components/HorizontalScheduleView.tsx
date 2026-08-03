@@ -594,10 +594,20 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   hourMarker: {
+    // No fixed width: the marker's `left` is the exact gridline x-offset (see
+    // hourMarkers computation + the matching gridLine elements in the body
+    // grid). Previously this had `justifyContent: 'center'`, which centers
+    // the label ON that single point instead of anchoring its start there --
+    // made the "5 PM" text appear to float centered over the cards instead
+    // of sitting left-aligned against the hour's gridline (flagged after the
+    // expo-image perf fix screenshot). justifyContent: 'flex-start' + a small
+    // paddingLeft keeps the label anchored to its gridline, matching how the
+    // gridlines themselves are drawn in the scrollable body below.
     position: 'absolute',
     top: 0,
     bottom: 0,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingLeft: 4,
   },
   hourMarkerText: {
     color: 'rgba(255,255,255,0.6)',
