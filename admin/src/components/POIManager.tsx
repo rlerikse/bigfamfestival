@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { uploadPOIMarker, validateMarkerFile, getImageDisplayUrl } from '../lib/storage';
 import { db } from '@/lib/firebase';
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, X } from 'lucide-react';
 
@@ -13,6 +14,9 @@ export interface POI {
   lng: number;
   description?: string;
   vendorId?: string;
+  // Optional custom marker image URL (logo/icon). When set, the mobile app
+  // renders this image instead of the emoji `icon` (which stays as fallback).
+  markerAsset?: string;
 }
 
 const POI_CATEGORIES = [
@@ -57,9 +61,11 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '', category: 'stage', color: '#EF4444', icon: '🎵',
-    lat: 0, lng: 0, description: '', vendorId: '',
+    lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '',
   });
   const [pickingLocation, setPickingLocation] = useState(false);
+  const [markerFile, setMarkerFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const fetchPOIs = useCallback(async () => {
     try {
@@ -75,16 +81,23 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   useEffect(() => { fetchPOIs(); }, [fetchPOIs]);
 
   const resetForm = () => {
-    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '' });
+    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '' });
     setEditingId(null);
     setShowForm(false);
     setPickingLocation(false);
+    setMarkerFile(null);
+    setUploading(false);
   };
 
   const handleSave = async () => {
     if (!formData.name.trim() || !formData.lat || !formData.lng) return;
+    if (markerFile) {
+      const validationErr = validateMarkerFile(markerFile);
+      if (validationErr) { alert(validationErr); return; }
+    }
     try {
-      const data = {
+      setUploading(true);
+      const data: Record<string, unknown> = {
         name: formData.name.trim(),
         category: formData.category,
         color: formData.color,
@@ -93,17 +106,33 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
         lng: formData.lng,
         description: formData.description || '',
         vendorId: formData.vendorId || '',
+        markerAsset: formData.markerAsset || '',
       };
-      if (editingId) {
-        await updateDoc(doc(db, 'mapPOIs', editingId), data);
-      } else {
-        await addDoc(collection(db, 'mapPOIs'), data);
+
+      // Determine the POI id up front so the marker upload path is stable.
+      // For a new POI we create the doc first (need the id for the storage key),
+      // then upload the image and patch the URL back onto the same doc.
+      let poiId = editingId;
+      if (!poiId) {
+        const created = await addDoc(collection(db, 'mapPOIs'), data);
+        poiId = created.id;
       }
+
+      if (markerFile) {
+        const url = await uploadPOIMarker(markerFile, poiId);
+        data.markerAsset = url;
+      }
+
+      // Single authoritative write of the final shape (incl. any uploaded URL).
+      await updateDoc(doc(db, 'mapPOIs', poiId), data);
+
       resetForm();
       await fetchPOIs();
     } catch (err) {
       console.error('Failed to save POI:', err);
       alert('Failed to save POI');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -122,7 +151,9 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
     setFormData({
       name: poi.name, category: poi.category, color: poi.color, icon: poi.icon,
       lat: poi.lat, lng: poi.lng, description: poi.description || '', vendorId: poi.vendorId || '',
+      markerAsset: poi.markerAsset || '',
     });
+    setMarkerFile(null);
     setEditingId(poi.id);
     setShowForm(true);
   };
@@ -222,12 +253,41 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
             onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
             className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm placeholder:text-[#F5F5DC]/30 focus:outline-none"
           />
+          {/* Custom marker logo/icon: uploads to Storage on save; falls back to emoji icon when unset. */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-[#F5F5DC]/50">Marker logo (optional — overrides emoji)</label>
+            <div className="flex items-center gap-2">
+              {(markerFile || formData.markerAsset) && (
+                <img
+                  src={markerFile ? URL.createObjectURL(markerFile) : (getImageDisplayUrl(formData.markerAsset) || undefined)}
+                  alt="marker preview"
+                  className="w-8 h-8 rounded object-contain bg-[#1C2B20] border border-[#F5F5DC]/20 shrink-0"
+                />
+              )}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                onChange={e => setMarkerFile(e.target.files?.[0] || null)}
+                className="flex-1 text-xs text-[#F5F5DC]/70 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-[#2E4031] file:text-[#F5F5DC]/80 file:text-xs file:cursor-pointer"
+              />
+              {formData.markerAsset && !markerFile && (
+                <button
+                  type="button"
+                  onClick={() => setFormData(p => ({ ...p, markerAsset: '' }))}
+                  className="px-2 py-1 rounded text-xs bg-[#2E4031] text-red-300 hover:bg-[#2E4031]/80 border border-[#F5F5DC]/10 shrink-0"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <span className="text-[10px] text-[#F5F5DC]/30">PNG/JPEG/WebP/SVG, max 2MB.</span>
+          </div>
           <button
             onClick={handleSave}
-            disabled={!formData.name.trim() || !formData.lat || !formData.lng}
+            disabled={!formData.name.trim() || !formData.lat || !formData.lng || uploading}
             className="w-full px-3 py-2 rounded bg-[#6BBF59] text-[#1C2B20] font-bold text-sm hover:bg-[#6BBF59]/90 disabled:opacity-40"
           >
-            {editingId ? 'Update POI' : 'Add POI'}
+            {uploading ? 'Saving…' : editingId ? 'Update POI' : 'Add POI'}
           </button>
         </div>
       )}

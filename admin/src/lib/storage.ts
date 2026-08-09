@@ -44,3 +44,24 @@ export async function uploadEventImage(file: File, eventId: string): Promise<str
   await uploadBytes(storageRef, file);
   return await getDownloadURL(storageRef);
 }
+
+// POI marker logos/icons. Allows SVG in addition to the raster types, since
+// stage/vendor logos are frequently vector. Kept separate from validateImageFile
+// so the general image validator is unchanged.
+export function validateMarkerFile(file: File): string | null {
+  const maxSize = 2 * 1024 * 1024; // 2MB — markers should be small; Cypress flagged an oversized logo on #209
+  const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+  if (!validTypes.includes(file.type)) return 'Invalid file type. Use PNG, JPEG, WebP, or SVG.';
+  if (file.size > maxSize) return 'File too large. Max 2MB for marker logos.';
+  return null;
+}
+
+// Uploads a POI marker image and returns its download URL. The POI id keys the
+// path so re-uploading for the same POI overwrites in place (no orphan buildup).
+export async function uploadPOIMarker(file: File, poiId: string): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+  const safeId = poiId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const storageRef = ref(storage, `poi_markers/${safeId}.${ext}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+}
