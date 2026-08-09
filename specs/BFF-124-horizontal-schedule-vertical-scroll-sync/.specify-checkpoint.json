@@ -1,0 +1,25 @@
+{
+  "feature_id": "BFF-124",
+  "source_type": "github_issue",
+  "source_issue": "rlerikse/bigfamfestival#187",
+  "source_summary": "Horizontal schedule view does not refresh or synchronize derived state on vertical scroll.",
+  "acceptance_criteria_summary": [
+    "Vertical scrolling keeps the horizontal schedule's sticky header and Now indicator correct.",
+    "Vertical position is tracked and restored across filter/day remounts like horizontal position.",
+    "Behavior is verified on iOS and Android."
+  ],
+  "figma_loaded": false,
+  "current_step": "clarify",
+  "branch_name": "bugfix/BFF-124-vertical-scroll-sync",
+  "spec_dir": "specs/BFF-124-horizontal-schedule-vertical-scroll-sync",
+  "spec_path": "specs/BFF-124-horizontal-schedule-vertical-scroll-sync/spec.md",
+  "spec_written": true,
+  "target_repo": "/Users/rerikse3/repos/es/bigfamfestival",
+  "context_sources": [
+    "user instruction",
+    "GitHub Issue #187 context",
+    "project constitution v1.4.0",
+    "current implementation evidence"
+  ],
+  "clarification": "deferred_to_pipeline_explicit_clarify"
+}

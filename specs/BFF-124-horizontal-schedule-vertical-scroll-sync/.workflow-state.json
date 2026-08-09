@@ -1,0 +1,38 @@
+{
+  "feature_id": "BFF-124",
+  "feature_name": "horizontal-schedule-vertical-scroll-sync",
+  "feature_dir": "specs/BFF-124-horizontal-schedule-vertical-scroll-sync",
+  "source": {
+    "type": "github_issue",
+    "repository": "rlerikse/bigfamfestival",
+    "number": 187,
+    "url": "https://github.com/rlerikse/bigfamfestival/issues/187"
+  },
+  "branch_name": "bugfix/BFF-124-vertical-scroll-sync",
+  "status": "draft",
+  "steps": {
+    "specify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "version": "1.0.0",
+      "clarification": "deferred_to_pipeline"
+    },
+    "clarify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "SIMPLE",
+      "complexity_score": 4,
+      "questions_resolved": 3,
+      "questions_surfaced": 0,
+      "attempt": 2,
+      "confirmation_status": "CLEAN",
+      "last_confirmed_at": "2026-08-09T00:00:00Z"
+    },
+    "plan": {
+      "status": "pending"
+    },
+    "implement": {
+      "status": "pending"
+    }
+  }
+}

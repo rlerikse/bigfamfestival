@@ -7,6 +7,7 @@ Entrypoint index for repo-scoped memory. See topic files for detail.
 - Map shipped **Mapbox only** (HERE never integrated); what3words never built — see `decisions.md`.
 - Email provider is **SendGrid** — see `decisions.md`.
 - Original **Jira space is closed**; `specs/BFF-*` are the system of record — see `decisions.md`.
+- BFF-124 is a forward-looking mobile schedule bug spec sourced from GitHub Issue #187 — see `decisions.md`.
 
 ## Known Issues
 - Firestore `users`/`notifications` rules world-open; `@Public()` debug endpoints; `POST /artists` missing admin guard — see `known-issues.md` (+ `docs/audits/2026-08-09-deep-analysis-hardening-optimization.md`).
