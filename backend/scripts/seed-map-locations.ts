@@ -25,7 +25,10 @@ const STAGE_LOCATIONS: Record<string, { lat: number; lng: number; name: string; 
 };
 
 const INFRASTRUCTURE_POIS = [
-  { id: 'front-gate', name: 'Front Gate / Check-In', category: 'info', lat: 42.05600, lng: -84.25815, color: '#FF6B35', icon: '🚪' },
+  // Big Fam front gate: markerAsset tells the app to render the Big Fam logo
+  // as the marker instead of the emoji icon (icon kept as fallback). Rendering
+  // + asset handled on the mobile side (Pixel); this is just the data hook.
+  { id: 'front-gate', name: 'Front Gate / Check-In', category: 'info', lat: 42.05600, lng: -84.25815, color: '#FF6B35', icon: '🚪', markerAsset: 'bigfam-logo' },
   { id: 'medical', name: 'Medical', category: 'medical', lat: 42.05880, lng: -84.25680, color: '#DC2626', icon: '🏥' },
   { id: 'the-cantina', name: 'The Cantina', category: 'food', lat: 42.05800, lng: -84.25750, color: '#F59E0B', icon: '🍹' },
   { id: 'hq', name: 'HQ', category: 'info', lat: 42.05810, lng: -84.25630, color: '#6B7280', icon: 'ℹ️' },
