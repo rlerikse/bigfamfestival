@@ -69,6 +69,7 @@ describe('MapService', () => {
     expect(pois).toEqual([
       {
         id: 'vendor-1',
+        category: 'food_vendor',
         type: 'food_vendor',
         name: 'Taco Truck',
         location: { lat: 42.058, long: -84.2575 },
@@ -101,7 +102,7 @@ describe('MapService', () => {
     );
     expect(byId.a).toBe('staff_and_medical');
     expect(byId.b).toBe('shop_and_service');
-    expect(byId.c).toBe('shop_and_service'); // default fallback
+    expect(byId.c).toBe('food_vendor'); // default fallback (matches mobile)
   });
 
   it('skips POIs with missing/invalid coordinates', async () => {
@@ -115,6 +116,22 @@ describe('MapService', () => {
     );
     const pois = await svc.getPois();
     expect(pois.map((p) => p.id)).toEqual(['ok']);
+  });
+
+  it('emits category (mobile reads poi.category) equal to type', async () => {
+    const svc = await build(
+      makeFirestore({
+        poiDocs: [
+          {
+            id: 'x',
+            data: { name: 'x', category: 'beverage_vendor', lat: 1, lng: 2 },
+          },
+        ],
+      }),
+    );
+    const [poi] = await svc.getPois();
+    expect(poi.category).toBe('beverage_vendor');
+    expect(poi.category).toBe(poi.type);
   });
 
   it('includes seeded stages with stage- prefixed ids', async () => {
@@ -133,6 +150,7 @@ describe('MapService', () => {
     const pois = await svc.getPois();
     expect(pois).toContainEqual({
       id: 'stage-apogee',
+      category: 'stage',
       type: 'stage',
       name: 'Apogee',
       location: { lat: 42.057, long: -84.2572 },

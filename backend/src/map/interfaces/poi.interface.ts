@@ -16,6 +16,17 @@ export type PoiType =
 
 export interface Poi {
   id: string;
+  /**
+   * POI category driving marker icon/color. Mobile's MapScreen.tsx calls
+   * `resolveCategory(poi.category)` — it reads THIS field, not `type` — so it
+   * must be present for markers to render. Value is a valid PoiType string.
+   */
+  category: PoiType;
+  /**
+   * Same value as `category`. Kept because the mobile `POI` interface + mock
+   * data are typed on `type`, and friend-location logic branches on it. Emitting
+   * both keeps the storage->mobile contract unambiguous for either reader.
+   */
   type: PoiType;
   name: string;
   location: {

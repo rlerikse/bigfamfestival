@@ -46,7 +46,13 @@ export class MapService {
     service: 'shop_and_service',
   };
 
-  private readonly DEFAULT_TYPE: PoiType = 'shop_and_service';
+  /**
+   * Fallback type for unknown categories. Matches mobile's resolveCategory()
+   * default ('food' -> food_vendor) so an unexpected value renders consistently
+   * on both ends. Normalization above should mean mobile never sees a truly
+   * unknown string, but we keep the fallbacks aligned to avoid surprises.
+   */
+  private readonly DEFAULT_TYPE: PoiType = 'food_vendor';
 
   constructor(private readonly firestoreService: FirestoreService) {}
 
@@ -87,9 +93,11 @@ export class MapService {
           this.logger.warn(`Skipping POI ${doc.id}: missing/invalid lat/lng`);
           continue;
         }
+        const type = this.mapCategoryToType(d.category);
         pois.push({
           id: doc.id,
-          type: this.mapCategoryToType(d.category),
+          category: type,
+          type,
           name: typeof d.name === 'string' ? d.name : '',
           location: { lat: d.lat, long: d.lng },
           description:
@@ -132,6 +140,7 @@ export class MapService {
         }
         pois.push({
           id: `stage-${key}`,
+          category: 'stage',
           type: 'stage',
           name: typeof s.name === 'string' ? s.name : key,
           location: { lat: s.lat, long: s.lng },
