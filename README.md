@@ -7,6 +7,7 @@ A full-stack festival management application with a NestJS backend API and React
 ## 📋 Table of Contents
 
 - [Project Overview](#project-overview)
+- [Architecture Decisions](#architecture-decisions)
 - [Prerequisites](#prerequisites)
 - [Local Development](#local-development)
   - [Backend Setup](#backend-setup)
@@ -46,6 +47,17 @@ This application consists of:
 - **Live friend locations:** opted-in friends appear on the festival map as their location changes. The app receives authenticated Server-Sent Events (SSE) updates rather than polling every 30 seconds; if the stream is unavailable, it temporarily falls back to polling while it reconnects.
 - **Stable compass and camera:** tilt-compensated compass fusion, seam-safe heading transitions, and throttled camera updates keep the map oriented smoothly without long spins, drift, or render lag.
 - **Stable friend markers and HUD:** friend radar markers are quantized and constrained at the map edge so they remain readable and do not bounce or jitter as the device heading changes.
+
+## 🏛️ Architecture Decisions
+
+Significant technical decisions are recorded as Architecture Decision Records (ADRs). See [`ADR.md`](ADR.md) for the full index and rationale, with source files in [`docs/adr/`](docs/adr/).
+
+| ADR | Title | Status |
+|-----|-------|--------|
+| [ADR-001](docs/adr/001-performance-optimizations.md) | Performance Optimizations for Artist Modal | ✅ Accepted |
+| [ADR-002](docs/adr/002-realtime-friend-locations-sse.md) | Realtime Friend Locations via Server-Sent Events | ✅ Accepted |
+
+To add a decision, create the next-numbered file in `docs/adr/` and add it to [`ADR.md`](ADR.md).
 
 ## 🔧 Prerequisites
 
