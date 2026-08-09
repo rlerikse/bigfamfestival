@@ -20,6 +20,7 @@
       "mobile/src/utils/scheduleUtils.ts",
       "mobile/src/screens/ScheduleScreen.tsx",
       "mobile/src/__tests__/scheduleUtils.genre.test.ts"
-    ]
+    ],
+    "last_checkpoint_commit": "df05bcbdbb09cd3d39fbf3cac634ea3dd8f11b30"
   }
 }
