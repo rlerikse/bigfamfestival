@@ -45,6 +45,26 @@ export function getEventEndMs(ev: ScheduleEvent): number | null {
   return endTs;
 }
 
+/** Tri-state display status of an event relative to a given clock reading. */
+export type EventDisplayState = 'upcoming' | 'live' | 'completed';
+
+/**
+ * Derive an event's display state (upcoming/live/completed) for a given
+ * clock reading, without duplicating any start/end/midnight-crossing/2h-
+ * fallback date math — this is computed entirely in terms of the existing
+ * `isEventLive` and `getEventEndMs` exports above, so it stays in lockstep
+ * with their semantics by construction (see plan.md DR-4).
+ *
+ * Used by ScheduleScreen.tsx to derive a stable, memo-friendly prop for
+ * EventCard instead of passing the raw clock epoch on every tick.
+ */
+export function getEventDisplayState(ev: ScheduleEvent, nowMs: number): EventDisplayState {
+  if (isEventLive(ev, nowMs)) return 'live';
+  const endMs = getEventEndMs(ev);
+  if (endMs !== null && nowMs >= endMs) return 'completed';
+  return 'upcoming';
+}
+
 export type ScheduleDayScrollTarget = 'live' | 'first' | 'last' | 'none';
 
 /**

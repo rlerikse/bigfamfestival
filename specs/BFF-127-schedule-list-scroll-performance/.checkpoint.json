@@ -1,0 +1,24 @@
+{
+  "feature": "BFF-127-schedule-list-scroll-performance",
+  "started_at": "2026-08-09T00:00:00Z",
+  "last_updated": "2026-08-09T00:00:00Z",
+  "current_phase": "Phase 5: Static Verification and Handoff",
+  "completed_phases": [
+    "Phase 1: Pure Display-State Helper (Foundational)",
+    "Phase 2: Backward-Compatible Event Card Contract",
+    "Phase 3: Schedule List Render Budget and Clock Propagation",
+    "Phase 5: Static Verification and Handoff (automated tasks only)"
+  ],
+  "completed_tasks": ["T001", "T002", "T003", "T004", "T005", "T010", "T011", "T012"],
+  "failed_tasks": [],
+  "pending_manual_tasks": ["T006", "T007", "T008", "T009"],
+  "files_created": [
+    "mobile/src/__tests__/scheduleUtils.displayState.test.ts"
+  ],
+  "files_modified": [
+    "mobile/src/utils/scheduleUtils.ts",
+    "mobile/src/components/EventCard.tsx",
+    "mobile/src/screens/ScheduleScreen.tsx"
+  ],
+  "last_checkpoint_commit": "6679b19a32cb7af7e9eb7409883b6006ee0ed3bd"
+}

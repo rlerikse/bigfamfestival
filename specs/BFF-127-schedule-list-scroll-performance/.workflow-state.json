@@ -1,0 +1,50 @@
+{
+  "feature": "BFF-127-schedule-list-scroll-performance",
+  "jira_id": "BFF-127",
+  "source_of_truth": "GitHub Issue #186",
+  "created_at": "2026-08-09T00:00:00Z",
+  "last_updated": "2026-08-09T00:00:00Z",
+  "steps": {
+    "specify": {
+      "completed_at": "2026-08-09T00:00:00Z",
+      "amended_at": null,
+      "version": "v1.0"
+    },
+    "clarify": {
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "MODERATE",
+      "skipped": false,
+      "status": "clean",
+      "questions_auto_resolved": 3,
+      "questions_escalated": 0,
+      "clarification_attempt": 2
+    },
+    "plan": {
+      "completed_at": "2026-08-09T00:00:00Z",
+      "spec_hash": "a5c3fcddbea4f1911f6a6e38b9222a7e77146859b628bde2a36d642c1589ba86"
+    },
+    "tasks": {
+      "completed_at": "2026-08-09T00:00:00Z",
+      "plan_hash": "1ae6c230a34bc3e0e36bb1a4648dcc78fb524d5d5eff02f80118b78b8a6a5d97"
+    },
+    "implement": {
+      "started_at": "2026-08-09T00:00:00Z",
+      "current_phase": "Phase 5: Static Verification and Handoff",
+      "phases_completed": [
+        "Phase 1: Pure Display-State Helper (Foundational)",
+        "Phase 2: Backward-Compatible Event Card Contract",
+        "Phase 3: Schedule List Render Budget and Clock Propagation",
+        "Phase 5: Static Verification and Handoff (automated tasks only)"
+      ],
+      "tasks_completed": ["T001", "T002", "T003", "T004", "T005", "T010", "T011", "T012"],
+      "tasks_pending_manual": ["T006", "T007", "T008", "T009"],
+      "task_note": "T013 (staging) intentionally left for the pipeline orchestrator per tasks.md — no commit created by this run beyond the reviewed, developer-approved checkpoint commit.",
+      "verification": {
+        "jest": "PASS — scheduleUtils.displayState.test.ts 10/10",
+        "typecheck": "PASS — tsc --noEmit clean",
+        "lint": "PASS — eslint 0 errors / 241 warnings (unchanged baseline, no new BFF-127 diagnostics)"
+      },
+      "result": "HARDENED"
+    }
+  }
+}

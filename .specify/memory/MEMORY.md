@@ -9,6 +9,11 @@ Entrypoint index for repo-scoped memory. See topic files for detail.
 - Original **Jira space is closed**; `specs/BFF-*` are the system of record — see `decisions.md`.
 - BFF-124 is a forward-looking mobile schedule bug spec sourced from GitHub Issue #187 — see `decisions.md`.
 - BFF-128 derives Schedule genre options from the loaded lineup rather than the global genre catalog or a static fallback — see `decisions.md`.
+- BFF-127 is a GitHub-sourced Schedule list performance bug; profile visible-row mount and per-tick card updates on device, with pure utility tests for time-state logic — see `decisions.md`.
+- BFF-127 clarify (attempt 1) auto-resolved 3 FlatList/clock-decoupling technical decisions with 0 human escalations — see `decisions.md`.
+- BFF-127 clarify confirmation pass (attempt 2) returned CLEAN — no remaining ambiguities after DR-1/DR-2/DR-3 — see `decisions.md`.
+- BFF-127 implement (code phases + static verification) is HARDENED — pure `getEventDisplayState` helper, optional `EventCard.displayState` prop, FlatList tuning, tsc/lint/jest all clean; T006-T009 manual profiling pending — see `decisions.md`.
+- BFF-127 pre-PR report is staged at the canonical feature path; source/static readiness is verified, while SC-002/SC-003 remain pending representative-device profiling — see `decisions.md`.
 
 ## Known Issues
 - Firestore `users`/`notifications` rules world-open; `@Public()` debug endpoints; `POST /artists` missing admin guard — see `known-issues.md` (+ `docs/audits/2026-08-09-deep-analysis-hardening-optimization.md`).
