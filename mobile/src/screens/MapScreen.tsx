@@ -78,13 +78,26 @@ interface CategoryConfig {
   borderColor: string;
 }
 
-/** Named marker image assets, keyed by the `markerAsset` value on a MapPOI
- * (e.g. Firestore `markerAsset: 'bigfam-logo'` on the front-gate POI). Add
- * new brand assets here as they're needed — unknown keys fall back to the
- * category emoji marker. */
-const MARKER_ASSETS: Record<string, ReturnType<typeof require>> = {
+/**
+ * `poi.markerAsset` is a remote image URL (Firebase/GCS Storage download URL,
+ * set via the admin panel upload flow) rather than a static bundled asset.
+ * Any POI can carry one — stage/vendor/sponsor logos, not just front gate.
+ * Rendering goes through `OptimizedImage`, which already handles gs://
+ * normalization, memory+disk caching, and `allowDownscaling` (so an
+ * oversized admin-uploaded source image never gets decoded at full res just
+ * to show a 32px marker — see the 25MB front-gate logo issue on #209).
+ * Local legacy key ('bigfam-logo') kept only for older seed data lacking a
+ * migrated URL yet; remove once backend confirms full URL migration.
+ */
+const LEGACY_MARKER_ASSETS: Record<string, ReturnType<typeof require>> = {
   'bigfam-logo': require('../assets/images/bf-logo-trans.png'),
 };
+
+/** True when a markerAsset value looks like a remote URL (http/https/gs://)
+ * rather than a legacy local asset key. */
+function isRemoteMarkerAsset(value: string): boolean {
+  return /^(https?:|gs:)/i.test(value);
+}
 
 export const POI_CATEGORIES: Record<POICategory, CategoryConfig> = {
   stage: {
@@ -194,6 +207,19 @@ export default function MapScreen() {
   const [stages, setStages] = useState<StageLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPOI, setSelectedPOI] = useState<(MapPOI | StageLocation) | null>(null);
+  // Per-POI custom marker asset load failures (404/decode error) — tracked
+  // by POI id so a broken admin-uploaded icon falls back to the category
+  // emoji marker instead of rendering blank. Persists for the session; a
+  // fresh screen mount will retry the URL.
+  const [failedMarkerAssets, setFailedMarkerAssets] = useState<Set<string>>(new Set());
+  const markMarkerAssetFailed = useCallback((poiId: string) => {
+    setFailedMarkerAssets(prev => {
+      if (prev.has(poiId)) return prev;
+      const next = new Set(prev);
+      next.add(poiId);
+      return next;
+    });
+  }, []);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapViewRef = useRef<Mapbox.MapView>(null);
   // Current map viewport bounds [[rightLon, topLat], [leftLon, bottomLat]] —
@@ -990,15 +1016,23 @@ export default function MapScreen() {
           );
         })}
 
-        {/* POI markers — category-driven */}
+        {/* POI markers — category-driven, with optional per-POI custom icon */}
         {filteredPOIs.map(poi => {
           const cat = resolveCategory(poi.category);
           const cfg = POI_CATEGORIES[cat];
           const isStaff = cat === 'staff';
-          // Front gate (and any other POI with a named brand asset) renders
-          // the Big Fam logo instead of the category emoji chip — falls back
-          // to the normal emoji marker if markerAsset is unset/unrecognized.
-          const markerAssetSource = poi.markerAsset ? MARKER_ASSETS[poi.markerAsset] : undefined;
+          // Any POI can carry a markerAsset (stage/vendor/sponsor logo, not
+          // just front gate) — set via the admin panel upload flow as a
+          // Storage download URL. Legacy local keys still resolve for older
+          // seed data that hasn't been migrated to a URL yet.
+          const asset = poi.markerAsset;
+          const remoteMarkerUri = asset && isRemoteMarkerAsset(asset) ? asset : undefined;
+          const legacyMarkerSource = asset && !remoteMarkerUri ? LEGACY_MARKER_ASSETS[asset] : undefined;
+          // Remote assets can fail to load (404, bad URL, offline) — track
+          // per-POI so a failed fetch falls back to the emoji marker instead
+          // of leaving a blank/broken image on the map.
+          const remoteFailed = failedMarkerAssets.has(poi.id);
+          const showCustomMarker = !!(legacyMarkerSource || (remoteMarkerUri && !remoteFailed));
           return (
             <Mapbox.PointAnnotation
               key={poi.id}
@@ -1006,13 +1040,24 @@ export default function MapScreen() {
               coordinate={[poi.lng, poi.lat]}
               onSelected={() => handlePOIPress(poi)}
             >
-              {markerAssetSource ? (
+              {showCustomMarker ? (
                 <View style={styles.brandMarker}>
-                  <Image
-                    source={markerAssetSource}
-                    style={styles.brandMarkerImage}
-                    resizeMode="contain"
-                  />
+                  {remoteMarkerUri ? (
+                    <OptimizedImage
+                      uri={remoteMarkerUri}
+                      style={styles.brandMarkerImage}
+                      containerStyle={styles.brandMarkerImageContainer}
+                      contentFit="contain"
+                      showLoadingIndicator={false}
+                      onError={() => markMarkerAssetFailed(poi.id)}
+                    />
+                  ) : (
+                    <Image
+                      source={legacyMarkerSource}
+                      style={styles.brandMarkerImage}
+                      resizeMode="contain"
+                    />
+                  )}
                 </View>
               ) : (
                 <View style={[
@@ -1380,6 +1425,16 @@ const styles = StyleSheet.create({
   brandMarkerImage: {
     width: 32,
     height: 32,
+  },
+  // Size-locked container for OptimizedImage so an admin-uploaded asset of
+  // any source resolution/aspect-ratio always renders into the same 32x32
+  // marker slot — `allowDownscaling` in OptimizedImage's expo-image handles
+  // avoiding a full-res decode of an oversized source (see #209 postmortem:
+  // a 25MB/2048x1582 source was being decoded at full res for a 32px marker).
+  brandMarkerImageContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'transparent',
   },
   marker: {
     justifyContent: 'center',
