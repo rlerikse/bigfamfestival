@@ -1,6 +1,7 @@
 # Architectural Domains - Big Fam Festival App
 
-**Generated**: February 9, 2026  
+**Generated**: February 9, 2026
+**Updated**: August 9, 2026 (backend domain list refreshed via `/blue.drift`)
 **Source**: Codebase pattern analysis
 
 ---
@@ -23,6 +24,10 @@ backend/src/
 ├── schedule/       # Personal schedule domain
 ├── artists/        # Artist directory domain
 ├── campsites/      # Location/campsite domain
+├── friends/        # Friend requests + opt-in location/campsite sharing domain (added 2026-07, BFF-30/37)
+├── map/            # POI markers domain (added 2026-07, BFF-28)
+├── admin/          # Admin-only aggregate endpoints (stats, user/shift management) (added 2026-04, BFF-S3-06)
+├── shifts/         # Staff/volunteer shift management domain (added 2026-07, BFF-29, admin CRUD only)
 ├── notifications/  # Push notification domain
 ├── health/         # System health domain
 ├── debug/          # Development tools domain

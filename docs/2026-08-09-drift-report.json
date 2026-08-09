@@ -1,0 +1,76 @@
+{
+  "timestamp": "2026-08-09T00:00:00Z",
+  "repository": "rlerikse/bigfamfestival",
+  "since": "full-repo-audit (post spec-verification pass)",
+  "sources": {
+    "LOCAL_SPEC": "available",
+    "JIRA": "not_applicable — no spec has ticket: frontmatter; Jira space closed",
+    "GLOBAL_CONTEXT": "partial — .specify/workspace/all-conventions.md is an unsynced placeholder; repo-level .specify/conventions/*.md used instead",
+    "FIGMA": "not_applicable — no spec has figma: frontmatter"
+  },
+  "findings": [
+    {
+      "source": "LOCAL_SPEC",
+      "severity": "warning",
+      "files": ["mobile/src/contexts/FakeClockContext.tsx", "mobile/src/components/FakeClockOverlay.tsx"],
+      "specId": null,
+      "message": "Admin time-simulation system fully implemented (2026-07-20) with zero spec coverage",
+      "resolution": "Created specs/BFF-53-fake-clock-debug-tool/spec.md",
+      "status": "resolved"
+    },
+    {
+      "source": "LOCAL_SPEC",
+      "severity": "warning",
+      "files": [
+        "mobile/src/components/WayfinderHUD.tsx",
+        "mobile/src/hooks/compassFusion.ts",
+        "mobile/src/hooks/useDirectionalTracking.ts"
+      ],
+      "specId": null,
+      "message": "Live Wayfinder HUD (friend-radar, compass sensor fusion) fully implemented (2026-07-27) with zero spec coverage; only documented after-the-fact in ADR.md (ADR-015)",
+      "resolution": "Created specs/BFF-54-live-wayfinder-hud/spec.md",
+      "status": "resolved"
+    },
+    {
+      "source": "LOCAL_SPEC",
+      "severity": "warning",
+      "files": ["backend/src/events/festival-day.util.ts", "backend/src/events/events.service.ts", "backend/src/events/events.controller.ts"],
+      "specId": "BFF-6",
+      "message": "festivalDay boundary logic, overlap validation, and the move/resize PATCH API (added 2026-07-24) are undocumented in BFF-6 (spec dated 2026-02-09)",
+      "resolution": "Added 'Festival-Day Boundary & Overlap Validation' section to specs/BFF-6-events-schedule/spec.md",
+      "status": "resolved"
+    },
+    {
+      "source": "LOCAL_SPEC",
+      "severity": "info",
+      "files": ["backend/src/map/interfaces/poi.interface.ts", "admin/src/components/POIManager.tsx"],
+      "specId": "BFF-28",
+      "message": "Admin-uploadable per-POI custom marker images (markerAsset) go beyond the spec's fixed 7-category icon set (SC-001)",
+      "resolution": "Added 'Dynamic Per-POI Marker Assets' section to specs/BFF-28-poi-markers-festival-map/spec.md",
+      "status": "resolved"
+    },
+    {
+      "source": "GLOBAL_CONTEXT",
+      "severity": "warning",
+      "files": [".specify/conventions/architectural-domains.md"],
+      "message": "Backend domain map (generated 2026-02-09) was missing 4 modules added since: friends/, map/, admin/, shifts/",
+      "resolution": "Refreshed backend domain list with missing modules and their origin specs",
+      "status": "resolved"
+    },
+    {
+      "source": "GLOBAL_CONTEXT",
+      "severity": "info",
+      "files": [".specify/workspace/all-conventions.md"],
+      "message": "Placeholder file — never synced (0 conventions recorded). No automated sync exists since the Sync Spec Context workflow was removed.",
+      "resolution": "Not fixed — flagged as a source-coverage gap, not a documentation violation",
+      "status": "acknowledged"
+    }
+  ],
+  "summary": {
+    "total": 6,
+    "bySource": { "LOCAL_SPEC": 4, "JIRA": 0, "GLOBAL_CONTEXT": 2, "FIGMA": 0 },
+    "bySeverity": { "critical": 0, "warning": 4, "info": 2 },
+    "resolved": 5,
+    "acknowledged": 1
+  }
+}
