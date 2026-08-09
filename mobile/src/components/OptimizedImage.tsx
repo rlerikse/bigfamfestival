@@ -13,8 +13,7 @@ import {
   ImageStyle, 
   ViewStyle,
   ActivityIndicator,
-  Text,
-  Image as RNImage
+  Text
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -152,14 +151,42 @@ const OptimizedImage: React.FC<OptimizedImageProps> = ({
 
   return (
     <View style={combinedContainerStyle}>
-      {/* Main image */}
-      <RNImage
+      {/*
+       * Restored expo-image (2026-08) after ~3 weeks on plain RN Image.
+       *
+       * History: aeda3b0 (Jul 14) swapped to RN Image because expo-image was
+       * caching 403 responses from the old Firebase Storage REST endpoint
+       * (`firebasestorage.googleapis.com/v0/b/.../o/...?alt=media`), which
+       * involves an internal redirect that expo-image's native downloader
+       * handled differently than RN's networking stack and occasionally
+       * cached the failed/redirected response as if it were the image.
+       *
+       * That underlying cause is gone: 4c3ed40 (same day, ~3h later) switched
+       * every image URL to direct GCS object URLs (`storage.googleapis.com/
+       * <bucket>/<path>`, no redirect, no REST wrapper) — but nobody
+       * reverted the RN Image workaround afterward. RN's core Image has no
+       * real bitmap cache (only a same-uri debounce Set in this file that
+       * skips the spinner, not the actual decode), so every mount/remount
+       * across list-view AND grid-view triggers a fresh native decode with
+       * zero reuse — this was the shared root cause of the scroll lag
+       * reported identically in both Schedule views (2026-08 investigation).
+       *
+       * expo-image gives real memory+disk caching (`cachePolicy="memory-disk"`)
+       * plus `allowDownscaling` (avoids decoding full-res 2048x2048 source
+       * assets just to show a ~100x100 thumbnail) and `priority` hints. If a
+       * caching-a-failure issue resurfaces, prefer `cachePolicy="none"` only
+       * for provably-flaky URLs rather than reverting the whole component. */}
+      <Image
         source={{ uri: optimizedUri }}
-        style={[styles.image, style] as any}
-        resizeMode={contentFit === 'cover' ? 'cover' : 'contain'}
+        style={[styles.image, style]}
+        contentFit={contentFit}
+        cachePolicy="memory-disk"
+        priority={priority}
+        allowDownscaling={true}
         onLoadStart={handleLoadStart}
         onLoadEnd={handleLoadEnd}
         onError={handleError}
+        placeholder={placeholder}
       />
 
       {/* Loading state - only show for non-cached images */}

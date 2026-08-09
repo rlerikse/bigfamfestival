@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform, Image } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +23,14 @@ import { signedAngularDiff, unwrapHeading } from '../hooks/compassFusion';
 // re-created each render.
 const CAMERA_MIN_INTERVAL_MS = 200;
 const CAMERA_MIN_DELTA_DEG = 1;
+
+// TEMP FLAG (per Robert/Quinn, 2026-08): suppress the friend-radar HUD
+// (viewport-edge friend icons) while tracking lag is being debugged.
+// This is intentionally a dumb boolean, not a redesign — flip back to
+// true (or remove) once the underlying lag issue is resolved. Does NOT
+// affect underlying location tracking/data, only whether the border-
+// anchored radar icons render.
+const SHOW_FRIEND_RADAR_HUD = false;
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -68,6 +76,27 @@ interface CategoryConfig {
   markerSize: number;
   borderWidth: number;
   borderColor: string;
+}
+
+/**
+ * `poi.markerAsset` is a remote image URL (Firebase/GCS Storage download URL,
+ * set via the admin panel upload flow) rather than a static bundled asset.
+ * Any POI can carry one — stage/vendor/sponsor logos, not just front gate.
+ * Rendering goes through `OptimizedImage`, which already handles gs://
+ * normalization, memory+disk caching, and `allowDownscaling` (so an
+ * oversized admin-uploaded source image never gets decoded at full res just
+ * to show a 32px marker — see the 25MB front-gate logo issue on #209).
+ * Local legacy key ('bigfam-logo') kept only for older seed data lacking a
+ * migrated URL yet; remove once backend confirms full URL migration.
+ */
+const LEGACY_MARKER_ASSETS: Record<string, ReturnType<typeof require>> = {
+  'bigfam-logo': require('../assets/images/bf-logo-trans.png'),
+};
+
+/** True when a markerAsset value looks like a remote URL (http/https/gs://)
+ * rather than a legacy local asset key. */
+function isRemoteMarkerAsset(value: string): boolean {
+  return /^(https?:|gs:)/i.test(value);
 }
 
 export const POI_CATEGORIES: Record<POICategory, CategoryConfig> = {
@@ -148,6 +177,11 @@ interface MapPOI {
   category: string;
   color: string;
   icon: string;
+  /**
+   * Optional named asset to render as the marker instead of the emoji `icon`
+   * (e.g. 'bigfam-logo' for the front gate). When unset, fall back to `icon`.
+   */
+  markerAsset?: string;
   lat: number;
   lng: number;
   description?: string;
@@ -173,6 +207,19 @@ export default function MapScreen() {
   const [stages, setStages] = useState<StageLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPOI, setSelectedPOI] = useState<(MapPOI | StageLocation) | null>(null);
+  // Per-POI custom marker asset load failures (404/decode error) — tracked
+  // by POI id so a broken admin-uploaded icon falls back to the category
+  // emoji marker instead of rendering blank. Persists for the session; a
+  // fresh screen mount will retry the URL.
+  const [failedMarkerAssets, setFailedMarkerAssets] = useState<Set<string>>(new Set());
+  const markMarkerAssetFailed = useCallback((poiId: string) => {
+    setFailedMarkerAssets(prev => {
+      if (prev.has(poiId)) return prev;
+      const next = new Set(prev);
+      next.add(poiId);
+      return next;
+    });
+  }, []);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapViewRef = useRef<Mapbox.MapView>(null);
   // Current map viewport bounds [[rightLon, topLat], [leftLon, bottomLat]] —
@@ -220,10 +267,13 @@ export default function MapScreen() {
   //    direction arrow (device heading) instead of moving the map. Friend
   //    icons are visually frozen in place (snapshotted) — they do not
   //    reposition on screen even though their underlying data keeps updating.
-  //  - 'compass' (default): map itself rotates to match device heading, self
+  //  - 'compass': map itself rotates to match device heading, self
   //    marker points a fixed "up," and friend icons actively reposition as
   //    their live location changes.
-  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('compass');
+  // Default is 'north' for now (Robert, temp default flip while compass/
+  // tracking-lag issues are debugged) — toggle still lets users switch to
+  // compass mode manually; this only changes the initial state.
+  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('north');
   // Only stream the magnetometer when there's actually something to point at —
   // either friends visible on the radar (icons need live heading to swing
   // around the border) or an active tracking target. Avoids draining battery
@@ -1021,11 +1071,23 @@ export default function MapScreen() {
           );
         })}
 
-        {/* POI markers — category-driven */}
+        {/* POI markers — category-driven, with optional per-POI custom icon */}
         {filteredPOIs.map(poi => {
           const cat = resolveCategory(poi.category);
           const cfg = POI_CATEGORIES[cat];
           const isStaff = cat === 'staff';
+          // Any POI can carry a markerAsset (stage/vendor/sponsor logo, not
+          // just front gate) — set via the admin panel upload flow as a
+          // Storage download URL. Legacy local keys still resolve for older
+          // seed data that hasn't been migrated to a URL yet.
+          const asset = poi.markerAsset;
+          const remoteMarkerUri = asset && isRemoteMarkerAsset(asset) ? asset : undefined;
+          const legacyMarkerSource = asset && !remoteMarkerUri ? LEGACY_MARKER_ASSETS[asset] : undefined;
+          // Remote assets can fail to load (404, bad URL, offline) — track
+          // per-POI so a failed fetch falls back to the emoji marker instead
+          // of leaving a blank/broken image on the map.
+          const remoteFailed = failedMarkerAssets.has(poi.id);
+          const showCustomMarker = !!(legacyMarkerSource || (remoteMarkerUri && !remoteFailed));
           return (
             <Mapbox.PointAnnotation
               key={poi.id}
@@ -1033,23 +1095,44 @@ export default function MapScreen() {
               coordinate={[poi.lng, poi.lat]}
               onSelected={() => handlePOIPress(poi)}
             >
-              <View style={[
-                styles.marker,
-                {
-                  width: cfg.markerSize,
-                  height: cfg.markerSize,
-                  borderRadius: cfg.markerSize / 2,
-                  backgroundColor: cfg.color,
-                  borderWidth: cfg.borderWidth,
-                  borderColor: cfg.borderColor,
-                },
-                // Staff/Medical: extra prominence
-                isStaff && styles.staffMarkerExtra,
-              ]}>
-                <Text style={[styles.markerEmoji, isStaff && styles.staffMarkerEmojiLarge]}>
-                  {cfg.emoji}
-                </Text>
-              </View>
+              {showCustomMarker ? (
+                <View style={styles.brandMarker}>
+                  {remoteMarkerUri ? (
+                    <OptimizedImage
+                      uri={remoteMarkerUri}
+                      style={styles.brandMarkerImage}
+                      containerStyle={styles.brandMarkerImageContainer}
+                      contentFit="contain"
+                      showLoadingIndicator={false}
+                      onError={() => markMarkerAssetFailed(poi.id)}
+                    />
+                  ) : (
+                    <Image
+                      source={legacyMarkerSource}
+                      style={styles.brandMarkerImage}
+                      resizeMode="contain"
+                    />
+                  )}
+                </View>
+              ) : (
+                <View style={[
+                  styles.marker,
+                  {
+                    width: cfg.markerSize,
+                    height: cfg.markerSize,
+                    borderRadius: cfg.markerSize / 2,
+                    backgroundColor: cfg.color,
+                    borderWidth: cfg.borderWidth,
+                    borderColor: cfg.borderColor,
+                  },
+                  // Staff/Medical: extra prominence
+                  isStaff && styles.staffMarkerExtra,
+                ]}>
+                  <Text style={[styles.markerEmoji, isStaff && styles.staffMarkerEmojiLarge]}>
+                    {cfg.emoji}
+                  </Text>
+                </View>
+              )}
               <Mapbox.Callout title={poi.name} />
             </Mapbox.PointAnnotation>
           );
@@ -1125,19 +1208,23 @@ export default function MapScreen() {
       {/* Friend-radar HUD — always-visible border-anchored icons for every
           visible friend (per #159). This renders regardless of tracking
           state; the gradient border below is an ADDITIVE focus layer for
-          whichever single friend is selected, never a replacement. */}
-      <WayfinderHUD
-        userCoords={selfCoords}
-        heading={heading}
-        visibleBounds={visibleBounds}
-        friends={wayfinderFriends}
-        trackedFriendId={trackingTarget?.userId ?? null}
-        distanceUnit={distanceUnit}
-        onSelectFriend={(f) => {
-          const match = friendMarkers.find(fm => fm.userId === f.userId);
-          if (match) setSelectedFriend(match);
-        }}
-      />
+          whichever single friend is selected, never a replacement.
+          TEMP: gated off via SHOW_FRIEND_RADAR_HUD while tracking lag is
+          debugged (Robert/Quinn, 2026-08) — flip flag back on to restore. */}
+      {SHOW_FRIEND_RADAR_HUD && (
+        <WayfinderHUD
+          userCoords={selfCoords}
+          heading={heading}
+          visibleBounds={visibleBounds}
+          friends={wayfinderFriends}
+          trackedFriendId={trackingTarget?.userId ?? null}
+          distanceUnit={distanceUnit}
+          onSelectFriend={(f) => {
+            const match = friendMarkers.find(fm => fm.userId === f.userId);
+            if (match) setSelectedFriend(match);
+          }}
+        />
+      )}
 
       {/* Directional hot/cold gradient overlay — only while a friend is under
           active tracking focus. Renders ON TOP of the map but BELOW the top
@@ -1379,6 +1466,35 @@ const styles = StyleSheet.create({
   },
 
   // ── Markers ────────────────────────────────────────────────────────────────
+  brandMarker: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5F5DC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  brandMarkerImage: {
+    width: 32,
+    height: 32,
+  },
+  // Size-locked container for OptimizedImage so an admin-uploaded asset of
+  // any source resolution/aspect-ratio always renders into the same 32x32
+  // marker slot — `allowDownscaling` in OptimizedImage's expo-image handles
+  // avoiding a full-res decode of an oversized source (see #209 postmortem:
+  // a 25MB/2048x1582 source was being decoded at full res for a 32px marker).
+  brandMarkerImageContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'transparent',
+  },
   marker: {
     justifyContent: 'center',
     alignItems: 'center',
