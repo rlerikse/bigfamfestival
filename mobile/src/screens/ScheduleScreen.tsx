@@ -41,7 +41,7 @@ import HorizontalScheduleView from '../components/HorizontalScheduleView';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
-import { isEventLive, resolveScheduleDayScrollTarget, deriveGenreOptions } from '../utils/scheduleUtils';
+import { isEventLive, resolveScheduleDayScrollTarget, deriveGenreOptions, getEventDisplayState } from '../utils/scheduleUtils';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -659,6 +659,15 @@ const ScheduleScreen = () => {
   // --- Optimized Renderer with better caching ---
   const renderEventCard = useCallback(({ item }: { item: ScheduleEvent }) => {
     const isInUserSchedule = Boolean(userSchedule[item.id]);
+    // displayState MUST use the true, unrounded `now` — rounding this would
+    // delay LIVE/COMPLETED transitions by up to 59s and violate FR-006.
+    const displayState = getEventDisplayState(item, now);
+    // `currentTime` is rounded down to the current minute boundary and fed
+    // only to EventCard's countdown-text calculation, which already only
+    // visually changes on minute boundaries — this keeps the prop
+    // shallow-equal across most 10s ticks, letting EventCard's React.memo
+    // bail out for unchanged cards (DR-2/DR-6).
+    const roundedCurrentTime = Math.floor(now / 60_000) * 60_000;
     return (
       <EventCard
         key={`event-${item.id}`} // Explicit key for better React reconciliation
@@ -668,7 +677,8 @@ const ScheduleScreen = () => {
         onToggleSchedule={handleToggleSchedule}
         onEventPress={handleEventPress}
         showStatusBadge
-        currentTime={now}
+        currentTime={roundedCurrentTime}
+        displayState={displayState}
       />
     );
   }, [userSchedule, themeColors, handleToggleSchedule, handleEventPress, now]);
@@ -1074,11 +1084,11 @@ const ScheduleScreen = () => {
             ]}
             showsVerticalScrollIndicator={false}
             // Enhanced performance optimizations for smooth scrolling
-            removeClippedSubviews={false}
-            maxToRenderPerBatch={20}
+            removeClippedSubviews={Platform.OS === 'android'}
+            maxToRenderPerBatch={10}
             updateCellsBatchingPeriod={100}
-            initialNumToRender={75}
-            windowSize={15}
+            initialNumToRender={10}
+            windowSize={7}
             legacyImplementation={false}
             disableVirtualization={false}
             // Consistent item layout for better performance

@@ -19,8 +19,8 @@
 
 **Dependencies**: None.
 
-- [ ] T001 [P] [UNIT] [M] Add failing boundary-focused unit coverage in `mobile/src/__tests__/scheduleUtils.displayState.test.ts` for `getEventDisplayState(event, nowMs)`, following the import-only-`scheduleUtils.ts` convention in `mobile/src/__tests__/scheduleUtils.genre.test.ts`; cover upcoming/live/completed, event end times, fake-clock jumps, cross-midnight events, and the existing two-hour fallback. [FR-010] [DR-3,DR-4]
-- [ ] T002 [D:T001] [B:T003,T004,T005] [M] Implement and export `getEventDisplayState(event, nowMs): 'upcoming' | 'live' | 'completed'` in `mobile/src/utils/scheduleUtils.ts`, deriving state only through the existing `isEventLive` and `getEventEndMs` exports without duplicating start/end/midnight/fallback date math. [FR-005,FR-006,FR-010] [DR-3,DR-4]
+- [x] T001 [P] [UNIT] [M] Add failing boundary-focused unit coverage in `mobile/src/__tests__/scheduleUtils.displayState.test.ts` for `getEventDisplayState(event, nowMs)`, following the import-only-`scheduleUtils.ts` convention in `mobile/src/__tests__/scheduleUtils.genre.test.ts`; cover upcoming/live/completed, event end times, fake-clock jumps, cross-midnight events, and the existing two-hour fallback. [FR-010] [DR-3,DR-4]
+- [x] T002 [D:T001] [B:T003,T004,T005] [M] Implement and export `getEventDisplayState(event, nowMs): 'upcoming' | 'live' | 'completed'` in `mobile/src/utils/scheduleUtils.ts`, deriving state only through the existing `isEventLive` and `getEventEndMs` exports without duplicating start/end/midnight/fallback date math. [FR-005,FR-006,FR-010] [DR-3,DR-4]
 
 **Checkpoint**: The pure utility tests demonstrate correct state transitions without importing React Native or Expo modules.
 
@@ -30,7 +30,7 @@
 
 **Dependencies**: T002.
 
-- [ ] T003 [D:T002] [B:T005] [US3] [M] Update `mobile/src/components/EventCard.tsx` with optional `displayState?: 'upcoming' | 'live' | 'completed'`; when supplied, derive `isLive` and `isPast` from it, and when absent preserve the existing `currentTime` Date-math fallback exactly. Do not modify `mobile/src/components/LiveUpcomingEvents.tsx`, add a custom `React.memo` comparator, or create a Jest/RTL component test. [FR-004,FR-005,FR-006,FR-008] [DR-2,DR-5]
+- [x] T003 [D:T002] [B:T005] [US3] [M] Update `mobile/src/components/EventCard.tsx` with optional `displayState?: 'upcoming' | 'live' | 'completed'`; when supplied, derive `isLive` and `isPast` from it, and when absent preserve the existing `currentTime` Date-math fallback exactly. Do not modify `mobile/src/components/LiveUpcomingEvents.tsx`, add a custom `React.memo` comparator, or create a Jest/RTL component test. [FR-004,FR-005,FR-006,FR-008] [DR-2,DR-5]
 
 **Checkpoint**: `EventCard` remains source-compatible with its unmodified `LiveUpcomingEvents.tsx` consumer and can accept the Schedule list's derived state.
 
@@ -40,8 +40,8 @@
 
 **Dependencies**: T002 and T003. Execute T004 before T005 because both modify `mobile/src/screens/ScheduleScreen.tsx`.
 
-- [ ] T004 [D:T002,T003] [B:T005] [US1] [US2] [M] Tune the list-view `FlatList` in `mobile/src/screens/ScheduleScreen.tsx`: set `initialNumToRender={10}`, `maxToRenderPerBatch={10}`, `windowSize={7}`, and `removeClippedSubviews={Platform.OS === 'android'}`; retain `getItemLayout` at 112px and `updateCellsBatchingPeriod={100}` unchanged. Preserve fewer-than-budget list behavior, the horizontal view, and correct fixed-row positioning. [FR-001,FR-002,FR-003,FR-008,FR-009] [DR-1]
-- [ ] T005 [D:T002,T003,T004] [US3] [L] Update `renderEventCard` in `mobile/src/screens/ScheduleScreen.tsx` to compute `displayState` with `getEventDisplayState(item, now)` using the true, unrounded schedule time, then pass a separately minute-rounded `currentTime` value (`Math.floor(now / 60_000) * 60_000`) only for `EventCard` countdown text. **Warning: never round the value used for `displayState`; doing so delays live/completed transitions and violates FR-006.** Preserve cache-first loading, ordering, filters, pull-to-refresh, favorites, detail navigation, fake-clock behavior, and card content. [FR-004,FR-005,FR-006,FR-007,FR-008] [DR-2,DR-3,DR-6]
+- [x] T004 [D:T002,T003] [B:T005] [US1] [US2] [M] Tune the list-view `FlatList` in `mobile/src/screens/ScheduleScreen.tsx`: set `initialNumToRender={10}`, `maxToRenderPerBatch={10}`, `windowSize={7}`, and `removeClippedSubviews={Platform.OS === 'android'}`; retain `getItemLayout` at 112px and `updateCellsBatchingPeriod={100}` unchanged. Preserve fewer-than-budget list behavior, the horizontal view, and correct fixed-row positioning. [FR-001,FR-002,FR-003,FR-008,FR-009] [DR-1]
+- [x] T005 [D:T002,T003,T004] [US3] [L] Update `renderEventCard` in `mobile/src/screens/ScheduleScreen.tsx` to compute `displayState` with `getEventDisplayState(item, now)` using the true, unrounded schedule time, then pass a separately minute-rounded `currentTime` value (`Math.floor(now / 60_000) * 60_000`) only for `EventCard` countdown text. **Warning: never round the value used for `displayState`; doing so delays live/completed transitions and violates FR-006.** Preserve cache-first loading, ordering, filters, pull-to-refresh, favorites, detail navigation, fake-clock behavior, and card content. [FR-004,FR-005,FR-006,FR-007,FR-008] [DR-2,DR-3,DR-6]
 
 **Checkpoint**: The list gives memoized cards stable props across unchanged 10-second ticks while state crossings still use the real schedule clock.
 
@@ -62,9 +62,9 @@
 
 **Dependencies**: T002 and T005; T010-T012 can run in parallel after those tasks complete.
 
-- [ ] T010 [D:T002,T005] [P] [UNIT] [S] Run `npx jest --config jest.config.js scheduleUtils.displayState.test.ts` from `mobile/` and record the result; keep the test run restricted to the pure utility boundary. [FR-010] [DR-3,DR-4]
-- [ ] T011 [D:T002,T005] [P] [S] Run `npm run lint` from `mobile/` and resolve only BFF-127-introduced diagnostics. [FR-001,FR-002,FR-003,FR-004,FR-005,FR-006,FR-007,FR-008,FR-009,FR-010]
-- [ ] T012 [D:T002,T005] [P] [S] Run `npm run typecheck` from `mobile/` and resolve only BFF-127-introduced diagnostics. [FR-001,FR-002,FR-003,FR-004,FR-005,FR-006,FR-007,FR-008,FR-009,FR-010]
+- [x] T010 [D:T002,T005] [P] [UNIT] [S] Run `npx jest --config jest.config.js scheduleUtils.displayState.test.ts` from `mobile/` and record the result; keep the test run restricted to the pure utility boundary. [FR-010] [DR-3,DR-4]
+- [x] T011 [D:T002,T005] [P] [S] Run `npm run lint` from `mobile/` and resolve only BFF-127-introduced diagnostics. [FR-001,FR-002,FR-003,FR-004,FR-005,FR-006,FR-007,FR-008,FR-009,FR-010]
+- [x] T012 [D:T002,T005] [P] [S] Run `npm run typecheck` from `mobile/` and resolve only BFF-127-introduced diagnostics. [FR-001,FR-002,FR-003,FR-004,FR-005,FR-006,FR-007,FR-008,FR-009,FR-010]
 - [ ] T013 [D:T006,T007,T008,T009,T010,T011,T012] [S] Stage the approved BFF-127 source, test, feature artifacts, and workflow-state changes with `git add`; do not create a commit. The pipeline orchestrator creates the signed commit only after Checkpoint 2 approval. [FR-001,FR-002,FR-003,FR-004,FR-005,FR-006,FR-007,FR-008,FR-009,FR-010]
 
 ## Dependencies and Execution Order
