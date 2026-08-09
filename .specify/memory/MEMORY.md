@@ -19,3 +19,7 @@ T001-T006 done (clampVerticalOffset in scheduleUtils.ts, {x,y} scroll contract, 
 
 ## Spec Status (verified 2026-08-09)
 - Full report: `docs/2026-08-09-spec-status-report.md`. 15 implemented, BFF-50 ~70%, BFF-29/39/52 partial, BFF-27/31/32/33/36/38 not implemented.
+
+## Routine: run `/postmerge` after EVERY merge into `dev` (auto-run)
+After any merge into `dev`, run the closeout routine defined in `.github/prompts/postmerge.prompt.md` (invocable as `/postmerge`). The agent should run this automatically as the Definition of Done for a dev merge, without being asked. Steps: (1) validate & harden (mobile tsc/lint/jest, backend if touched); (2) update human patch notes in `mobile/release-notes/NEXT.md`; (3) preview next semver (do NOT edit manifests — release-please owns version bumps + CHANGELOG.md); (4) update `ADR.md`/`README.md`/`docs/*` as needed; (5) version-consistency drift check across the 3 manifests + `.release-please-manifest.json` + release-notes (flag, don't auto-fix); (6) save memory insights (dual-write); (7) signed commit + push to `dev` (respect branch protection — prefer a quick docs PR or owner-bypass direct push for docs-only closeout). Never manually bump `mobile/package.json`/`backend/package.json`/`mobile/app.json`/`.release-please-manifest.json`/`CHANGELOG.md` versions.
+
