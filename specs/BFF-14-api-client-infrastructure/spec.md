@@ -1,8 +1,11 @@
 # API Client Infrastructure - Retroactive Specification
 
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-14](https://eriksensolutions.atlassian.net/browse/BFF-14)  
+**Status**: ✅ Implemented (verified 2026-08-09) — auth detail updated  
+**Jira**: [BFF-14](https://eriksensolutions.atlassian.net/browse/BFF-14) _(link broken — Jira space closed)_  
 **Created**: 2026-02-09  
+**Verified**: 2026-08-09  
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `mobile/src/services/api.ts` interceptors, retry/backoff, network handling. **Note:** auth now uses Firebase `getIdToken()` refresh — the manual JWT / SecureStore token flow described below is superseded (see BFF-50). Jira space is closed — link above is broken; **this spec is the last point of reference**. Original content preserved as-is.
 
 ---
 

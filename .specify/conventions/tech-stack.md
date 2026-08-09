@@ -65,6 +65,13 @@ This is a **polyglot** repository containing:
 |------------|---------|---------|
 | expo-server-sdk | ^3.15.0 | Expo push notifications |
 
+### Email
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| @sendgrid/mail | ^8.1.6 | Transactional + blast email provider (BFF-52) |
+
+> **Note**: **SendGrid** is the shipped email provider (used by `backend/scripts/email-blast.ts`). Firebase Auth transactional emails (password reset / verification) are **not yet routed through custom SMTP**, and branded templates + SPF/DKIM/DMARC are outstanding (BFF-52 ~70%).
+
 ### Utilities
 | Technology | Version | Purpose |
 |------------|---------|---------|
@@ -135,6 +142,9 @@ This is a **polyglot** repository containing:
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | expo-location | ~19.0.7 | Location services |
+| @rnmapbox/maps | ^10.3.2 | Interactive festival map, POI/friend/campsite markers (BFF-28/35/37) |
+
+> **Note**: The map shipped on **Mapbox only**. The BFF-35 spec proposed a Mapbox/HERE hybrid, but **HERE SDK was never integrated**. what3words navigation (BFF-32) was never built — only a mock placeholder exists.
 
 ---
 

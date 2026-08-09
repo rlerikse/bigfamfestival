@@ -1,9 +1,12 @@
 # BFF-39: Mobile Deployment & Release
 
-**Epic**: [BFF-39](https://eriksensolutions.atlassian.net/browse/BFF-39)  
-**Status**: 60% Complete  
+**Epic**: [BFF-39](https://eriksensolutions.atlassian.net/browse/BFF-39) _(link broken — Jira space closed)_  
+**Status**: 🟠 Partially Implemented (~65%) — verified 2026-08-09  
 **Created**: 2026-02-10  
 **Version**: 1.0  
+**Verified**: 2026-08-09  
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ~65% complete.** Done: `mobile/eas.json` build profiles (dev/preview/beta/production) + App Store Connect & Google Play listings + release-please version sync. **Pending:** Play service-account JSON for automated submit (M.7), staging/prod env strategy (M.8 — note the app uses `app.config.js`, not `.env` files), and beta-testing onboarding docs (M.9). Correction: `eas.json` lives at `mobile/eas.json`, not repo root. Jira space is closed — link above is broken; this spec is the last point of reference. Original content preserved as-is.
 
 ---
 

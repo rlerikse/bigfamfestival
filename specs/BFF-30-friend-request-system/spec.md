@@ -3,8 +3,11 @@
 **Jira**: [BFF-30](https://eriksensolutions.atlassian.net/browse/BFF-30)  
 **Feature Branch**: `BFF-30-friend-request-system`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-25 (Friends & Campsite)
+**Status**: ✅ Implemented (verified 2026-08-09 — was “Draft”)  
+**Epic**: BFF-25 (Friends & Campsite)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented (100%).** `backend/src/friends/friends.service.ts` covers the full lifecycle (sendRequest / respondToRequest / incoming / outgoing / cancel / getFriends / removeFriend) + `mobile/src/screens/FriendsScreen.tsx`. Original content preserved as-is.
 
 ---
 

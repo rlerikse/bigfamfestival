@@ -3,8 +3,11 @@
 **Jira**: [BFF-27](https://eriksensolutions.atlassian.net/browse/BFF-27)  
 **Feature Branch**: `BFF-27-qr-code-ticket-display`  
 **Created**: 2026-02-10  
-**Status**: On Hold  
-**Epic**: BFF-17 (Ticketing & Entry)
+**Status**: ❌ Not Implemented — unstarted (verified 2026-08-09; was “On Hold”)  
+**Epic**: BFF-17 (Ticketing & Entry)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ❌ Not Implemented.** `TicketsModule` is commented out in `backend/src/app.module.ts`; no QR packages (`react-native-qrcode-svg`) in mobile; no `TicketScreen`. “On Hold” was optimistic — this is genuinely unstarted. **Recommendation: archive** (pairs with BFF-38). The spec’s user scenarios + ticket data schema remain a good restart point. Original content preserved as-is.
 
 ---
 

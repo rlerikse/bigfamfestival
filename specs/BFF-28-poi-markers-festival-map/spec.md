@@ -3,8 +3,11 @@
 **Jira**: [BFF-28](https://eriksensolutions.atlassian.net/browse/BFF-28)  
 **Feature Branch**: `BFF-28-poi-markers-festival-map`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-24 (Interactive Map & POI)
+**Status**: ✅ Implemented (verified 2026-08-09 — was “Draft”)  
+**Epic**: BFF-24 (Interactive Map & POI)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `backend/src/map/map.service.ts` + `map.controller.ts` (`GET /map/pois`); `mobile/src/screens/MapScreen.tsx` renders `mapPOIs`. The category taxonomy was **widened** to 5 marker types (stage / food / beverage / shop / staff-medical) vs the 7 categories listed below. Original content preserved as-is.
 
 ---
 

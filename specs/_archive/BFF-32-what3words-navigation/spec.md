@@ -3,8 +3,11 @@
 **Jira**: [BFF-32](https://eriksensolutions.atlassian.net/browse/BFF-32)  
 **Feature Branch**: `BFF-32-what3words-navigation`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-26 (Navigation & Wayfinding)
+**Status**: ❌ Not Implemented — mock placeholder only; de-scoped (verified 2026-08-09)  
+**Epic**: BFF-26 (Navigation & Wayfinding)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ❌ Not Implemented (never built).** `mobile/src/services/mapService.ts` `getWhat3WordsAddress()` returns **random mock words**; there is **no what3words package or API key** anywhere in mobile/ or backend/. This was the feature you were unsure about — confirmed de-scoped. **Recommendation: archive as Obsolete/Not Needed.** A generic Mapbox routing skeleton (`routingService.ts`) does exist if wayfinding is revived without w3w. Original content preserved as-is.
 
 ---
 
