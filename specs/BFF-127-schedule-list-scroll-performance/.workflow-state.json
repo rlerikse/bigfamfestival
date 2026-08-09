@@ -1,0 +1,31 @@
+{
+  "feature": "BFF-127-schedule-list-scroll-performance",
+  "jira_id": "BFF-127",
+  "source_of_truth": "GitHub Issue #186",
+  "created_at": "2026-08-09T00:00:00Z",
+  "last_updated": "2026-08-09T00:00:00Z",
+  "steps": {
+    "specify": {
+      "completed_at": "2026-08-09T00:00:00Z",
+      "amended_at": null,
+      "version": "v1.0"
+    },
+    "clarify": {
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "MODERATE",
+      "skipped": false,
+      "status": "clean",
+      "questions_auto_resolved": 3,
+      "questions_escalated": 0,
+      "clarification_attempt": 2
+    },
+    "plan": {
+      "completed_at": null,
+      "spec_hash": ""
+    },
+    "tasks": {
+      "completed_at": null,
+      "plan_hash": ""
+    }
+  }
+}

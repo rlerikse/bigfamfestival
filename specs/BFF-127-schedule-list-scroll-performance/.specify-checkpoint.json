@@ -1,0 +1,30 @@
+{
+  "jira_ticket": "BFF-127",
+  "source_of_truth": "GitHub Issue #186",
+  "jira_summary": "Schedule list loading and scroll lag caused by excessive initial rendering and clock-tick list-wide renders",
+  "jira_type": "Bug",
+  "jira_status": "Open",
+  "jira_description_excerpt": "The Schedule list loads and scrolls with noticeable lag. The dominant costs are synchronously rendering 75 EventCards at first paint and re-rendering every mounted card on each ten-second schedule-clock tick.",
+  "jira_ac_summary": [
+    "Initial mount renders approximately visible rows, not 75.",
+    "Clock ticks update only cards whose live state changes.",
+    "Time to interactivity and scroll frame rate measurably improve on a mid-range Android device."
+  ],
+  "jira_ac_count": 3,
+  "jira_comment_count": 0,
+  "epic_children_count": 0,
+  "figma_loaded": false,
+  "target_repo": "/Users/rerikse3/repos/es/bigfamfestival",
+  "branch_name": "bugfix/BFF-127-schedule-list-perf",
+  "spec_dir": "specs/BFF-127-schedule-list-scroll-performance",
+  "spec_path": "specs/BFF-127-schedule-list-scroll-performance/spec.md",
+  "spec_written": true,
+  "current_step": "spec_written_pending_pipeline_clarification",
+  "context_sources": [
+    "user-provided GitHub Issue #186 context",
+    "local ScheduleScreen/EventCard/FakeClockContext evidence",
+    "GitHub-backed BFF-124 and BFF-128 spec conventions"
+  ],
+  "created_at": "2026-08-09T00:00:00Z",
+  "updated_at": "2026-08-09T00:00:00Z"
+}
