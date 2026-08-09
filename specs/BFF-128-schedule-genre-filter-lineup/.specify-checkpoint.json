@@ -1,7 +1,7 @@
 {
   "feature_id": "BFF-128",
   "source": "GitHub Issue #185",
-  "current_step": "clarify_complete",
+  "current_step": "implement_complete",
   "spec_written": true,
   "spec_path": "specs/BFF-128-schedule-genre-filter-lineup/spec.md",
   "spec_dir": "specs/BFF-128-schedule-genre-filter-lineup",
@@ -12,5 +12,14 @@
     "pre-fetched GitHub Issue #185",
     "verified ScheduleScreen.tsx evidence",
     "BFF-124 specification conventions"
-  ]
+  ],
+  "implement": {
+    "tasks_completed": ["T001", "T002", "T003", "T004", "T005"],
+    "verify_result": "PASS",
+    "files_changed": [
+      "mobile/src/utils/scheduleUtils.ts",
+      "mobile/src/screens/ScheduleScreen.tsx",
+      "mobile/src/__tests__/scheduleUtils.genre.test.ts"
+    ]
+  }
 }
