@@ -1135,6 +1135,12 @@ const ScheduleScreen = () => {
               initialScrollX={horizontalScrollXRef.current}
               initialScrollY={horizontalScrollYRef.current}
               onScrollPositionChange={handleHorizontalScrollPositionChange}
+              refreshing={isRefreshing}
+              onRefresh={() => {
+                setIsRefreshing(true);
+                fetchEvents(); // Refetch on pull-to-refresh (matches list view)
+              }}
+              refreshTintColor={theme.primary}
             />
           ) : (
           <FlatList

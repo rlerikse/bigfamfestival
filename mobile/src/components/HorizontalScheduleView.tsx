@@ -19,6 +19,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   TouchableOpacity,
   ImageRequireSource,
 } from 'react-native';
@@ -65,6 +66,13 @@ interface Props {
   // parent can remember the latest combined scroll position for the next time
   // this view mounts.
   onScrollPositionChange?: (position: { x: number; y: number }) => void;
+  // Pull-to-refresh wiring for the vertical (stage-row) ScrollView. When
+  // onRefresh is provided, a RefreshControl is attached so pulling down at the
+  // top of the horizontal grid reloads schedule data — matching the list view's
+  // existing pull-to-refresh behavior (BFF-124).
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  refreshTintColor?: string;
 }
 
 function timeStringToMinutes(time: string): number {
@@ -133,6 +141,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
   initialScrollX,
   initialScrollY,
   onScrollPositionChange,
+  refreshing,
+  onRefresh,
+  refreshTintColor,
 }) => {
   const verticalScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
@@ -477,6 +488,16 @@ const HorizontalScheduleView: React.FC<Props> = ({
         scrollEventThrottle={16}
         onLayout={handleVerticalLayout}
         onScroll={handleVerticalScroll}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={!!refreshing}
+              onRefresh={onRefresh}
+              colors={refreshTintColor ? [refreshTintColor] : undefined}
+              tintColor={refreshTintColor}
+            />
+          ) : undefined
+        }
       >
         <View style={{ flexDirection: 'row' }}>
           {/* Sticky stage label column */}

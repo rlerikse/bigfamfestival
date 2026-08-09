@@ -22,6 +22,8 @@ The horizontal schedule view must keep its vertical position and derived visual 
 
 This bug fix restores the same continuity guarantees for the vertical axis that already exist for the horizontal axis, without changing schedule content, event filtering rules, or the selected day.
 
+The **primary user-facing behavior** is pull-to-refresh: the list view already reloads schedule data when the attendee pulls down at the top, but the horizontal view's vertical `ScrollView` had no `RefreshControl`, so the same gesture did nothing there. This fix adds pull-to-refresh to the horizontal view, wired to the same reload path the list view uses, so both views share one refresh gesture. The vertical position-preservation work is an additional continuity improvement retained alongside it.
+
 ## Evidence of Current Behavior
 
 - `mobile/src/components/HorizontalScheduleView.tsx:L56` defines `onScrollPositionChange` with an X-only contract.
@@ -63,6 +65,15 @@ This bug fix restores the same continuity guarantees for the vertical axis that 
   - Require the "Now" indicator or ruler to become viewport-relative on the Y axis — out of scope per Non-Goals ("Redesigning... appearance"; "Replacing the existing native horizontal ruler synchronization architecture") and not supported by the root-cause evidence, which shows no Y-dependent rendering today.
 - **Impact**: FR-006, User Story 1 AC2 and AC3.
 
+### DR-6: Pull-to-refresh is the primary user-facing requirement (corrects DR-2 scope)
+- **Decided**: 2026-08-09 after iOS smoke test with the issue reporter
+- **Context**: The autonomous /blue.clarify pass (DR-2) resolved the ambiguous "doesn't refresh/sync on vertical scroll" wording as a *no visible on-scroll behavior* constraint (position preservation only). Manual iOS verification with the reporter showed the actual intent: pulling down / scrolling up at the top of the horizontal view should show a spinner and reload schedule data — i.e., pull-to-refresh, which the list view already had but the horizontal view lacked.
+- **Choice**: Add pull-to-refresh (`RefreshControl`) to the horizontal view's vertical `ScrollView`, wired to the same `isRefreshing` state and `fetchEvents()` reload the list view uses. Retain the vertical position-preservation work (User Story 2) as an additional continuity improvement.
+- **Alternatives rejected**:
+  - Keep DR-2's position-preservation-only scope — rejected: it does not satisfy the reporter's confirmed intent; the gesture stays invisible on the horizontal view.
+  - Implement a bespoke refresh spinner instead of reusing the list view's reload path — rejected: duplicates the existing reload logic and diverges the two views' refresh behavior.
+- **Impact**: Adds User Story 3, FR-009, FR-010, FR-011, SC-005. Supersedes DR-2's implication that no visible on-scroll behavior is required; DR-2's no-regression guarantee for the ruler/"Now" indicator still holds.
+
 ## User Stories
 
 ### User Story 1 - Scroll Stage Rows Without a Stale Schedule View
@@ -95,6 +106,21 @@ This bug fix restores the same continuity guarantees for the vertical axis that 
 2. **Given** the stage-row content shrinks after a filter or day change, **when** the previously saved Y offset is no longer valid, **then** the restored position is clamped to a valid visible range without stale native scroll state.
 3. **Given** an iOS remount or filter change, **when** native scroll state is recreated, **then** restoration follows the existing remount-key discipline and does not rely on a stale `contentOffset` from a torn-down view.
 
+### User Story 3 - Pull to Refresh the Horizontal Schedule
+
+**As a** festival attendee viewing the horizontal schedule,
+**I want** to pull down at the top of the stage-row grid to reload schedule data,
+**so that** I can get the latest set times and lineup changes with the same gesture the list view already supports.
+
+**Why this priority**: P1 because it is the primary behavior the issue reporter expected; the list view already has it and the horizontal view's missing `RefreshControl` is the user-visible defect.
+
+**Independent Test**: Open the horizontal schedule, scroll to the top, pull down, and confirm a refresh spinner appears and the schedule data reloads — matching the list view's pull-to-refresh.
+
+**Acceptance Criteria**:
+1. **Given** the horizontal schedule is open and scrolled to the top, **when** the attendee pulls down, **then** a refresh spinner appears and the schedule data is reloaded via the same reload path the list view uses.
+2. **Given** a refresh is in progress, **when** the reload completes, **then** the spinner dismisses and the refreshed events render without resetting the attendee's day selection or filters.
+3. **Given** the attendee toggles between list and horizontal views, **when** they pull to refresh in either view, **then** both views trigger the same reload and reflect the same `refreshing` state.
+
 ## Functional Requirements
 
 | ID | Requirement |
@@ -107,6 +133,9 @@ This bug fix restores the same continuity guarantees for the vertical axis that 
 | FR-006 | The sticky time ruler and "Now" indicator (both horizontal-axis-only visuals; neither has a vertical-position-dependent transform today) MUST NOT regress — vertical scroll tracking MUST NOT desynchronize, stale-render, or otherwise break their existing horizontal synchronization. This is a no-regression constraint, not a requirement to add new Y-based ruler/indicator positioning. |
 | FR-007 | The fix MUST preserve existing horizontal scroll synchronization, day-navigation behavior, and filter-change recovery. |
 | FR-008 | The behavior MUST be covered by focused component/unit tests and manually verified on both iOS and Android. |
+| FR-009 | The horizontal schedule's vertical stage-row `ScrollView` MUST attach a `RefreshControl` so pulling down at the top triggers a schedule-data reload. |
+| FR-010 | Pull-to-refresh in the horizontal view MUST reuse the existing list-view reload path (the shared `isRefreshing` state and `fetchEvents()` reload), not a duplicate refresh mechanism, so both views stay consistent. |
+| FR-011 | The horizontal view's `RefreshControl` MUST be tinted consistently with the app theme (`theme.primary`) and MUST NOT alter day selection, active filters, or the horizontal/vertical scroll-restoration behavior. |
 
 ## Non-Goals
 
@@ -145,6 +174,7 @@ This bug fix restores the same continuity guarantees for the vertical axis that 
 - **SC-002**: A valid nonzero vertical position is restored after every supported compatible remount scenario exercised in the regression suite.
 - **SC-003**: When content changes invalidate a saved vertical offset, the rendered position remains within the available stage rows on both platforms.
 - **SC-004**: Existing horizontal ruler synchronization and horizontal position restoration regressions remain green.
+- **SC-005**: On iOS and Android, pulling down at the top of the horizontal schedule shows a refresh spinner and reloads schedule data via the same reload path as the list view, without disrupting day selection or filters.
 
 ## Related Resources
 
