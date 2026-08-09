@@ -2,7 +2,7 @@
 
 **Project**: 🎪 Big Fam Festival
 **Repository**: `rlerikse/bigfamfestival`
-**Coverage**: 2025-03-03 (repo inception) → 2026-07-31
+**Coverage**: 2025-03-03 (repo inception) → 2026-08-09
 **Last Updated**: 2026-08-09
 
 This document is the index and running log of architecture decisions for the Big Fam Festival platform — a monorepo with a NestJS backend (Cloud Run), a React Native/Expo mobile app, a React + Vite admin panel (Firebase Hosting), Firebase Cloud Functions, and Terraform/GCP infrastructure. Each entry captures the **context**, the **decision**, and the **consequences** so future contributors understand *why* the system is built the way it is.
@@ -31,6 +31,7 @@ This document is the index and running log of architecture decisions for the Big
 | [ADR-015](#adr-015-live-wayfinder-hud-with-compass-sensor-fusion) | Live Wayfinder HUD with Compass Sensor Fusion | 2026-07-27 | ✅ Accepted |
 | [ADR-016](#adr-016-release-please-for-unified-semantic-versioning) | release-please for Unified Semantic Versioning | 2026-07-29 | ✅ Accepted |
 | [ADR-002](#adr-002-realtime-friend-locations-via-server-sent-events) | Realtime Friend Locations via Server-Sent Events | 2026-07-31 | ✅ Accepted |
+| [ADR-017](#adr-017-pure-logic-helpers-for-jest-testability-under-expo-sdk-54) | Pure Logic Helpers for Jest Testability Under Expo SDK 54 | 2026-08-09 | ✅ Accepted |
 
 ---
 
@@ -268,9 +269,25 @@ This document is the index and running log of architecture decisions for the Big
 
 ---
 
+## 2026-08 — Testing Architecture
+
+### ADR-017: Pure Logic Helpers for Jest Testability Under Expo SDK 54
+
+**Status**: ✅ Accepted · **Date**: 2026-08-09 · **Source**: [`docs/adr/017-pure-helpers-for-jest-under-expo-sdk54.md`](docs/adr/017-pure-helpers-for-jest-under-expo-sdk54.md)
+
+**Context**: Under Expo SDK 54, importing any module that transitively pulls in `@expo/vector-icons` or `expo-image` into a Jest test fails on import alone (before any render) — Jest's transform can't parse the `.ttf` font asset those packages require (`SyntaxError: Invalid or unexpected token`). This blocks unit-testing logic that lives inside RN components like `ScheduleScreen.tsx` and `HorizontalScheduleView.tsx`, and is the same root cause behind `SafeText.test.tsx`'s `describe.skip`.
+
+**Decision**: Extract logic that needs unit coverage into pure, side-effect-free modules under `mobile/src/utils/` (e.g. `scheduleUtils.ts`) with **zero** react-native/expo imports; tests import only those pure modules, never the component. Re-export the helper from the component when a caller/spec expects the symbol to originate there. Applied in BFF-124 (`clampVerticalOffset`) and BFF-128 (`deriveGenreOptions`), each with a companion `*.test.ts` importing only the util.
+
+**Consequences**: Logic becomes unit-testable without fighting the Expo/Jest transform, and separating pure logic from presentation improves testability. Trade-off: component render/integration coverage stays gapped for icon-bearing components (documented via `describe.skip`), and some helpers live in `utils/` rather than beside their component. Revisit if the Expo SDK 54 Jest transform issue is resolved (e.g. a `jest-expo` preset upgrade or a font-asset transformer).
+
+**Evidence**: BFF-124 (`489ab6f`), BFF-128 (`df05bcb`); precedent `SafeText.test.tsx` skip.
+
+---
+
 ## Conventions
 
-- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001 and ADR-002 have full source files; ADR-003–016 are summarized here from git history.
+- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016 are summarized here from git history.
 - **Format**: each ADR captures `Status`, `Date`, `Context`, `Decision`, and `Consequences`.
 - **Statuses**: `Proposed` (under discussion) → `✅ Accepted` (in effect) → `Superseded` (replaced by a later ADR, which it links) → `Deprecated` (no longer applies).
 - **Numbering**: identifiers are assigned in documentation order, not by date. Sort the index by **Date** for the timeline.

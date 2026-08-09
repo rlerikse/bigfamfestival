@@ -72,16 +72,22 @@ For each merged PR/feature, note: is it user-visible (What's New / Improvements 
 
 ## Step 3 — Curate human patch notes (`mobile/release-notes/NEXT.md`)
 
-`NEXT.md` is the human-facing draft for the next release (distinct from release-please's technical `CHANGELOG.md`). Ensure it reflects **everything** merged since the last versioned notes file (e.g. `1.2.2.md`).
+`NEXT.md` is the human-facing draft for the next release (distinct from release-please's technical `CHANGELOG.md`). It must hold **only unreleased work**.
 
+**Authoritative source (learned the hard way):** determine released-vs-unreleased from `CHANGELOG.md`'s **`## Unreleased`** section — NOT from assumptions or merge dates. release-please accumulates merged-but-unreleased commits there until the next release cut.
+- Anything already under a versioned `## [X.Y.Z]` heading in `CHANGELOG.md` has **shipped** → it belongs in that version's `mobile/release-notes/X.Y.Z.md` file, **not** `NEXT.md`. (Do not add already-released work to `NEXT.md`.)
+- Only items in `## Unreleased` belong in `NEXT.md`.
+
+Ensure `NEXT.md` reflects **everything** currently in `CHANGELOG.md`'s `## Unreleased`:
 - Add entries under the existing sections: **What's New**, **Improvements & Fixes**, **Under the Hood**, **Still under review**.
 - Write in the same attendee-friendly voice as the existing entries — describe user impact, not code.
 - Do **not** invent a version number or release date (the file's own disclaimer forbids it).
 
 ## Step 4 — Preview the next version (no manifest edits)
 
-Compute the projected next semver from conventional commits since the last release, per release-please rules:
-- any `feat:` → **minor** bump; only `fix:`/`perf:`/`docs:` etc. → **patch**; `BREAKING CHANGE`/`!` → **major**.
+Compute the projected next semver from the commits in `CHANGELOG.md`'s `## Unreleased` section (or `git log <last-tag>..HEAD`), per release-please rules:
+- any `feat:` in the unreleased set → **minor** bump; only `fix:`/`perf:`/`docs:` etc. → **patch**; `BREAKING CHANGE`/`!` → **major**.
+- **Watch for this trap:** a single unreleased `feat` makes the next bump **minor** even if everything else is a `fix`. (Run 1 wrongly projected a patch because it only looked at the latest fix and missed an older unreleased `feat`.)
 
 Reflect it as a **projection annotation** in `NEXT.md` (e.g. a `> Projected next version: X.Y.Z (release-please will finalize)` line). Never write it into the manifests or `.release-please-manifest.json`.
 
