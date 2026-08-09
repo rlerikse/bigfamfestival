@@ -168,9 +168,28 @@ const HorizontalScheduleView: React.FC<Props> = ({
     [scrollX, onScrollPositionChange]
   );
   // Consume a pending auto-scroll target (declared before the day-change effects
-  // that reference it). scrollX (and therefore the header ruler) follows the
-  // body ScrollView automatically once it moves -- no separate header scrollTo
-  // needed.
+  // that reference it). scrollX (and therefore the header ruler) normally follows
+  // the body ScrollView automatically once it moves, via the native onScroll ->
+  // Animated.event wiring above.
+  //
+  // BUG (Robert, screenshot w/ blue annotations, reported the "2 PM" header label
+  // sitting ~30min to the right of where the 2:00 PM cards actually start): that
+  // onScroll-only sync works fine for user drags, but this initial/restore jump
+  // is a *programmatic* scrollTo (mount default, day-change nav, filter-change
+  // position restore) rather than a user gesture. A native-driven Animated.event
+  // only updates scrollX off actual onScroll frames, and a programmatic
+  // scrollTo({animated:false}) doesn't reliably deliver one of those before the
+  // next paint (especially on Android) -- so the body grid jumps to its target
+  // immediately while the header ruler's transform is still using the stale
+  // pre-jump scrollX, leaving the ruler's hour labels/gridlines visibly behind
+  // (to the right of) the cards they're supposed to line up with.
+  //
+  // Fix: for instant (non-animated) jumps, snap scrollX to the target directly
+  // so the header ruler moves in the exact same frame as the body content --
+  // no dependency on an onScroll round-trip landing in time. Animated jumps
+  // still rely on onScroll (which fires continuously throughout the animation
+  // and stays in sync), but we also seed scrollX up front so there's no
+  // momentary stale-header flash at the start of the animation either.
   const applyPendingScrollImpl = () => {
     const x = pendingScrollXRef.current;
     if (x == null) return;
@@ -179,6 +198,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
     // instant so the grid doesn't visibly glide; day-change navigation animates.
     const animated = !pendingScrollInstantRef.current;
     pendingScrollInstantRef.current = false;
+    scrollX.setValue(x);
     bodyScrollRef.current?.scrollTo({ x, animated });
   };
   const applyPendingScroll = useCallback(applyPendingScrollImpl, []);
