@@ -20,12 +20,12 @@
       "clarification_attempt": 2
     },
     "plan": {
-      "completed_at": null,
-      "spec_hash": ""
+      "completed_at": "2026-08-09T00:00:00Z",
+      "spec_hash": "a5c3fcddbea4f1911f6a6e38b9222a7e77146859b628bde2a36d642c1589ba86"
     },
     "tasks": {
-      "completed_at": null,
-      "plan_hash": ""
+      "completed_at": "2026-08-09T00:00:00Z",
+      "plan_hash": "1ae6c230a34bc3e0e36bb1a4648dcc78fb524d5d5eff02f80118b78b8a6a5d97"
     }
   }
 }
