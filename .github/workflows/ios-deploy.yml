@@ -1,0 +1,138 @@
+name: iOS Deploy — TestFlight
+
+# This workflow intentionally has no push/workflow_run trigger. TestFlight
+# submission must name the exact EAS build and commit that were approved; never
+# infer either from EAS's "latest" build.
+#
+# To submit an approved TestFlight candidate:
+#   1. Run this workflow manually from main (the workflow's trusted definition).
+#   2. Supply the full 40-character source commit SHA and exact EAS iOS build ID.
+#   3. The workflow validates the build's platform, status, distribution, beta
+#      profile, commit provenance, expiry, and artifact before submission.
+#
+# The workflow definition may postdate the source tag. The source of truth for
+# the submitted artifact is therefore EAS's gitCommitHash validation below.
+# App Store production release remains a separate manual decision in App Store
+# Connect; this workflow only uploads the validated build to TestFlight.
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_id:
+        description: Exact EAS iOS build ID to submit (never use "latest")
+        required: true
+        type: string
+      expected_commit:
+        description: Full 40-character lowercase Git SHA represented by the approved source tag/commit
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight-deploy-${{ inputs.build_id }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-to-testflight:
+    name: Validate and submit approved iOS build to TestFlight
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate dispatch input
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$EXPECTED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_commit must be a full 40-character lowercase Git SHA."
+            exit 1
+          fi
+
+      - name: Checkout approved source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_commit }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'mobile/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mobile
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Validate the exact EAS build
+        working-directory: mobile
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          BUILD_JSON="$(eas build:view "$BUILD_ID" --json)"
+          export BUILD_JSON
+          python3 - <<'PY'
+          import datetime
+          import json
+          import os
+          import sys
+
+          build = json.loads(os.environ["BUILD_JSON"])
+          expected = os.environ["EXPECTED_COMMIT"]
+          errors = []
+
+          checks = {
+              "id": os.environ["BUILD_ID"],
+              "platform": "IOS",
+              "status": "FINISHED",
+              "distribution": "STORE",
+              "buildProfile": "beta",
+              "gitCommitHash": expected,
+          }
+          for field, wanted in checks.items():
+              actual = build.get(field)
+              if actual != wanted:
+                  errors.append(f"{field} is {actual!r}; expected {wanted!r}")
+
+          expires = build.get("expirationDate")
+          try:
+              expiry = datetime.datetime.fromisoformat(expires.replace("Z", "+00:00"))
+              if expiry <= datetime.datetime.now(datetime.timezone.utc):
+                  errors.append(f"expirationDate {expires!r} is expired")
+          except (AttributeError, TypeError, ValueError):
+              errors.append(f"expirationDate {expires!r} is missing or invalid")
+
+          artifacts = build.get("artifacts") or {}
+          if not (artifacts.get("applicationArchiveUrl") or artifacts.get("buildUrl")):
+              errors.append("build has no downloadable iOS archive")
+
+          if errors:
+              print("::error::Refusing TestFlight submission: selected EAS build is not an eligible approved beta artifact.")
+              for error in errors:
+                  print(f"::error::{error}")
+              sys.exit(1)
+
+          print(f"Validated EAS build {build['id']} (version {build.get('appVersion')}, build {build.get('appBuildVersion')}).")
+          PY
+
+      - name: Submit exact build to TestFlight
+        working-directory: mobile
+        env:
+          BUILD_ID: ${{ inputs.build_id }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: eas submit --platform ios --profile production --id "$BUILD_ID" --non-interactive
+
+      - name: Notify success
+        if: success()
+        run: echo "✅ Validated build submitted to TestFlight. App Store release remains a separate manual decision."
