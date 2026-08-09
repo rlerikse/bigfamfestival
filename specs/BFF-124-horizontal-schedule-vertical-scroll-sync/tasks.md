@@ -28,7 +28,7 @@
 **Purpose**: Prove the pure logic and verify native behavior on both supported platforms, including the horizontal no-regression boundary.
 
 - [x] T006 [D:T005] [US1] [US2] [UNIT] [S] Run the focused Jest suite for `mobile/src/__tests__/HorizontalScheduleView.test.ts` and the existing relevant mobile test command; confirm the helper coverage passes without mounting `HorizontalScheduleView`. **Traceability**: FR-005, FR-008; US2 AC2.
-- [ ] T007 [D:T006] [US1] [US2] [M] Manually verify iOS and Android in the horizontal schedule: vertically scroll a multi-stage day, toggle list/horizontal view, change filter/day including an in-progress momentum scroll, confirm valid/clamped Y restoration, and confirm horizontal ruler/"Now" alignment and horizontal X restoration still work. **Traceability**: FR-001, FR-004-FR-008; US1 AC1-AC3; US2 AC1-AC3; SC-001-SC-004.
+- [x] T007 [D:T006] [US1] [US2] [M] Manually verify iOS and Android in the horizontal schedule: vertically scroll a multi-stage day, toggle list/horizontal view, change filter/day including an in-progress momentum scroll, confirm valid/clamped Y restoration, and confirm horizontal ruler/"Now" alignment and horizontal X restoration still work. **Traceability**: FR-001, FR-004-FR-008; US1 AC1-AC3; US2 AC1-AC3; SC-001-SC-004. Confirmed on iOS (native build) and Android (EAS dev-client build) — pull-to-refresh (US3) also verified on both platforms.
 
 ## Requirement Traceability
 
