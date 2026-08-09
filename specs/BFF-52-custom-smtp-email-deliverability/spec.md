@@ -3,7 +3,10 @@
 **Jira**: [BFF-52](https://eriksensolutions.atlassian.net/browse/BFF-52)  
 **Feature Branch**: `BFF-52-custom-smtp-email-deliverability`  
 **Created**: 2025-07-11  
-**Status**: Draft  
+**Status**: 🟠 Partially Implemented (~70%) — SendGrid backend ready (verified 2026-08-09)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ~70%.** SendGrid **is** configured (`backend/src/config/sendgrid/sendgrid.config.ts`, `@sendgrid/mail`) and used by `backend/scripts/email-blast.ts`. **Not done:** wiring Firebase Auth’s transactional emails (password reset / verification) through the custom SMTP provider, branded email templates, and SPF/DKIM/DMARC DNS records. “Custom SMTP” here effectively means “SendGrid as provider.” Consider splitting into (a) Firebase Auth SMTP config vs (b) SendGrid blast (mostly done). Original content preserved as-is.
 
 ---
 

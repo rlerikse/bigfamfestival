@@ -3,8 +3,11 @@
 **Jira**: [BFF-29](https://eriksensolutions.atlassian.net/browse/BFF-29)  
 **Feature Branch**: `BFF-29-staff-volunteer-shift-management`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-15 (Role-Specific Panels)
+**Status**: 🟠 Partially Implemented (~35%) — admin CRUD only (verified 2026-08-09)  
+**Epic**: BFF-15 (Role-Specific Panels)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ~35% — admin shift CRUD only.** `backend/src/shifts/*` (create/find/update/remove + `/admin/shifts` endpoints) and `mobile/src/screens/admin/AdminShiftsScreen.tsx` exist. **Missing:** check-in/check-out endpoints, the location-verified (100m) check-in, and any attendee/volunteer-facing view of their own shifts. Keep the data model + role design; flag the missing user-side flows. Original content preserved as-is.
 
 ---
 

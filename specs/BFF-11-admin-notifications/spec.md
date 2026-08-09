@@ -1,8 +1,11 @@
 # Admin Notifications Management - Retroactive Specification
 
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-11](https://eriksensolutions.atlassian.net/browse/BFF-11)  
+**Status**: ✅ Implemented (verified 2026-08-09) — one known gap  
+**Jira**: [BFF-11](https://eriksensolutions.atlassian.net/browse/BFF-11) _(link broken — Jira space closed)_  
 **Created**: 2026-02-09  
+**Verified**: 2026-08-09  
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `mobile/src/screens/AdminNotificationsScreen.tsx` + debug endpoints. **Known gap:** `backend/src/debug/notifications-debug.controller.ts` endpoints are still `@Public()` and should be role-gated. Jira space is closed — link above is broken; **this spec is the last point of reference**. Original content preserved as-is.
 
 ---
 

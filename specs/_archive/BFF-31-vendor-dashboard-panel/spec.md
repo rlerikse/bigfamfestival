@@ -3,8 +3,11 @@
 **Jira**: [BFF-31](https://eriksensolutions.atlassian.net/browse/BFF-31)  
 **Feature Branch**: `BFF-31-vendor-dashboard-panel`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-15 (Role-Specific Panels)
+**Status**: ❌ Not Implemented — mock UI shell only (verified 2026-08-09)  
+**Epic**: BFF-15 (Role-Specific Panels)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ❌ Not Implemented.** `admin/src/pages/VendorsPage.tsx` renders **placeholder data** (“Vendor API not yet connected”); the `vendor` role exists in `role.enum.ts` but there is no vendor backend service, `/api/vendors` route, `vendors` Firestore collection, or mobile screen. **Recommendation: archive** or commit to building it. Keep the role enum + dashboard wireframe concept. Original content preserved as-is.
 
 ---
 
