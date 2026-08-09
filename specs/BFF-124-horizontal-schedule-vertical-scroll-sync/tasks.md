@@ -8,8 +8,8 @@
 
 **Purpose**: Establish the testable clamp behavior and the shared `{ x, y }` position contract before wiring native scroll events.
 
-- [ ] T001 [US2] [UNIT] [S] Add direct plain-Jest cases for exported `clampVerticalOffset` in `mobile/src/__tests__/HorizontalScheduleView.test.ts`; cover zero stages, in-range offsets, offsets above the reduced-content maximum, and negative or absent offsets without using `@testing-library/react-native` `render()` or component queries. **Traceability**: FR-005, FR-008; US2 AC2.
-- [ ] T002 [D:T001] [US1] [US2] [M] Export `clampVerticalOffset(savedY, stageCount, viewportHeight)` and extend the `HorizontalScheduleView` props/callback contract to represent `{ x, y }` plus `initialScrollY` in `mobile/src/components/HorizontalScheduleView.tsx`; keep the helper pure and clamp to the valid vertical range. **Traceability**: FR-002, FR-003, FR-005, FR-008; US1 AC1; US2 AC2.
+- [x] T001 [US2] [UNIT] [S] Add direct plain-Jest cases for exported `clampVerticalOffset` in `mobile/src/__tests__/HorizontalScheduleView.test.ts`; cover zero stages, in-range offsets, offsets above the reduced-content maximum, and negative or absent offsets without using `@testing-library/react-native` `render()` or component queries. **Traceability**: FR-005, FR-008; US2 AC2.
+- [x] T002 [D:T001] [US1] [US2] [M] Export `clampVerticalOffset(savedY, stageCount, viewportHeight)` and extend the `HorizontalScheduleView` props/callback contract to represent `{ x, y }` plus `initialScrollY` in `mobile/src/components/HorizontalScheduleView.tsx`; keep the helper pure and clamp to the valid vertical range. **Traceability**: FR-002, FR-003, FR-005, FR-008; US1 AC1; US2 AC2.
 
 **Checkpoint**: The pure helper tests fail before T002 and pass after T002; no component render test is added.
 
@@ -17,9 +17,9 @@
 
 **Purpose**: Wire the combined position contract through the child and parent, then restore a valid Y position with the existing remount-key lifecycle.
 
-- [ ] T003 [D:T002] [US1] [M] Add the vertical stage-row `ScrollView` `onScroll` handler with `scrollEventThrottle={16}` in `mobile/src/components/HorizontalScheduleView.tsx`; store the latest Y in `currentOffsetRef` and notify the parent with the current `{ x, y }` position without changing ruler or "Now" indicator rendering. **Traceability**: FR-001, FR-002, FR-006, FR-007; US1 AC1-AC3.
-- [ ] T004 [D:T002] [US1] [US2] [S] Mirror `horizontalScrollXRef` with `horizontalScrollYRef`, update `handleHorizontalScrollPositionChange` for `{ x, y }`, and pass `initialScrollY` to `HorizontalScheduleView` in `mobile/src/screens/ScheduleScreen.tsx`. **Traceability**: FR-003, FR-004; US2 AC1.
-- [ ] T005 [D:T003,T004] [US2] [M] Reuse `scrollResetKey` in `mobile/src/components/HorizontalScheduleView.tsx` to queue and instantaneously restore the saved clamped Y after compatible remounts; preserve Y on view-mode remounts, replace the hardcoded filter/day reset Y with `clampVerticalOffset`, and avoid stale `contentOffset` state from a torn-down native view. **Traceability**: FR-004, FR-005, FR-007; US2 AC1-AC3; edge cases for content shrink, momentum day switch, and non-scrollable stage lists.
+- [x] T003 [D:T002] [US1] [M] Add the vertical stage-row `ScrollView` `onScroll` handler with `scrollEventThrottle={16}` in `mobile/src/components/HorizontalScheduleView.tsx`; store the latest Y in `currentOffsetRef` and notify the parent with the current `{ x, y }` position without changing ruler or "Now" indicator rendering. **Traceability**: FR-001, FR-002, FR-006, FR-007; US1 AC1-AC3.
+- [x] T004 [D:T002] [US1] [US2] [S] Mirror `horizontalScrollXRef` with `horizontalScrollYRef`, update `handleHorizontalScrollPositionChange` for `{ x, y }`, and pass `initialScrollY` to `HorizontalScheduleView` in `mobile/src/screens/ScheduleScreen.tsx`. **Traceability**: FR-003, FR-004; US2 AC1.
+- [x] T005 [D:T003,T004] [US2] [M] Reuse `scrollResetKey` in `mobile/src/components/HorizontalScheduleView.tsx` to queue and instantaneously restore the saved clamped Y after compatible remounts; preserve Y on view-mode remounts, replace the hardcoded filter/day reset Y with `clampVerticalOffset`, and avoid stale `contentOffset` state from a torn-down native view. **Traceability**: FR-004, FR-005, FR-007; US2 AC1-AC3; edge cases for content shrink, momentum day switch, and non-scrollable stage lists.
 
 **Checkpoint**: Both axes use one callback contract; vertical state survives a compatible remount, while invalid saved Y is clamped and existing horizontal synchronization remains unchanged.
 
@@ -27,7 +27,7 @@
 
 **Purpose**: Prove the pure logic and verify native behavior on both supported platforms, including the horizontal no-regression boundary.
 
-- [ ] T006 [D:T005] [US1] [US2] [UNIT] [S] Run the focused Jest suite for `mobile/src/__tests__/HorizontalScheduleView.test.ts` and the existing relevant mobile test command; confirm the helper coverage passes without mounting `HorizontalScheduleView`. **Traceability**: FR-005, FR-008; US2 AC2.
+- [x] T006 [D:T005] [US1] [US2] [UNIT] [S] Run the focused Jest suite for `mobile/src/__tests__/HorizontalScheduleView.test.ts` and the existing relevant mobile test command; confirm the helper coverage passes without mounting `HorizontalScheduleView`. **Traceability**: FR-005, FR-008; US2 AC2.
 - [ ] T007 [D:T006] [US1] [US2] [M] Manually verify iOS and Android in the horizontal schedule: vertically scroll a multi-stage day, toggle list/horizontal view, change filter/day including an in-progress momentum scroll, confirm valid/clamped Y restoration, and confirm horizontal ruler/"Now" alignment and horizontal X restoration still work. **Traceability**: FR-001, FR-004-FR-008; US1 AC1-AC3; US2 AC1-AC3; SC-001-SC-004.
 
 ## Requirement Traceability

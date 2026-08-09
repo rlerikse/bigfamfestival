@@ -45,7 +45,21 @@
       "complexity": "SIMPLE"
     },
     "implement": {
-      "status": "pending"
+      "status": "code_complete",
+      "started_at": "2026-08-09T00:00:00Z",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "SIMPLE",
+      "phases_completed": [
+        "Phase 1: Clamp Helper and Scroll-Position Contract",
+        "Phase 2: Capture, Lift, and Restore Vertical Position",
+        "Phase 3: Focused Verification and Platform Regression (automated portion)"
+      ],
+      "tasks_completed": ["T001", "T002", "T003", "T004", "T005", "T006"],
+      "tasks_pending_manual": ["T007"],
+      "verify_result": "PASS",
+      "verify_rounds": 2,
+      "commit": "4536bfd",
+      "notes": "T007 (manual iOS/Android device verification) intentionally out of scope for automated implementation; tracked in tasks.md."
     }
   }
 }

@@ -26,13 +26,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
 import OptimizedImage from './OptimizedImage';
 import { ScheduleEvent } from '../types/event';
-import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
+import { isEventLive, resolveScheduleDayScrollTarget, clampVerticalOffset, SCHEDULE_ROW_HEIGHT } from '../utils/scheduleUtils';
+
+// Re-exported so callers/tests can import the vertical-scroll clamp helper
+// directly from this component, per its established public surface — the
+// implementation itself lives in scheduleUtils.ts (see BFF-124 DR-5) so it
+// stays importable without pulling in this file's react-native/expo imports.
+export { clampVerticalOffset };
 
 // ─── Layout constants ──────────────────────────────────────────────────────
 // Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
 // ~1 hour visible). Lower density → wider time span left→right per screen.
 const PX_PER_MINUTE = 6.0; // zoomed in — final shipping value; Android gets a touch more breathing room than 6.5
-const ROW_HEIGHT = 108; // taller rows so the full-height photo has room to breathe
+const ROW_HEIGHT = SCHEDULE_ROW_HEIGHT; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
 const CUTOFF_MINUTES = 6 * 60 + 30; // 6:30am — day boundary, matches ScheduleScreen logic
@@ -51,9 +57,14 @@ interface Props {
   // the user toggles back to list view. When present, restores that exact scroll
   // position on (re)mount instead of the "next upcoming / last event" default.
   initialScrollX?: number | null;
+  // Last vertical (stage-row) scroll offset (px) from a previous mount of this
+  // view, mirroring initialScrollX. Restored on (re)mount / compatible remount,
+  // clamped to the current valid range via clampVerticalOffset.
+  initialScrollY?: number | null;
   // Fired (throttled by scrollEventThrottle) as the body grid scrolls, so the
-  // parent can remember the latest offset for the next time this view mounts.
-  onScrollPositionChange?: (x: number) => void;
+  // parent can remember the latest combined scroll position for the next time
+  // this view mounts.
+  onScrollPositionChange?: (position: { x: number; y: number }) => void;
 }
 
 function timeStringToMinutes(time: string): number {
@@ -120,6 +131,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
   currentTime,
   selectedDay,
   initialScrollX,
+  initialScrollY,
   onScrollPositionChange,
 }) => {
   const verticalScrollRef = useRef<ScrollView>(null);
@@ -128,6 +140,13 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // Pending horizontal auto-scroll target (px) queued on day change, consumed
   // once the remounted body ScrollView lays out its content (onContentSizeChange).
   const pendingScrollXRef = useRef<number | null>(null);
+  // Pending vertical (stage-row) auto-scroll target (px), mirroring
+  // pendingScrollXRef. Consumed by applyPendingScrollImpl alongside X.
+  const pendingScrollYRef = useRef<number | null>(null);
+  // Latest measured height (px) of the vertical stage-row ScrollView's
+  // viewport, populated via onLayout — needed by clampVerticalOffset to know
+  // how much vertical scroll range is actually available.
+  const viewportHeightRef = useRef(0);
   // When true, the next pending-scroll flush is a position-preserving restore
   // (instant, no animation) rather than a day-change navigation (animated).
   const pendingScrollInstantRef = useRef(false);
@@ -161,7 +180,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
           // stays 100% native-driven.
           listener: (e: { nativeEvent: { contentOffset: { x: number } } }) => {
             currentOffsetRef.current.x = e.nativeEvent.contentOffset.x;
-            onScrollPositionChange?.(e.nativeEvent.contentOffset.x);
+            onScrollPositionChange?.({ x: currentOffsetRef.current.x, y: currentOffsetRef.current.y });
           },
         }
       ),
@@ -192,20 +211,37 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // momentary stale-header flash at the start of the animation either.
   const applyPendingScrollImpl = () => {
     const x = pendingScrollXRef.current;
-    if (x == null) return;
-    pendingScrollXRef.current = null;
+    const y = pendingScrollYRef.current;
+    if (x == null && y == null) return;
     // Position-preservation restores (favorite toggle / filter re-clamp) must be
     // instant so the grid doesn't visibly glide; day-change navigation animates.
     const animated = !pendingScrollInstantRef.current;
     pendingScrollInstantRef.current = false;
-    scrollX.setValue(x);
-    bodyScrollRef.current?.scrollTo({ x, animated });
+    if (x != null) {
+      pendingScrollXRef.current = null;
+      scrollX.setValue(x);
+      bodyScrollRef.current?.scrollTo({ x, animated });
+    }
+    if (y != null) {
+      pendingScrollYRef.current = null;
+      verticalScrollRef.current?.scrollTo({ y, animated });
+    }
   };
   const applyPendingScroll = useCallback(applyPendingScrollImpl, []);
   // Tracks the last known scroll offsets so a filter change (Stage/Genre) can
   // re-clamp to a valid position instead of relying on the native ScrollView to
   // do it implicitly (see currentOffsetRef usage below for why this matters).
   const currentOffsetRef = useRef({ x: 0, y: 0 });
+  // Vertical stage-row scroll capture — plain JS-thread onScroll (no
+  // Animated.event/native-driver wiring, see plan.md DR-4: there is no
+  // per-frame vertical visual, unlike the horizontal ruler/scrollX pairing).
+  const handleVerticalLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
+    viewportHeightRef.current = e.nativeEvent.layout.height;
+  }, []);
+  const handleVerticalScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    currentOffsetRef.current.y = e.nativeEvent.contentOffset.y;
+    onScrollPositionChange?.({ x: currentOffsetRef.current.x, y: currentOffsetRef.current.y });
+  }, [onScrollPositionChange]);
 
   const stages = useMemo(() => {
     const set = new Set<string>();
@@ -313,13 +349,15 @@ const HorizontalScheduleView: React.FC<Props> = ({
       // (#5: "favorite tap jumps to a random scroll position" — the reset itself
       // was the jump.) currentOffsetRef holds the last native offset from onScroll.
       const preservedX = Math.max(0, currentOffsetRef.current.x);
+      const clampedY = clampVerticalOffset(currentOffsetRef.current.y, stages.length, viewportHeightRef.current);
       pendingScrollXRef.current = preservedX;
+      pendingScrollYRef.current = clampedY;
       pendingScrollInstantRef.current = true;
-      currentOffsetRef.current = { x: preservedX, y: 0 };
+      currentOffsetRef.current = { x: preservedX, y: clampedY };
       setScrollResetKey(k => k + 1);
     }
     previousEventsSignatureRef.current = eventsSignature;
-  }, [eventsSignature, selectedDay]);
+  }, [eventsSignature, selectedDay, stages.length]);
 
 
   // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
@@ -376,6 +414,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
     pendingScrollXRef.current = initialScrollX != null
       ? initialScrollX
       : computeDefaultScrollX(currentTime);
+    pendingScrollYRef.current = initialScrollY != null
+      ? clampVerticalOffset(initialScrollY, stages.length, viewportHeightRef.current)
+      : 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -433,6 +474,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
         key={`vertical-${scrollResetKey}`}
         showsVerticalScrollIndicator={false}
         style={styles.bodyVerticalScroll}
+        scrollEventThrottle={16}
+        onLayout={handleVerticalLayout}
+        onScroll={handleVerticalScroll}
       >
         <View style={{ flexDirection: 'row' }}>
           {/* Sticky stage label column */}
