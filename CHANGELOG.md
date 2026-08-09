@@ -9,6 +9,14 @@
 - **Map compass/camera stability (#202):** fixed the 0°/360° full-spin seam, reduced compass drift and overshoot with tilt-compensated sensor fusion, and improved camera-update throttling so the map remains responsive.
 - **Friend marker and HUD stability (#203):** stabilized edge/radar friend markers and the map HUD to prevent visible bounce and jitter while heading changes.
 
+## [1.4.1](https://github.com/rlerikse/bigfamfestival/compare/v1.4.0...v1.4.1) (2026-08-09)
+
+
+### Bug Fixes
+
+* **schedule:** sync header time-ruler with body scroll on programmatic jumps ([00b40e7](https://github.com/rlerikse/bigfamfestival/commit/00b40e7bbd95fe55dd37c831b25086a625aef9d4))
+* **schedule:** sync header time-ruler with body scroll on programmatic jumps ([b51e659](https://github.com/rlerikse/bigfamfestival/commit/b51e659b86a38d05b78d42437487f4b95e8f62b4))
+
 ## [1.4.0](https://github.com/rlerikse/bigfamfestival/compare/v1.3.0...v1.4.0) (2026-08-09)
 
 
