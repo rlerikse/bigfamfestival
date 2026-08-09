@@ -3,7 +3,8 @@ name: Mobile CI
 on:
   workflow_dispatch:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, 'release/**' ]
+    tags: [ 'v*.*.*' ]
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-ci.yml'
@@ -44,7 +45,7 @@ jobs:
         run: npm ci
 
       - name: Lint
-        run: npm run lint -- --fix
+        run: npm run lint
 
       - name: Type check
         run: npm run typecheck
@@ -56,8 +57,14 @@ jobs:
     name: Expo Build
     runs-on: ubuntu-latest
     needs: lint-and-test
-    # Run on push only (not on PRs)
-    if: github.event_name == 'push'
+    # EAS cloud builds cost real build credits — do NOT run on every
+    # push to main/dev. Only run on release branches (release/*), on a
+    # release-please version tag (vX.Y.Z, see #117), or when explicitly
+    # triggered manually via workflow_dispatch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')) ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
 
     defaults:
       run:
@@ -89,7 +96,11 @@ jobs:
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
             echo "profile=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "profile=production" >> $GITHUB_OUTPUT
           elif [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+            echo "profile=beta" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/heads/release/* ]]; then
             echo "profile=beta" >> $GITHUB_OUTPUT
           else
             echo "profile=preview" >> $GITHUB_OUTPUT
@@ -100,19 +111,10 @@ jobs:
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Write Google Play service account key
-        if: steps.profile.outputs.profile == 'beta' || steps.profile.outputs.profile == 'production'
-        run: |
-          printf '%s' '${{ secrets.GOOGLE_PLAY_SA_KEY }}' > google-play-service-account.json
-        env:
-          GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
-
-      - name: Submit Android to Google Play (${{ steps.profile.outputs.profile }})
-        if: steps.profile.outputs.profile == 'beta' || steps.profile.outputs.profile == 'production'
-        run: eas submit --platform android --profile ${{ steps.profile.outputs.profile }} --latest --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          GOOGLE_PLAY_SA_KEY: ${{ secrets.GOOGLE_PLAY_SA_KEY }}
+      # Store submission is deliberately separate from build CI. The Android
+      # Deploy — Alpha Testing workflow requires an explicit EAS build ID and
+      # verifies its commit, profile, distribution, and expiry before it can
+      # submit to Play. Do not use `eas submit --latest` here.
 
       # iOS build — requires Apple Developer certs + provisioning profiles
       # TODO(BFF-S3-xx): enable once Apple certs are configured in EAS

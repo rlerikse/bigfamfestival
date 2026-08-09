@@ -93,6 +93,8 @@ const SettingsScreen = () => {
     toggleScheduleNotifications,
     globalNotificationsEnabled,
     toggleGlobalNotifications,
+    distanceUnit,
+    toggleDistanceUnit,
     // currentLanguage,
     // changeLanguage,
     // getSupportedLanguages
@@ -278,6 +280,13 @@ const SettingsScreen = () => {
           onSwitchToggle: toggleShareMyCampsite,
           disabled: locationSavePending,
           description: 'Let accepted friends find your campsite on the map',
+        },
+        {
+          icon: 'speedometer-outline',
+          label: 'Distance Units',
+          hasSwitch: false,
+          onPress: toggleDistanceUnit,
+          description: distanceUnit === 'mi' ? 'Miles (tap to switch to km)' : 'Kilometers (tap to switch to mi)',
         },
       ],
     }] : []),

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Realtime friend locations (#204):** opted-in friend locations now update through authenticated Server-Sent Events (SSE), replacing the previous 30-second foreground poll. The client refreshes its Firebase token on explicit reconnect attempts, uses capped exponential backoff, and temporarily falls back to polling when the stream is unavailable.
+
+### Fixed
+- **Map compass/camera stability (#202):** fixed the 0°/360° full-spin seam, reduced compass drift and overshoot with tilt-compensated sensor fusion, and improved camera-update throttling so the map remains responsive.
+- **Friend marker and HUD stability (#203):** stabilized edge/radar friend markers and the map HUD to prevent visible bounce and jitter while heading changes.
+
 ## [1.2.2] - 2026-07-28
 
 ### Fixed

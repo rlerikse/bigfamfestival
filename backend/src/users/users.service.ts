@@ -77,7 +77,10 @@ export class UsersService {
             await admin.auth().setCustomUserClaims(id, { role: data.role });
           } catch (e) {
             // Non-fatal — custom claims will be set on next opportunity
-            console.warn('Failed to set custom claims during migration:', e.message);
+            console.warn(
+              'Failed to set custom claims during migration:',
+              e.message,
+            );
           }
         }
 
@@ -105,7 +108,11 @@ export class UsersService {
   /**
    * Update a user
    */
-  async update(id: string, updateUserDto: UpdateUserDto, email?: string): Promise<User> {
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+    email?: string,
+  ): Promise<User> {
     const user = await this.findById(id, email);
 
     if (!user) {
@@ -115,17 +122,15 @@ export class UsersService {
     // Convert DTO to plain object for Firestore, add timestamp
     const updateData = { ...updateUserDto, updatedAt: new Date() };
 
-    await this.firestoreService.update<User>(
-      this.collection,
-      id,
-      updateData,
-    );
+    await this.firestoreService.update<User>(this.collection, id, updateData);
 
     // Sync role to Firebase Auth custom claims if role changed
     if ('role' in updateData && updateData.role) {
       try {
         const adminSdk = await import('firebase-admin');
-        await adminSdk.auth().setCustomUserClaims(id, { role: updateData.role });
+        await adminSdk
+          .auth()
+          .setCustomUserClaims(id, { role: updateData.role });
       } catch (e) {
         console.warn('Failed to sync role to custom claims:', e.message);
       }

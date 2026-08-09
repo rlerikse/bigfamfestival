@@ -1,4 +1,10 @@
-import { forwardRef, Inject, Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { FirestoreService } from '../config/firestore/firestore.service';
 import { Artist } from './interfaces/artist.interface';
 import { UpdateArtistDto } from './dto/update-artist.dto';
@@ -84,22 +90,36 @@ export class ArtistsService {
    * and deletes the old one (Firestore doesn't support renaming doc IDs).
    * Also updates any event references from old slug to new slug.
    */
-  async update(currentSlug: string, updateData: UpdateArtistDto): Promise<Artist> {
+  async update(
+    currentSlug: string,
+    updateData: UpdateArtistDto,
+  ): Promise<Artist> {
     // Verify the artist exists
-    const existing = await this.firestoreService.get<Artist>(this.collection, currentSlug);
+    const existing = await this.firestoreService.get<Artist>(
+      this.collection,
+      currentSlug,
+    );
     if (!existing) {
-      throw new NotFoundException(`Artist with slug "${currentSlug}" not found`);
+      throw new NotFoundException(
+        `Artist with slug "${currentSlug}" not found`,
+      );
     }
 
-    const newSlug = updateData.slug && updateData.slug !== currentSlug
-      ? updateData.slug
-      : null;
+    const newSlug =
+      updateData.slug && updateData.slug !== currentSlug
+        ? updateData.slug
+        : null;
 
     // If slug is changing, check the new slug isn't taken
     if (newSlug) {
-      const conflict = await this.firestoreService.get<Artist>(this.collection, newSlug);
+      const conflict = await this.firestoreService.get<Artist>(
+        this.collection,
+        newSlug,
+      );
       if (conflict) {
-        throw new ConflictException(`Artist with slug "${newSlug}" already exists`);
+        throw new ConflictException(
+          `Artist with slug "${newSlug}" already exists`,
+        );
       }
     }
 
@@ -111,13 +131,19 @@ export class ArtistsService {
     if (updateData.bio !== undefined) payload.bio = updateData.bio;
     if (updateData.genre !== undefined) payload.genre = updateData.genre;
     if (updateData.genres !== undefined) payload.genres = updateData.genres;
-    if (updateData.imageUrl !== undefined) payload.imageUrl = updateData.imageUrl;
+    if (updateData.imageUrl !== undefined)
+      payload.imageUrl = updateData.imageUrl;
     if (updateData.userId !== undefined) payload.userId = updateData.userId;
-    if (updateData.userDisplayName !== undefined) payload.userDisplayName = updateData.userDisplayName;
-    if (updateData.soundcloudUrl !== undefined) payload.soundcloudUrl = updateData.soundcloudUrl;
-    if (updateData.spotifyUrl !== undefined) payload.spotifyUrl = updateData.spotifyUrl;
-    if (updateData.facebookUrl !== undefined) payload.facebookUrl = updateData.facebookUrl;
-    if (updateData.instagramUrl !== undefined) payload.instagramUrl = updateData.instagramUrl;
+    if (updateData.userDisplayName !== undefined)
+      payload.userDisplayName = updateData.userDisplayName;
+    if (updateData.soundcloudUrl !== undefined)
+      payload.soundcloudUrl = updateData.soundcloudUrl;
+    if (updateData.spotifyUrl !== undefined)
+      payload.spotifyUrl = updateData.spotifyUrl;
+    if (updateData.facebookUrl !== undefined)
+      payload.facebookUrl = updateData.facebookUrl;
+    if (updateData.instagramUrl !== undefined)
+      payload.instagramUrl = updateData.instagramUrl;
 
     if (newSlug) {
       // Slug rename: create new doc, update event refs, delete old doc
@@ -152,23 +178,31 @@ export class ArtistsService {
   /**
    * When an artist slug changes, update all events that reference the old slug.
    */
-  private async updateEventReferences(oldSlug: string, newSlug: string): Promise<void> {
-    const events = await this.firestoreService.query<{ id?: string; artists: string[] }>(
-      'events',
-      'artists',
-      'array-contains',
-      oldSlug,
-    );
+  private async updateEventReferences(
+    oldSlug: string,
+    newSlug: string,
+  ): Promise<void> {
+    const events = await this.firestoreService.query<{
+      id?: string;
+      artists: string[];
+    }>('events', 'artists', 'array-contains', oldSlug);
 
     for (const event of events) {
       if (!event.id) continue;
-      const updatedArtists = event.artists.map((a) => a === oldSlug ? newSlug : a);
-      await this.firestoreService.update('events', event.id, { artists: updatedArtists });
+      const updatedArtists = event.artists.map((a) =>
+        a === oldSlug ? newSlug : a,
+      );
+      await this.firestoreService.update('events', event.id, {
+        artists: updatedArtists,
+      });
     }
   }
 
   async delete(slug: string): Promise<void> {
-    const existing = await this.firestoreService.get<Artist>(this.collection, slug);
+    const existing = await this.firestoreService.get<Artist>(
+      this.collection,
+      slug,
+    );
     if (!existing) {
       throw new NotFoundException(`Artist with slug "${slug}" not found`);
     }

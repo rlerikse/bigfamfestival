@@ -1,8 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsArray, IsUrl } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsArray,
+  IsUrl,
+} from 'class-validator';
 
 export class CreateArtistDto {
-  @ApiPropertyOptional({ description: 'URL-friendly slug (auto-generated from name if omitted)' })
+  @ApiPropertyOptional({
+    description: 'URL-friendly slug (auto-generated from name if omitted)',
+  })
   @IsString()
   @IsOptional()
   slug?: string;

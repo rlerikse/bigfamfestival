@@ -2,7 +2,9 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, IsArray, IsUrl } from 'class-validator';
 
 export class UpdateArtistDto {
-  @ApiPropertyOptional({ description: 'New slug (triggers doc rename if different from current)' })
+  @ApiPropertyOptional({
+    description: 'New slug (triggers doc rename if different from current)',
+  })
   @IsString()
   @IsOptional()
   slug?: string;

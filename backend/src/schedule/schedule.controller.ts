@@ -79,14 +79,21 @@ export class ScheduleController {
     description: 'Returns list of scheduled events for the user',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  @ApiResponse({ status: 403, description: 'User has made their schedule private' })
+  @ApiResponse({
+    status: 403,
+    description: 'User has made their schedule private',
+  })
   async getUserSchedule(@Request() req, @Param('userId') userId: string) {
     // Owner can always view their own schedule
     if (req.user.id !== userId) {
-      const targetUser = await this.usersService.findById(userId).catch(() => null);
+      const targetUser = await this.usersService
+        .findById(userId)
+        .catch(() => null);
       // If user doesn't exist or has opted out (shareMySchedule === false), deny
       if (!targetUser || targetUser.shareMySchedule === false) {
-        throw new ForbiddenException('This user has made their schedule private');
+        throw new ForbiddenException(
+          'This user has made their schedule private',
+        );
       }
     }
 

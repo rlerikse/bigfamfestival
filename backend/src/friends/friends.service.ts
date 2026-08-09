@@ -25,7 +25,10 @@ export class FriendsService {
    * Search for users by display name (case-insensitive prefix).
    * Returns max 20 results, excluding the requester.
    */
-  async searchUsers(query: string, requesterId: string): Promise<Partial<User>[]> {
+  async searchUsers(
+    query: string,
+    requesterId: string,
+  ): Promise<Partial<User>[]> {
     if (!query || query.trim().length < 2) {
       return [];
     }
@@ -56,7 +59,10 @@ export class FriendsService {
    * Send a friend request from fromUserId → toUserId.
    * Rejects if a pending/accepted request already exists in either direction.
    */
-  async sendRequest(fromUserId: string, toUserId: string): Promise<FriendRequest> {
+  async sendRequest(
+    fromUserId: string,
+    toUserId: string,
+  ): Promise<FriendRequest> {
     if (fromUserId === toUserId) {
       throw new BadRequestException('Cannot send a friend request to yourself');
     }
@@ -91,10 +97,9 @@ export class FriendsService {
       updatedAt: now,
     };
 
-    const { id } = await this.firestoreService.create<Omit<FriendRequest, 'id'>>(
-      this.requestsCollection,
-      requestData,
-    );
+    const { id } = await this.firestoreService.create<
+      Omit<FriendRequest, 'id'>
+    >(this.requestsCollection, requestData);
 
     return { id, ...requestData };
   }
@@ -108,17 +113,18 @@ export class FriendsService {
     responderId: string,
     status: 'accepted' | 'declined',
   ): Promise<FriendRequest> {
-    const requestData = await this.firestoreService.get<Omit<FriendRequest, 'id'>>(
-      this.requestsCollection,
-      requestId,
-    );
+    const requestData = await this.firestoreService.get<
+      Omit<FriendRequest, 'id'>
+    >(this.requestsCollection, requestId);
 
     if (!requestData) {
       throw new NotFoundException('Friend request not found');
     }
 
     if (requestData.toUserId !== responderId) {
-      throw new BadRequestException('Only the recipient can respond to this request');
+      throw new BadRequestException(
+        'Only the recipient can respond to this request',
+      );
     }
 
     if (requestData.status !== 'pending') {
@@ -157,7 +163,9 @@ export class FriendsService {
       .where('toUserId', '==', userId)
       .where('status', '==', 'pending')
       .get();
-    const results = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FriendRequest));
+    const results = snapshot.docs.map(
+      (d) => ({ id: d.id, ...d.data() } as FriendRequest),
+    );
     return results;
   }
 
@@ -171,7 +179,9 @@ export class FriendsService {
       .where('fromUserId', '==', userId)
       .where('status', '==', 'pending')
       .get();
-    const results = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as FriendRequest));
+    const results = snapshot.docs.map(
+      (d) => ({ id: d.id, ...d.data() } as FriendRequest),
+    );
     return results;
   }
 
@@ -179,10 +189,9 @@ export class FriendsService {
    * Cancel an outgoing friend request (sender only).
    */
   async cancelRequest(requestId: string, requesterId: string): Promise<void> {
-    const requestData = await this.firestoreService.get<Omit<FriendRequest, 'id'>>(
-      this.requestsCollection,
-      requestId,
-    );
+    const requestData = await this.firestoreService.get<
+      Omit<FriendRequest, 'id'>
+    >(this.requestsCollection, requestId);
 
     if (!requestData) {
       throw new NotFoundException('Friend request not found');
@@ -193,7 +202,9 @@ export class FriendsService {
     }
 
     if (requestData.status !== 'pending') {
-      throw new BadRequestException('Cannot cancel a request that has been resolved');
+      throw new BadRequestException(
+        'Cannot cancel a request that has been resolved',
+      );
     }
 
     await this.firestoreService.delete(this.requestsCollection, requestId);
@@ -218,8 +229,12 @@ export class FriendsService {
       // string so the mobile client's `new Date(item.addedAt)` doesn't get
       // an object (which produces "Invalid Date").
       const addedAt =
-        data.addedAt && typeof (data.addedAt as unknown as { toDate?: () => Date }).toDate === 'function'
-          ? (data.addedAt as unknown as { toDate: () => Date }).toDate().toISOString()
+        data.addedAt &&
+        typeof (data.addedAt as unknown as { toDate?: () => Date }).toDate ===
+          'function'
+          ? (data.addedAt as unknown as { toDate: () => Date })
+              .toDate()
+              .toISOString()
           : data.addedAt;
       return {
         userId: doc.id,
@@ -237,10 +252,18 @@ export class FriendsService {
     const batch = db.batch();
 
     batch.delete(
-      db.collection(this.usersCollection).doc(userId).collection('friends').doc(friendId),
+      db
+        .collection(this.usersCollection)
+        .doc(userId)
+        .collection('friends')
+        .doc(friendId),
     );
     batch.delete(
-      db.collection(this.usersCollection).doc(friendId).collection('friends').doc(userId),
+      db
+        .collection(this.usersCollection)
+        .doc(friendId)
+        .collection('friends')
+        .doc(userId),
     );
 
     await batch.commit();
@@ -251,9 +274,15 @@ export class FriendsService {
   /**
    * Get campsite locations for all friends who have shareMyCampsite=true.
    */
-  async getFriendCampsites(
-    userId: string,
-  ): Promise<Array<{ userId: string; name: string; profilePictureUrl?: string; lat: number; lng: number }>> {
+  async getFriendCampsites(userId: string): Promise<
+    Array<{
+      userId: string;
+      name: string;
+      profilePictureUrl?: string;
+      lat: number;
+      lng: number;
+    }>
+  > {
     const friends = await this.getFriends(userId);
     if (friends.length === 0) return [];
 
@@ -304,9 +333,16 @@ export class FriendsService {
   /**
    * Get live locations for all friends who have shareMyLocation=true.
    */
-  async getFriendLocations(
-    userId: string,
-  ): Promise<Array<{ userId: string; name: string; profilePictureUrl?: string; lat: number; lng: number; updatedAt: Date }>> {
+  async getFriendLocations(userId: string): Promise<
+    Array<{
+      userId: string;
+      name: string;
+      profilePictureUrl?: string;
+      lat: number;
+      lng: number;
+      updatedAt: Date;
+    }>
+  > {
     const friends = await this.getFriends(userId);
     if (friends.length === 0) return [];
 
@@ -375,18 +411,15 @@ export class FriendsService {
       );
     }
 
-    await db
-      .collection('userLocations')
-      .doc(userId)
-      .set(
-        {
-          userId,
-          lat,
-          lng,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
+    await db.collection('userLocations').doc(userId).set(
+      {
+        userId,
+        lat,
+        lng,
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
     return { ok: true };
   }
@@ -397,7 +430,10 @@ export class FriendsService {
    * Write FriendEntry records to both users' friends subcollections.
    * Called after a request is accepted.
    */
-  private async addFriendEntries(userAId: string, userBId: string): Promise<void> {
+  private async addFriendEntries(
+    userAId: string,
+    userBId: string,
+  ): Promise<void> {
     const db = this.firestoreService.db;
 
     const [userADoc, userBDoc] = await Promise.all([
@@ -413,7 +449,11 @@ export class FriendsService {
 
     // Write B into A's friends subcollection
     batch.set(
-      db.collection(this.usersCollection).doc(userAId).collection('friends').doc(userBId),
+      db
+        .collection(this.usersCollection)
+        .doc(userAId)
+        .collection('friends')
+        .doc(userBId),
       {
         name: userB?.name ?? 'Unknown',
         profilePictureUrl: userB?.profilePictureUrl ?? null,
@@ -423,7 +463,11 @@ export class FriendsService {
 
     // Write A into B's friends subcollection
     batch.set(
-      db.collection(this.usersCollection).doc(userBId).collection('friends').doc(userAId),
+      db
+        .collection(this.usersCollection)
+        .doc(userBId)
+        .collection('friends')
+        .doc(userAId),
       {
         name: userA?.name ?? 'Unknown',
         profilePictureUrl: userA?.profilePictureUrl ?? null,

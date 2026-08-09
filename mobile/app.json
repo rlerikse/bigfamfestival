@@ -68,9 +68,12 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE"
       ],
+      "blockedPermissions": [
+        "android.permission.ACTIVITY_RECOGNITION"
+      ],
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "pan",
-      "versionCode": 80
+      "versionCode": 81
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"
@@ -138,6 +141,12 @@
       ],
       "expo-font",
       "./plugins/withModularHeaders",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Big Fam Festival to use device motion sensors for the Live Wayfinder directional compass."
+        }
+      ],
       [
         "@rnmapbox/maps",
         {

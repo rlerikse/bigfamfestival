@@ -31,7 +31,7 @@ This application consists of:
 - User authentication and authorization (Firebase Auth + JWT)
 - Festival event management with artist profiles
 - Personal schedule management
-- Interactive festival map
+- Interactive festival map with live friend locations for opted-in friends
 - Push notifications
 - Admin panel for event/artist CRUD
 - Artist bios, social links, and website URLs
@@ -41,6 +41,12 @@ This application consists of:
 - Festival map integration
 - Role-based access control (Admin, Staff, Artist, Vendor, Volunteer, Director, Attendee)
 
+### Map and friend-location experience
+
+- **Live friend locations:** opted-in friends appear on the festival map as their location changes. The app receives authenticated Server-Sent Events (SSE) updates rather than polling every 30 seconds; if the stream is unavailable, it temporarily falls back to polling while it reconnects.
+- **Stable compass and camera:** tilt-compensated compass fusion, seam-safe heading transitions, and throttled camera updates keep the map oriented smoothly without long spins, drift, or render lag.
+- **Stable friend markers and HUD:** friend radar markers are quantized and constrained at the map edge so they remain readable and do not bounce or jitter as the device heading changes.
+
 ## 🔧 Prerequisites
 
 ### Required Software
@@ -48,6 +54,12 @@ This application consists of:
 - **Node.js** 18.x or higher
 - **npm** 9.x or higher (comes with Node.js)
 - **Git**
+
+After cloning, enable local pre-commit lint auto-fix (keeps `--fix` out of CI):
+
+```bash
+git config core.hooksPath .githooks
+```
 - **Expo CLI** (`npm install -g expo-cli`)
 - **Google Cloud SDK** (for production deployment)
 - **Terraform** (for infrastructure deployment)
@@ -180,7 +192,32 @@ The mobile app uses Expo's configuration system. Key settings are in `app.json`:
 - `extra.apiUrl`: API endpoint URL (defaults to production)
 - Can be overridden with `EXPO_PUBLIC_API_URL` environment variable
 
+## 🌿 Branch Naming Convention
+
+All branches should follow one of these prefixes so CI, automation, and reviewers can quickly tell intent:
+
+| Prefix | Purpose | Example |
+|---|---|---|
+| `feature/` | New feature work | `feature/friend-radar-hud` |
+| `fix/` | Bug fix (non-urgent) | `fix/schedule-scroll-jump` |
+| `hotfix/` | Urgent production fix, typically branched from `main` | `hotfix/crash-on-launch` |
+| `wip/` | Work-in-progress / exploratory, not yet ready for review | `wip/map-routing` |
+| `release/` | Release-candidate branches (also gate EAS builds, see CI) | `release/1.3.0` |
+| `chore/` | Tooling, CI, docs, dependency bumps | `chore/branch-hygiene` |
+
+Older/legacy naming (e.g. bare `feat/...` without a slash-separated scope) is still tolerated but new branches should use the table above. A CI check on PR open flags non-conforming branch names as an advisory warning (does not block merge). A weekly scheduled job (`.github/workflows/prune-stale-branches.yml`) automatically deletes branches that have already been **merged** into `dev` or `main`, to keep the branch list clean — it never touches unmerged/open-PR branches.
+
 ## 🚢 Production Deployment
+
+### Versioning & Releases
+
+This project uses **unified semantic versioning** across the whole app — mobile and backend track together as one version (no independent per-package versions). Source of truth: `.release-please-manifest.json` (root), mirrored into `mobile/package.json`, `mobile/app.json` (`expo.version`), and `backend/package.json`.
+
+- Commits to `dev`/`main` must follow [Conventional Commits](https://www.conventionalcommits.org/) (already enforced) — `feat:`, `fix:`, `feat!:`/`BREAKING CHANGE:`, etc. drive the version bump type (minor/patch/major).
+- [release-please](https://github.com/googleapis/release-please) (`.github/workflows/release-please.yml`) watches `main`. On merge, it opens/updates a standing **Release PR** with the version bump + generated `CHANGELOG.md`.
+- Nothing ships automatically — merging that Release PR is the explicit release trigger. On merge it creates git tag `vX.Y.Z` + a GitHub Release.
+- That tag push (`v*.*.*`) is what fires the EAS store build job in `.github/workflows/mobile-ci.yml` — see PR #113/#194 EAS gating.
+- Android's `versionCode` in `mobile/app.json` is a **separate** counter auto-incremented by EAS (`eas.json` `autoIncrement: true`) — release-please does not touch it.
 
 ### Backend Deployment
 

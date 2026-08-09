@@ -5,10 +5,10 @@ export interface Artist {
   slug?: string;
   name: string;
   bio?: string;
-  genre?: string;     // legacy single genre
-  genres?: string[];  // flattened genre array
+  genre?: string; // legacy single genre
+  genres?: string[]; // flattened genre array
   imageUrl?: string;
-  userId?: string;    // linked Firebase Auth user ID
+  userId?: string; // linked Firebase Auth user ID
   userDisplayName?: string; // cached for display
   soundcloudUrl?: string;
   spotifyUrl?: string;
