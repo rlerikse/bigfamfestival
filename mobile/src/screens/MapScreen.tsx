@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform, Image } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -69,6 +69,14 @@ interface CategoryConfig {
   borderWidth: number;
   borderColor: string;
 }
+
+/** Named marker image assets, keyed by the `markerAsset` value on a MapPOI
+ * (e.g. Firestore `markerAsset: 'bigfam-logo'` on the front-gate POI). Add
+ * new brand assets here as they're needed — unknown keys fall back to the
+ * category emoji marker. */
+const MARKER_ASSETS: Record<string, ReturnType<typeof require>> = {
+  'bigfam-logo': require('../assets/images/bf-logo-trans.png'),
+};
 
 export const POI_CATEGORIES: Record<POICategory, CategoryConfig> = {
   stage: {
@@ -976,6 +984,10 @@ export default function MapScreen() {
           const cat = resolveCategory(poi.category);
           const cfg = POI_CATEGORIES[cat];
           const isStaff = cat === 'staff';
+          // Front gate (and any other POI with a named brand asset) renders
+          // the Big Fam logo instead of the category emoji chip — falls back
+          // to the normal emoji marker if markerAsset is unset/unrecognized.
+          const markerAssetSource = poi.markerAsset ? MARKER_ASSETS[poi.markerAsset] : undefined;
           return (
             <Mapbox.PointAnnotation
               key={poi.id}
@@ -983,23 +995,33 @@ export default function MapScreen() {
               coordinate={[poi.lng, poi.lat]}
               onSelected={() => handlePOIPress(poi)}
             >
-              <View style={[
-                styles.marker,
-                {
-                  width: cfg.markerSize,
-                  height: cfg.markerSize,
-                  borderRadius: cfg.markerSize / 2,
-                  backgroundColor: cfg.color,
-                  borderWidth: cfg.borderWidth,
-                  borderColor: cfg.borderColor,
-                },
-                // Staff/Medical: extra prominence
-                isStaff && styles.staffMarkerExtra,
-              ]}>
-                <Text style={[styles.markerEmoji, isStaff && styles.staffMarkerEmojiLarge]}>
-                  {cfg.emoji}
-                </Text>
-              </View>
+              {markerAssetSource ? (
+                <View style={styles.brandMarker}>
+                  <Image
+                    source={markerAssetSource}
+                    style={styles.brandMarkerImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              ) : (
+                <View style={[
+                  styles.marker,
+                  {
+                    width: cfg.markerSize,
+                    height: cfg.markerSize,
+                    borderRadius: cfg.markerSize / 2,
+                    backgroundColor: cfg.color,
+                    borderWidth: cfg.borderWidth,
+                    borderColor: cfg.borderColor,
+                  },
+                  // Staff/Medical: extra prominence
+                  isStaff && styles.staffMarkerExtra,
+                ]}>
+                  <Text style={[styles.markerEmoji, isStaff && styles.staffMarkerEmojiLarge]}>
+                    {cfg.emoji}
+                  </Text>
+                </View>
+              )}
               <Mapbox.Callout title={poi.name} />
             </Mapbox.PointAnnotation>
           );
@@ -1325,6 +1347,25 @@ const styles = StyleSheet.create({
   },
 
   // ── Markers ────────────────────────────────────────────────────────────────
+  brandMarker: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F5F5DC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  brandMarkerImage: {
+    width: 32,
+    height: 32,
+  },
   marker: {
     justifyContent: 'center',
     alignItems: 'center',
