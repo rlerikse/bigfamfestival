@@ -68,3 +68,31 @@ export function resolveScheduleDayScrollTarget(events: ScheduleEvent[], nowMs: n
   const dayIsOver = nowMs >= Math.max(...endTimes);
   return dayIsOver ? 'last' : 'first';
 }
+
+/**
+ * Stage-row height (px) used by HorizontalScheduleView's grid layout. Lives
+ * here (rather than as a local constant in HorizontalScheduleView.tsx) so
+ * clampVerticalOffset below stays importable without pulling in that
+ * component's react-native / expo-image / @expo/vector-icons imports, which
+ * are not transformable by this repo's Jest config (see BFF-124 / #187,
+ * SafeText.test.tsx for the same underlying Expo SDK 54 incompatibility).
+ */
+export const SCHEDULE_ROW_HEIGHT = 108;
+
+/**
+ * Clamp a previously-saved vertical stage-row scroll offset (px) to the
+ * currently valid range, so a filter/day change that shrinks the stage list
+ * can't leave a stale, out-of-bounds offset restored after a remount.
+ * Pure and exported so it can be unit-tested directly with plain Jest (no
+ * `@testing-library/react-native` `render()` — see plan.md DR-5).
+ */
+export function clampVerticalOffset(
+  savedY: number | null | undefined,
+  stageCount: number,
+  viewportHeight: number
+): number {
+  if (savedY == null || !Number.isFinite(savedY) || stageCount <= 0) return 0;
+  const contentHeight = SCHEDULE_ROW_HEIGHT * stageCount;
+  const maxScrollY = Math.max(0, contentHeight - viewportHeight);
+  return Math.min(Math.max(savedY, 0), maxScrollY);
+}

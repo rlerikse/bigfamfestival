@@ -1,0 +1,65 @@
+{
+  "feature_id": "BFF-124",
+  "feature_name": "horizontal-schedule-vertical-scroll-sync",
+  "feature_dir": "specs/BFF-124-horizontal-schedule-vertical-scroll-sync",
+  "source": {
+    "type": "github_issue",
+    "repository": "rlerikse/bigfamfestival",
+    "number": 187,
+    "url": "https://github.com/rlerikse/bigfamfestival/issues/187"
+  },
+  "branch_name": "bugfix/BFF-124-vertical-scroll-sync",
+  "status": "draft",
+  "steps": {
+    "specify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "version": "1.0.0",
+      "clarification": "deferred_to_pipeline"
+    },
+    "clarify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "SIMPLE",
+      "complexity_score": 4,
+      "questions_resolved": 3,
+      "questions_surfaced": 0,
+      "attempt": 2,
+      "confirmation_status": "CLEAN",
+      "last_confirmed_at": "2026-08-09T00:00:00Z"
+    },
+    "plan": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "spec_hash": "ba60a572217ff747f3fd866bf33fe1b30c1b1c97f24b73dc31f74b3ad0f61f27",
+      "analysis_result": "PASS",
+      "self_healed": false,
+      "complexity": "SIMPLE"
+    },
+    "tasks": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "plan_hash": "ba60a572217ff747f3fd866bf33fe1b30c1b1c97f24b73dc31f74b3ad0f61f27",
+      "task_count": 7,
+      "phase_count": 3,
+      "complexity": "SIMPLE"
+    },
+    "implement": {
+      "status": "code_complete",
+      "started_at": "2026-08-09T00:00:00Z",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "SIMPLE",
+      "phases_completed": [
+        "Phase 1: Clamp Helper and Scroll-Position Contract",
+        "Phase 2: Capture, Lift, and Restore Vertical Position",
+        "Phase 3: Focused Verification and Platform Regression (automated portion)"
+      ],
+      "tasks_completed": ["T001", "T002", "T003", "T004", "T005", "T006"],
+      "tasks_pending_manual": ["T007"],
+      "verify_result": "PASS",
+      "verify_rounds": 2,
+      "commit": "4536bfd",
+      "notes": "T007 (manual iOS/Android device verification) intentionally out of scope for automated implementation; tracked in tasks.md."
+    }
+  }
+}

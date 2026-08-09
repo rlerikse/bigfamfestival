@@ -9,6 +9,8 @@
 
 > **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `backend/src/map/map.service.ts` + `map.controller.ts` (`GET /map/pois`); `mobile/src/screens/MapScreen.tsx` renders `mapPOIs`. The category taxonomy was **widened** to 5 marker types (stage / food / beverage / shop / staff-medical) vs the 7 categories listed below. Original content preserved as-is.
 
+> **⚠️ Drift note (2026-08-09, via `/blue.drift`):** Beyond the taxonomy widening noted above, the platform also gained **admin-uploadable per-POI custom marker images** (`markerAsset`), which SC-001 below ("7 categories have custom icons") does not cover — this is a per-POI capability, not per-category. See the new **Dynamic Per-POI Marker Assets** section below.
+
 ---
 
 ## Overview
@@ -101,3 +103,25 @@ As a user, I want to tap a marker to see details about that location, so that I 
 - **SC-001**: All 7 POI categories have custom icons
 - **SC-002**: Markers load within 2 seconds of map open
 - **SC-003**: Filter toggle responds within 200ms
+
+---
+
+## Dynamic Per-POI Marker Assets _(added 2026-08-09 via `/blue.drift`)_
+
+Added 2026-08 to let admins give an individual POI (e.g. the festival's front-gate/logo marker) a custom image, beyond the fixed per-category icon set in SC-001. Not present in the original 2026-02-10 spec text above.
+
+### Behavior
+
+- Each POI carries an optional `markerAsset`: a full HTTPS URL to a custom marker image. When set, the map renders that image instead of the category's default emoji/color icon.
+- Falls back to the category emoji icon (`icon` field) when `markerAsset` is absent.
+- Admins upload the marker image via the admin panel's POI manager; the mobile client and backend POI contract both carry `markerAsset` alongside `category`/`type`.
+
+### Functional Requirements
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-005 | POI contract supports an optional per-POI custom marker image URL | ✅ | `backend/src/map/interfaces/poi.interface.ts` (`markerAsset`) |
+| FR-006 | Map renders `markerAsset` image when present, else falls back to category icon | ✅ | `mobile/src/screens/MapScreen.tsx` |
+| FR-007 | Admin can upload/attach a marker image per POI | ✅ | `admin/src/components/POIManager.tsx` (image-upload UI) |
+
+**Implementation**: `backend/src/map/interfaces/poi.interface.ts`, `mobile/src/screens/MapScreen.tsx`, `admin/src/components/POIManager.tsx`.

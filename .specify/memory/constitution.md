@@ -1,9 +1,9 @@
 # Big Fam Festival - Project Constitution
 
 <!-- 
-Version: 1.3.0
+Version: 1.4.0
 Generated: 2026-02-09
-Last Audit: 2026-02-10
+Last Audit: 2026-08-09
 Project: Big Fam Festival App (Backend API + Mobile App)
 -->
 
@@ -161,7 +161,7 @@ Authentication MUST use Firebase Authentication:
 
 **Password Security**:
 - Passwords managed by Firebase Authentication
-- Password validation MUST require minimum 8 characters (enforced by Firebase)
+- Password minimum length: Firebase's platform default (6 characters) is in effect; **no custom 8-character policy is configured or enforced in this codebase**. If a stricter policy is desired, it MUST be configured via Firebase Auth password policy settings (Console or Admin SDK) — this is not currently done
 - Firebase handles password hashing and secure storage
 - Password reset via Firebase email flow
 
@@ -263,20 +263,20 @@ Push notifications MUST follow these patterns:
 
 Rationale: Push notifications are core to festival communication but must be implemented carefully to avoid spam and battery drain.
 
-## XII. Specification Requirements (Jira Integration)
+## XII. Specification Requirements
 
-All specifications MUST be linked to a Jira ticket:
+> **Note (2026-08-09):** The project's Atlassian Jira space (`eriksensolutions.atlassian.net`) has been **closed**. Jira ticket IDs in existing spec folder names/links are historical and their links are broken. Specs in `specs/` are now the **system of record** for feature history — a Jira ticket is no longer required or obtainable.
 
-- **No Ticket = No Spec**: Every spec MUST have a ticket ID
-- **Naming Convention**: `specs/{TICKET-ID}-{short-description}/`
+- **Naming Convention**: `specs/{ID}-{short-description}/`, where `{ID}` is either a legacy `BFF-{number}` Jira ticket ID (historical) or a new sequential `BFF-{number}` identifier assigned at spec-creation time (post-Jira)
 - **Project Key**: BFF (Big Fam Festival)
-- **Examples**: `specs/BFF-4-authentication/`, `specs/BFF-6-events-schedule/`
+- **Examples**: `specs/BFF-4-authentication/` (legacy, was Jira-linked), `specs/BFF-53-fake-clock-debug-tool/` (post-Jira, ticketless)
+- Specs documenting already-shipped code (retroactive specs) MUST carry a `**Verified**:` date and cite file/line evidence in place of acceptance-criteria sign-off
 
 Spec directories MUST contain:
 - `spec.md`: Feature specification (REQUIRED)
-- `plan.md`: Implementation plan (REQUIRED for features entering development; MAY be absent for specs in early discovery or deferred state)
+- `plan.md`: Implementation plan (REQUIRED for features entering development; MAY be absent for specs in early discovery, deferred, or retroactive-documentation state)
 
-Rationale: Traceability between tickets and specifications enables project management and audit trails.
+Rationale: Traceability was originally through Jira; with that system closed, the spec files themselves must be self-sufficient as the historical record.
 
 ## XIII. Infrastructure as Code (Terraform)
 
@@ -314,10 +314,17 @@ All automation MUST use GitHub Actions workflows in `.github/workflows/`:
 - Jobs MUST specify appropriate `runs-on` and timeout values
 - Sensitive values MUST use GitHub Secrets, never hardcoded
 
-**Required Workflows**:
+**Required Workflows** (`.github/workflows/`, as of 2026-08-09):
 - `backend-ci.yml`: Lint, typecheck, test backend on PR; build Docker image and deploy to Cloud Run on merge to main
 - `mobile-ci.yml`: Lint, typecheck, test mobile on PR; trigger EAS build on merge
-- `sync-spec-context.yml`: Sync specification context to central repo
+- `android-deploy.yml`: Guarded manual dispatch to submit an EAS build to Google Play (alpha/beta track)
+- `ios-deploy.yml`: Guarded manual dispatch to submit an EAS build to TestFlight
+- `release-please.yml`: Automated semantic-version release PRs (see §XV/Additional Constraints)
+- `ci-gate.yml`: Aggregate required-status-check gate for PRs
+- `branch-name-check.yml`: Advisory branch-naming convention check
+- `prune-stale-branches.yml`: Scheduled cleanup of stale merged branches
+
+> **Note (2026-08-09):** `sync-spec-context.yml` (previously listed here) was intentionally **removed** — it synced spec directories to an external central-context repo and is no longer part of this project's workflow.
 
 **Best Practices**:
 - Use caching for `node_modules` to speed up builds
@@ -375,7 +382,7 @@ Firebase Cloud Functions MUST follow these patterns:
 
 **Deployment**:
 - Functions deploy via `firebase deploy --only functions`
-- CI/CD workflow (`deploy-functions.yml`) handles automated deployment
+- No dedicated GitHub Actions workflow currently automates this deployment (functions are deployed manually/ad hoc); this MAY change — update this section when a CI workflow is added
 - Function environment variables set via Firebase console or CLI
 
 **Integration with Backend**:
@@ -433,10 +440,23 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 
 ---
 
+## Known Deviations from This Constitution
+
+> Tracked violations of the MUSTs above, discovered via `/blue.constitution --audit` and hardening review. Listed here so the constitution doesn't silently overclaim compliance. Remediation detail: `docs/audits/2026-08-09-deep-analysis-hardening-optimization.md`.
+
+| Rule | Violation | Status |
+|------|-----------|--------|
+| Security Requirements: "CORS MUST be restricted to known origins in production (not `*`)" | `backend/.env.production.example`, `backend/.env.development.example`, and `main.ts`'s fallback all default `CORS_ORIGIN` to `*` | Open — launch blocker per hardening audit |
+| §III: "Queries MUST avoid unbounded reads (use limits or pagination)" | `admin.service.ts` (`listUsers`, `getStats`) and `friends.service.ts` (`searchUsers`) perform full-collection `getAll()` scans | Open — tracked as N+1/optimization debt |
+| §IX: "Production builds MUST include Sentry for crash and error reporting" | Sentry is initialized, but `ErrorBoundary.tsx`'s `componentDidCatch` never calls `Sentry.captureException()` — React component crashes go unreported | Open — one-line fix, not yet applied |
+
+---
+
 ## Version History
 
 | Version | Date | Changes |
 |---------|------|---------||
+| 1.4.0 | 2026-08-09 | `/blue.constitution --audit --update`: relaxed §XII ticket requirement (Jira space closed — specs are now system of record); refreshed §XIV Required Workflows list (removed `sync-spec-context.yml`, added 5 real workflows); removed false `deploy-functions.yml` claim from §XVI; corrected §VII password-length claim (Firebase default is 6, not 8, unenforced); added "Known Deviations" section (CORS wildcard, unbounded reads, Sentry ErrorBoundary gap) |
 | 1.3.0 | 2026-02-10 | Audit fix: Updated multi-tenancy rules to allow header/query-based tenant, documented 50% coverage threshold, CI upgraded to Node 20 || 1.2.0 | 2026-02-10 | Constitution audit: Added multi-tenancy, security headers, Sentry, strict mode status; updated CI/CD workflows, spec requirements, CORS policy || 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
 | 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |
 
