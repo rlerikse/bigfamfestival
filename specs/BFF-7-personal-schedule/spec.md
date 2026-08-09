@@ -1,8 +1,11 @@
 # Personal Schedule - Retroactive Specification
 
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-7](https://eriksensolutions.atlassian.net/browse/BFF-7)  
+**Status**: ✅ Implemented (verified 2026-08-09)  
+**Jira**: [BFF-7](https://eriksensolutions.atlassian.net/browse/BFF-7) _(link broken — Jira space closed)_  
 **Created**: 2026-02-09  
+**Verified**: 2026-08-09  
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `backend/src/schedule/schedule.controller.ts` (add / remove / get / view-other) + `mobile/src/screens/MyScheduleScreen.tsx`. Jira space is closed — link above is broken; **this spec is the last point of reference**. Original content preserved as-is.
 
 ---
 

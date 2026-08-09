@@ -3,8 +3,11 @@
 **Jira**: [BFF-33](https://eriksensolutions.atlassian.net/browse/BFF-33)  
 **Feature Branch**: `BFF-33-schedule-snapshot-sharing`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-21 (Schedule Snapshot Sharing)
+**Status**: ❌ Not Implemented (verified 2026-08-09)  
+**Epic**: BFF-21 (Schedule Snapshot Sharing)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ❌ Not Implemented.** No `react-native-view-shot` / `react-native-share` deps, no `ScheduleShareCard`, no share action on `MyScheduleScreen.tsx`, no backend image generation. **Recommendation: archive**; the user scenarios below are a solid restart point (verify packages first). Original content preserved as-is.
 
 ---
 

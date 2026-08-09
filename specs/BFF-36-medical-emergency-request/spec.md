@@ -3,8 +3,11 @@
 **Jira**: [BFF-36](https://eriksensolutions.atlassian.net/browse/BFF-36)  
 **Feature Branch**: `BFF-36-medical-emergency-request`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-15 (Role-Specific Panels)
+**Status**: ❌ Not Implemented — notification category name only (verified 2026-08-09)  
+**Epic**: BFF-15 (Role-Specific Panels)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ❌ Not Implemented.** Only an ‘emergency’ **notification category label** exists (`NotificationHistoryItem.tsx`); there is no emergency-request button, `MedicalRequest` collection/service, location attachment, priority levels, or dispatch to medical staff. **This is a safety-critical feature — if revived, write a fresh spec** and prioritize accordingly. Keep the security/observability + audit-trail requirements below. Original content preserved as-is.
 
 ---
 

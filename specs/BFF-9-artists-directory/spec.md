@@ -1,8 +1,11 @@
 # Artists Directory - Retroactive Specification
 
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-9](https://eriksensolutions.atlassian.net/browse/BFF-9)  
+**Status**: ✅ Implemented (verified 2026-08-09) — one known gap  
+**Jira**: [BFF-9](https://eriksensolutions.atlassian.net/browse/BFF-9) _(link broken — Jira space closed)_  
 **Created**: 2026-02-09  
+**Verified**: 2026-08-09  
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `backend/src/artists/artists.controller.ts` list / get / create. **Known gap:** `POST /artists` still lacks an admin role guard. Jira space is closed — link above is broken; **this spec is the last point of reference**. Original content preserved as-is.
 
 ---
 

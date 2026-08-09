@@ -3,7 +3,10 @@
 **Jira**: [BFF-50](https://eriksensolutions.atlassian.net/browse/BFF-50)  
 **Feature Branch**: `BFF-50-firebase-auth-migration`  
 **Created**: 2026-02-10  
-**Status**: Draft  
+**Status**: 🟢 Largely Implemented (~70%) — Firebase Auth is live (verified 2026-08-09 — was “Draft”)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ~70% — the migration is largely done, not “Draft”.** Firebase Auth is live across mobile (`AuthContext`, `firebaseAuthService`) and backend (`FirebaseAuthGuard` via `admin.auth().verifyIdToken()`); legacy JWT/bcrypt code was removed (see BFF-4). **Not found:** the one-time migration/import script for pre-existing bcrypt users and confirmation the `password` field was purged from Firestore — verify before closing. Original content preserved as-is.
 
 ---
 
