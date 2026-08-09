@@ -21,6 +21,29 @@
         "genre filter is already multi-select; no UI change",
         "filtering behavior and selection persistence unchanged; DR-3 auto-reset removed"
       ]
+    },
+    "plan": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "spec_hash": "002d73e99e9505e20626c6a84eca1363352bd75609d5232023c089f13a468e62",
+      "complexity": "SIMPLE",
+      "skipped_artifacts": ["research.md", "data-model.md", "contracts/", "quickstart.md"]
+    },
+    "tasks": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "plan_hash": "b2ea21a5e5ed8aeb7f238d04d9c7471d9addb39e73858148df05da0e05ae5ad6",
+      "task_count": 5,
+      "phase_count": 3
+    },
+    "analyze": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "result": "PASS",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 2
     }
   },
   "checkpoints": {
