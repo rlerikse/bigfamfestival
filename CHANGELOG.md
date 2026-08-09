@@ -9,6 +9,15 @@
 - **Map compass/camera stability (#202):** fixed the 0°/360° full-spin seam, reduced compass drift and overshoot with tilt-compensated sensor fusion, and improved camera-update throttling so the map remains responsive.
 - **Friend marker and HUD stability (#203):** stabilized edge/radar friend markers and the map HUD to prevent visible bounce and jitter while heading changes.
 
+## [1.4.2](https://github.com/rlerikse/bigfamfestival/compare/v1.4.1...v1.4.2) (2026-08-09)
+
+
+### Bug Fixes
+
+* **BFF-124:** add pull-to-refresh to horizontal schedule view ([3d01c0a](https://github.com/rlerikse/bigfamfestival/commit/3d01c0a5a8da28a04cb322c4836ad96ff204cbe8)), closes [#187](https://github.com/rlerikse/bigfamfestival/issues/187)
+* **schedule:** BFF-124 sync vertical scroll in horizontal schedule view ([e4a488b](https://github.com/rlerikse/bigfamfestival/commit/e4a488be9fae53cec7424195f9c7a23bf0bb5e18))
+* **schedule:** sync vertical scroll offset in horizontal schedule view ([489ab6f](https://github.com/rlerikse/bigfamfestival/commit/489ab6f4f604e1e7a0f28f0ebfb7a46c554b97a7))
+
 ## [1.4.1](https://github.com/rlerikse/bigfamfestival/compare/v1.4.0...v1.4.1) (2026-08-09)
 
 
