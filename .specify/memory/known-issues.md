@@ -23,3 +23,7 @@ FCM service account lacks `cloudmessaging.admin`; single-token-per-user overwrit
 ### [2026-08-09] Tooling: md-to-pdf for report PDFs
 Reports in `docs/` and `docs/audits/` are generated with `npx --yes md-to-pdf <file>.md` (needs network on first run). No pandoc/wkhtmltopdf installed.
 — discovered during report generation
+
+### [2026-08-09] /blue.drift found rogue (unspecced) features + stale convention doc
+FakeClockContext + Live Wayfinder HUD shipped with zero spec coverage (retroactively documented as BFF-53/BFF-54). BFF-6 was missing festivalDay/overlap-validation/move-resize; BFF-28 was missing the markerAsset custom-icon-upload capability — both extended in-place. `.specify/conventions/architectural-domains.md` was missing 4 backend modules (`friends/`, `map/`, `admin/`, `shifts/`) added since Feb 2026 — refreshed. `.specify/workspace/all-conventions.md` remains an unsynced placeholder (no automated sync exists since the Sync Spec Context workflow was removed) — flagged as informational, not fixed.
+— discovered during `/blue.drift` audit

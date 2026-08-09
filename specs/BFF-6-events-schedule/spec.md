@@ -7,6 +7,8 @@
 
 > **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `backend/src/events/events.controller.ts` exposes list / stages / genres / CRUD; filtering + date/startTime sorting confirmed. Jira space is closed — link above is broken; **this spec is the last point of reference**. Original content preserved as-is.
 
+> **⚠️ Drift note (2026-08-09, via `/blue.drift`):** This spec (written 2026-02-09) predates the **festival-day boundary, overlap validation, and move/resize schedule-editor** logic added 2026-07-24 (`backend/src/events/festival-day.util.ts`, PATCH `/events/:id`). See the new **Festival-Day Boundary & Overlap Validation** section below, added to close that gap.
+
 ---
 
 ## Overview
@@ -223,3 +225,36 @@ mobile/src/
 
 - [BFF-7 Personal Schedule](../BFF-7-personal-schedule/spec.md) - Save events to personal schedule
 - [BFF-9 Artists Directory](../BFF-9-artists-directory/spec.md) - Artist information
+
+---
+
+## Festival-Day Boundary & Overlap Validation _(added 2026-08-09 via `/blue.drift`)_
+
+Added to the schedule model on 2026-07-24 to support the admin schedule-editor grid (move/resize sets) and correct cross-midnight grouping for a multi-day festival. Not present in the original 2026-02-09 spec text above.
+
+### Festival-Day Boundary
+
+A **festival day** runs **06:00 → 06:00 (next calendar day)**, not midnight-to-midnight. An event starting before 06:00 belongs to the *previous* calendar day's festival night (e.g. a set at `2026-06-21 02:00` belongs to festival day `2026-06-20`; a set at `2026-06-21 19:00` belongs to festival day `2026-06-21`).
+
+`festivalDay` is stored as a **separate field** from `date` — `date`/`startTime` remain real wall-clock values (push-notification scheduling depends on them), while `festivalDay` is a derived grouping key.
+
+**Implementation**: `backend/src/events/festival-day.util.ts` — `computeFestivalDay(date, startTime)`, boundary constant `FESTIVAL_DAY_BOUNDARY_HOUR = 6`.
+
+### Overlap Validation
+
+The backend rejects a create/update that would double-book a stage: two events on the same stage cannot overlap in time. This is enforced server-side (not just in the admin UI) whenever an event's stage/date/time fields are set.
+
+### Move/Resize API
+
+`PATCH /events/:id` (Admin only) supports **partial updates** used by the admin schedule-editor grid to move or resize a block:
+- Send `{ endTime }` alone to **resize** (extend/shorten) a set.
+- Send `{ stage, date, startTime, endTime }` together to **move** a set to a new stage/time.
+- The same overlap + `festivalDay` recomputation rules from full create/update apply.
+
+| ID | Requirement | Status | Implementation |
+|----|-------------|--------|----------------|
+| FR-011 | Compute `festivalDay` from `date`+`startTime` with a 06:00 boundary | ✅ | `festival-day.util.ts:computeFestivalDay()` |
+| FR-012 | Reject overlapping events on the same stage | ✅ | `events.service.ts` (overlap check on create/update) |
+| FR-013 | Support partial move/resize via `PATCH /events/:id` (Admin only) | ✅ | `events.controller.ts:L131-L138` |
+
+**Implementation**: `backend/src/events/events.controller.ts`, `events.service.ts`, `festival-day.util.ts`; admin UI: schedule editor grid layout (issue #165/#166, PRs #169/#172).
