@@ -9,6 +9,13 @@
 - **Map compass/camera stability (#202):** fixed the 0°/360° full-spin seam, reduced compass drift and overshoot with tilt-compensated sensor fusion, and improved camera-update throttling so the map remains responsive.
 - **Friend marker and HUD stability (#203):** stabilized edge/radar friend markers and the map HUD to prevent visible bounce and jitter while heading changes.
 
+## [1.4.0](https://github.com/rlerikse/bigfamfestival/compare/v1.3.0...v1.4.0) (2026-08-09)
+
+
+### Features
+
+* **map:** add real GET /map/pois endpoint (backend API for map POIs) ([0281a59](https://github.com/rlerikse/bigfamfestival/commit/0281a5947cef95a89b3a2f3de072ae1503048c25))
+
 ## [1.3.0](https://github.com/rlerikse/bigfamfestival/compare/v1.2.2...v1.3.0) (2026-08-09)
 
 
