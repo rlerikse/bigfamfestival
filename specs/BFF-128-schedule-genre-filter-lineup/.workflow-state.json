@@ -1,0 +1,38 @@
+{
+  "feature_id": "BFF-128",
+  "feature_name": "schedule-genre-filter-lineup",
+  "branch_name": "bugfix/BFF-128-genre-filter-lineup",
+  "spec_version": "1.0",
+  "steps": {
+    "specify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "version": "1.0"
+    },
+    "clarify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "SIMPLE",
+      "questions_asked": 3,
+      "questions_auto_resolved": 2,
+      "owner": "pipeline",
+      "human_decisions": [
+        "genre options derived from full day-independent 2026 lineup, stable across refresh/day change",
+        "genre filter is already multi-select; no UI change",
+        "filtering behavior and selection persistence unchanged; DR-3 auto-reset removed"
+      ]
+    }
+  },
+  "checkpoints": {
+    "spec-review": {
+      "approved": true,
+      "approved_at": "2026-08-09T00:00:00Z"
+    }
+  },
+  "source": {
+    "type": "github_issue",
+    "issue_number": 185,
+    "issue_id": "BFF-128",
+    "jira_status": "closed"
+  }
+}

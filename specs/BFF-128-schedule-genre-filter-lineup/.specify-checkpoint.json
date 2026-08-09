@@ -1,0 +1,16 @@
+{
+  "feature_id": "BFF-128",
+  "source": "GitHub Issue #185",
+  "current_step": "clarify_complete",
+  "spec_written": true,
+  "spec_path": "specs/BFF-128-schedule-genre-filter-lineup/spec.md",
+  "spec_dir": "specs/BFF-128-schedule-genre-filter-lineup",
+  "branch_name": "bugfix/BFF-128-genre-filter-lineup",
+  "target_repo": "/Users/rerikse3/repos/es/bigfamfestival",
+  "clarification_owner": "pipeline",
+  "context_sources": [
+    "pre-fetched GitHub Issue #185",
+    "verified ScheduleScreen.tsx evidence",
+    "BFF-124 specification conventions"
+  ]
+}
