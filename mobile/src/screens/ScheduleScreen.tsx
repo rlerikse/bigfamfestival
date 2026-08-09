@@ -277,8 +277,10 @@ const ScheduleScreen = () => {
   // unmounts of HorizontalScheduleView (it fully unmounts when switching back to
   // list view) so toggling back to grid restores exactly where the user left off.
   const horizontalScrollXRef = useRef<number | null>(null);
-  const handleHorizontalScrollPositionChange = useCallback((x: number) => {
-    horizontalScrollXRef.current = x;
+  const horizontalScrollYRef = useRef<number | null>(null);
+  const handleHorizontalScrollPositionChange = useCallback((position: { x: number; y: number }) => {
+    horizontalScrollXRef.current = position.x;
+    horizontalScrollYRef.current = position.y;
   }, []);
 
   // Restore the user's last-used view mode on mount so the toggle sticks across sessions.
@@ -1131,7 +1133,14 @@ const ScheduleScreen = () => {
               currentTime={now}
               selectedDay={selectedDay}
               initialScrollX={horizontalScrollXRef.current}
+              initialScrollY={horizontalScrollYRef.current}
               onScrollPositionChange={handleHorizontalScrollPositionChange}
+              refreshing={isRefreshing}
+              onRefresh={() => {
+                setIsRefreshing(true);
+                fetchEvents(); // Refetch on pull-to-refresh (matches list view)
+              }}
+              refreshTintColor={theme.primary}
             />
           ) : (
           <FlatList
