@@ -23,6 +23,14 @@ import { signedAngularDiff, unwrapHeading } from '../hooks/compassFusion';
 // re-created each render.
 const CAMERA_MIN_INTERVAL_MS = 200;
 const CAMERA_MIN_DELTA_DEG = 1;
+
+// TEMP FLAG (per Robert/Quinn, 2026-08): suppress the friend-radar HUD
+// (viewport-edge friend icons) while tracking lag is being debugged.
+// This is intentionally a dumb boolean, not a redesign — flip back to
+// true (or remove) once the underlying lag issue is resolved. Does NOT
+// affect underlying location tracking/data, only whether the border-
+// anchored radar icons render.
+const SHOW_FRIEND_RADAR_HUD = false;
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -229,10 +237,13 @@ export default function MapScreen() {
   //    direction arrow (device heading) instead of moving the map. Friend
   //    icons are visually frozen in place (snapshotted) — they do not
   //    reposition on screen even though their underlying data keeps updating.
-  //  - 'compass' (default): map itself rotates to match device heading, self
+  //  - 'compass': map itself rotates to match device heading, self
   //    marker points a fixed "up," and friend icons actively reposition as
   //    their live location changes.
-  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('compass');
+  // Default is 'north' for now (Robert, temp default flip while compass/
+  // tracking-lag issues are debugged) — toggle still lets users switch to
+  // compass mode manually; this only changes the initial state.
+  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('north');
   // Only stream the magnetometer when there's actually something to point at —
   // either friends visible on the radar (icons need live heading to swing
   // around the border) or an active tracking target. Avoids draining battery
@@ -1097,19 +1108,23 @@ export default function MapScreen() {
       {/* Friend-radar HUD — always-visible border-anchored icons for every
           visible friend (per #159). This renders regardless of tracking
           state; the gradient border below is an ADDITIVE focus layer for
-          whichever single friend is selected, never a replacement. */}
-      <WayfinderHUD
-        userCoords={selfCoords}
-        heading={heading}
-        visibleBounds={visibleBounds}
-        friends={wayfinderFriends}
-        trackedFriendId={trackingTarget?.userId ?? null}
-        distanceUnit={distanceUnit}
-        onSelectFriend={(f) => {
-          const match = friendMarkers.find(fm => fm.userId === f.userId);
-          if (match) setSelectedFriend(match);
-        }}
-      />
+          whichever single friend is selected, never a replacement.
+          TEMP: gated off via SHOW_FRIEND_RADAR_HUD while tracking lag is
+          debugged (Robert/Quinn, 2026-08) — flip flag back on to restore. */}
+      {SHOW_FRIEND_RADAR_HUD && (
+        <WayfinderHUD
+          userCoords={selfCoords}
+          heading={heading}
+          visibleBounds={visibleBounds}
+          friends={wayfinderFriends}
+          trackedFriendId={trackingTarget?.userId ?? null}
+          distanceUnit={distanceUnit}
+          onSelectFriend={(f) => {
+            const match = friendMarkers.find(fm => fm.userId === f.userId);
+            if (match) setSelectedFriend(match);
+          }}
+        />
+      )}
 
       {/* Directional hot/cold gradient overlay — only while a friend is under
           active tracking focus. Renders ON TOP of the map but BELOW the top
