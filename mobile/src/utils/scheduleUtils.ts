@@ -96,3 +96,52 @@ export function clampVerticalOffset(
   const maxScrollY = Math.max(0, contentHeight - viewportHeight);
   return Math.min(Math.max(savedY, 0), maxScrollY);
 }
+
+/** A selectable option in the Schedule screen's genre filter dropdown. */
+export interface GenreOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+/**
+ * Derive the Schedule screen's selectable genre filter options from the
+ * full, already artist-enriched, loaded current-year `events` lineup —
+ * per BFF-128 (#185), replacing the prior independent Firestore `genres`
+ * collection / hardcoded fallback as the filter's source of truth.
+ *
+ * Mirrors the exact field precedence used by the existing genre-matching
+ * filter logic in ScheduleScreen.tsx (DR-5): when an event's `genres` is a
+ * present array, it is used exclusively for that event (even if empty);
+ * `genre` is only used as a fallback when `genres` is absent. This keeps
+ * every offered option matchable by at least one lineup event (FR-005).
+ *
+ * Pure and side-effect-free — callers pass the FULL loaded `events` array
+ * (not a day-filtered subset) so the result stays day-independent across
+ * pull-to-refresh and day changes (FR-008, DR-3). Reads only the
+ * already-enriched `events` state; performs no Firestore/artist lookups
+ * of its own (DR-4).
+ */
+export function deriveGenreOptions(events: ScheduleEvent[]): GenreOption[] {
+  const genreSet = new Set<string>();
+  events.forEach(event => {
+    if (event.genres && Array.isArray(event.genres)) {
+      event.genres.forEach(genre => {
+        if (genre && genre.trim()) genreSet.add(genre);
+      });
+    } else if (event.genre && event.genre.trim()) {
+      genreSet.add(event.genre);
+    }
+  });
+
+  const sortedGenres = Array.from(genreSet).sort((a, b) => a.localeCompare(b));
+
+  return [
+    { id: 'all', label: 'All Genres', value: 'all' },
+    ...sortedGenres.map(genre => ({
+      id: genre,
+      label: genre,
+      value: genre,
+    })),
+  ];
+}

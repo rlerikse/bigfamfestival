@@ -29,7 +29,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation';
 import { fetchEvents as fetchEventsFromService } from '../services/eventsService';
 import { getArtistsBySlugs } from '../services/artistService';
-import { getIdToken } from '../services/firebaseAuthService';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { addToSchedule, removeFromSchedule, getUserSchedule } from '../services/scheduleService';
@@ -42,8 +41,7 @@ import HorizontalScheduleView from '../components/HorizontalScheduleView';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScheduleEvent } from '../types/event';
 import { isLoggedInUser } from '../utils/userUtils';
-import { isEventLive, resolveScheduleDayScrollTarget } from '../utils/scheduleUtils';
-import firestore, { collection, getDocs } from '../utils/firebaseCompat';
+import { isEventLive, resolveScheduleDayScrollTarget, deriveGenreOptions } from '../utils/scheduleUtils';
 
 type ScheduleScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -254,7 +252,6 @@ const ScheduleScreen = () => {
   const navigation = useNavigation<ScheduleScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [genres, setGenres] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -359,23 +356,10 @@ const ScheduleScreen = () => {
     ];
   }, [events]);
 
-  // Extract unique genres from fetched genres list
-  const genreOptions = useMemo(() => {
-    if (genres.length === 0) {
-      return [{ id: 'all', label: 'All Genres', value: 'all' }];
-    }
-    
-    const sortedGenres = [...genres].sort();
-    
-    return [
-      { id: 'all', label: 'All Genres', value: 'all' },
-      ...sortedGenres.map(genre => ({
-        id: genre,
-        label: genre,
-        value: genre,
-      }))
-    ];
-  }, [genres]);
+  // Derive selectable genre options from the full loaded current-year lineup
+  // (day-independent — stays constant across refresh/day change). Replaces the
+  // prior independent Firestore `genres` collection / sample fallback (BFF-128).
+  const genreOptions = useMemo(() => deriveGenreOptions(events), [events]);
 
   // Initialize selectedDay based on visible days - simplified to avoid hook ordering issues
   useEffect(() => {
@@ -433,53 +417,6 @@ const ScheduleScreen = () => {
     }
   }, [user]);
 
-  // Fetch genres from the API
-  const fetchGenres = useCallback(async () => {
-    try {
-      // Fetch directly from Firestore genres collection
-      const genresCollection = collection(firestore, 'genres');
-      const genresSnapshot = await getDocs(genresCollection);
-      
-      const genreTags: string[] = [];
-      genresSnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.tag && typeof data.tag === 'string') {
-          genreTags.push(data.tag);
-        }
-      });
-      
-      // Sort genres alphabetically
-      genreTags.sort();
-      setGenres(genreTags);
-      
-  // Dev note: fetched genres count available here for debugging if needed
-    } catch (err) {
-      console.warn('⚠️ Firestore permissions error - using sample genres until rules are updated');
-      console.error('Full error:', err);
-      
-      // Use expanded sample genres that match what's likely in your Firestore
-      const sampleGenres = [
-        'Live Electronic',
-        'Hip Hop', 
-        'Rock',
-        'Jazz',
-        'Folk',
-        'Techno',
-        'House',
-        'Ambient',
-        'Experimental',
-        'Pop',
-        'R&B',
-        'Reggae',
-        'Funk',
-        'Soul'
-      ].sort();
-      
-      setGenres(sampleGenres);
-  // Dev note: using sample genres fallback
-    }
-  }, []);
-
   // Separate useEffect for initial data loading to avoid dependency issues
   useEffect(() => {
     fetchEvents();
@@ -491,24 +428,6 @@ const ScheduleScreen = () => {
       loadUserSchedule();
     }
   }, [user, loadUserSchedule]);
-
-  // Load genres on user login or token change
-  useEffect(() => {
-    // Fetch genres only if user is logged in (token exists)
-    const fetchData = async () => {
-      const token = await getIdToken();
-      if (token) {
-        fetchGenres();
-      }
-    };
-    
-    fetchData();
-  }, [user, fetchGenres]);
-
-  // Fetch genres on component mount
-  useEffect(() => {
-    fetchGenres();
-  }, [fetchGenres]);
 
   // --- Optimized filtering logic with performance monitoring ---
   // Precompute sorted events (sort only when events change)

@@ -1,0 +1,79 @@
+{
+  "feature_id": "BFF-128",
+  "feature_name": "schedule-genre-filter-lineup",
+  "branch_name": "bugfix/BFF-128-genre-filter-lineup",
+  "spec_version": "1.0",
+  "steps": {
+    "specify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "version": "1.0"
+    },
+    "clarify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "complexity": "SIMPLE",
+      "questions_asked": 3,
+      "questions_auto_resolved": 2,
+      "owner": "pipeline",
+      "human_decisions": [
+        "genre options derived from full day-independent 2026 lineup, stable across refresh/day change",
+        "genre filter is already multi-select; no UI change",
+        "filtering behavior and selection persistence unchanged; DR-3 auto-reset removed"
+      ]
+    },
+    "plan": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "spec_hash": "002d73e99e9505e20626c6a84eca1363352bd75609d5232023c089f13a468e62",
+      "complexity": "SIMPLE",
+      "skipped_artifacts": ["research.md", "data-model.md", "contracts/", "quickstart.md"]
+    },
+    "tasks": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "plan_hash": "b2ea21a5e5ed8aeb7f238d04d9c7471d9addb39e73858148df05da0e05ae5ad6",
+      "task_count": 5,
+      "phase_count": 3
+    },
+    "analyze": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "result": "PASS",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 2
+    },
+    "implement": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "phases_completed": ["Phase 1: Pure Genre-Option Helper Coverage", "Phase 2: Full-Lineup Screen Wiring", "Phase 3: Focused Regression Validation"],
+      "current_phase": "hardened",
+      "tasks_completed": ["T001", "T002", "T003", "T004", "T005"]
+    },
+    "verify": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "result": "PASS",
+      "findings_count": {
+        "critical": 0,
+        "major": 0,
+        "minor": 0
+      },
+      "run_mode": "full"
+    }
+  },
+  "checkpoints": {
+    "spec-review": {
+      "approved": true,
+      "approved_at": "2026-08-09T00:00:00Z"
+    }
+  },
+  "source": {
+    "type": "github_issue",
+    "issue_number": 185,
+    "issue_id": "BFF-128",
+    "jira_status": "closed"
+  }
+}
