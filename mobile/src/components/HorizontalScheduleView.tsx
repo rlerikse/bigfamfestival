@@ -212,7 +212,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
   // Hour markers for the time ruler header.
   const hourMarkers = useMemo(() => {
     const markers: { label: string; offset: number }[] = [];
-    for (let m = GRID_START_MINUTES; m <= GRID_END_MINUTES; m += 60) {
+    const firstFullHour = Math.ceil(GRID_START_MINUTES / 60) * 60;
+    for (let m = firstFullHour; m <= GRID_END_MINUTES; m += 60) {
       const hourOfDay = Math.floor((m % (24 * 60)) / 60);
       const ampm = hourOfDay >= 12 ? 'PM' : 'AM';
       const hour12 = hourOfDay % 12 || 12;
