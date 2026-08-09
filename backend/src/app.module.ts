@@ -9,7 +9,7 @@ import { UsersModule } from './users/users.module';
 import { EventsModule } from './events/events.module';
 import { ScheduleModule } from './schedule/schedule.module';
 // import { TicketsModule } from './tickets/tickets.module';
-// import { MapModule } from './map/map.module';
+import { MapModule } from './map/map.module';
 import { FriendsModule } from './friends/friends.module';
 import { HealthModule } from './health/health.module';
 import { CampsitesModule } from './campsites/campsites.module';
@@ -86,7 +86,7 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
     EventsModule,
     ScheduleModule,
     // TicketsModule,
-    // MapModule,
+    MapModule,
     FriendsModule,
     HealthModule,
     CampsitesModule,
