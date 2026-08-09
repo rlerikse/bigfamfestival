@@ -1,6 +1,8 @@
 # Big Fam — Next Release Draft
 
 > **Draft only.** This document is for review of work merged after 1.2.2. It does not approve a version number, release date, store submission, or rollout.
+>
+> **Projected next version:** 1.4.3 (patch — driven by the schedule genre-filter fix; release-please will finalize the number and `CHANGELOG.md`).
 
 ## What's New
 - **Live friend locations:** opted-in friends can appear on the festival map as their location changes.
@@ -9,6 +11,8 @@
 ## Improvements & Fixes
 - **Smoother map orientation:** compass and camera handling avoids the visible full-spin at the north seam, reduces drift/overshoot, and limits camera update churn.
 - **Steadier friend markers:** edge/radar friend markers and the map HUD no longer visibly bounce or jitter as the device heading moves.
+- **Pull-to-refresh on the schedule grid:** the horizontal (stage-by-stage) schedule view now reloads the latest set times when you pull down at the top — matching the list view. Your vertical position in the grid is preserved when you switch between list and grid views.
+- **Genre filter matches this year's lineup:** the schedule's genre filter now lists only genres actually being performed this year, so every option leads to real sets. The list stays consistent across refreshes and day changes, and no longer shows stale genres that return no results.
 
 ## Under the Hood
 - Replaced the foreground 30-second friend-location poll with authenticated Server-Sent Events (SSE) while healthy.
