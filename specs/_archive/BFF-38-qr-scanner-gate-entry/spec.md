@@ -3,8 +3,11 @@
 **Jira**: [BFF-38](https://eriksensolutions.atlassian.net/browse/BFF-38)  
 **Feature Branch**: `BFF-38-qr-scanner-gate-entry`  
 **Created**: 2026-02-10  
-**Status**: On Hold  
-**Epic**: BFF-17 (Ticketing & Entry)
+**Status**: ❌ Not Implemented — blocked by BFF-27 (verified 2026-08-09; was “On Hold”)  
+**Epic**: BFF-17 (Ticketing & Entry)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ❌ Not Implemented.** No camera/scanner packages (`expo-camera`) in mobile; `TicketsModule` is disabled in the backend, so there is nothing to validate against. **Blocked by BFF-27 (ticketing)** — revive that first. Keep the staff-gating + offline-validation + audit-trail design. Original content preserved as-is.
 
 ---
 

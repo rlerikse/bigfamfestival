@@ -3,8 +3,11 @@
 **Jira**: [BFF-34](https://eriksensolutions.atlassian.net/browse/BFF-34)  
 **Feature Branch**: `BFF-34-social-login-sso`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-22 (Auth & User Profile)
+**Status**: ✅ Implemented (verified 2026-08-09 — was “Draft”)  
+**Epic**: BFF-22 (Auth & User Profile)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** Google + Apple sign-in in `mobile/src/services/firebaseAuthService.ts` (`signInWithGoogle` / `signInWithApple`); deps `@react-native-google-signin/google-signin` + `@invertase/react-native-apple-authentication` present; `AuthContext` exposes `googleLogin()` / `appleLogin()`. Original content preserved as-is.
 
 ---
 

@@ -3,8 +3,11 @@
 **Jira**: [BFF-37](https://eriksensolutions.atlassian.net/browse/BFF-37)  
 **Feature Branch**: `BFF-37-campsite-location-sharing`  
 **Created**: 2026-02-10  
-**Status**: Draft  
-**Epic**: BFF-25 (Friends & Campsite)
+**Status**: ✅ Implemented (verified 2026-08-09 — was “Draft”)  
+**Epic**: BFF-25 (Friends & Campsite)  
+**Verified**: 2026-08-09 — Jira link above is broken (space closed); this spec is the last point of reference.
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented.** `backend/src/campsites/*` + `friends.service.ts` `getFriendCampsites()` / `getFriendLocations()` honor the `shareMyCampsite` / `shareMyLocation` opt-in flags; `SettingsScreen.tsx` toggles + `MapScreen.tsx` friend markers. Privacy is enforced backend-side (not via Firestore rules). Original content preserved as-is.
 
 ---
 

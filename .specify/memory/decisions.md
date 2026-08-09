@@ -1,0 +1,25 @@
+# Decisions — Big Fam Festival (repo memory)
+
+### [2026-08-09] Jira space closed — specs are the system of record
+The original Atlassian Jira space (`eriksensolutions.atlassian.net`) is **closed**. Every `**Jira**` link in `specs/BFF-*/spec.md` is **broken** and kept for reference only. The spec files themselves are now the last surviving point of reference for all BFF stories. When updating specs, **annotate (add verification banners), never delete** original content.
+— discovered during spec status verification pass
+
+### [2026-08-09] Authentication is Firebase Auth (JWT/bcrypt removed)
+Backend verifies Firebase ID tokens via `FirebaseAuthGuard` (`admin.auth().verifyIdToken(token, true)`); mobile uses `firebaseAuthService.ts`. Legacy NestJS Passport/JWT + bcrypt is gone (`auth.service.ts`: "Legacy bcrypt/JWT operations have been removed"). BFF-4's spec body still describes the old JWT/bcrypt design (historical). Migration tracked in BFF-50 (~70%; legacy-user import script + `password` field purge unverified).
+— discovered during spec status verification pass
+
+### [2026-08-09] Map is Mapbox-only; HERE de-scoped; what3words never built
+`@rnmapbox/maps` + `mobile/src/screens/MapScreen.tsx` is the shipped map. BFF-35 proposed a Mapbox/HERE hybrid but **no HERE SDK** was ever added. BFF-32 what3words is a **mock only** (`mapService.getWhat3WordsAddress()` returns random words); no package/API key — treat as de-scoped/obsolete.
+— discovered during spec status verification pass
+
+### [2026-08-09] Email provider is SendGrid
+`backend/src/config/sendgrid/` + `@sendgrid/mail`, used by `backend/scripts/email-blast.ts`. "Custom SMTP" (BFF-52) effectively means SendGrid-as-provider. Firebase Auth transactional emails are NOT yet routed through custom SMTP; branded templates + SPF/DKIM/DMARC outstanding.
+— discovered during spec status verification pass
+
+### [2026-08-09] Ticketing is disabled — BFF-27/BFF-38 blocked
+`TicketsModule` is commented out in `backend/src/app.module.ts`. QR ticket display (BFF-27) and QR scanner gate entry (BFF-38) are unstarted and blocked until ticketing is revived. Vendor dashboard (BFF-31) is a mock admin UI shell only. Medical emergency (BFF-36) is unbuilt (only an "emergency" notification label exists) — safety-critical, needs a fresh spec if revived.
+— discovered during spec status verification pass
+
+### [2026-08-09] Archived unbuilt specs to specs/_archive/
+Moved BFF-27, BFF-31, BFF-32, BFF-33, BFF-38 (all Not Implemented) into `specs/_archive/` via `git mv`, with an index at `specs/_archive/README.md`. Content preserved as a restart point. BFF-36 (medical) intentionally kept under `specs/` — unbuilt but safety-critical.
+— done during spec archival

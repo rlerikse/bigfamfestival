@@ -1,8 +1,11 @@
 # Authentication System - Retroactive Specification
 
-**Status**: ✅ Implemented (Retroactive Documentation)  
-**Jira**: [BFF-4](https://eriksensolutions.atlassian.net/browse/BFF-4)  
+**Status**: ✅ Implemented — via Firebase Auth (verified 2026-08-09) — ⚠️ spec text below is outdated  
+**Jira**: [BFF-4](https://eriksensolutions.atlassian.net/browse/BFF-4) _(link broken — Jira space closed)_  
 **Created**: 2026-02-09  
+**Verified**: 2026-08-09  
+
+> **⚠️ Verification note (2026-08-09):** Re-verified against the live codebase. **Actual status: ✅ Implemented, but via Firebase Auth** (`backend/src/auth/guards/firebase-auth.guard.ts`, `mobile/src/services/firebaseAuthService.ts`). The **JWT + bcrypt** design described below has been **removed** (`auth.service.ts`: “Legacy bcrypt/JWT operations have been removed”). Treat the implementation sections below as historical; see BFF-50 for the migration. The original Jira space is closed, so the link above is broken — **this spec is the last point of reference** for this story. Original content preserved as-is.
 
 ---
 
