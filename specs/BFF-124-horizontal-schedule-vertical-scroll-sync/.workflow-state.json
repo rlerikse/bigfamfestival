@@ -29,7 +29,20 @@
       "last_confirmed_at": "2026-08-09T00:00:00Z"
     },
     "plan": {
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "spec_hash": "ba60a572217ff747f3fd866bf33fe1b30c1b1c97f24b73dc31f74b3ad0f61f27",
+      "analysis_result": "PASS",
+      "self_healed": false,
+      "complexity": "SIMPLE"
+    },
+    "tasks": {
+      "status": "completed",
+      "completed_at": "2026-08-09T00:00:00Z",
+      "plan_hash": "ba60a572217ff747f3fd866bf33fe1b30c1b1c97f24b73dc31f74b3ad0f61f27",
+      "task_count": 7,
+      "phase_count": 3,
+      "complexity": "SIMPLE"
     },
     "implement": {
       "status": "pending"

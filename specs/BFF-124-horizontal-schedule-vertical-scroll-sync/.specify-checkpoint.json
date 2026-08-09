@@ -9,7 +9,7 @@
     "Behavior is verified on iOS and Android."
   ],
   "figma_loaded": false,
-  "current_step": "clarify",
+  "current_step": "plan",
   "branch_name": "bugfix/BFF-124-vertical-scroll-sync",
   "spec_dir": "specs/BFF-124-horizontal-schedule-vertical-scroll-sync",
   "spec_path": "specs/BFF-124-horizontal-schedule-vertical-scroll-sync/spec.md",
