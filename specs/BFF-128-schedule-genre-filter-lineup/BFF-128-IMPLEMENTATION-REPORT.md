@@ -1,7 +1,7 @@
 # Implementation Report: BFF-128 Schedule Genre Filter Uses the Current Lineup
 
 **Source of truth**: [GitHub Issue #185](https://github.com/rlerikse/bigfamfestival/issues/185)
-**Status**: Implementation complete; native device verification pending
+**Status**: Complete; native device verification confirmed on iOS and Android
 **Feature Branch**: `bugfix/BFF-128-genre-filter-lineup`
 **Report Generated At**: 2026-08-09T17:31:52Z
 **Report Base Commit**: `df05bcbdbb09cd3d39fbf3cac634ea3dd8f11b30`
@@ -82,9 +82,9 @@ The clarification flow included three human decisions and two code-evidence tech
 
 The unit-test boundary intentionally imports only the pure `scheduleUtils.ts` helper. This avoids the known Expo SDK 54 Jest font-asset transform failure caused by importing `ScheduleScreen.tsx` or its Expo-dependent component chain.
 
-## Pending Follow-Up
+## Native Verification (Complete)
 
-Manual native verification on iOS and Android remains pending. The change is pure logic with focused unit coverage, but the visible genre option list should still be spot-checked on-device: confirm only represented lineup genres appear, each produces a result, and the list remains stable after refresh and day changes.
+Manual native verification was performed on both iOS and Android (2026-08-09) and passed: the genre filter shows only genres represented in the loaded lineup, each option produces results, and the option list stays stable across pull-to-refresh and day changes. No regressions observed in the day/stage/My-Schedule filters. BFF-128 is fully verified.
 
 ## Scope and Risk Assessment
 
