@@ -17,20 +17,19 @@ import OptimizedImage from '../components/OptimizedImage';
 import { useDirectionalTracking } from '../hooks/useDirectionalTracking';
 import { signedAngularDiff, unwrapHeading } from '../hooks/compassFusion';
 
-// Compass-mode camera throttle tuning. Commits are rate-limited to ~5Hz with a
-// 1deg deadband so a 150ms heading animation completes before the next starts
-// (prevents the animation-stacking lag from #201). Module scope so they aren't
-// re-created each render.
+// Compass-mode camera throttle tuning. Commits are rate-limited to ~5Hz so a
+// heading animation completes before the next starts (prevents the
+// animation-stacking lag from #201). A small deadband ignores sub-degree
+// sensor jitter. Module scope so they aren't re-created each render.
 const CAMERA_MIN_INTERVAL_MS = 200;
-const CAMERA_MIN_DELTA_DEG = 1;
+const CAMERA_MIN_DELTA_DEG = 0.5;
 
-// TEMP FLAG (per Robert/Quinn, 2026-08): suppress the friend-radar HUD
-// (viewport-edge friend icons) while tracking lag is being debugged.
-// This is intentionally a dumb boolean, not a redesign — flip back to
-// true (or remove) once the underlying lag issue is resolved. Does NOT
-// affect underlying location tracking/data, only whether the border-
-// anchored radar icons render.
-const SHOW_FRIEND_RADAR_HUD = false;
+// Friend-radar HUD (viewport-edge friend icons, #159). Re-enabled 2026-08-09
+// after the tracking-lag fixes landed (#201 camera throttle, #202 wrap-around +
+// trailing-flush); this flag had been a temporary stopgap while that lag was
+// debugged. Kept as a boolean kill-switch — set to false to hide the radar
+// icons without touching the underlying location tracking/data.
+const SHOW_FRIEND_RADAR_HUD = true;
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -222,6 +221,9 @@ export default function MapScreen() {
   }, []);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapViewRef = useRef<Mapbox.MapView>(null);
+  // One-time guard so the first map open frames the USER (not the festival
+  // center), without later position updates yanking the camera back.
+  const hasCenteredOnUserRef = useRef(false);
   // Current map viewport bounds [[rightLon, topLat], [leftLon, bottomLat]] —
   // used so the friend-radar HUD can hide a friend's edge-icon once they're
   // already visible within the on-map view (avoids the "two icons for one
@@ -270,10 +272,11 @@ export default function MapScreen() {
   //  - 'compass': map itself rotates to match device heading, self
   //    marker points a fixed "up," and friend icons actively reposition as
   //    their live location changes.
-  // Default is 'north' for now (Robert, temp default flip while compass/
-  // tracking-lag issues are debugged) — toggle still lets users switch to
-  // compass mode manually; this only changes the initial state.
-  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('north');
+  // Default is 'compass' — restored 2026-08-09 after the compass/tracking-lag
+  // fixes landed (#201/#202); the 'north' default had been a temporary flip
+  // while that lag was debugged. Users can still toggle to north-lock manually;
+  // this only changes the initial state.
+  const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('compass');
   // Only stream the magnetometer when there's actually something to point at —
   // either friends visible on the radar (icons need live heading to swing
   // around the border) or an active tracking target. Avoids draining battery
@@ -317,13 +320,19 @@ export default function MapScreen() {
   // schedule a deferred commit for the remainder of the interval; the newest
   // heading always wins because the effect re-runs (and reschedules) on every
   // heading change, and the timer reads from a ref holding the latest value.
+  // Guard: while the "center on me" animation runs, pause compass-driven camera
+  // heading commits so they don't truncate the recenter (was only moving ~1/3
+  // per press). And throttle visible-bounds refresh so continuous compass-mode
+  // camera motion doesn't churn re-renders into a "Maximum update depth" loop.
+  const isCenteringRef = useRef(false);
+  const lastBoundsRefreshRef = useRef(0);
   const lastCameraHeadingRef = useRef(0);
   const unwrappedCameraHeadingRef = useRef(0);
   const lastCameraCommitRef = useRef(0);
   const pendingHeadingRef = useRef(0);
   const trailingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (orientationMode !== 'compass') return;
+    if (orientationMode !== 'compass' || isCenteringRef.current) return;
 
     const commit = (h: number) => {
       // Advance the continuous bearing by the shortest signed step from the
@@ -338,7 +347,7 @@ export default function MapScreen() {
       lastCameraHeadingRef.current = h;
       cameraRef.current?.setCamera({
         heading: unwrappedCameraHeadingRef.current,
-        animationDuration: 150,
+        animationDuration: 100,
       });
     };
 
@@ -444,15 +453,35 @@ export default function MapScreen() {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
+      // On first map open, frame the map on the USER's own location once it's
+      // known. The static defaultSettings frame the festival grounds, which —
+      // when a friend is on-site but the user isn't — looks like it "centered on
+      // the friend." One-time only (guard ref), so the user can pan freely and
+      // later position updates don't snap the camera back.
+      const centerOnUserOnce = (coord: [number, number]) => {
+        if (hasCenteredOnUserRef.current || !cameraRef.current) return;
+        hasCenteredOnUserRef.current = true;
+        cameraRef.current.setCamera({
+          centerCoordinate: coord,
+          zoomLevel: DEFAULT_ZOOM,
+          animationDuration: 0,
+        });
+      };
       try {
         const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        setSelfCoords([initial.coords.longitude, initial.coords.latitude]);
+        const coord: [number, number] = [initial.coords.longitude, initial.coords.latitude];
+        setSelfCoords(coord);
+        centerOnUserOnce(coord);
       } catch (err) {
         console.error('[MapScreen] Failed to get initial self location:', err);
       }
       subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, timeInterval: 10000, distanceInterval: 10 },
-        (loc) => setSelfCoords([loc.coords.longitude, loc.coords.latitude])
+        (loc) => {
+          const coord: [number, number] = [loc.coords.longitude, loc.coords.latitude];
+          setSelfCoords(coord);
+          centerOnUserOnce(coord);
+        }
       );
     })();
     return () => subscription?.remove();
@@ -653,12 +682,13 @@ export default function MapScreen() {
   }, [currentZoom]);
 
   const handleZoomOut = useCallback(() => {
-    const newZoom = Math.max(currentZoom - 1, 10);
+    const newZoom = Math.max(currentZoom - 1, 1);
     setCurrentZoom(newZoom);
     cameraRef.current?.setCamera({ zoomLevel: newZoom, animationDuration: 300 });
   }, [currentZoom]);
 
   const handleCenterOnUser = useCallback(async () => {
+    isCenteringRef.current = true;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -683,6 +713,10 @@ export default function MapScreen() {
         zoomLevel: DEFAULT_ZOOM,
         animationDuration: 500,
       });
+    } finally {
+      // Release the compass-camera guard once the recenter animation settles,
+      // so heading-driven camera commits can resume.
+      setTimeout(() => { isCenteringRef.current = false; }, 650);
     }
   }, [currentZoom]);
 
@@ -939,20 +973,26 @@ export default function MapScreen() {
         attributionPosition={{ bottom: 80, left: 8 }}
         logoPosition={{ bottom: 80, left: 8 }}
         onCameraChanged={(state) => {
-          if (state?.properties?.zoom != null) {
-            setCurrentZoom(state.properties.zoom);
+          // Bail on no-op state updates so a continuous camera move (compass
+          // mode) doesn't churn re-renders into a "Maximum update depth" loop.
+          const z = state?.properties?.zoom;
+          if (z != null) {
+            setCurrentZoom(prev => (Math.abs(prev - z) > 0.01 ? z : prev));
           }
-          if (state?.properties?.heading != null) {
-            setCurrentBearing(state.properties.heading);
+          const h = state?.properties?.heading;
+          if (h != null) {
+            setCurrentBearing(prev => (Math.abs(prev - h) > 0.5 ? h : prev));
           }
-          // Refresh visible bounds on every camera move so the radar HUD
-          // knows which friends are already on-screen. getVisibleBounds()
-          // is async; fire-and-forget is fine here, it just updates state
-          // whenever it resolves (camera changes fire frequently enough
-          // that a slight lag doesn't matter for this UI purpose).
-          mapViewRef.current?.getVisibleBounds()
-            .then(bounds => setVisibleBounds(bounds as [[number, number], [number, number]]))
-            .catch(() => undefined);
+          // Throttle visible-bounds refresh (was firing on every camera frame —
+          // the main driver of the compass-mode re-render storm). ~500ms is
+          // plenty for the radar's "already on-screen" suppression.
+          const now = Date.now();
+          if (now - lastBoundsRefreshRef.current > 500) {
+            lastBoundsRefreshRef.current = now;
+            mapViewRef.current?.getVisibleBounds()
+              .then(bounds => setVisibleBounds(bounds as [[number, number], [number, number]]))
+              .catch(() => undefined);
+          }
         }}
       >
         <Mapbox.Camera
@@ -981,11 +1021,12 @@ export default function MapScreen() {
             friend-marker treatment (see friendMarkers below). Falls back to
             initials/icon (never a plain dot) if no profilePictureUrl is set. */}
         {selfCoords && (
-          <Mapbox.PointAnnotation
+          <Mapbox.MarkerView
             key="self-marker"
             id="self-marker"
             coordinate={selfCoords}
             anchor={{ x: 0.5, y: 0.5 }}
+            allowOverlap
           >
             <View style={[styles.friendMarker, styles.friendMarkerLive, styles.selfMarker]}>
               {user?.profilePictureUrl ? (
@@ -1015,7 +1056,7 @@ export default function MapScreen() {
                 </View>
               )}
             </View>
-          </Mapbox.PointAnnotation>
+          </Mapbox.MarkerView>
         )}
 
         {/* Zone polygons */}
@@ -1147,18 +1188,22 @@ export default function MapScreen() {
           const frozen = orientationMode === 'north' ? frozenFriendPositions?.[friend.userId] : undefined;
           const displayCoordinate: [number, number] = frozen ?? [friend.lng, friend.lat];
           return (
-          <Mapbox.PointAnnotation
+          <Mapbox.MarkerView
             key={`friend-${friend.userId}`}
             id={`friend-${friend.userId}`}
             coordinate={displayCoordinate}
             anchor={{ x: 0.5, y: 0.5 }}
-            onSelected={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
+            allowOverlap
           >
-            <View style={[
-              styles.friendMarker,
-              friend.isLive && styles.friendMarkerLive,
-              trackingTarget?.userId === friend.userId && styles.friendMarkerTracking,
-            ]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
+              style={[
+                styles.friendMarker,
+                friend.isLive && styles.friendMarkerLive,
+                trackingTarget?.userId === friend.userId && styles.friendMarkerTracking,
+              ]}
+            >
               {friend.profilePictureUrl ? (
                 <OptimizedImage
                   uri={friend.profilePictureUrl}
@@ -1173,9 +1218,8 @@ export default function MapScreen() {
                   {friend.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
                 </Text>
               )}
-            </View>
-            <Mapbox.Callout title={`${friend.name}${friend.isLive ? ' • Live' : ' • Campsite'}`} />
-          </Mapbox.PointAnnotation>
+            </TouchableOpacity>
+          </Mapbox.MarkerView>
           );
         })}
 
@@ -1209,8 +1253,8 @@ export default function MapScreen() {
           visible friend (per #159). This renders regardless of tracking
           state; the gradient border below is an ADDITIVE focus layer for
           whichever single friend is selected, never a replacement.
-          TEMP: gated off via SHOW_FRIEND_RADAR_HUD while tracking lag is
-          debugged (Robert/Quinn, 2026-08) — flip flag back on to restore. */}
+          Gated by SHOW_FRIEND_RADAR_HUD (kill-switch); re-enabled 2026-08-09
+          after the tracking-lag fixes (#201/#202) landed. */}
       {SHOW_FRIEND_RADAR_HUD && (
         <WayfinderHUD
           userCoords={selfCoords}
@@ -1263,7 +1307,7 @@ export default function MapScreen() {
           <Ionicons
             name={orientationMode === 'compass' ? 'compass' : 'compass-outline'}
             size={24}
-            color={orientationMode === 'compass' ? '#F5F5DC' : '#8A8A6E'}
+            color={'#F5F5DC'}
             style={orientationMode === 'compass' ? { transform: [{ rotate: `${-currentBearing}deg` }] } : undefined}
           />
         </TouchableOpacity>

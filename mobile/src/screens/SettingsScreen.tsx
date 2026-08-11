@@ -249,6 +249,12 @@ const SettingsScreen = () => {
           label: 'Profile',
           onPress: handleGoToProfile,
         }] : []),
+        {
+          icon: 'compass-outline' as const,
+          label: 'Calibrate Compass',
+          onPress: () => navigation.navigate('CompassCalibration'),
+          description: 'Steady a jumpy or inaccurate map & friend-finder heading',
+        },
         // Privacy & Security - commented out for later implementation
         /*
         {

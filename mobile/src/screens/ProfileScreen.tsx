@@ -38,9 +38,10 @@ const ProfileScreen = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  // Sharing preferences - commented out for later implementation
-  // const [shareMyCampsite, setShareMyCampsite] = useState(user?.shareMyCampsite || false);
-  // const [shareMyLocation, setShareMyLocation] = useState(user?.shareMyLocation || false);
+  // Sharing preferences (restored 2026-08-09) — also controllable in Settings;
+  // both read/write user.shareMyCampsite / user.shareMyLocation.
+  const [shareMyCampsite, setShareMyCampsite] = useState(user?.shareMyCampsite || false);
+  const [shareMyLocation, setShareMyLocation] = useState(user?.shareMyLocation || false);
   const [profileImage, setProfileImage] = useState<string | null>(user?.profilePictureUrl || null);
   const [isImageUploading, setIsImageUploading] = useState(false);
 
@@ -63,6 +64,8 @@ const ProfileScreen = () => {
       const updatedData = {
         name,
         phone,
+        shareMyCampsite,
+        shareMyLocation,
       };
       
       await updateUserProfile(user.id, updatedData);
@@ -304,7 +307,7 @@ const ProfileScreen = () => {
             )}
           </View>
 
-          {/* Sharing Preferences - commented out for later implementation
+          {/* Sharing Preferences (restored 2026-08-09) */}
           <View style={[styles.infoSection, { borderColor: 'rgba(255, 255, 255, 0.3)' }]}>
             <Text style={[styles.sectionTitle, { color: textColor }]}>Sharing Preferences</Text>
             
@@ -338,7 +341,6 @@ const ProfileScreen = () => {
               When enabled, your real-time location will be visible to your friends
             </Text>
           </View>
-          */}
 
           <TouchableOpacity
             style={[styles.logoutButton, { borderColor: `${theme.error}40`, backgroundColor: `${theme.error}12` }]}

@@ -145,7 +145,24 @@ api.interceptors.response.use(
         (networkError as any).isOffline = true;
         return Promise.reject(networkError);
       }
-      
+
+      // Connectivity is present but the request got no response — most often a
+      // Cloud Run cold start (this API scales to zero) exceeding the timeout.
+      // Retry idempotent requests with backoff before surfacing an error, so a
+      // cold backend self-heals instead of flashing "can't connect". Uses the
+      // existing retryRequest helper (raw axios → does NOT re-enter this
+      // interceptor). GET/HEAD/OPTIONS only, so a write is never double-sent.
+      const method = (originalRequest?.method || 'get').toLowerCase();
+      const isIdempotent = method === 'get' || method === 'head' || method === 'options';
+      if (isIdempotent && originalRequest && !originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          return await retryRequest(originalRequest);
+        } catch {
+          // Retries exhausted — fall through to the friendly error below.
+        }
+      }
+
       if (__DEV__) {
         // eslint-disable-next-line no-console
         console.error('[API] Network error details:', {
