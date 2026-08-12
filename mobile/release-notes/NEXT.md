@@ -9,6 +9,7 @@
 - **More responsive map:** friend-location updates use an authenticated realtime connection, with a temporary polling fallback if that connection is unavailable.
 
 ## Improvements & Fixes
+- **Sharing toggles also on your Profile:** "Share My Live Location" and "Share My Campsite" can now be turned on/off from your Profile screen, not just Settings — same preference, either place.
 - **Friend & your own photos show on the map:** on-map avatars now display profile pictures instead of a blank placeholder (fixes an Android rendering issue).
 - **Map opens centered on you:** the first time you open the map it centers on your own location instead of the festival grounds.
 - **Walking directions work reliably:** fixed an error that could stop directions to a POI or friend from loading.

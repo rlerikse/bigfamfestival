@@ -8,6 +8,8 @@
 ### Fixed
 - **Map compass/camera stability (#202):** fixed the 0°/360° full-spin seam, reduced compass drift and overshoot with tilt-compensated sensor fusion, and improved camera-update throttling so the map remains responsive.
 - **Friend marker and HUD stability (#203):** stabilized edge/radar friend markers and the map HUD to prevent visible bounce and jitter while heading changes.
+- **BFF-127:** fixed schedule list mount + scroll lag ([#186](https://github.com/rlerikse/bigfamfestival/issues/186)).
+- **BFF-128:** genre filter now uses the current lineup instead of a stale/alphabetical list ([#185](https://github.com/rlerikse/bigfamfestival/issues/185)).
 
 ## [1.4.2](https://github.com/rlerikse/bigfamfestival/compare/v1.4.1...v1.4.2) (2026-08-09)
 
