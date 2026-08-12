@@ -30,8 +30,16 @@ const MAX_RETRIES = 3;
 const BASE_BACKOFF_MS = 400;
 
 function getMapboxToken(): string | null {
+  // Mirror MapboxProvider's resolution: prefer the manifest's extra value, but
+  // fall back to the bundle-inlined EXPO_PUBLIC_ env var. In dev-client builds
+  // expoConfig.extra.mapboxAccessToken can come back undefined even when the
+  // map renders fine (the provider uses the env fallback) — so directions must
+  // check both, or routing breaks while the map works.
+  const fromExtra = (Constants.expoConfig?.extra as Record<string, unknown> | undefined)
+    ?.mapboxAccessToken;
   const token =
-    (Constants.expoConfig?.extra as Record<string, unknown> | undefined)?.mapboxAccessToken;
+    (typeof fromExtra === 'string' && fromExtra.length > 0 ? fromExtra : undefined) ??
+    process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
   return typeof token === 'string' && token.length > 0 ? token : null;
 }
 
