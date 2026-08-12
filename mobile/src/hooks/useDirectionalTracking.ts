@@ -226,7 +226,18 @@ export function useDirectionalTracking(
   useEffect(() => {
     if (!targetCoords || !userCoords) {
       wasLockedRef.current = false;
-      setState({ heading, targetBearing: null, angularDelta: null, closeness: 0, isLocked: false });
+      // Bail if already idle so an unstable targetCoords/userCoords reference
+      // (e.g. a caller passing a fresh [lng,lat] array each render) can't spin
+      // this effect into a setState-per-render loop.
+      setState((prev) =>
+        prev.targetBearing === null &&
+        prev.angularDelta === null &&
+        prev.closeness === 0 &&
+        prev.isLocked === false &&
+        prev.heading === heading
+          ? prev
+          : { heading, targetBearing: null, angularDelta: null, closeness: 0, isLocked: false }
+      );
       return;
     }
 
@@ -242,7 +253,19 @@ export function useDirectionalTracking(
     }
     wasLockedRef.current = isLocked;
 
-    setState({ heading, targetBearing: bearing, angularDelta: delta, closeness, isLocked });
+    // Only commit a new state object when a value actually changed. This makes
+    // the effect a no-op re-render when targetCoords is a new-but-equal array
+    // each render (React bails on the returned prev), preventing an infinite
+    // "Maximum update depth exceeded" loop while tracking a friend.
+    setState((prev) =>
+      prev.heading === heading &&
+      prev.targetBearing === bearing &&
+      prev.angularDelta === delta &&
+      prev.closeness === closeness &&
+      prev.isLocked === isLocked
+        ? prev
+        : { heading, targetBearing: bearing, angularDelta: delta, closeness, isLocked }
+    );
   }, [heading, userCoords, targetCoords]);
 
   return state;

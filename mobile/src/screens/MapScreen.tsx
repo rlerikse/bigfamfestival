@@ -260,7 +260,15 @@ export default function MapScreen() {
   // A separate per-friend focus state, layered ON TOP of the friend-radar HUD
   // (radar markers keep rendering regardless — Robert confirmed both coexist).
   const [trackingTarget, setTrackingTarget] = useState<(FriendLocation | FriendCampsite) & { isLive: boolean } | null>(null);
-  const trackingCoords: LngLat | null = trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null;
+  // Memoized so the [lng,lat] reference is stable across renders while the
+  // target hasn't moved. An inline `trackingTarget ? [..] : null` produced a
+  // fresh array every render, which made useDirectionalTracking's bearing
+  // effect re-run + setState every render → "Maximum update depth exceeded"
+  // the moment a friend was tracked.
+  const trackingCoords: LngLat | null = useMemo(
+    () => (trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null),
+    [trackingTarget?.lng, trackingTarget?.lat]
+  );
 
   // ── Orientation mode — CoD top-down mini-map model (per Robert's #159 refinement) ──
   // Underlying location tracking + haptics are ALWAYS on regardless of mode —
