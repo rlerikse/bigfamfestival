@@ -2,8 +2,8 @@
 
 **Project**: 🎪 Big Fam Festival
 **Repository**: `rlerikse/bigfamfestival`
-**Coverage**: 2025-03-03 (repo inception) → 2026-08-09
-**Last Updated**: 2026-08-09
+**Coverage**: 2025-03-03 (repo inception) → 2026-08-12
+**Last Updated**: 2026-08-12
 
 This document is the index and running log of architecture decisions for the Big Fam Festival platform — a monorepo with a NestJS backend (Cloud Run), a React Native/Expo mobile app, a React + Vite admin panel (Firebase Hosting), Firebase Cloud Functions, and Terraform/GCP infrastructure. Each entry captures the **context**, the **decision**, and the **consequences** so future contributors understand *why* the system is built the way it is.
 
@@ -32,6 +32,7 @@ This document is the index and running log of architecture decisions for the Big
 | [ADR-016](#adr-016-release-please-for-unified-semantic-versioning) | release-please for Unified Semantic Versioning | 2026-07-29 | ✅ Accepted |
 | [ADR-002](#adr-002-realtime-friend-locations-via-server-sent-events) | Realtime Friend Locations via Server-Sent Events | 2026-07-31 | ✅ Accepted |
 | [ADR-017](#adr-017-pure-logic-helpers-for-jest-testability-under-expo-sdk-54) | Pure Logic Helpers for Jest Testability Under Expo SDK 54 | 2026-08-09 | ✅ Accepted |
+| [ADR-018](#adr-018-gyro-assisted-os-compass-heading-fusion) | Gyro-Assisted OS-Compass Heading Fusion (supersedes ADR-015 sensor approach) | 2026-08-12 | ✅ Accepted |
 
 ---
 
@@ -227,7 +228,7 @@ This document is the index and running log of architecture decisions for the Big
 
 ### ADR-015: Live Wayfinder HUD with Compass Sensor Fusion
 
-**Status**: ✅ Accepted · **Date**: 2026-07-27 · _reconstructed from git history_
+**Status**: ✅ Accepted · heading approach **superseded by [ADR-018](#adr-018-gyro-assisted-os-compass-heading-fusion)** · **Date**: 2026-07-27 · _reconstructed from git history_
 
 **Context**: Static friend markers on a large map are disorienting. Users need heading-relative guidance to friends, including those off-screen, with a stable compass that doesn't drift or spin as the phone rotates.
 
@@ -285,9 +286,25 @@ This document is the index and running log of architecture decisions for the Big
 
 ---
 
+## 2026-08 — Map Heading & Rendering
+
+### ADR-018: Gyro-Assisted OS-Compass Heading Fusion
+
+**Status**: ✅ Accepted · **Date**: 2026-08-12 · supersedes the sensor-fusion approach in [ADR-015](#adr-015-live-wayfinder-hud-with-compass-sensor-fusion)
+
+**Context**: ADR-015's hand-rolled tilt-compensated accel+mag+gyro fusion read "way off," delayed, and jittery on real Android hardware — raw-magnetometer axis and hard-iron calibration are fragile and device-specific. On-device diagnostics (added as a calibration screen) showed the underlying OS compass updating at only ~7 Hz and carrying ~13° of jitter with occasional 150°+ spikes, so no fixed low-pass or adaptive (1€) filter on that source alone could be both responsive and steady.
+
+**Decision**: Replace the fusion. Take the OS's calibrated **true-north** heading (`expo-location watchHeadingAsync`) as a slow absolute **anchor**, and drive responsiveness from the **gyroscope at ~60 Hz** via a complementary filter. The gyro yaw rate is projected onto gravity (from the accelerometer) so it is rotation about **true vertical regardless of how the phone is held**. A circular **median prefilter** rejects isolated magnetometer spikes; output is throttled (~30 Hz) and dead-banded to bound re-renders. Add a **Settings → Calibrate Compass** screen (guided figure-8, live OS accuracy 0–3, on-device diagnostics). Switch on-map self/friend avatars from `PointAnnotation` (Android snapshots children to a bitmap before the remote image loads → blank placeholder) to **`MarkerView`** (live views); center the map on the user on first open; resolve the walking-directions Mapbox token the same way the map renderer does; and retry idempotent API requests through Cloud Run cold starts. Because the rework is still stabilizing (paused per issue #246), it is **flag-gated**: `SHOW_FRIEND_RADAR_HUD` re-enables the border radar, but `orientationMode` defaults to `'north'` so the map does not auto-rotate or run the heading pipeline by default until a hardening pass restores the `'compass'` default.
+
+**Consequences**: Fast, accurate, orientation-independent heading that matches `computeBearing()`'s geographic bearing (no magnetic-declination mismatch), while sidestepping per-device magnetometer axis bugs. The `compassFusion.ts` helpers (`unwrap`/`quantize`/`median`/`complementaryFilter`) are retained and reused. The iOS simulator has no magnetometer, so heading is only meaningful on physical devices. The full experience is gated off by default pending #246 hardening; a memoized `trackingCoords` + equality-bailing state update fixed an infinite-render loop when routing to a friend.
+
+**Evidence**: `0bb6170` (gyro fusion + calibration + avatar/centering), `aa802d6` (routing token), `889ffce` (render-loop fix), `e62a737`/`00f7cab` (flag gating).
+
+---
+
 ## Conventions
 
-- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016 are summarized here from git history.
+- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016 and ADR-018 are summarized here from git history.
 - **Format**: each ADR captures `Status`, `Date`, `Context`, `Decision`, and `Consequences`.
 - **Statuses**: `Proposed` (under discussion) → `✅ Accepted` (in effect) → `Superseded` (replaced by a later ADR, which it links) → `Deprecated` (no longer applies).
 - **Numbering**: identifiers are assigned in documentation order, not by date. Sort the index by **Date** for the timeline.

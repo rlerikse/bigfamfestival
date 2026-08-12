@@ -1,6 +1,6 @@
 # Big Fam Festival Application
 
-**Current Version:** 1.2.2 | **Platforms:** iOS, Android | **Status:** Production
+**Current Version:** 1.4.2 | **Platforms:** iOS, Android | **Status:** Production
 
 A full-stack festival management application with a NestJS backend API and React Native mobile app built with Expo.
 
@@ -45,7 +45,7 @@ This application consists of:
 ### Map and friend-location experience
 
 - **Live friend locations:** opted-in friends appear on the festival map as their location changes. The app receives authenticated Server-Sent Events (SSE) updates rather than polling every 30 seconds; if the stream is unavailable, it temporarily falls back to polling while it reconnects.
-- **Stable compass and camera:** tilt-compensated compass fusion, seam-safe heading transitions, and throttled camera updates keep the map oriented smoothly without long spins, drift, or render lag.
+- **Stable compass and camera:** heading uses the device's OS-calibrated compass with gyro-assisted smoothing (orientation-independent, spike-rejecting), seam-safe transitions, and throttled camera updates. The map defaults to north-up; the heading-follow compass mode is being hardened before it becomes the default.
 - **Stable friend markers and HUD:** friend radar markers are quantized and constrained at the map edge so they remain readable and do not bounce or jitter as the device heading changes.
 
 ## 🏛️ Architecture Decisions
