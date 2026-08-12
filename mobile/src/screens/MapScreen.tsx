@@ -29,10 +29,11 @@ const CAMERA_MIN_DELTA_DEG = 0.5;
 // trailing-flush); this flag had been a temporary stopgap while that lag was
 // debugged. Kept as a boolean kill-switch — set to false to hide the radar
 // icons without touching the underlying location tracking/data.
-// 2026-08-12: flipped OFF to gate the PAUSED friend-finder rework (#246) out of
-// the pre-festival "bulletproof" build per the director-meeting reprioritization.
-// Flip back to true (and re-check orientation default) when #246 resumes.
-const SHOW_FRIEND_RADAR_HUD = false;
+// 2026-08-12: radar HUD re-enabled, but the compass/map-rotation default is kept
+// OFF (orientationMode 'north' below) until the #246 stability/hardening pass.
+// So friends show on the border radar (which uses live heading), while the map
+// itself stays north-up and doesn't run the auto-rotate camera path yet.
+const SHOW_FRIEND_RADAR_HUD = true;
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -287,10 +288,10 @@ export default function MapScreen() {
   // fixes landed (#201/#202); the 'north' default had been a temporary flip
   // while that lag was debugged. Users can still toggle to north-lock manually;
   // this only changes the initial state.
-  // 2026-08-12: default flipped back to 'north' to gate the PAUSED friend-finder
-  // rework (#246) out of the pre-festival "bulletproof" build (map no longer
-  // auto-rotates / runs the gyro-fusion heading by default). Restore 'compass'
-  // when #246 resumes (pairs with SHOW_FRIEND_RADAR_HUD above).
+  // 2026-08-12: kept defaulting to 'north' (compass / map-rotation OFF) pending
+  // the #246 stability/hardening pass, even though the radar HUD is back on
+  // above. The map won't auto-rotate on open; users can still toggle to compass
+  // mode manually. Restore the 'compass' default once #246 is hardened.
   const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('north');
   // Only stream the magnetometer when there's actually something to point at —
   // either friends visible on the radar (icons need live heading to swing
