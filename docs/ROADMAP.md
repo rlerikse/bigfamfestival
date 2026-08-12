@@ -39,6 +39,7 @@ _All filed 2026-08-11 by the director reprioritization. This is the critical pat
 | #238 | Home screen: reduce stage card width/height | Still needed. Small, isolated UI change (keep aspect ratio). |
 | #236 | Android store questionnaire | Still needed. **Non-code** — help Robert complete the Play listing. Gate for Android launch. |
 | #237 | iOS rebuild once bulletproof scope lands | Still needed. **Depends on** the rest of P0 landing; rebuild the stale iOS build before the ~1wk pre-festival target. |
+| #125 | BFF-130: admin map editor — cannot add/edit POIs (bug) | **Promoted P1 → P0 (2026-08-12).** Admins can't do full POI CRUD (can't add; name/desc/category won't save). Blocks festival **content prep**, so it gates a launchable build. |
 
 ---
 
@@ -46,7 +47,6 @@ _All filed 2026-08-11 by the director reprioritization. This is the critical pat
 
 | # | Item | Refinement note (2026-08-12) |
 |---|------|------------------------------|
-| #125 | BFF-130: admin map editor — cannot add/edit POIs (bug) | **Still valid & important.** Admins can't do full POI CRUD (name/desc/category won't save; can't add). Blocks content prep for the festival. Not touched recently. Consider promoting toward P0 if content must be edited pre-launch. |
 | #127 | Notifications: audit & validate 100% (iOS + Android) | Still needed (Cam: must-work for festival). Not touched. Related: #161. |
 | #122 | Map: save my campsite location | **Not done.** Sharing *toggles* were restored, but pin/save-campsite-to-Firestore is unbuilt. Prerequisite for #123. |
 | #123 | Map: nav buttons — Take me to Big Fam / Take me home | **Unblocked** — walking-directions token bug fixed (`aa802d6`), so routing works now. Depends on #122 for "home". |
@@ -107,15 +107,10 @@ _All filed 2026-08-11 by the director reprioritization. This is the critical pat
 
 ---
 
-## Proposed refinement actions (need your OK before I touch GitHub)
+## Refinement actions (applied 2026-08-12)
 
-These are **not yet applied** — say the word and I'll do them:
-
-1. **Link & re-tag paused work:** cross-link #159 / #131 / #151 / #162 to #246; add `status:paused`.
-2. **#151 / #131 / #240:** add a comment noting the map-rendering / live-dot / person-icon parts are
-   implemented (in paused `0bb6170`) so they aren't rebuilt.
-3. **#241:** add a comment clarifying the restored toggles are *global*, and per-friend/default-OFF is
-   still outstanding.
-4. **Promote #125** (admin POI CRUD bug) toward P0 if content must be editable before launch — your call.
-5. **Close candidates:** none outright — nothing is 100% done + released. (#159/#131 are done-but-paused,
-   not closeable until the stability pass + release.)
+1. ✅ **Linked & re-tagged paused work:** #159 / #131 tagged `status:paused`; #159 / #131 / #151 / #162 cross-linked to #246.
+2. ✅ **#151 / #131 / #240:** commented that the map-rendering / live-dot / person-icon parts are implemented in paused `0bb6170`.
+3. ✅ **#241:** commented that the restored toggles are *global*; per-friend / default-OFF is still outstanding.
+4. ✅ **Promoted #125** (admin POI CRUD bug) **P1 → P0** — gates festival content prep.
+5. **Close candidates:** none — nothing is 100% done + released (#159 / #131 are done-but-paused, not closeable until the stability pass + release).
