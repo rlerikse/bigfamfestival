@@ -74,9 +74,13 @@ export async function getWalkingRoute(
       }
       const res = await fetch(url);
       if (!res.ok) {
-        // 4xx (bad coords/token) won't fix on retry — bail immediately.
+        // 4xx (bad coords/token, or e.g. a walking route too far to compute)
+        // won't fix on retry — bail immediately. warn, not error: this is a
+        // gracefully-handled, expected failure path (caller shows a friendly
+        // Alert), matching the "no route found" case below rather than
+        // triggering React Native's disruptive full-screen dev redbox.
         if (res.status >= 400 && res.status < 500) {
-          console.error(`[routingService] Directions API ${res.status} — not retrying.`);
+          console.warn(`[routingService] Directions API ${res.status} — not retrying.`);
           return null;
         }
         throw new Error(`Directions API responded ${res.status}`);
