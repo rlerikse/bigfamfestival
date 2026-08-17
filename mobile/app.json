@@ -40,6 +40,10 @@
           "alert",
           "badge",
           "sound"
+        ],
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "waze"
         ]
       }
     },
@@ -73,7 +77,13 @@
       ],
       "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "pan",
-      "versionCode": 81
+      "versionCode": 81,
+      "queries": {
+        "package": [
+          "com.google.android.apps.maps",
+          "com.waze"
+        ]
+      }
     },
     "web": {
       "favicon": "./src/assets/images/favicon.png"

@@ -10,7 +10,7 @@ import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import { getFriendLocations, getFriendCampsites, subscribeFriendLocations, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
 import type { FriendLocationSubscription } from '../services/friendService';
-import { getWalkingRoute, formatRouteSummary, routeBounds, RouteResult, LngLat } from '../services/routingService';
+import { getWalkingRoute, formatRouteSummary, routeBounds, openExternalDirections, EXTERNAL_MAPS_THRESHOLD_METERS, RouteResult, LngLat } from '../services/routingService';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import OptimizedImage from '../components/OptimizedImage';
@@ -771,6 +771,12 @@ export default function MapScreen() {
           'Location needed',
           'Enable location access so we can route you from where you are.'
         );
+        return;
+      }
+      // Off festival grounds — the in-app walking route is scoped to short
+      // on-site distances, so hand off to the user's own map app instead.
+      if (haversineMeters(origin, dest) > EXTERNAL_MAPS_THRESHOLD_METERS) {
+        await openExternalDirections(dest, label);
         return;
       }
       const route = await getWalkingRoute(origin, dest);
