@@ -47,17 +47,18 @@ This application consists of:
 - **Live friend locations:** opted-in friends appear on the festival map as their location changes. The app receives authenticated Server-Sent Events (SSE) updates rather than polling every 30 seconds; if the stream is unavailable, it temporarily falls back to polling while it reconnects.
 - **Stable compass and camera:** heading uses the device's OS-calibrated compass with gyro-assisted smoothing (orientation-independent, spike-rejecting), seam-safe transitions, and throttled camera updates. The map defaults to north-up; the heading-follow compass mode is being hardened before it becomes the default.
 - **Stable friend markers and HUD:** friend radar markers are quantized and constrained at the map edge so they remain readable and do not bounce or jitter as the device heading changes.
+- **Off-grounds directions handoff:** in-app walking directions to a POI or friend are scoped to on-site distances (within 1 mile); beyond that, directions hand off to the user's own map app (Google Maps, Waze, or the platform's native Maps).
 
 ## 🏛️ Architecture Decisions
 
-Significant technical decisions are recorded as Architecture Decision Records (ADRs). [`ADR.md`](ADR.md) is the full chronological log — **16 decisions from repo inception (2025-03) through 2026-07** — covering the monorepo layout, NestJS + Firestore backend, Cloud Run/Terraform infra, Expo mobile, the Firebase Auth migration, the admin panel, Mapbox mapping, the friend/location system, and more. Narrative source files for the first two live in [`docs/adr/`](docs/adr/).
+Significant technical decisions are recorded as Architecture Decision Records (ADRs). [`ADR.md`](ADR.md) is the full chronological log — **19 decisions from repo inception (2025-03) through 2026-08** — covering the monorepo layout, NestJS + Firestore backend, Cloud Run/Terraform infra, Expo mobile, the Firebase Auth migration, the admin panel, Mapbox mapping, the friend/location system, and more. Narrative source files for the first two live in [`docs/adr/`](docs/adr/).
 
 | ADR | Title | Status |
 |-----|-------|--------|
 | [ADR-001](docs/adr/001-performance-optimizations.md) | Performance Optimizations for Artist Modal | ✅ Accepted |
 | [ADR-002](docs/adr/002-realtime-friend-locations-sse.md) | Realtime Friend Locations via Server-Sent Events | ✅ Accepted |
 
-See [`ADR.md`](ADR.md) for the full index (ADR-001 – ADR-016). To add a decision, create the next-numbered file in `docs/adr/` and add it to [`ADR.md`](ADR.md).
+See [`ADR.md`](ADR.md) for the full index (ADR-001 – ADR-019). To add a decision, create the next-numbered file in `docs/adr/` and add it to [`ADR.md`](ADR.md).
 
 ## 🔧 Prerequisites
 

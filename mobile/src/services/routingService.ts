@@ -182,7 +182,11 @@ export async function openExternalDirections(destination: LngLat, label: string)
     }
   }
 
-  const open = (url: string) => Linking.openURL(url).catch(() => Linking.openURL(webFallbackUrl).catch(() => {}));
+  // Final fallback swallows its own failure — there's nowhere further to
+  // degrade to, so this is an intentional no-op rather than an oversight.
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  const noop = () => {};
+  const open = (url: string) => Linking.openURL(url).catch(() => Linking.openURL(webFallbackUrl).catch(noop));
 
   if (available.length === 0) {
     open(webFallbackUrl);

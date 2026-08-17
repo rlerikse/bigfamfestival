@@ -4,12 +4,21 @@
 
 ### Added
 - **Realtime friend locations (#204):** opted-in friend locations now update through authenticated Server-Sent Events (SSE), replacing the previous 30-second foreground poll. The client refreshes its Firebase token on explicit reconnect attempts, uses capped exponential backoff, and temporarily falls back to polling when the stream is unavailable.
+- **Horizontal schedule zoom controls:** the Shambhala-style horizontal schedule grid now has zoom in/out controls; stage rows compress for a denser overview or expand for more detail, and the grid opens fully zoomed out by default.
+- **Off-grounds directions handoff:** routing to a POI or friend more than a mile away now hands off to the user's own map app (Google Maps, Waze, or the platform's native Maps) instead of drawing an in-app walking route, which stays scoped to on-site distances.
 
 ### Fixed
 - **Map compass/camera stability (#202):** fixed the 0°/360° full-spin seam, reduced compass drift and overshoot with tilt-compensated sensor fusion, and improved camera-update throttling so the map remains responsive.
 - **Friend marker and HUD stability (#203):** stabilized edge/radar friend markers and the map HUD to prevent visible bounce and jitter while heading changes.
 - **BFF-127:** fixed schedule list mount + scroll lag ([#186](https://github.com/rlerikse/bigfamfestival/issues/186)).
 - **BFF-128:** genre filter now uses the current lineup instead of a stale/alphabetical list ([#185](https://github.com/rlerikse/bigfamfestival/issues/185)).
+- **Profile sharing toggles:** "Share My Live Location" and "Share My Campsite" can now also be toggled from the Profile screen, not just Settings.
+- **Map avatars:** friend and own profile pictures now render correctly on map markers (fixed an Android rendering issue).
+- **Map center-on-open:** the first map open now centers on the user's own location instead of the festival grounds.
+- **Walking directions reliability:** fixed Mapbox token resolution so directions to a POI or friend load reliably, and fixed an infinite render loop that could occur when routing to a friend.
+- **Cold-start resilience:** read requests now retry through brief server cold-starts/network hiccups instead of surfacing a "can't connect" error immediately.
+- **Home screen stage cards (#238):** resized so they no longer dominate the full phone width.
+- **Artist photo loading:** artist modal photos now load as fast as their thumbnails (switched to the same cached image component used elsewhere).
 
 ## [1.4.2](https://github.com/rlerikse/bigfamfestival/compare/v1.4.1...v1.4.2) (2026-08-09)
 

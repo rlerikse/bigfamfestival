@@ -2,11 +2,13 @@
 
 > **Draft only.** This document is for review of work merged after 1.4.2. It does not approve a version number, release date, store submission, or rollout.
 >
-> **Projected next version:** 1.5.0 (minor — the unreleased realtime friend-location SSE feature triggers a minor bump; also includes the schedule genre-filter fix and schedule-list performance improvements. release-please will finalize the number and `CHANGELOG.md`).
+> **Projected next version:** 1.5.0 (minor — the unreleased realtime friend-location SSE feature, horizontal-schedule zoom controls, and off-grounds directions handoff each trigger a minor bump; also includes the schedule genre-filter fix, schedule-list performance improvements, Home stage card resize, and artist photo loading fix. release-please will finalize the number and `CHANGELOG.md`).
 
 ## What's New
 - **Live friend locations:** opted-in friends can appear on the festival map as their location changes.
 - **More responsive map:** friend-location updates use an authenticated realtime connection, with a temporary polling fallback if that connection is unavailable.
+- **Zoom in/out on the horizontal schedule:** adjust the density of the Shambhala-style grid view — compact for an at-a-glance overview of the whole day, or expanded for easier tapping. Opens fully zoomed out by default.
+- **Directions hand off to your map app when off-site:** tapping directions to a POI or friend more than a mile away now opens Google Maps, Waze, or Apple Maps (your choice) instead of trying to draw an on-site walking path.
 
 ## Improvements & Fixes
 - **Sharing toggles also on your Profile:** "Share My Live Location" and "Share My Campsite" can now be turned on/off from your Profile screen, not just Settings — same preference, either place.
@@ -17,6 +19,8 @@
 - **Steadier friend markers:** edge/radar friend markers and the map HUD no longer visibly bounce or jitter as the device heading moves.
 - **Genre filter matches this year's lineup:** the schedule's genre filter now lists only genres actually being performed this year, so every option leads to real sets. The list stays consistent across refreshes and day changes, and no longer shows stale genres that return no results.
 - **Faster, smoother Schedule:** the schedule list opens noticeably quicker and scrolls more smoothly through a full day — it now renders just what's on screen instead of a whole day up front, and no longer re-renders every visible card on each clock tick. Live and "Starts in …" badges still update as before.
+- **Smaller stage cards on Home:** the live/upcoming stage cards no longer stretch edge-to-edge.
+- **Artist photos load instantly:** tapping into an artist's schedule card no longer shows a slow-loading full photo — it now loads as fast as the thumbnail.
 
 ## Under the Hood
 - Replaced the foreground 30-second friend-location poll with authenticated Server-Sent Events (SSE) while healthy.

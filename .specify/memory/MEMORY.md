@@ -14,10 +14,15 @@ Entrypoint index for repo-scoped memory. See topic files for detail.
 - BFF-127 clarify confirmation pass (attempt 2) returned CLEAN — no remaining ambiguities after DR-1/DR-2/DR-3 — see `decisions.md`.
 - BFF-127 implement (code phases + static verification) is HARDENED — pure `getEventDisplayState` helper, optional `EventCard.displayState` prop, FlatList tuning, tsc/lint/jest all clean; T006-T009 manual profiling pending — see `decisions.md`.
 - BFF-127 pre-PR report is staged at the canonical feature path; source/static readiness is verified, while SC-002/SC-003 remain pending representative-device profiling — see `decisions.md`.
+- ADR-019: routing hands off to the user's own map app (Google Maps/Waze/native Maps) beyond a 1-mile threshold instead of drawing an in-app walking route — see `decisions.md`.
+- Horizontal schedule zoom controls (feature): `pxPerMinute` state replaces the fixed density constant; row height scales with zoom — see `decisions.md`.
 
 ## Known Issues
 - Firestore `users`/`notifications` rules world-open; `@Public()` debug endpoints; `POST /artists` missing admin guard — see `known-issues.md` (+ `docs/audits/2026-08-09-deep-analysis-hardening-optimization.md`).
 - BFF-124: importing an `@expo/vector-icons`/`expo-image`-using component in Jest fails even without `render()` — extract pure logic into `scheduleUtils.ts`-style side-effect-free modules instead — see `known-issues.md`.
+- CHANGELOG.md `## Unreleased`/`NEXT.md` sync drift RECURRED 2026-08-17 (2nd time) — always diff both explicitly during doc curation — see `known-issues.md`.
+- `Linking.canOpenURL` for Google Maps/Waze needs native `app.json` config (`LSApplicationQueriesSchemes`/`queries`) + a rebuild to actually detect those apps — see `known-issues.md`.
+- iOS Simulator's default GPS location isn't near the festival grounds — set it via `xcrun simctl location booted set <lat>,<lng>` before testing routing — see `known-issues.md`.
 
 ## BFF-124 Implementation (2026-08-09) — HARDENED, commit 4536bfd
 T001-T006 done (clampVerticalOffset in scheduleUtils.ts, {x,y} scroll contract, ScheduleScreen Y-ref, scrollResetKey-based Y restore). tsc/lint/jest clean; verify PASS after 1 self-heal round. T007 (manual iOS/Android) remains open in tasks.md.

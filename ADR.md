@@ -2,8 +2,8 @@
 
 **Project**: 🎪 Big Fam Festival
 **Repository**: `rlerikse/bigfamfestival`
-**Coverage**: 2025-03-03 (repo inception) → 2026-08-12
-**Last Updated**: 2026-08-12
+**Coverage**: 2025-03-03 (repo inception) → 2026-08-17
+**Last Updated**: 2026-08-17
 
 This document is the index and running log of architecture decisions for the Big Fam Festival platform — a monorepo with a NestJS backend (Cloud Run), a React Native/Expo mobile app, a React + Vite admin panel (Firebase Hosting), Firebase Cloud Functions, and Terraform/GCP infrastructure. Each entry captures the **context**, the **decision**, and the **consequences** so future contributors understand *why* the system is built the way it is.
 
@@ -33,6 +33,7 @@ This document is the index and running log of architecture decisions for the Big
 | [ADR-002](#adr-002-realtime-friend-locations-via-server-sent-events) | Realtime Friend Locations via Server-Sent Events | 2026-07-31 | ✅ Accepted |
 | [ADR-017](#adr-017-pure-logic-helpers-for-jest-testability-under-expo-sdk-54) | Pure Logic Helpers for Jest Testability Under Expo SDK 54 | 2026-08-09 | ✅ Accepted |
 | [ADR-018](#adr-018-gyro-assisted-os-compass-heading-fusion) | Gyro-Assisted OS-Compass Heading Fusion (supersedes ADR-015 sensor approach) | 2026-08-12 | ✅ Accepted |
+| [ADR-019](#adr-019-distance-threshold-handoff-to-external-map-apps) | Distance-Threshold Handoff to External Map Apps | 2026-08-17 | ✅ Accepted |
 
 ---
 
@@ -302,9 +303,23 @@ This document is the index and running log of architecture decisions for the Big
 
 ---
 
+### ADR-019: Distance-Threshold Handoff to External Map Apps
+
+**Status**: ✅ Accepted · **Date**: 2026-08-17
+
+**Context**: The in-app walking route (Mapbox Directions, walking profile) is scoped to short, on-site festival-grounds distances — routing a user from off-site (e.g. home, before arriving) to a POI or friend could span many miles, which the walking profile can't (and shouldn't) draw, and previously surfaced a raw Mapbox 422 error straight to the user.
+
+**Decision**: Before fetching an in-app walking route, `routeToDestination` (`MapScreen.tsx`) computes the haversine distance from the user to the destination. Within `EXTERNAL_MAPS_THRESHOLD_METERS` (1 mile) it behaves as before. Beyond that, it calls the new `openExternalDirections()` (`routingService.ts`), which detects installed navigation apps via `Linking.canOpenURL` (Google Maps, Waze), prompts the user to choose when more than one is available, and falls back to the platform's native Maps (or a Google Maps web link) otherwise. iOS requires `LSApplicationQueriesSchemes` (`comgooglemaps`, `waze`) and Android requires a `<queries>` package-visibility declaration for `canOpenURL` to detect those apps — both added to `app.json`.
+
+**Consequences**: Off-site directions requests hand off to whichever app the user actually has installed and prefers, rather than failing or drawing a nonsensical multi-hundred-mile walking line. The native config change requires a fresh native build to take effect; until then, detection silently falls back to the native Maps/`geo:` path (which needs no declaration), so the feature degrades gracefully rather than breaking. The analogous 4xx-bailout log in `routingService.ts` was also downgraded from `console.error` to `console.warn` since it's a gracefully-handled, expected path — it no longer triggers React Native's disruptive full-screen dev redbox.
+
+**Evidence**: `c3c83f1` (external directions handoff + threshold check), `37f9c0a` (downgraded the 4xx bail-out log).
+
+---
+
 ## Conventions
 
-- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016 and ADR-018 are summarized here from git history.
+- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016, ADR-018, and ADR-019 are summarized here from git history.
 - **Format**: each ADR captures `Status`, `Date`, `Context`, `Decision`, and `Consequences`.
 - **Statuses**: `Proposed` (under discussion) → `✅ Accepted` (in effect) → `Superseded` (replaced by a later ADR, which it links) → `Deprecated` (no longer applies).
 - **Numbering**: identifiers are assigned in documentation order, not by date. Sort the index by **Date** for the timeline.
