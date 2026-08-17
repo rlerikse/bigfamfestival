@@ -517,30 +517,6 @@ const HorizontalScheduleView: React.FC<Props> = ({
         </View>
       </View>
 
-      {/* Zoom controls — in-flow row directly under the ruler header, buttons
-          side by side (not floating/stacked, so neither is ever cut off by
-          the bottom tab bar). */}
-      <View style={styles.zoomControls}>
-        <TouchableOpacity
-          style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
-          onPress={handleZoomOut}
-          disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
-          activeOpacity={0.7}
-          accessibilityLabel="Zoom out"
-        >
-          <Ionicons name="remove" size={18} color="#F5F5DC" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
-          onPress={handleZoomIn}
-          disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
-          activeOpacity={0.7}
-          accessibilityLabel="Zoom in"
-        >
-          <Ionicons name="add" size={18} color="#F5F5DC" />
-        </TouchableOpacity>
-      </View>
-
       {/* Body: sticky stage labels (left) + horizontally scrollable event grid */}
       <ScrollView
         ref={verticalScrollRef}
@@ -718,6 +694,30 @@ const HorizontalScheduleView: React.FC<Props> = ({
           </Animated.ScrollView>
         </View>
       </ScrollView>
+
+      {/* Zoom controls — in-flow footer row below the stage rows, buttons
+          side by side (not floating/stacked, so neither is ever cut off by
+          the bottom tab bar). */}
+      <View style={styles.zoomControls}>
+        <TouchableOpacity
+          style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+          onPress={handleZoomOut}
+          disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
+          activeOpacity={0.7}
+          accessibilityLabel="Zoom out"
+        >
+          <Ionicons name="remove" size={18} color="#F5F5DC" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+          onPress={handleZoomIn}
+          disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
+          activeOpacity={0.7}
+          accessibilityLabel="Zoom in"
+        >
+          <Ionicons name="add" size={18} color="#F5F5DC" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
