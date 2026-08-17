@@ -24,6 +24,7 @@ Entrypoint index for repo-scoped memory. See topic files for detail.
 - `Linking.canOpenURL` for Google Maps/Waze needs native `app.json` config (`LSApplicationQueriesSchemes`/`queries`) + a rebuild to actually detect those apps — see `known-issues.md`.
 - iOS Simulator's default GPS location isn't near the festival grounds — set it via `xcrun simctl location booted set <lat>,<lng>` before testing routing — see `known-issues.md`.
 - BFF-130/#125 admin POI CRUD RESOLVED & LIVE-VERIFIED against production Firestore (add/edit-name/delete all confirmed) — root cause was a truthy-vs-numeric validation bug; also fixed a missing Mapbox token that broke the Map Editor's map entirely — see `known-issues.md`.
+- INCIDENT 2026-08-17: automated coordinate-click testing wiped `config/mapStages` in production (full `setDoc()` overwrite with no confirm on stage delete) — recovered from surviving duplicate zone Points, fixed with a confirm guard (aab9d02). Any bare `setDoc()` overwrite in `admin/` is a one-click data-loss risk — see `known-issues.md`.
 
 ## BFF-124 Implementation (2026-08-09) — HARDENED, commit 4536bfd
 T001-T006 done (clampVerticalOffset in scheduleUtils.ts, {x,y} scroll contract, ScheduleScreen Y-ref, scrollResetKey-based Y restore). tsc/lint/jest clean; verify PASS after 1 self-heal round. T007 (manual iOS/Android) remains open in tasks.md.
