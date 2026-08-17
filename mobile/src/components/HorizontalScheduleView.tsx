@@ -517,6 +517,30 @@ const HorizontalScheduleView: React.FC<Props> = ({
         </View>
       </View>
 
+      {/* Zoom controls — in-flow row directly under the ruler header, buttons
+          side by side (not floating/stacked, so neither is ever cut off by
+          the bottom tab bar). */}
+      <View style={styles.zoomControls}>
+        <TouchableOpacity
+          style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+          onPress={handleZoomOut}
+          disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
+          activeOpacity={0.7}
+          accessibilityLabel="Zoom out"
+        >
+          <Ionicons name="remove" size={18} color="#F5F5DC" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+          onPress={handleZoomIn}
+          disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
+          activeOpacity={0.7}
+          accessibilityLabel="Zoom in"
+        >
+          <Ionicons name="add" size={18} color="#F5F5DC" />
+        </TouchableOpacity>
+      </View>
+
       {/* Body: sticky stage labels (left) + horizontally scrollable event grid */}
       <ScrollView
         ref={verticalScrollRef}
@@ -694,29 +718,6 @@ const HorizontalScheduleView: React.FC<Props> = ({
           </Animated.ScrollView>
         </View>
       </ScrollView>
-
-      {/* Zoom controls — float over the grid, bottom-right; box-none so the
-          gap between the two buttons doesn't swallow scroll gestures. */}
-      <View style={styles.zoomControls} pointerEvents="box-none">
-        <TouchableOpacity
-          style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
-          onPress={handleZoomIn}
-          disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
-          activeOpacity={0.7}
-          accessibilityLabel="Zoom in"
-        >
-          <Ionicons name="add" size={22} color="#F5F5DC" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
-          onPress={handleZoomOut}
-          disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
-          activeOpacity={0.7}
-          accessibilityLabel="Zoom out"
-        >
-          <Ionicons name="remove" size={22} color="#F5F5DC" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -902,27 +903,22 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   zoomControls: {
-    position: 'absolute',
-    right: 12,
-    bottom: 16,
-    zIndex: 10,
-    elevation: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     gap: 8,
   },
   zoomButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(28, 43, 32, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(245, 245, 220, 0.2)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   zoomButtonDisabled: {
     opacity: 0.35,
