@@ -13,16 +13,13 @@ column captures what has changed since the issue was filed — especially work t
 
 ---
 
-## ⚠️ Release risk to resolve first
+## ⚠️ Release risk — RESOLVED (2026-08-12)
 
-The **paused** friend-finder rework (#246) is **already merged to `dev`** (`0bb6170`), with
-`SHOW_FRIEND_RADAR_HUD = true` and compass-default orientation **on**. Per #246 it must **not**
-ship in a pre-festival build without a dedicated stability pass.
-
-**Action before cutting a bulletproof build:** either (a) complete the #246 stability pass, or
-(b) flag-gate the feature **off** on the release branch — set `SHOW_FRIEND_RADAR_HUD = false`
-and restore `orientationMode` default to `'north'` in `MapScreen.tsx`. The API cold-start retry
-(`aa802d6`) and the Mapbox token `.env`/routing fixes are safe to keep regardless.
+The **paused** friend-finder rework (#246) was flag-gated on `dev`: `SHOW_FRIEND_RADAR_HUD = true`
+(border radar re-enabled) but `orientationMode` defaults to `'north'` (compass/auto-rotate stays
+off) until a dedicated #246 stability pass restores the `'compass'` default (commits `e62a737`,
+`00f7cab`). The API cold-start retry (`aa802d6`) and Mapbox token `.env`/routing fixes are safe
+and already in place.
 
 ---
 
@@ -35,8 +32,8 @@ _All filed 2026-08-11 by the director reprioritization. This is the critical pat
 | #242 | Data ownership docs — legal/PII draft | Still required. **Non-builder** — routed to research (Dexter). Legal exposure per Kevin. No code. |
 | #241 | Location privacy toggle — **per-friend, default OFF** | **Still fully needed.** The 2026-08-11 session only restored the *global* `shareMyLocation`/`shareMyCampsite` toggles — this asks for **per-friend, opt-in, default OFF**, which is not built. Privacy/legal gate; pairs with #242. |
 | #240 | Interactive map: tap-to-show POI descriptions + live location dot + all geo-markers rendering | **Partially satisfied by paused work.** Session `0bb6170` fixed the live-location dot and on-map marker rendering (beige→MarkerView) and first-open centering — but that's inside the **paused** #246 commit. POI tap-descriptions (callouts) exist. Re-verify the non-friend parts independently of #246. |
-| #239 | Verify schedule rendering iOS + Android | **Verification/regression only** — "considered done" per directors. Schedule has had 3 recent merges (perf #186, pull-to-refresh, genre filter), so confirm no regressions on both platforms. Low effort. |
-| #238 | Home screen: reduce stage card width/height | Still needed. Small, isolated UI change (keep aspect ratio). |
+| #239 | Verify schedule rendering iOS + Android | **In progress (2026-08-17).** Schedule pure-logic tests (BFF-124/127/128) pass 16/16, no regressions. Manual iOS/Android visual pass still pending. |
+| #238 | Home screen: reduce stage card width/height | ✅ **Done (2026-08-17, commit `e85b805`).** Card wrapper shrunk to 87.5% width, centered, height scaled by the same factor to preserve aspect ratio. |
 | #236 | Android store questionnaire | Still needed. **Non-code** — help Robert complete the Play listing. Gate for Android launch. |
 | #237 | iOS rebuild once bulletproof scope lands | Still needed. **Depends on** the rest of P0 landing; rebuild the stale iOS build before the ~1wk pre-festival target. |
 | #125 | BFF-130: admin map editor — cannot add/edit POIs (bug) | **Promoted P1 → P0 (2026-08-12).** Admins can't do full POI CRUD (can't add; name/desc/category won't save). Blocks festival **content prep**, so it gates a launchable build. |
