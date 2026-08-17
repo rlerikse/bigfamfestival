@@ -52,6 +52,10 @@ const ROW_HEIGHT = SCHEDULE_ROW_HEIGHT; // taller rows so the full-height photo 
 const MIN_ROW_HEIGHT = 72;
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
+// Shared with eventBlock's borderRadius below and the thumbnail's left-corner
+// radius, so the thumbnail's corners match the card's rounded shape instead
+// of overflowing past it as square corners.
+const EVENT_BLOCK_RADIUS = 12;
 const CUTOFF_MINUTES = 6 * 60 + 30; // 6:30am — day boundary, matches ScheduleScreen logic
 const GRID_START_MINUTES = CUTOFF_MINUTES; // grid starts at 6:30am
 const GRID_END_MINUTES = CUTOFF_MINUTES + 24 * 60; // full 24h span from cutoff to cutoff next day
@@ -316,7 +320,16 @@ const HorizontalScheduleView: React.FC<Props> = ({
 
   // Event thumbnail is square-ish, filling the full (zoom-dependent) block
   // height — was a static StyleSheet entry keyed off the fixed ROW_HEIGHT.
-  const eventThumbnailStyle = useMemo(() => ({ width: rowHeight - 12, height: '100%' as const, marginRight: 8 }), [rowHeight]);
+  // Left corners are rounded to match eventBlock's radius since the thumbnail
+  // sits flush against the card's left edge (overflow:hidden on the card
+  // alone doesn't reliably clip a nested Image's own square corners).
+  const eventThumbnailStyle = useMemo(() => ({
+    width: rowHeight - 12,
+    height: '100%' as const,
+    marginRight: 8,
+    borderTopLeftRadius: EVENT_BLOCK_RADIUS,
+    borderBottomLeftRadius: EVENT_BLOCK_RADIUS,
+  }), [rowHeight]);
 
   const stages = useMemo(() => {
     const set = new Set<string>();
@@ -835,7 +848,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     bottom: 6,
-    borderRadius: 12,
+    borderRadius: EVENT_BLOCK_RADIUS,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     overflow: 'hidden',
   },
