@@ -31,7 +31,7 @@ _All filed 2026-08-11 by the director reprioritization. This is the critical pat
 |---|------|------------------------------|
 | #242 | Data ownership docs — legal/PII draft | Still required. **Non-builder** — routed to research (Dexter). Legal exposure per Kevin. No code. |
 | #241 | Location privacy toggle — **per-friend, default OFF** | **Still fully needed.** The 2026-08-11 session only restored the *global* `shareMyLocation`/`shareMyCampsite` toggles — this asks for **per-friend, opt-in, default OFF**, which is not built. Privacy/legal gate; pairs with #242. |
-| #240 | Interactive map: tap-to-show POI descriptions + live location dot + all geo-markers rendering | **Partially satisfied by paused work.** Session `0bb6170` fixed the live-location dot and on-map marker rendering (beige→MarkerView) and first-open centering — but that's inside the **paused** #246 commit. POI tap-descriptions (callouts) exist. Re-verify the non-friend parts independently of #246. |
+| #240 | Interactive map: tap-to-show POI descriptions + live location dot + all geo-markers rendering | ✅ **Done (2026-08-17), verified independently of #246.** POI tap-descriptions (callouts), live-location dot, and all geo-markers rendering confirmed working. |
 | #239 | Verify schedule rendering iOS + Android | ✅ **Done (2026-08-17).** Pure-logic tests pass (BFF-124/127/128), and manual iOS + Android visual verification confirmed no regressions. |
 | #238 | Home screen: reduce stage card width/height | ✅ **Done (2026-08-17, commit `e85b805`).** Card wrapper shrunk to 87.5% width, centered, height scaled by the same factor to preserve aspect ratio. |
 | #236 | Android store questionnaire | Still needed. **Non-code** — help Robert complete the Play listing. Gate for Android launch. |
