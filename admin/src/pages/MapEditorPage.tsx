@@ -367,7 +367,13 @@ export function MapEditorPage() {
   }, [saveStages]);
 
   const deleteStage = useCallback((id: string) => {
+    // saveStages() does a full-document overwrite of config/mapStages, so a
+    // stray click here permanently wipes it with no undo — confirm first.
     setStages(prev => {
+      const target = prev.find(s => s.id === id);
+      if (target && !window.confirm(`Delete stage "${target.name}"? This cannot be undone.`)) {
+        return prev;
+      }
       const updated = prev.filter(s => s.id !== id);
       saveStages(updated);
       return updated;
