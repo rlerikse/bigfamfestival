@@ -718,32 +718,34 @@ const HorizontalScheduleView: React.FC<Props> = ({
             </View>
           </Animated.ScrollView>
         </View>
-      </ScrollView>
 
-      {/* Zoom controls — in-flow footer row directly under the stage rows,
-          buttons side by side. marginBottom clears the absolutely-positioned
-          GrassBottomTabBar (see tabBarClearance above) so it isn't hidden
-          underneath it. */}
-      <View style={[styles.zoomControls, { marginBottom: tabBarClearance }]}>
-        <TouchableOpacity
-          style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
-          onPress={handleZoomOut}
-          disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
-          activeOpacity={0.7}
-          accessibilityLabel="Zoom out"
-        >
-          <Ionicons name="remove" size={18} color="#F5F5DC" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
-          onPress={handleZoomIn}
-          disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
-          activeOpacity={0.7}
-          accessibilityLabel="Zoom in"
-        >
-          <Ionicons name="add" size={18} color="#F5F5DC" />
-        </TouchableOpacity>
-      </View>
+        {/* Zoom controls — inside the vertical ScrollView's content, directly
+            under the last stage row (not after the ScrollView's flex-filled
+            viewport, which left a large empty gap when there are only a few
+            stages). marginBottom clears the absolutely-positioned
+            GrassBottomTabBar (see tabBarClearance above) if content is long
+            enough to scroll all the way down. */}
+        <View style={[styles.zoomControls, { marginBottom: tabBarClearance }]}>
+          <TouchableOpacity
+            style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+            onPress={handleZoomOut}
+            disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
+            activeOpacity={0.7}
+            accessibilityLabel="Zoom out"
+          >
+            <Ionicons name="remove" size={18} color="#F5F5DC" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+            onPress={handleZoomIn}
+            disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
+            activeOpacity={0.7}
+            accessibilityLabel="Zoom in"
+          >
+            <Ionicons name="add" size={18} color="#F5F5DC" />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
