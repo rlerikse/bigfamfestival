@@ -720,11 +720,12 @@ const HorizontalScheduleView: React.FC<Props> = ({
         </View>
       </ScrollView>
 
-      {/* Zoom controls — in-flow footer row below the stage rows, buttons
-          side by side (not floating/stacked, so neither is ever cut off by
-          the bottom tab bar). marginBottom clears the absolutely-positioned
-          GrassBottomTabBar (see tabBarClearance above). */}
-      <View style={[styles.zoomControls, { marginBottom: tabBarClearance }]}>
+      {/* Zoom controls — pinned to the bottom of the schedule area (fixed
+          distance above GrassBottomTabBar, see tabBarClearance above),
+          rather than in-flow, so they stay put as rowHeight shrinks on
+          zoom-out or the body ScrollView scrolls. box-none so empty space
+          in the row doesn't swallow scroll gestures underneath it. */}
+      <View style={[styles.zoomControls, { bottom: tabBarClearance }]} pointerEvents="box-none">
         <TouchableOpacity
           style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
           onPress={handleZoomOut}
@@ -923,12 +924,17 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   zoomControls: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     gap: 8,
+    zIndex: 10,
+    elevation: 10,
   },
   zoomButton: {
     width: 32,
@@ -939,6 +945,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(245, 245, 220, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   zoomButtonDisabled: {
     opacity: 0.35,
