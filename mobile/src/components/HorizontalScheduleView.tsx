@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OptimizedImage from './OptimizedImage';
 import { ScheduleEvent } from '../types/event';
 import { isEventLive, resolveScheduleDayScrollTarget, clampVerticalOffset, SCHEDULE_ROW_HEIGHT } from '../utils/scheduleUtils';
@@ -153,6 +154,12 @@ const HorizontalScheduleView: React.FC<Props> = ({
   const verticalScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const previousDayRef = useRef<string | null>(null);
+  // The custom GrassBottomTabBar renders absolutely-positioned over screen
+  // content (see ScheduleScreen's FlatList paddingBottom for the same
+  // convention), so an in-flow footer row needs this same clearance or it
+  // renders hidden underneath the tab bar.
+  const insets = useSafeAreaInsets();
+  const tabBarClearance = Math.max(160, insets.bottom + 80);
   // Horizontal zoom density (px per minute), adjustable via the zoom in/out
   // controls. Everything below that used to reference the module-level
   // PX_PER_MINUTE constant directly now reads this instead.
@@ -697,8 +704,9 @@ const HorizontalScheduleView: React.FC<Props> = ({
 
       {/* Zoom controls — in-flow footer row below the stage rows, buttons
           side by side (not floating/stacked, so neither is ever cut off by
-          the bottom tab bar). */}
-      <View style={styles.zoomControls}>
+          the bottom tab bar). marginBottom clears the absolutely-positioned
+          GrassBottomTabBar (see tabBarClearance above). */}
+      <View style={[styles.zoomControls, { marginBottom: tabBarClearance }]}>
         <TouchableOpacity
           style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
           onPress={handleZoomOut}
