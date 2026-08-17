@@ -66,6 +66,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   const [pickingLocation, setPickingLocation] = useState(false);
   const [markerFile, setMarkerFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchPOIs = useCallback(async () => {
     try {
@@ -73,8 +74,10 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
       const items: POI[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as POI));
       setPois(items);
       onPOIsChanged(items);
+      setLoadError(null);
     } catch (err) {
       console.error('Failed to fetch POIs:', err);
+      setLoadError(err instanceof Error ? err.message : String(err));
     }
   }, [onPOIsChanged]);
 
@@ -90,7 +93,18 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim() || !formData.lat || !formData.lng) return;
+    const name = formData.name.trim();
+    const hasValidLocation = Number.isFinite(formData.lat) && Number.isFinite(formData.lng);
+    // Previously used truthy checks (`!formData.lat`), which silently blocked
+    // saving ANY field — including name-only edits — whenever lat/lng was
+    // exactly 0 (a valid coordinate, e.g. equator/prime meridian) or simply
+    // not yet set for a brand-new POI, with zero feedback to the admin.
+    if (!name || !hasValidLocation) {
+      alert(!name
+        ? 'Please enter a name for this POI.'
+        : 'Please set a location — click "📍 Pick" and tap the map, or enter Lat/Lng directly.');
+      return;
+    }
     if (markerFile) {
       const validationErr = validateMarkerFile(markerFile);
       if (validationErr) { alert(validationErr); return; }
@@ -130,7 +144,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
       await fetchPOIs();
     } catch (err) {
       console.error('Failed to save POI:', err);
-      alert('Failed to save POI');
+      alert(`Failed to save POI: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setUploading(false);
     }
@@ -195,6 +209,12 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
           <Plus className="h-3 w-3" /> Add
         </button>
       </div>
+
+      {loadError && (
+        <div className="px-3 py-2 text-xs text-red-300 bg-red-950/30 border-b border-red-900/40">
+          Couldn't load POIs: {loadError}
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (
@@ -284,7 +304,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
           </div>
           <button
             onClick={handleSave}
-            disabled={!formData.name.trim() || !formData.lat || !formData.lng || uploading}
+            disabled={uploading}
             className="w-full px-3 py-2 rounded bg-[#6BBF59] text-[#1C2B20] font-bold text-sm hover:bg-[#6BBF59]/90 disabled:opacity-40"
           >
             {uploading ? 'Saving…' : editingId ? 'Update POI' : 'Add POI'}
