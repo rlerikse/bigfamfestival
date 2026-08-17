@@ -36,7 +36,7 @@ _All filed 2026-08-11 by the director reprioritization. This is the critical pat
 | #238 | Home screen: reduce stage card width/height | ✅ **Done (2026-08-17, commit `e85b805`).** Card wrapper shrunk to 87.5% width, centered, height scaled by the same factor to preserve aspect ratio. |
 | #236 | Android store questionnaire | Still needed. **Non-code** — help Robert complete the Play listing. Gate for Android launch. |
 | #237 | iOS rebuild once bulletproof scope lands | Still needed. **Depends on** the rest of P0 landing; rebuild the stale iOS build before the ~1wk pre-festival target. |
-| #125 | BFF-130: admin map editor — cannot add/edit POIs (bug) | **Promoted P1 → P0 (2026-08-12).** Admins can't do full POI CRUD (can't add; name/desc/category won't save). Blocks festival **content prep**, so it gates a launchable build. |
+| #125 | BFF-130: admin map editor — cannot add/edit POIs (bug) | ✅ **Done (2026-08-17).** Root cause: Save button's disabled-state used truthy checks on lat/lng, silently blocking saves whenever a new POI still had default 0,0 coords. Fixed + live-verified against production (add, edit-name, delete all confirmed). Also fixed: Map Editor's map wasn't rendering at all (missing `admin/.env` Mapbox token). Follow-up filed: #247 (4 legacy POI category values). |
 
 ---
 
