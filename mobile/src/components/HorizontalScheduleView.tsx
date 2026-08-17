@@ -39,6 +39,11 @@ export { clampVerticalOffset };
 // Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
 // ~1 hour visible). Lower density → wider time span left→right per screen.
 const PX_PER_MINUTE = 6.0; // zoomed in — final shipping value; Android gets a touch more breathing room than 6.5
+// Zoom bounds/step for the in-grid zoom controls — PX_PER_MINUTE above is just the
+// initial value now; the grid's actual horizontal density is the pxPerMinute state.
+const MIN_PX_PER_MINUTE = 3.0; // zoomed out — roughly doubles the visible time span
+const MAX_PX_PER_MINUTE = 9.0; // zoomed in — tighter blocks, easier to tap short sets
+const ZOOM_STEP = 1.5;
 const ROW_HEIGHT = SCHEDULE_ROW_HEIGHT; // taller rows so the full-height photo has room to breathe
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
@@ -148,6 +153,10 @@ const HorizontalScheduleView: React.FC<Props> = ({
   const verticalScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const previousDayRef = useRef<string | null>(null);
+  // Horizontal zoom density (px per minute), adjustable via the zoom in/out
+  // controls. Everything below that used to reference the module-level
+  // PX_PER_MINUTE constant directly now reads this instead.
+  const [pxPerMinute, setPxPerMinute] = useState(PX_PER_MINUTE);
   // Pending horizontal auto-scroll target (px) queued on day change, consumed
   // once the remounted body ScrollView lays out its content (onContentSizeChange).
   const pendingScrollXRef = useRef<number | null>(null);
@@ -254,6 +263,35 @@ const HorizontalScheduleView: React.FC<Props> = ({
     onScrollPositionChange?.({ x: currentOffsetRef.current.x, y: currentOffsetRef.current.y });
   }, [onScrollPositionChange]);
 
+  // Zoom in/out: adjusts pxPerMinute, then re-anchors the horizontal scroll so
+  // the time currently at the left edge of the viewport stays there instead of
+  // the grid jumping around (grid width changes with zoom, so a fixed pixel
+  // offset would land on a different time after a density change). Re-uses the
+  // existing pendingScrollXRef/instant-flush plumbing above — changing gridWidth
+  // triggers the body ScrollView's onContentSizeChange, which calls
+  // applyPendingScroll, so no extra remount/effect is needed here.
+  const handleZoomIn = useCallback(() => {
+    setPxPerMinute(prev => {
+      const next = Math.min(prev + ZOOM_STEP, MAX_PX_PER_MINUTE);
+      if (next === prev) return prev;
+      const minutesFromGridStart = currentOffsetRef.current.x / prev;
+      pendingScrollXRef.current = Math.max(minutesFromGridStart * next, 0);
+      pendingScrollInstantRef.current = true;
+      return next;
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setPxPerMinute(prev => {
+      const next = Math.max(prev - ZOOM_STEP, MIN_PX_PER_MINUTE);
+      if (next === prev) return prev;
+      const minutesFromGridStart = currentOffsetRef.current.x / prev;
+      pendingScrollXRef.current = Math.max(minutesFromGridStart * next, 0);
+      pendingScrollInstantRef.current = true;
+      return next;
+    });
+  }, []);
+
   const stages = useMemo(() => {
     const set = new Set<string>();
     events.forEach(ev => {
@@ -274,7 +312,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
   }, [events, stages]);
 
   const totalGridMinutes = GRID_END_MINUTES - GRID_START_MINUTES;
-  const gridWidth = totalGridMinutes * PX_PER_MINUTE;
+  const gridWidth = totalGridMinutes * pxPerMinute;
 
   // Hour markers for the time ruler header.
   const hourMarkers = useMemo(() => {
@@ -285,10 +323,10 @@ const HorizontalScheduleView: React.FC<Props> = ({
       const ampm = hourOfDay >= 12 ? 'PM' : 'AM';
       const hour12 = hourOfDay % 12 || 12;
       const suffix = `${hour12} ${ampm}`;
-      markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * PX_PER_MINUTE });
+      markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * pxPerMinute });
     }
     return markers;
-  }, []);
+  }, [pxPerMinute]);
 
   // "Now" indicator line — only shown when viewing today.
   const nowOffset = useMemo(() => {
@@ -304,8 +342,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
     const isSameCalendarDay = nowDateStr === selectedDay && nowMinutesRaw >= CUTOFF_MINUTES;
     if (!isSameCalendarDay) return null;
 
-    return (nowMinutesAdjusted - GRID_START_MINUTES) * PX_PER_MINUTE;
-  }, [currentTime, selectedDay]);
+    return (nowMinutesAdjusted - GRID_START_MINUTES) * pxPerMinute;
+  }, [currentTime, selectedDay, pxPerMinute]);
 
   // On Stage/Genre filter changes, `events` gets a new (shorter/reshaped) array
   // from ScheduleScreen while `selectedDay` stays the same. That shrinks the
@@ -404,8 +442,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
       }
     }
     if (targetMin === null) return null;
-    return Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
-  }, [events]);
+    return Math.max((targetMin - GRID_START_MINUTES) * pxPerMinute - 40, 0);
+  }, [events, pxPerMinute]);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -551,8 +589,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
                         ? adjustedStartMinutes(ev.endTime)
                         : startMin + 60;
                       if (endMin <= startMin) endMin += 24 * 60; // crosses midnight
-                      const left = (startMin - GRID_START_MINUTES) * PX_PER_MINUTE;
-                      const width = Math.max((endMin - startMin) * PX_PER_MINUTE, 44);
+                      const left = (startMin - GRID_START_MINUTES) * pxPerMinute;
+                      const width = Math.max((endMin - startMin) * pxPerMinute, 44);
                       const isInSchedule = Boolean(userSchedule[ev.id]);
                       const timeUntil = formatTimeUntil(ev, currentTime);
                       const showThumbnail = width >= MIN_WIDTH_FOR_THUMBNAIL;
@@ -656,6 +694,29 @@ const HorizontalScheduleView: React.FC<Props> = ({
           </Animated.ScrollView>
         </View>
       </ScrollView>
+
+      {/* Zoom controls — float over the grid, bottom-right; box-none so the
+          gap between the two buttons doesn't swallow scroll gestures. */}
+      <View style={styles.zoomControls} pointerEvents="box-none">
+        <TouchableOpacity
+          style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+          onPress={handleZoomIn}
+          disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
+          activeOpacity={0.7}
+          accessibilityLabel="Zoom in"
+        >
+          <Ionicons name="add" size={22} color="#F5F5DC" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+          onPress={handleZoomOut}
+          disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
+          activeOpacity={0.7}
+          accessibilityLabel="Zoom out"
+        >
+          <Ionicons name="remove" size={22} color="#F5F5DC" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -839,6 +900,32 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 16,
     color: '#fff',
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 12,
+    bottom: 16,
+    zIndex: 10,
+    elevation: 10,
+    gap: 8,
+  },
+  zoomButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(28, 43, 32, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 245, 220, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  zoomButtonDisabled: {
+    opacity: 0.35,
   },
 });
 
