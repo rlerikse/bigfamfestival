@@ -191,6 +191,11 @@ interface MapPOI {
 }
 
 interface StageLocation {
+  // Firestore key from config/mapStages.stages — stable identity for the
+  // Mapbox annotation below, since `name` is editable and not guaranteed
+  // unique (two stages with the same name would otherwise collide and one
+  // would silently fail to render).
+  id: string;
   name: string;
   lat: number;
   lng: number;
@@ -655,7 +660,13 @@ export default function MapScreen() {
       if (stagesSnap.exists()) {
         const data = stagesSnap.data();
         if (data?.stages) {
-          const stageList: StageLocation[] = Object.values(data.stages);
+          // Skip entries with missing/non-numeric coordinates rather than
+          // rendering a broken marker (matches the backend's mapPOIs
+          // validation — this Firestore doc is read directly, not through
+          // that endpoint, so it never got the same guard until now).
+          const stageList: StageLocation[] = Object.entries(data.stages)
+            .map(([id, val]) => ({ id, ...(val as Omit<StageLocation, 'id'>) }))
+            .filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
           setStages(stageList);
         }
       }
@@ -1111,8 +1122,8 @@ export default function MapScreen() {
           const cfg = POI_CATEGORIES.stage;
           return (
             <Mapbox.PointAnnotation
-              key={stage.name}
-              id={`stage-${stage.name}`}
+              key={stage.id}
+              id={`stage-${stage.id}`}
               coordinate={[stage.lng, stage.lat]}
               onSelected={() => handlePOIPress(stage)}
             >

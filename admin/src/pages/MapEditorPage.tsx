@@ -421,6 +421,54 @@ export function MapEditorPage() {
     updateLabels();
   }, [newFeatureDialog, newName, newCategory, newColor, updateLabels]);
 
+  // Persist edits made to an already-existing zone/POI feature (name,
+  // category, color, description) — previously the "Selected feature editor"
+  // panel only ever displayed these fields read-only, with no way to correct
+  // a miscategorized feature (e.g. a Point defaulting to 'infrastructure'
+  // when drawn, even if it's really a stage) short of deleting and redrawing.
+  const saveFeatureEdit = useCallback(() => {
+    if (!editingFeature) return;
+    const drawId = Object.keys(drawIdToProps).find(
+      (k) => drawIdToProps[k]?.id === editingFeature.id
+    );
+    if (!drawId) return;
+    drawIdToProps[drawId] = {
+      ...drawIdToProps[drawId],
+      name: editingFeature.name,
+      category: editingFeature.category,
+      color: editingFeature.color,
+      description: editingFeature.description,
+    };
+    const draw = drawRef.current;
+    if (draw) {
+      const feat = draw.get(drawId);
+      if (feat) {
+        feat.properties = { ...feat.properties, ...drawIdToProps[drawId] };
+        draw.add(feat);
+      }
+    }
+    // The sidebar's category-grouped list reads from loadedFeatures (a
+    // snapshot taken at load time), not drawIdToProps — keep it in sync so
+    // the edit shows up immediately instead of only after a page reload.
+    setLoadedFeatures((prev) =>
+      prev.map((f) =>
+        f.properties?.id === editingFeature.id
+          ? {
+              ...f,
+              properties: {
+                ...f.properties,
+                name: editingFeature.name,
+                category: editingFeature.category,
+                color: editingFeature.color,
+                description: editingFeature.description,
+              },
+            }
+          : f
+      )
+    );
+    updateLabels();
+  }, [editingFeature, updateLabels]);
+
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
 
@@ -698,14 +746,48 @@ export function MapEditorPage() {
         {/* Selected feature editor */}
         {editingFeature && (
           <div className="p-3 border-t border-[#F5F5DC]/10 bg-[#2E4031]/50 space-y-2">
-            <div className="text-sm font-bold text-[#F5F5DC]">
-              Editing: {editingFeature.name}
+            <div className="text-sm font-bold text-[#F5F5DC]">Edit selected feature</div>
+            <input
+              type="text"
+              value={editingFeature.name}
+              onChange={(e) => setEditingFeature((p) => p && { ...p, name: e.target.value })}
+              placeholder="Name"
+              className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm placeholder:text-[#F5F5DC]/30 focus:outline-none focus:ring-1 focus:ring-[#6BBF59]/50"
+            />
+            <div className="flex gap-2">
+              <select
+                value={editingFeature.category}
+                onChange={(e) => setEditingFeature((p) => p && { ...p, category: e.target.value })}
+                className="flex-1 px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none"
+              >
+                <option value="stage">🎵 Stage</option>
+                <option value="camping">⛺ Camping</option>
+                <option value="infrastructure">🏗️ Infrastructure</option>
+                <option value="staff">👥 Staff</option>
+                <option value="vendors">🛒 Vendors</option>
+              </select>
+              <input
+                type="color"
+                value={editingFeature.color}
+                onChange={(e) => setEditingFeature((p) => p && { ...p, color: e.target.value })}
+                className="w-10 h-8 rounded border border-[#F5F5DC]/20 bg-[#1C2B20] cursor-pointer"
+              />
             </div>
-            <div className="text-xs text-[#F5F5DC]/50">
-              Category: {editingFeature.category} • Color: {editingFeature.color}
-            </div>
-            <div className="text-xs text-[#F5F5DC]/40 mt-1">
-              {editingFeature.description}
+            <input
+              type="text"
+              value={editingFeature.description}
+              onChange={(e) => setEditingFeature((p) => p && { ...p, description: e.target.value })}
+              placeholder="Description (optional)"
+              className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm placeholder:text-[#F5F5DC]/30 focus:outline-none"
+            />
+            <button
+              onClick={saveFeatureEdit}
+              className="w-full px-3 py-2 rounded bg-[#6BBF59] text-[#1C2B20] font-bold text-sm hover:bg-[#6BBF59]/90"
+            >
+              Save Changes
+            </button>
+            <div className="text-[10px] text-[#F5F5DC]/40">
+              Click "Save Map" below to persist this change.
             </div>
           </div>
         )}
