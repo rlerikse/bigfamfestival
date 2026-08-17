@@ -332,10 +332,11 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     marginBottom: 16,
-    maxHeight: 80,
+    maxHeight: 70, // scaled down with width below, same aspect ratio (#238)
     marginTop: 46,
     position: 'relative',
-    width: '100%',
+    width: '87.5%',
+    alignSelf: 'center',
   },
   stageLogo: {
     position: 'absolute',
