@@ -165,9 +165,10 @@ const HorizontalScheduleView: React.FC<Props> = ({
   const insets = useSafeAreaInsets();
   const tabBarClearance = Math.max(160, insets.bottom + 80);
   // Horizontal zoom density (px per minute), adjustable via the zoom in/out
-  // controls. Everything below that used to reference the module-level
-  // PX_PER_MINUTE constant directly now reads this instead.
-  const [pxPerMinute, setPxPerMinute] = useState(PX_PER_MINUTE);
+  // controls. Defaults to fully zoomed out (MIN_PX_PER_MINUTE) for the denser,
+  // Shambhala-style compact grid; everything below that used to reference the
+  // module-level PX_PER_MINUTE constant directly now reads this instead.
+  const [pxPerMinute, setPxPerMinute] = useState(MIN_PX_PER_MINUTE);
   // Pending horizontal auto-scroll target (px) queued on day change, consumed
   // once the remounted body ScrollView lays out its content (onContentSizeChange).
   const pendingScrollXRef = useRef<number | null>(null);
