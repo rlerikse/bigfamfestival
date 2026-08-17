@@ -105,14 +105,19 @@ export const SCHEDULE_ROW_HEIGHT = 108;
  * can't leave a stale, out-of-bounds offset restored after a remount.
  * Pure and exported so it can be unit-tested directly with plain Jest (no
  * `@testing-library/react-native` `render()` — see plan.md DR-5).
+ *
+ * `rowHeight` defaults to SCHEDULE_ROW_HEIGHT but accepts the grid's current
+ * (zoom-dependent) row height so the clamp stays accurate when rows have
+ * shrunk from the default (see HorizontalScheduleView's rowHeight).
  */
 export function clampVerticalOffset(
   savedY: number | null | undefined,
   stageCount: number,
-  viewportHeight: number
+  viewportHeight: number,
+  rowHeight: number = SCHEDULE_ROW_HEIGHT
 ): number {
   if (savedY == null || !Number.isFinite(savedY) || stageCount <= 0) return 0;
-  const contentHeight = SCHEDULE_ROW_HEIGHT * stageCount;
+  const contentHeight = rowHeight * stageCount;
   const maxScrollY = Math.max(0, contentHeight - viewportHeight);
   return Math.min(Math.max(savedY, 0), maxScrollY);
 }

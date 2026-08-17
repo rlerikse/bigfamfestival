@@ -46,6 +46,10 @@ const MIN_PX_PER_MINUTE = 3.0; // zoomed out — roughly doubles the visible tim
 const MAX_PX_PER_MINUTE = 9.0; // zoomed in — tighter blocks, easier to tap short sets
 const ZOOM_STEP = 1.5;
 const ROW_HEIGHT = SCHEDULE_ROW_HEIGHT; // taller rows so the full-height photo has room to breathe
+// Rows shrink toward this as the user zooms out below the default density
+// (see rowHeight below), converging on a shorter, Shambhala-style compact
+// grid at MIN_PX_PER_MINUTE. Default zoom and above keep the full ROW_HEIGHT.
+const MIN_ROW_HEIGHT = 72;
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
 const CUTOFF_MINUTES = 6 * 60 + 30; // 6:30am — day boundary, matches ScheduleScreen logic
@@ -299,6 +303,20 @@ const HorizontalScheduleView: React.FC<Props> = ({
     });
   }, []);
 
+  // Stage-row height shrinks as the user zooms out below the default density,
+  // converging on MIN_ROW_HEIGHT at MIN_PX_PER_MINUTE — a shorter, denser grid
+  // that better resembles the reference Shambhala-style layout when fully
+  // zoomed out. Zooming at/above the default keeps the original ROW_HEIGHT.
+  const rowHeight = useMemo(() => {
+    if (pxPerMinute >= PX_PER_MINUTE) return ROW_HEIGHT;
+    const t = (pxPerMinute - MIN_PX_PER_MINUTE) / (PX_PER_MINUTE - MIN_PX_PER_MINUTE);
+    return Math.round(MIN_ROW_HEIGHT + t * (ROW_HEIGHT - MIN_ROW_HEIGHT));
+  }, [pxPerMinute]);
+
+  // Event thumbnail is square-ish, filling the full (zoom-dependent) block
+  // height — was a static StyleSheet entry keyed off the fixed ROW_HEIGHT.
+  const eventThumbnailStyle = useMemo(() => ({ width: rowHeight - 12, height: '100%' as const, marginRight: 8 }), [rowHeight]);
+
   const stages = useMemo(() => {
     const set = new Set<string>();
     events.forEach(ev => {
@@ -405,7 +423,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       // (#5: "favorite tap jumps to a random scroll position" — the reset itself
       // was the jump.) currentOffsetRef holds the last native offset from onScroll.
       const preservedX = Math.max(0, currentOffsetRef.current.x);
-      const clampedY = clampVerticalOffset(currentOffsetRef.current.y, stages.length, viewportHeightRef.current);
+      const clampedY = clampVerticalOffset(currentOffsetRef.current.y, stages.length, viewportHeightRef.current, rowHeight);
       pendingScrollXRef.current = preservedX;
       pendingScrollYRef.current = clampedY;
       pendingScrollInstantRef.current = true;
@@ -413,7 +431,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       setScrollResetKey(k => k + 1);
     }
     previousEventsSignatureRef.current = eventsSignature;
-  }, [eventsSignature, selectedDay, stages.length]);
+  }, [eventsSignature, selectedDay, stages.length, rowHeight]);
 
 
   // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
@@ -471,7 +489,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       ? initialScrollX
       : computeDefaultScrollX(currentTime);
     pendingScrollYRef.current = initialScrollY != null
-      ? clampVerticalOffset(initialScrollY, stages.length, viewportHeightRef.current)
+      ? clampVerticalOffset(initialScrollY, stages.length, viewportHeightRef.current, rowHeight)
       : 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -550,11 +568,11 @@ const HorizontalScheduleView: React.FC<Props> = ({
             {stages.map((stage, idx) => {
               const logoSource = stageLogoSource(stage);
               return (
-                <View key={stage} style={[styles.stageLabelCell, { height: ROW_HEIGHT, borderLeftColor: stageColor(stage, idx), borderLeftWidth: 4 }]}>
+                <View key={stage} style={[styles.stageLabelCell, { height: rowHeight, borderLeftColor: stageColor(stage, idx), borderLeftWidth: 4 }]}>
                   {logoSource ? (
                     <ExpoImage
                       source={logoSource}
-                      style={styles.stageLabelLogo}
+                      style={[styles.stageLabelLogo, { height: rowHeight - 24 }]}
                       contentFit="contain"
                       cachePolicy="memory-disk"
                     />
@@ -580,12 +598,12 @@ const HorizontalScheduleView: React.FC<Props> = ({
             <View style={{ width: gridWidth }}>
               {/* "Now" indicator line */}
               {nowOffset !== null && nowOffset >= 0 && nowOffset <= gridWidth && (
-                <View style={[styles.nowLine, { left: nowOffset, height: ROW_HEIGHT * stages.length }]} />
+                <View style={[styles.nowLine, { left: nowOffset, height: rowHeight * stages.length }]} />
               )}
               {stages.map((stage, rowIdx) => {
                 const stageEvents = eventsByStage.get(stage) || [];
                 return (
-                  <View key={stage} style={[styles.stageRow, { height: ROW_HEIGHT }]}>
+                  <View key={stage} style={[styles.stageRow, { height: rowHeight }]}>
                     {/* Hour gridlines for this row */}
                     {hourMarkers.map((marker, idx) => (
                       <View key={idx} style={[styles.gridLine, { left: marker.offset }]} />
@@ -650,8 +668,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
                             {showThumbnail && (
                               <OptimizedImage
                                 uri={ev.imageUrl}
-                                style={styles.eventBlockImage}
-                                containerStyle={styles.eventBlockImage}
+                                style={eventThumbnailStyle}
+                                containerStyle={eventThumbnailStyle}
                                 contentFit="cover"
                                 showLoadingIndicator={false}
                                 fallbackImage={require('../assets/images/logo.png')}
@@ -785,7 +803,6 @@ const styles = StyleSheet.create({
   },
   stageLabelLogo: {
     width: STAGE_LABEL_WIDTH - 16,
-    height: ROW_HEIGHT - 24,
   },
   stageLabelText: {
     color: '#F5F5DC',
@@ -823,11 +840,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     flex: 1,
-  },
-  eventBlockImage: {
-    width: ROW_HEIGHT - 12, // square-ish, fills the full block height
-    height: '100%',
-    marginRight: 8,
   },
   eventBlockInfo: {
     flex: 1,
