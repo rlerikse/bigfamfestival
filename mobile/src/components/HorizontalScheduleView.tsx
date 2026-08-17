@@ -43,7 +43,9 @@ const PX_PER_MINUTE = 6.0; // zoomed in — final shipping value; Android gets a
 // Zoom bounds/step for the in-grid zoom controls — PX_PER_MINUTE above is just the
 // initial value now; the grid's actual horizontal density is the pxPerMinute state.
 const MIN_PX_PER_MINUTE = 3.0; // zoomed out — roughly doubles the visible time span
-const MAX_PX_PER_MINUTE = 9.0; // zoomed in — tighter blocks, easier to tap short sets
+// Capped at the original PX_PER_MINUTE — the two tighter steps beyond it (7.5, 9.0)
+// were removed as redundant.
+const MAX_PX_PER_MINUTE = PX_PER_MINUTE;
 const ZOOM_STEP = 1.5;
 const ROW_HEIGHT = SCHEDULE_ROW_HEIGHT; // taller rows so the full-height photo has room to breathe
 // Rows shrink toward this as the user zooms out below the default density
