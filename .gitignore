@@ -37,6 +37,9 @@ mobile/.env*.local
 
 # Additional ignores
 admin/node_modules
+admin/.env
+admin/.env.local
+admin/.env*.local
 functions/node_modules
 *.apk
 mobile/dist

@@ -94,11 +94,16 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
 
   const handleSave = async () => {
     const name = formData.name.trim();
-    const hasValidLocation = Number.isFinite(formData.lat) && Number.isFinite(formData.lng);
-    // Previously used truthy checks (`!formData.lat`), which silently blocked
-    // saving ANY field — including name-only edits — whenever lat/lng was
-    // exactly 0 (a valid coordinate, e.g. equator/prime meridian) or simply
-    // not yet set for a brand-new POI, with zero feedback to the admin.
+    // 0,0 ("null island") is never a real festival POI, so treat the exact
+    // pair as "not yet set" — but don't reject a single 0 component alone
+    // (e.g. lat=0 with a real lng is a legitimate, if unlikely, coordinate).
+    const hasValidLocation = Number.isFinite(formData.lat) && Number.isFinite(formData.lng)
+      && (formData.lat !== 0 || formData.lng !== 0);
+    // Previously used truthy checks (`!formData.lat || !formData.lng`), which
+    // silently blocked saving ANY field — including name-only edits on an
+    // existing POI — whenever lat or lng individually was 0, plus gave zero
+    // feedback (a disabled button) when a brand-new POI's default 0,0 hadn't
+    // been replaced with a picked location yet.
     if (!name || !hasValidLocation) {
       alert(!name
         ? 'Please enter a name for this POI.'
