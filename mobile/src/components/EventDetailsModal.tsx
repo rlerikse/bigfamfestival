@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, Image, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps, ActivityIndicator } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Linking, ScrollView, TextProps, ImageStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ScheduleEvent } from '../types/event';
 import { getArtistsBySlugs, ArtistProfile } from '../services/artistService';
+import OptimizedImage from './OptimizedImage';
 
 // Debug logging utility for this component
 // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -139,62 +140,19 @@ const formatDate = (dateString: string | undefined) => {
   }
 };
 
-const getFullImageUrl = (imagePath?: string) => {
-  if (!imagePath) {
-    debugLog('getFullImageUrl: imagePath is undefined or empty, using default placeholder.');
-    return 'https://via.placeholder.com/300x200.png?text=No+Image'; // Default placeholder
-  }
-
-  if (imagePath.startsWith('gs://')) {
-    const gsPath = imagePath.substring(5);
-    const firstSlashIndex = gsPath.indexOf('/');
-    if (firstSlashIndex > 0) {
-      const bucket = gsPath.substring(0, firstSlashIndex);
-      const objectPath = gsPath.substring(firstSlashIndex + 1);
-      // Use direct GCS URL — faster than Firebase Storage REST API
-      return `https://storage.googleapis.com/${bucket}/${objectPath}`;
-    }
-    debugLog('getFullImageUrl: Malformed gs:// path, using fallback placeholder.', { imagePath });
-    // Fallback for malformed gs:// path
-    return 'https://via.placeholder.com/300x200.png?text=Invalid+Image+Path';
-  } else if (imagePath.startsWith('http')) { // Handles http and https
-    return imagePath;
-  } else {
-    debugLog('getFullImageUrl: Assuming S3 path.', { imagePath });
-    // Assume S3 path if not gs:// or http(s)
-    return `https://big-fam-app.S3.us-east-2.amazonaws.com/${imagePath}`;
-  }
-};
-
 // Show logo.png from assets/images if event image fails to load
+// Uses OptimizedImage (expo-image, memory+disk cache + downscaling) — plain RN Image has no
+// real bitmap cache, so this modal was re-fetching/re-decoding the full-res photo on every open.
 const EventImageWithFallback: React.FC<{ imageUrl?: string; style?: object }> = ({ imageUrl, style }) => {
-  const [error, setError] = React.useState(false);
-  const [loading, setLoading] = React.useState(true);
-  const resolvedUrl = imageUrl ? getFullImageUrl(imageUrl) : undefined;
-  if (!resolvedUrl || error) {
-    return (
-      <Image
-        source={require('../assets/images/bf-logo-trans.png')}
-        style={style}
-        resizeMode="contain"
-      />
-    );
-  }
   return (
-    <View style={style}>
-      {loading && (
-        <View style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a2e' }}>
-          <ActivityIndicator size="large" color="#D4A574" />
-        </View>
-      )}
-      <Image
-        source={{ uri: resolvedUrl }}
-        style={{ width: '100%', height: '100%' }}
-        resizeMode="cover"
-        onLoad={() => setLoading(false)}
-        onError={() => setError(true)}
-      />
-    </View>
+    <OptimizedImage
+      uri={imageUrl}
+      style={style as ImageStyle}
+      containerStyle={style}
+      contentFit="cover"
+      priority="high"
+      fallbackImage={require('../assets/images/bf-logo-trans.png')}
+    />
   );
 };
 
