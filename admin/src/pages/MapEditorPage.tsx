@@ -54,6 +54,24 @@ function getCentroid(coords: number[][]): [number, number] {
   return [x / len, y / len];
 }
 
+// Default long-edge pixel size for an uploaded zone icon marker (before the
+// per-zone size slider is touched).
+const DEFAULT_ICON_SIZE = 40;
+
+/** Ray-casting point-in-polygon test — used to keep a dragged zone icon
+ * marker from being dropped outside the zone it belongs to. */
+function isPointInPolygon(point: [number, number], ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersects = yi > point[1] !== yj > point[1] &&
+      point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
 // Custom Draw styles — low-opacity fills so satellite shows through
 const drawStyles = [
   // Polygon fill — inactive
@@ -121,10 +139,15 @@ export function MapEditorPage() {
   const [saved, setSaved] = useState(false);
   const [loadedFromFirestore, setLoadedFromFirestore] = useState(false);
   const [loadedFeatures, setLoadedFeatures] = useState<GeoJSON.Feature[]>([]);
-  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number; showTitle: boolean } | null>(null);
+  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number; showTitle: boolean; iconSize: number } | null>(null);
   const [uploadingZoneIcon, setUploadingZoneIcon] = useState(false);
   const zoneIconMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const zoneIconFileInputRef = useRef<HTMLInputElement>(null);
+  // When true, the Draw control is temporarily removed from the map so
+  // dragging the icon marker can't also drag the zone polygon underneath it
+  // (Draw's simple_select mode grabs whatever feature is under the cursor on
+  // mousedown, which was moving the whole zone instead of just the icon).
+  const [iconMoveLocked, setIconMoveLocked] = useState(false);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('infrastructure');
@@ -206,6 +229,7 @@ export function MapEditorPage() {
           iconLat: props?.iconLat,
           iconLng: props?.iconLng,
           showTitle: props?.showTitle !== false,
+          iconSize: typeof props?.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE,
         },
         geometry: f.geometry,
       };
@@ -276,6 +300,7 @@ export function MapEditorPage() {
             iconLat: props?.iconLat,
             iconLng: props?.iconLng,
             showTitle: props?.showTitle !== false,
+            iconSize: typeof props?.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE,
           },
           geometry: f.geometry,
         };
@@ -463,6 +488,7 @@ export function MapEditorPage() {
       iconLat: editingFeature.iconLat,
       iconLng: editingFeature.iconLng,
       showTitle: editingFeature.showTitle,
+      iconSize: editingFeature.iconSize,
     };
     const draw = drawRef.current;
     if (draw) {
@@ -490,6 +516,7 @@ export function MapEditorPage() {
                 iconLat: editingFeature.iconLat,
                 iconLng: editingFeature.iconLng,
                 showTitle: editingFeature.showTitle,
+                iconSize: editingFeature.iconSize,
               },
             }
           : f
@@ -520,8 +547,8 @@ export function MapEditorPage() {
     try {
       const url = await uploadZoneIcon(uploadFile, editingFeature.id);
       const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
-      const feat = drawId ? drawRef.current?.get(drawId) : null;
-      const coords = feat?.geometry?.type === 'Polygon' ? feat.geometry.coordinates[0] : null;
+      const zoneFeature = loadedFeatures.find((lf) => lf.properties?.id === editingFeature.id);
+      const coords = zoneFeature?.geometry?.type === 'Polygon' ? zoneFeature.geometry.coordinates[0] : null;
       const centroid = coords ? getCentroid(coords) : null;
       const hasExistingPosition = editingFeature.iconLat !== undefined && editingFeature.iconLng !== undefined;
       const iconLng = hasExistingPosition ? editingFeature.iconLng : (centroid ? centroid[0] : editingFeature.iconLng);
@@ -533,12 +560,12 @@ export function MapEditorPage() {
       // marker only appeared after a separate Save Changes click, which
       // looked like the upload silently did nothing.
       if (drawId) {
-        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconAsset: url, iconLat, iconLng };
+        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconAsset: url, iconLat, iconLng, iconSize: editingFeature.iconSize };
       }
       setLoadedFeatures((prev) =>
         prev.map((f) =>
           f.properties?.id === editingFeature.id
-            ? { ...f, properties: { ...f.properties, iconAsset: url, iconLat, iconLng } }
+            ? { ...f, properties: { ...f.properties, iconAsset: url, iconLat, iconLng, iconSize: editingFeature.iconSize } }
             : f
         )
       );
@@ -553,7 +580,90 @@ export function MapEditorPage() {
       // reverting to "No file chosen" before anything visibly happened.
       if (zoneIconFileInputRef.current) zoneIconFileInputRef.current.value = '';
     }
-  }, [editingFeature]);
+  }, [editingFeature, loadedFeatures]);
+
+  // Toggles whether dragging on the map moves the zone polygon (normal Draw
+  // behavior) or only the icon marker on top of it. Draw's simple_select
+  // mode grabs whatever feature is under the cursor on mousedown regardless
+  // of what's rendered on top of it in the DOM (marker included), so a click
+  // starting on the icon was also dragging the zone underneath it.
+  //
+  // Originally this called map.removeControl(draw)/addControl(draw) to fully
+  // detach Draw, but re-adding it after a removal throws "already a source
+  // with ID mapbox-gl-draw-cold" -- mapbox-gl-draw's onRemove doesn't fully
+  // tear down its internal sources, so a second addControl collides with the
+  // still-present ones. Toggling each Draw layer's visibility instead keeps
+  // Draw fully attached (sources/lifecycle untouched, no re-add needed) while
+  // making its features un-hit-testable -- Mapbox's internal click detection
+  // for Draw is based on queryRenderedFeatures, which skips hidden layers.
+  // A plain non-interactive GeoJSON copy of the zones fills the resulting
+  // visual gap so zone shapes stay visible the whole time.
+  const toggleIconMoveLock = useCallback(() => {
+    const map = mapRef.current;
+    const draw = drawRef.current;
+    if (!map || !draw) return;
+    setIconMoveLocked((prev) => {
+      const next = !prev;
+      try {
+        const visibility = next ? 'none' : 'visible';
+        for (const style of drawStyles) {
+          if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', visibility);
+        }
+        if (next) {
+          // Note: deliberately NOT calling draw.changeMode() here -- doing
+          // so fires a selectionchange with an empty feature list, which
+          // clears editingFeature and immediately triggers the safety-net
+          // effect below to auto-unlock. Hiding the layers alone is enough
+          // to stop hit-testing, so the current selection can stay intact.
+          if (!map.getSource('zones-lock-preview')) {
+            const snapshot = draw.getAll();
+            map.addSource('zones-lock-preview', { type: 'geojson', data: snapshot });
+            map.addLayer({
+              id: 'zones-lock-preview-fill',
+              type: 'fill',
+              source: 'zones-lock-preview',
+              filter: ['==', '$type', 'Polygon'],
+              paint: { 'fill-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'fill-opacity': 0.15 },
+            });
+            map.addLayer({
+              id: 'zones-lock-preview-line',
+              type: 'line',
+              source: 'zones-lock-preview',
+              filter: ['==', '$type', 'Polygon'],
+              paint: { 'line-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'line-width': 2 },
+            });
+          }
+        } else {
+          if (map.getLayer('zones-lock-preview-fill')) map.removeLayer('zones-lock-preview-fill');
+          if (map.getLayer('zones-lock-preview-line')) map.removeLayer('zones-lock-preview-line');
+          if (map.getSource('zones-lock-preview')) map.removeSource('zones-lock-preview');
+        }
+      } catch (err) {
+        console.error('Failed to toggle icon-move lock:', err);
+      }
+      return next;
+    });
+  }, []);
+
+  // Safety net: never leave Draw's layers hidden if the selection is cleared
+  // while locked (e.g. user clicks elsewhere) -- there'd be no way to unlock
+  // via the (now-hidden, no editingFeature) button otherwise.
+  useEffect(() => {
+    if (!editingFeature && iconMoveLocked) {
+      const map = mapRef.current;
+      if (map) {
+        try {
+          for (const style of drawStyles) {
+            if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', 'visible');
+          }
+          if (map.getLayer('zones-lock-preview-fill')) map.removeLayer('zones-lock-preview-fill');
+          if (map.getLayer('zones-lock-preview-line')) map.removeLayer('zones-lock-preview-line');
+          if (map.getSource('zones-lock-preview')) map.removeSource('zones-lock-preview');
+        } catch (_) { /* already visible / already removed */ }
+      }
+      setIconMoveLocked(false);
+    }
+  }, [editingFeature, iconMoveLocked]);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -620,6 +730,7 @@ export function MapEditorPage() {
             iconLat: props.iconLat as number | undefined,
             iconLng: props.iconLng as number | undefined,
             showTitle: props.showTitle !== false,
+            iconSize: typeof props.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE,
           });
         }
       } else {
@@ -819,7 +930,10 @@ export function MapEditorPage() {
 
   // Render draggable icon markers for zones that have an uploaded icon asset.
   // Position defaults to the polygon centroid (set at upload time in
-  // handleZoneIconUpload) and can be repositioned anywhere by dragging.
+  // handleZoneIconUpload) and can be repositioned anywhere within the zone by
+  // dragging. Rendered as the raw image at its own aspect ratio (no border/
+  // background box) so transparency and proportions match the uploaded file
+  // exactly; iconSize controls the long-edge pixel size via the size slider.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -834,31 +948,52 @@ export function MapEditorPage() {
       const lat = props?.iconLat as number | undefined;
       const lng = props?.iconLng as number | undefined;
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const targetSize = typeof props?.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE;
 
-      const el = document.createElement('div');
-      el.style.width = '32px';
-      el.style.height = '32px';
-      el.style.borderRadius = '6px';
-      el.style.border = '2px solid white';
-      el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
-      el.style.backgroundColor = '#1C2B20';
-      el.style.overflow = 'hidden';
-      el.style.cursor = 'grab';
       const img = document.createElement('img');
       img.src = assetUrl;
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'contain';
-      el.appendChild(img);
-      el.title = `${props?.name ?? ''} icon (drag to reposition)`;
+      img.draggable = false;
+      img.style.display = 'block';
+      img.style.cursor = 'grab';
+      img.style.filter = 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))';
+      img.title = `${props?.name ?? ''} icon (drag to reposition)`;
+      // Assume square until onload reports the real ratio, so there's no
+      // flash of a full-resolution image before it gets sized down.
+      img.style.width = `${targetSize}px`;
+      img.style.height = `${targetSize}px`;
+      // Size to the image's own aspect ratio once known, instead of forcing
+      // it into a fixed square box (which either distorted or letterboxed
+      // non-square logos).
+      img.onload = () => {
+        const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+        if (ratio >= 1) {
+          img.style.width = `${targetSize}px`;
+          img.style.height = `${targetSize / ratio}px`;
+        } else {
+          img.style.height = `${targetSize}px`;
+          img.style.width = `${targetSize * ratio}px`;
+        }
+      };
 
       const zoneId = props?.id as string;
-      const marker = new mapboxgl.Marker({ element: el, draggable: true })
+      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === zoneId);
+      const marker = new mapboxgl.Marker({ element: img, draggable: true })
         .setLngLat([lng as number, lat as number])
         .addTo(map);
       marker.on('dragend', () => {
         const newLngLat = marker.getLngLat();
-        const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === zoneId);
+        // Read the polygon ring from React state (loadedFeatures), not
+        // draw.get() -- Draw is detached while the icon-move lock is on
+        // (that's the whole point of the lock), and calling into its API
+        // after removeControl() throws internally instead of just no-op'ing.
+        const zoneFeature = loadedFeatures.find((lf) => lf.properties?.id === zoneId);
+        const ring = zoneFeature?.geometry?.type === 'Polygon' ? zoneFeature.geometry.coordinates[0] : null;
+        if (ring && !isPointInPolygon([newLngLat.lng, newLngLat.lat], ring)) {
+          // Dropped outside the zone -- snap back rather than let the icon
+          // wander off the area it belongs to.
+          marker.setLngLat([lng as number, lat as number]);
+          return;
+        }
         if (drawId) {
           drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconLat: newLngLat.lat, iconLng: newLngLat.lng };
         }
@@ -1042,6 +1177,49 @@ export function MapEditorPage() {
                   />
                   Show zone title on map (uncheck to show only the icon)
                 </label>
+              )}
+              {editingFeature.iconAsset && (
+                <div className="pt-1">
+                  <label className="text-xs text-[#F5F5DC]/60 flex justify-between">
+                    <span>Icon size</span>
+                    <span>{editingFeature.iconSize}px</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={16}
+                    max={96}
+                    step={2}
+                    value={editingFeature.iconSize}
+                    onChange={(e) => {
+                      const size = Number(e.target.value);
+                      // Applies immediately, same as the title toggle/drag —
+                      // a size slider is expected to preview live.
+                      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+                      if (drawId) {
+                        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconSize: size };
+                      }
+                      setLoadedFeatures((prev) =>
+                        prev.map((f) =>
+                          f.properties?.id === editingFeature.id
+                            ? { ...f, properties: { ...f.properties, iconSize: size } }
+                            : f
+                        )
+                      );
+                      setEditingFeature((p) => p && { ...p, iconSize: size });
+                    }}
+                    className="w-full accent-[#6BBF59]"
+                  />
+                  <button
+                    onClick={toggleIconMoveLock}
+                    className={`w-full mt-2 px-3 py-1.5 rounded text-xs font-bold transition-colors ${
+                      iconMoveLocked
+                        ? 'bg-[#6BBF59] text-[#1C2B20]'
+                        : 'bg-[#1C2B20] text-[#F5F5DC]/70 border border-[#F5F5DC]/20 hover:bg-white/5'
+                    }`}
+                  >
+                    {iconMoveLocked ? '🔒 Locked — dragging moves the icon only' : '🔓 Lock: drag icon only, not the zone'}
+                  </button>
+                </div>
               )}
             </div>
             <button
