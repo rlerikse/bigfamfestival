@@ -4,10 +4,14 @@ import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
-// POI interface (Point Of Interest)
+// POI interface (Point Of Interest) — mirrors backend/src/map/interfaces/poi.interface.ts
 export interface POI {
   id: string;
-  type: 'stage' | 'food_vendor' | 'shop_and_service' | 'beverage_vendor' | 'staff_and_medical' | 'friend_campsite' | 'friend_location';
+  type: 'stage' | 'infrastructure' | 'staff' | 'vendors' | 'friend_campsite' | 'friend_location';
+  /** Same value as `type` — backend emits both; MapScreen reads this one.
+   * Optional here since mock data only sets `type`; real API responses
+   * always include it. */
+  category?: 'stage' | 'infrastructure' | 'staff' | 'vendors' | 'friend_campsite' | 'friend_location';
   name: string;
   location: {
     lat: number;
@@ -16,6 +20,12 @@ export interface POI {
   description?: string;
   userId?: string;
   profilePictureUrl?: string;
+  /** Marker color (hex); MapScreen falls back to the category default when unset. */
+  color?: string;
+  /** Emoji icon fallback when no custom marker image is set. */
+  icon?: string;
+  /** Full HTTPS download URL for a custom marker image; empty/unset => emoji fallback. */
+  markerAsset?: string;
 }
 
 /**

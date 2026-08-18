@@ -5,8 +5,9 @@ import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { firestore } from '../config/firebase';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import { getPOIs as fetchMapPois } from '../services/mapService';
 import { useNavigation } from '@react-navigation/native';
 import { getFriendLocations, getFriendCampsites, subscribeFriendLocations, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
 import type { FriendLocationSubscription } from '../services/friendService';
@@ -645,9 +646,14 @@ export default function MapScreen() {
 
   const loadMapData = async () => {
     try {
-      const [zonesSnap, stagesSnap] = await Promise.all([
+      // Zones (polygons) have no backend endpoint yet — still read directly.
+      // Stages + POIs now come from ONE call to the backend's GET /map/pois,
+      // which already merges config/mapStages + mapPOIs and normalizes
+      // categories (see map.service.ts) — replaces the old 2 separate
+      // Firestore reads + duplicated client-side merge/validation logic.
+      const [zonesSnap, mapPois] = await Promise.all([
         getDoc(doc(firestore, 'config', 'mapZones')),
-        getDoc(doc(firestore, 'config', 'mapStages')),
+        fetchMapPois(),
       ]);
 
       if (zonesSnap.exists()) {
@@ -658,22 +664,28 @@ export default function MapScreen() {
         }
       }
 
-      if (stagesSnap.exists()) {
-        const data = stagesSnap.data();
-        if (data?.stages) {
-          // Skip entries with missing/non-numeric coordinates rather than
-          // rendering a broken marker (matches the backend's mapPOIs
-          // validation — this Firestore doc is read directly, not through
-          // that endpoint, so it never got the same guard until now).
-          const stageList: StageLocation[] = Object.entries(data.stages)
-            .map(([id, val]) => ({ id, ...(val as Omit<StageLocation, 'id'>) }))
-            .filter(s => Number.isFinite(s.lat) && Number.isFinite(s.lng));
-          setStages(stageList);
+      const stageList: StageLocation[] = [];
+      const poiList: MapPOI[] = [];
+      for (const p of mapPois) {
+        if (!Number.isFinite(p.location?.lat) || !Number.isFinite(p.location?.long)) continue;
+        const category = p.category ?? p.type;
+        if (category === 'stage') {
+          stageList.push({ id: p.id, name: p.name, lat: p.location.lat, lng: p.location.long, color: p.color ?? '' });
+        } else {
+          poiList.push({
+            id: p.id,
+            name: p.name,
+            category,
+            color: p.color ?? '',
+            icon: p.icon ?? '',
+            markerAsset: p.markerAsset,
+            lat: p.location.lat,
+            lng: p.location.long,
+            description: p.description,
+          });
         }
       }
-
-      const poisSnap = await getDocs(collection(firestore, 'mapPOIs'));
-      const poiList: MapPOI[] = poisSnap.docs.map(d => ({ id: d.id, ...d.data() } as MapPOI));
+      setStages(stageList);
       setPois(poiList);
     } catch (err) {
       console.error('Failed to load map data:', err);
