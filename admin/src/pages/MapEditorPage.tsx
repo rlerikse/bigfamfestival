@@ -124,6 +124,7 @@ export function MapEditorPage() {
   const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number; showTitle: boolean } | null>(null);
   const [uploadingZoneIcon, setUploadingZoneIcon] = useState(false);
   const zoneIconMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const zoneIconFileInputRef = useRef<HTMLInputElement>(null);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('infrastructure');
@@ -539,6 +540,10 @@ export function MapEditorPage() {
       alert('Failed to upload icon: ' + (err instanceof Error ? err.message : 'Unknown error'));
     } finally {
       setUploadingZoneIcon(false);
+      // Reset here (not immediately onChange) so the native input keeps
+      // showing the picked filename while the upload is in flight instead of
+      // reverting to "No file chosen" before anything visibly happened.
+      if (zoneIconFileInputRef.current) zoneIconFileInputRef.current.value = '';
     }
   }, [editingFeature]);
 
@@ -959,17 +964,22 @@ export function MapEditorPage() {
                   />
                 )}
                 <input
+                  ref={zoneIconFileInputRef}
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/svg+xml"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleZoneIconUpload(file);
-                    e.target.value = '';
                   }}
                   disabled={uploadingZoneIcon}
                   className="flex-1 text-xs text-[#F5F5DC]/60 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-[#6BBF59]/20 file:text-[#6BBF59] file:text-xs"
                 />
-                {uploadingZoneIcon && <Loader2 className="h-4 w-4 animate-spin text-[#6BBF59]" />}
+                {uploadingZoneIcon && (
+                  <span className="flex items-center gap-1 text-xs text-[#6BBF59] shrink-0">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading…
+                  </span>
+                )}
                 {editingFeature.iconAsset && !uploadingZoneIcon && (
                   <button
                     onClick={() => setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true })}
@@ -984,7 +994,25 @@ export function MapEditorPage() {
                   <input
                     type="checkbox"
                     checked={editingFeature.showTitle}
-                    onChange={(e) => setEditingFeature((p) => p && { ...p, showTitle: e.target.checked })}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      // Applies immediately (like dragging the icon marker)
+                      // rather than waiting on "Save Changes" -- a visibility
+                      // toggle reads as an instant preview, not a staged edit.
+                      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+                      if (drawId) {
+                        drawIdToProps[drawId] = { ...drawIdToProps[drawId], showTitle: checked };
+                      }
+                      setLoadedFeatures((prev) =>
+                        prev.map((f) =>
+                          f.properties?.id === editingFeature.id
+                            ? { ...f, properties: { ...f.properties, showTitle: checked } }
+                            : f
+                        )
+                      );
+                      setEditingFeature((p) => p && { ...p, showTitle: checked });
+                      updateLabels();
+                    }}
                     className="accent-[#6BBF59]"
                   />
                   Show zone title on map (uncheck to show only the icon)
