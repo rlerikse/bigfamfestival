@@ -59,8 +59,9 @@ const ICON_SIZE = 44; // 44px min touch target
 // Border icons are re-projected from (bearing - heading). Raw compass heading
 // updates ~10Hz with magnetometer noise, so we snap it to this step before
 // projecting — removes sub-step jitter (the "bouncing around the edge" report)
-// while staying responsive to real turns.
-const HEADING_QUANTIZE_STEP_DEG = 2;
+// while staying responsive to real turns. 1deg keeps the radar responsive; the
+// fusion smoothing upstream already absorbs most raw-sensor noise.
+const HEADING_QUANTIZE_STEP_DEG = 1;
 
 // Hysteresis margin (fraction of viewport span) applied to the visible-bounds
 // test that decides edge-icon vs on-map marker. A friend sitting right at the

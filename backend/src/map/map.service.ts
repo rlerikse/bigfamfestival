@@ -23,36 +23,40 @@ export class MapService {
   private readonly stagesDocPath = 'config/mapStages';
 
   /**
-   * Admin POI `category` values already match the mobile `type` enum exactly
-   * (stage, food_vendor, beverage_vendor, shop_and_service, staff_and_medical).
-   * Seed-script infrastructure POIs use looser categories (info, medical, food),
-   * so those are normalized here. Unknown categories fall back to a safe default
-   * rather than emitting an out-of-enum value that mobile can't render.
+   * Canonical 4-bucket taxonomy (stage / infrastructure / staff / vendors) —
+   * unifies what used to be 3 separate, inconsistent category vocabularies
+   * across admin/mobile/backend (see MEMORY known-issues for the migration).
+   * Legacy/seed-script values (info, medical, food, food_vendor, etc.) are
+   * normalized here so historical documents keep rendering correctly without
+   * a hard data migration being required for every value.
    */
   private readonly CATEGORY_TO_TYPE: Record<string, PoiType> = {
-    // Admin-authored (already valid enum values)
+    // Canonical (already valid enum values)
     stage: 'stage',
-    food_vendor: 'food_vendor',
-    beverage_vendor: 'beverage_vendor',
-    shop_and_service: 'shop_and_service',
-    staff_and_medical: 'staff_and_medical',
-    // Seed-script / legacy categories -> nearest enum member
-    food: 'food_vendor',
-    beverage: 'beverage_vendor',
-    medical: 'staff_and_medical',
-    staff: 'staff_and_medical',
-    info: 'shop_and_service',
-    shop: 'shop_and_service',
-    service: 'shop_and_service',
+    infrastructure: 'infrastructure',
+    staff: 'staff',
+    vendors: 'vendors',
+    // Legacy pre-migration values -> nearest canonical bucket
+    info: 'infrastructure',
+    medical: 'infrastructure',
+    camping: 'infrastructure',
+    food: 'vendors',
+    beverage: 'vendors',
+    shop: 'vendors',
+    service: 'vendors',
+    food_vendor: 'vendors',
+    beverage_vendor: 'vendors',
+    shop_and_service: 'vendors',
+    staff_and_medical: 'staff',
   };
 
   /**
    * Fallback type for unknown categories. Matches mobile's resolveCategory()
-   * default ('food' -> food_vendor) so an unexpected value renders consistently
-   * on both ends. Normalization above should mean mobile never sees a truly
-   * unknown string, but we keep the fallbacks aligned to avoid surprises.
+   * default so an unexpected value renders consistently on both ends.
+   * Normalization above should mean mobile never sees a truly unknown string,
+   * but we keep the fallbacks aligned to avoid surprises.
    */
-  private readonly DEFAULT_TYPE: PoiType = 'food_vendor';
+  private readonly DEFAULT_TYPE: PoiType = 'vendors';
 
   constructor(private readonly firestoreService: FirestoreService) {}
 

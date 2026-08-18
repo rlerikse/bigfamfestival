@@ -44,6 +44,129 @@ export function signedAngularDiff(a: number, b: number): number {
   return diff;
 }
 
+/** A stateful heading smoother. Feed raw readings + timestamps; get a filtered heading. */
+export interface HeadingFilter {
+  /**
+   * @param rawDeg Raw heading in degrees (any range).
+   * @param timestampMs Monotonic-ish time of this sample in ms (e.g. Date.now()).
+   * @returns Filtered heading normalized to [0, 360).
+   */
+  filter(rawDeg: number, timestampMs: number): number;
+  /** Clear all state so the next sample re-seeds the filter. */
+  reset(): void;
+}
+
+/**
+ * "1€ filter" (Casiez et al., CHI 2012) adapted for circular heading data.
+ *
+ * A plain exponential low-pass forces an unwinnable trade-off on a noisy
+ * compass: a small smoothing factor kills jitter but lags real turns ("delayed
+ * and jittery" — Robert's report), a large one tracks turns but lets jitter
+ * through. The 1€ filter fixes this by making the smoothing *speed-adaptive*:
+ *  - When the heading is roughly still, the cutoff frequency drops to
+ *    `minCutoff`, applying heavy smoothing → jitter disappears.
+ *  - When you actively turn, the estimated angular speed raises the cutoff via
+ *    `beta`, applying light smoothing → the heading tracks with almost no lag.
+ *
+ * All differencing/accumulation is done along the shortest signed angular path
+ * (via {@link signedAngularDiff}) so it behaves correctly across the 0/360 seam.
+ *
+ * @param minCutoff Baseline cutoff frequency in Hz. Lower = smoother when still.
+ * @param beta Speed coefficient. Higher = less lag on fast turns (but more
+ *   jitter passes through while moving). This is the main "responsiveness" dial.
+ * @param dCutoff Cutoff for the internal speed estimate's own low-pass, in Hz.
+ */
+export function createOneEuroHeadingFilter(
+  minCutoff = 0.4,
+  beta = 0.05,
+  dCutoff = 1.0
+): HeadingFilter {
+  let lastTimeMs: number | null = null;
+  let headingHat: number | null = null; // previous filtered heading (continuous)
+  let speedHat = 0; // previous filtered angular speed (deg/s)
+
+  // Exponential smoothing factor for a given cutoff freq and timestep.
+  const smoothingFactor = (dtSeconds: number, cutoffHz: number): number => {
+    const tau = 1 / (2 * Math.PI * cutoffHz);
+    return 1 / (1 + tau / dtSeconds);
+  };
+
+  return {
+    filter(rawDeg: number, timestampMs: number): number {
+      if (lastTimeMs === null || headingHat === null) {
+        lastTimeMs = timestampMs;
+        headingHat = rawDeg;
+        speedHat = 0;
+        return normalizeDeg(rawDeg);
+      }
+
+      let dt = (timestampMs - lastTimeMs) / 1000;
+      if (!(dt > 0)) dt = 1 / 60; // guard against zero/negative/duplicate timestamps
+      lastTimeMs = timestampMs;
+
+      // Estimate angular speed (deg/s) along the shortest path, then low-pass it.
+      const rawSpeed = signedAngularDiff(headingHat, rawDeg) / dt;
+      const aSpeed = smoothingFactor(dt, dCutoff);
+      speedHat = speedHat + aSpeed * (rawSpeed - speedHat);
+
+      // Speed-adaptive cutoff: still → minCutoff (smooth); turning → higher.
+      const cutoff = minCutoff + beta * Math.abs(speedHat);
+      const aHeading = smoothingFactor(dt, cutoff);
+      headingHat = headingHat + aHeading * signedAngularDiff(headingHat, rawDeg);
+      return normalizeDeg(headingHat);
+    },
+    reset(): void {
+      lastTimeMs = null;
+      headingHat = null;
+      speedHat = 0;
+    },
+  };
+}
+
+/**
+ * A circular median prefilter for heading data — rejects isolated spikes.
+ *
+ * A hand-held phone's OS compass mostly reads steady but throws occasional wild
+ * outliers (a single sample jumping ~150°+) from magnetic interference (metal,
+ * laptops, magnetic cases). A low-pass or the 1€ filter can't reject these — a
+ * lone huge jump looks like fast rotation, so an adaptive filter actually opens
+ * up and passes it. A median naturally discards outliers: as long as the spikes
+ * are the minority of the window, the middle value stays on the true cluster.
+ *
+ * Values are unwrapped relative to the most recent sample (via
+ * {@link signedAngularDiff}) before taking the median, so it's correct across
+ * the 0/360 seam.
+ *
+ * @param size Window length (odd is best). 5 tolerates up to 2 outliers with
+ *   only ~2 samples of lag.
+ */
+export interface HeadingPrefilter {
+  /** Push a raw heading (any range); returns the de-spiked heading in [0, 360). */
+  push(rawDeg: number): number;
+  /** Clear the window. */
+  reset(): void;
+}
+
+export function createCircularMedianFilter(size = 5): HeadingPrefilter {
+  const buf: number[] = [];
+  return {
+    push(rawDeg: number): number {
+      buf.push(normalizeDeg(rawDeg));
+      if (buf.length > size) buf.shift();
+      // Unwrap every sample near the most recent reading, then take the median.
+      const ref = buf[buf.length - 1];
+      const unwrapped = buf
+        .map((s) => ref + signedAngularDiff(ref, s))
+        .sort((a, b) => a - b);
+      const mid = unwrapped[Math.floor(unwrapped.length / 2)];
+      return normalizeDeg(mid);
+    },
+    reset(): void {
+      buf.length = 0;
+    },
+  };
+}
+
 /**
  * Advance a continuous (unwrapped) bearing toward a new normalized heading via
  * the shortest angular path. Used to drive a map camera without the "full spin"

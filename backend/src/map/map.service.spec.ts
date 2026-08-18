@@ -52,7 +52,7 @@ describe('MapService', () => {
             id: 'vendor-1',
             data: {
               name: 'Taco Truck',
-              category: 'food_vendor',
+              category: 'vendors',
               lat: 42.058,
               lng: -84.2575,
               color: '#F59E0B',
@@ -69,8 +69,8 @@ describe('MapService', () => {
     expect(pois).toEqual([
       {
         id: 'vendor-1',
-        category: 'food_vendor',
-        type: 'food_vendor',
+        category: 'vendors',
+        type: 'vendors',
         name: 'Taco Truck',
         location: { lat: 42.058, long: -84.2575 },
         description: 'Best tacos',
@@ -100,9 +100,9 @@ describe('MapService', () => {
     const byId = Object.fromEntries(
       (await svc.getPois()).map((p) => [p.id, p.type]),
     );
-    expect(byId.a).toBe('staff_and_medical');
-    expect(byId.b).toBe('shop_and_service');
-    expect(byId.c).toBe('food_vendor'); // default fallback (matches mobile)
+    expect(byId.a).toBe('infrastructure');
+    expect(byId.b).toBe('infrastructure');
+    expect(byId.c).toBe('vendors'); // default fallback (matches mobile)
   });
 
   it('skips POIs with missing/invalid coordinates', async () => {
@@ -124,13 +124,13 @@ describe('MapService', () => {
         poiDocs: [
           {
             id: 'x',
-            data: { name: 'x', category: 'beverage_vendor', lat: 1, lng: 2 },
+            data: { name: 'x', category: 'vendors', lat: 1, lng: 2 },
           },
         ],
       }),
     );
     const [poi] = await svc.getPois();
-    expect(poi.category).toBe('beverage_vendor');
+    expect(poi.category).toBe('vendors');
     expect(poi.category).toBe(poi.type);
   });
 

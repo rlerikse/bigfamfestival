@@ -1,9 +1,9 @@
 # Big Fam Festival - Project Constitution
 
 <!-- 
-Version: 1.4.0
+Version: 1.5.0
 Generated: 2026-02-09
-Last Audit: 2026-08-09
+Last Audit: 2026-08-12
 Project: Big Fam Festival App (Backend API + Mobile App)
 -->
 
@@ -219,6 +219,20 @@ Mobile code MUST follow these patterns:
 - Production builds MUST include Sentry for crash and error reporting
 - Sentry is initialized at app startup via `initSentry()`
 - PII MUST NOT be included in Sentry events (consistent with §V)
+
+**Sensor & Hardware-Fusion Logic**:
+- Logic that fuses or filters raw hardware/sensor readings (accelerometer, gyroscope, magnetometer/compass, GPS) MUST live in pure, side-effect-free modules (e.g. `hooks/compassFusion.ts`) with no React Native/Expo imports — exposing plain functions the consuming hook composes, not classes or components
+- Hardware sources that are slow and/or noisy (e.g. the OS compass) SHOULD be treated as a slow absolute anchor, with a fast local sensor (e.g. gyroscope) driving responsiveness between anchor updates, rather than filtering the slow/noisy source alone
+- Screens/hooks that consume a hardware-fusion module MUST expose a way to verify the fused output against the raw input on-device (a diagnostics view or equivalent), because sensor bugs are frequently device-specific and cannot be reliably reproduced on a simulator
+
+Rationale: Isolating sensor math from React lifecycle makes it independently unit-testable (mirrors the pure-helper pattern in ADR-017) and keeps device-specific tuning changes reviewable without touching UI code. Established via the Live Wayfinder heading rework (ADR-018), which replaced a fragile hand-rolled accel+mag+gyro fusion with an OS-anchor + gyro-complementary-filter approach after on-device diagnostics revealed the raw compass was slow (~7Hz) and noisy (~13° jitter, spikes to 150°+).
+
+**Feature-Flag Gating for Incomplete/Paused Work**:
+- A feature that is functionally implemented but not yet hardened for release MUST be merged to `dev` behind an explicit boolean kill-switch (e.g. `SHOW_FRIEND_RADAR_HUD`) rather than left on a long-lived branch or as uncommitted work
+- The kill-switch MUST default to the safe/stable state for a release build (radar/experimental UI off, map/behavior defaults unchanged) and the code path it guards MUST remain fully present and reachable by flipping the flag — never deleted or commented out
+- Each kill-switch MUST have an inline comment identifying the tracking issue and the condition for flipping it back (e.g. "resume when #246 hardening pass lands")
+
+Rationale: Enables "stability over new features" release decisions (director-meeting reprioritization, 2026-08-11) without discarding in-progress work or blocking unrelated merges to `dev`. Established for the paused Live Wayfinder rework (issue #246): `SHOW_FRIEND_RADAR_HUD` and the `orientationMode` default were flipped off, with the full implementation retained on `dev`.
 
 Rationale: Consistent mobile patterns improve performance and maintainability.
 
@@ -449,6 +463,7 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 | Security Requirements: "CORS MUST be restricted to known origins in production (not `*`)" | `backend/.env.production.example`, `backend/.env.development.example`, and `main.ts`'s fallback all default `CORS_ORIGIN` to `*` | Open — launch blocker per hardening audit |
 | §III: "Queries MUST avoid unbounded reads (use limits or pagination)" | `admin.service.ts` (`listUsers`, `getStats`) and `friends.service.ts` (`searchUsers`) perform full-collection `getAll()` scans | Open — tracked as N+1/optimization debt |
 | §IX: "Production builds MUST include Sentry for crash and error reporting" | Sentry is initialized, but `ErrorBoundary.tsx`'s `componentDidCatch` never calls `Sentry.captureException()` — React component crashes go unreported | Open — one-line fix, not yet applied |
+| §IX: "Reusable components MUST use `React.memo` for performance" | `WayfinderHUD.tsx` (border-radar friend HUD, reusable since #159 / 2026-07-27) is exported as a plain function component, not wrapped in `React.memo` | Open — found via 2026-08-12 audit; not introduced by any change in this audit's scope |
 
 ---
 
@@ -456,6 +471,7 @@ Rationale: Firebase Functions provide serverless capabilities for event-driven a
 
 | Version | Date | Changes |
 |---------|------|---------||
+| 1.5.0 | 2026-08-12 | `/blue.constitution --audit --update`: documented two established-but-unwritten §IX patterns — sensor/hardware-fusion logic MUST live in pure modules (from the Live Wayfinder heading rework, ADR-018), and feature-flag kill-switch gating for incomplete/paused work merged to `dev` (from issue #246); added a 4th Known Deviation (`WayfinderHUD.tsx` not wrapped in `React.memo`, pre-existing since #159); re-verified the 3 existing Known Deviations are still open and unchanged |
 | 1.4.0 | 2026-08-09 | `/blue.constitution --audit --update`: relaxed §XII ticket requirement (Jira space closed — specs are now system of record); refreshed §XIV Required Workflows list (removed `sync-spec-context.yml`, added 5 real workflows); removed false `deploy-functions.yml` claim from §XVI; corrected §VII password-length claim (Firebase default is 6, not 8, unenforced); added "Known Deviations" section (CORS wildcard, unbounded reads, Sentry ErrorBoundary gap) |
 | 1.3.0 | 2026-02-10 | Audit fix: Updated multi-tenancy rules to allow header/query-based tenant, documented 50% coverage threshold, CI upgraded to Node 20 || 1.2.0 | 2026-02-10 | Constitution audit: Added multi-tenancy, security headers, Sentry, strict mode status; updated CI/CD workflows, spec requirements, CORS policy || 1.1.0 | 2026-02-10 | Added Sections XIII-XVI: Terraform, CI/CD, EAS Deployment, Firebase Functions |
 | 1.0.0 | 2026-02-09 | Initial constitution generated from codebase conventions |

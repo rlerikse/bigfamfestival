@@ -1,36 +1,41 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform, Image } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { firestore } from '../config/firebase';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import * as Location from 'expo-location';
+import { getPOIs as fetchMapPois } from '../services/mapService';
 import { useNavigation } from '@react-navigation/native';
 import { getFriendLocations, getFriendCampsites, subscribeFriendLocations, FriendLocation, FriendCampsite, FriendEntry } from '../services/friendService';
 import type { FriendLocationSubscription } from '../services/friendService';
-import { getWalkingRoute, formatRouteSummary, routeBounds, RouteResult, LngLat } from '../services/routingService';
+import { getWalkingRoute, formatRouteSummary, routeBounds, openExternalDirections, EXTERNAL_MAPS_THRESHOLD_METERS, RouteResult, LngLat } from '../services/routingService';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppSettings } from '../contexts/AppSettingsContext';
 import OptimizedImage from '../components/OptimizedImage';
 import { useDirectionalTracking } from '../hooks/useDirectionalTracking';
 import { signedAngularDiff, unwrapHeading } from '../hooks/compassFusion';
 
-// Compass-mode camera throttle tuning. Commits are rate-limited to ~5Hz with a
-// 1deg deadband so a 150ms heading animation completes before the next starts
-// (prevents the animation-stacking lag from #201). Module scope so they aren't
-// re-created each render.
+// Compass-mode camera throttle tuning. Commits are rate-limited to ~5Hz so a
+// heading animation completes before the next starts (prevents the
+// animation-stacking lag from #201). A small deadband ignores sub-degree
+// sensor jitter. Module scope so they aren't re-created each render.
 const CAMERA_MIN_INTERVAL_MS = 200;
-const CAMERA_MIN_DELTA_DEG = 1;
+const CAMERA_MIN_DELTA_DEG = 0.5;
 
-// TEMP FLAG (per Robert/Quinn, 2026-08): suppress the friend-radar HUD
-// (viewport-edge friend icons) while tracking lag is being debugged.
-// This is intentionally a dumb boolean, not a redesign — flip back to
-// true (or remove) once the underlying lag issue is resolved. Does NOT
-// affect underlying location tracking/data, only whether the border-
-// anchored radar icons render.
-const SHOW_FRIEND_RADAR_HUD = false;
+// Friend-radar HUD (viewport-edge friend icons, #159). Re-enabled 2026-08-09
+// after the tracking-lag fixes landed (#201 camera throttle, #202 wrap-around +
+// trailing-flush); this flag had been a temporary stopgap while that lag was
+// debugged. Kept as a boolean kill-switch — set to false to hide the radar
+// icons without touching the underlying location tracking/data.
+// 2026-08-12: radar HUD re-enabled, but the compass/map-rotation default is kept
+// OFF (orientationMode 'north' below) until the #246 stability/hardening pass.
+// So friends show on the border radar (which uses live heading), while the map
+// itself stays north-up and doesn't run the auto-rotate camera path yet.
+const SHOW_FRIEND_RADAR_HUD = true;
 import DirectionalGradientBorder from '../components/DirectionalGradientBorder';
 import WayfinderHUD from '../components/WayfinderHUD';
 
@@ -64,10 +69,9 @@ function formatDistance(meters: number, unit: 'mi' | 'km'): string {
 
 export type POICategory =
   | 'stage'
-  | 'food'
-  | 'shop'
-  | 'beverage'
-  | 'staff';
+  | 'infrastructure'
+  | 'staff'
+  | 'vendors';
 
 interface CategoryConfig {
   label: string;
@@ -108,49 +112,51 @@ export const POI_CATEGORIES: Record<POICategory, CategoryConfig> = {
     borderWidth: 3,
     borderColor: '#fff',
   },
-  food: {
-    label: 'Food Vendors',
-    emoji: '🍔',
-    color: '#E8A838',
-    markerSize: 30,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  shop: {
-    label: 'Shops & Services',
-    emoji: '🛍️',
-    color: '#A78BFA',
-    markerSize: 30,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  beverage: {
-    label: 'Beverage Vendors',
-    emoji: '🍺',
-    color: '#F59E0B',
+  infrastructure: {
+    label: 'Infrastructure',
+    emoji: 'ℹ️',
+    color: '#3B82F6',
     markerSize: 30,
     borderWidth: 2,
     borderColor: '#fff',
   },
   staff: {
-    label: 'Staff & Medical',
-    emoji: '🏥',
-    color: '#EF4444',
-    markerSize: 38,
+    label: 'Staff',
+    emoji: '👥',
+    color: '#6B7280',
+    markerSize: 34,
     borderWidth: 3,
+    borderColor: '#fff',
+  },
+  vendors: {
+    label: 'Vendors',
+    emoji: '🛒',
+    color: '#E8A838',
+    markerSize: 30,
+    borderWidth: 2,
     borderColor: '#fff',
   },
 };
 
-/** Normalise a raw category string from Firestore to a POICategory key. */
+/**
+ * Normalise a raw category string from Firestore to a POICategory key.
+ * Handles both the canonical taxonomy (stage/infrastructure/staff/vendors)
+ * and legacy pre-migration values (info/medical/food/food_vendor/etc.) so
+ * older documents that haven't been re-saved through the admin form yet
+ * still render correctly.
+ */
 function resolveCategory(raw: string): POICategory {
   const s = (raw ?? '').toLowerCase().trim();
   if (s === 'stage' || s === 'stages') return 'stage';
-  if (s === 'food' || s === 'food vendor' || s === 'food vendors' || s === 'food_vendor') return 'food';
-  if (s === 'shop' || s === 'shops' || s === 'services' || s === 'shops & services' || s === 'shop_and_service') return 'shop';
-  if (s === 'beverage' || s === 'beverages' || s === 'beverage vendor' || s === 'beverage vendors' || s === 'beverage_vendor') return 'beverage';
-  if (s === 'staff' || s === 'medical' || s === 'staff & medical' || s === 'first aid' || s === 'staff_and_medical') return 'staff';
-  return 'food'; // safe default
+  if (s === 'infrastructure' || s === 'info' || s === 'medical' || s === 'first aid' || s === 'camping') return 'infrastructure';
+  if (s === 'staff' || s === 'staff & medical' || s === 'staff_and_medical') return 'staff';
+  if (
+    s === 'vendors' || s === 'vendor' ||
+    s === 'food' || s === 'food vendor' || s === 'food vendors' || s === 'food_vendor' ||
+    s === 'shop' || s === 'shops' || s === 'services' || s === 'shops & services' || s === 'shop_and_service' ||
+    s === 'beverage' || s === 'beverages' || s === 'beverage vendor' || s === 'beverage vendors' || s === 'beverage_vendor'
+  ) return 'vendors';
+  return 'vendors'; // safe default
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -164,6 +170,13 @@ interface MapZone {
     color: string;
     icon?: string;
     description?: string;
+    // Admin-uploaded zone logo/marker (Storage download URL) plus its own
+    // position/size, independent of the zone polygon's centroid/label.
+    iconAsset?: string;
+    iconLat?: number;
+    iconLng?: number;
+    iconSize?: number;
+    showTitle?: boolean;
   };
   geometry: {
     type: 'Polygon' | 'Point';
@@ -188,6 +201,11 @@ interface MapPOI {
 }
 
 interface StageLocation {
+  // Firestore key from config/mapStages.stages — stable identity for the
+  // Mapbox annotation below, since `name` is editable and not guaranteed
+  // unique (two stages with the same name would otherwise collide and one
+  // would silently fail to render).
+  id: string;
   name: string;
   lat: number;
   lng: number;
@@ -212,6 +230,25 @@ export default function MapScreen() {
   // emoji marker instead of rendering blank. Persists for the session; a
   // fresh screen mount will retry the URL.
   const [failedMarkerAssets, setFailedMarkerAssets] = useState<Set<string>>(new Set());
+  // Same failure-tracking pattern as failedMarkerAssets, scoped to zone icons
+  // (front-gate/Bayou-style logos) so a broken upload just omits the marker
+  // rather than showing a blank/broken image.
+  const [failedZoneIcons, setFailedZoneIcons] = useState<Set<string>>(new Set());
+  // PointAnnotation snapshots its child view into a static marker image once,
+  // at mount — it never re-snapshots on its own when an async image (like a
+  // remote zone icon) finishes loading later. refresh() forces a re-snapshot;
+  // call it from the image's onLoad, keyed by zone id via this ref map.
+  const zoneIconAnnotationRefs = useRef<Record<string, { refresh: () => void }>>({});
+  // Same snapshot-refresh need for POI custom marker images (markerAsset).
+  const poiAnnotationRefs = useRef<Record<string, { refresh: () => void }>>({});
+  const markZoneIconFailed = useCallback((zoneId: string) => {
+    setFailedZoneIcons(prev => {
+      if (prev.has(zoneId)) return prev;
+      const next = new Set(prev);
+      next.add(zoneId);
+      return next;
+    });
+  }, []);
   const markMarkerAssetFailed = useCallback((poiId: string) => {
     setFailedMarkerAssets(prev => {
       if (prev.has(poiId)) return prev;
@@ -222,6 +259,9 @@ export default function MapScreen() {
   }, []);
   const cameraRef = useRef<Mapbox.Camera>(null);
   const mapViewRef = useRef<Mapbox.MapView>(null);
+  // One-time guard so the first map open frames the USER (not the festival
+  // center), without later position updates yanking the camera back.
+  const hasCenteredOnUserRef = useRef(false);
   // Current map viewport bounds [[rightLon, topLat], [leftLon, bottomLat]] —
   // used so the friend-radar HUD can hide a friend's edge-icon once they're
   // already visible within the on-map view (avoids the "two icons for one
@@ -258,7 +298,15 @@ export default function MapScreen() {
   // A separate per-friend focus state, layered ON TOP of the friend-radar HUD
   // (radar markers keep rendering regardless — Robert confirmed both coexist).
   const [trackingTarget, setTrackingTarget] = useState<(FriendLocation | FriendCampsite) & { isLive: boolean } | null>(null);
-  const trackingCoords: LngLat | null = trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null;
+  // Memoized so the [lng,lat] reference is stable across renders while the
+  // target hasn't moved. An inline `trackingTarget ? [..] : null` produced a
+  // fresh array every render, which made useDirectionalTracking's bearing
+  // effect re-run + setState every render → "Maximum update depth exceeded"
+  // the moment a friend was tracked.
+  const trackingCoords: LngLat | null = useMemo(
+    () => (trackingTarget ? [trackingTarget.lng, trackingTarget.lat] : null),
+    [trackingTarget?.lng, trackingTarget?.lat]
+  );
 
   // ── Orientation mode — CoD top-down mini-map model (per Robert's #159 refinement) ──
   // Underlying location tracking + haptics are ALWAYS on regardless of mode —
@@ -270,9 +318,14 @@ export default function MapScreen() {
   //  - 'compass': map itself rotates to match device heading, self
   //    marker points a fixed "up," and friend icons actively reposition as
   //    their live location changes.
-  // Default is 'north' for now (Robert, temp default flip while compass/
-  // tracking-lag issues are debugged) — toggle still lets users switch to
-  // compass mode manually; this only changes the initial state.
+  // Default is 'compass' — restored 2026-08-09 after the compass/tracking-lag
+  // fixes landed (#201/#202); the 'north' default had been a temporary flip
+  // while that lag was debugged. Users can still toggle to north-lock manually;
+  // this only changes the initial state.
+  // 2026-08-12: kept defaulting to 'north' (compass / map-rotation OFF) pending
+  // the #246 stability/hardening pass, even though the radar HUD is back on
+  // above. The map won't auto-rotate on open; users can still toggle to compass
+  // mode manually. Restore the 'compass' default once #246 is hardened.
   const [orientationMode, setOrientationMode] = useState<'compass' | 'north'>('north');
   // Only stream the magnetometer when there's actually something to point at —
   // either friends visible on the radar (icons need live heading to swing
@@ -317,13 +370,19 @@ export default function MapScreen() {
   // schedule a deferred commit for the remainder of the interval; the newest
   // heading always wins because the effect re-runs (and reschedules) on every
   // heading change, and the timer reads from a ref holding the latest value.
+  // Guard: while the "center on me" animation runs, pause compass-driven camera
+  // heading commits so they don't truncate the recenter (was only moving ~1/3
+  // per press). And throttle visible-bounds refresh so continuous compass-mode
+  // camera motion doesn't churn re-renders into a "Maximum update depth" loop.
+  const isCenteringRef = useRef(false);
+  const lastBoundsRefreshRef = useRef(0);
   const lastCameraHeadingRef = useRef(0);
   const unwrappedCameraHeadingRef = useRef(0);
   const lastCameraCommitRef = useRef(0);
   const pendingHeadingRef = useRef(0);
   const trailingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (orientationMode !== 'compass') return;
+    if (orientationMode !== 'compass' || isCenteringRef.current) return;
 
     const commit = (h: number) => {
       // Advance the continuous bearing by the shortest signed step from the
@@ -338,7 +397,7 @@ export default function MapScreen() {
       lastCameraHeadingRef.current = h;
       cameraRef.current?.setCamera({
         heading: unwrappedCameraHeadingRef.current,
-        animationDuration: 150,
+        animationDuration: 100,
       });
     };
 
@@ -444,15 +503,35 @@ export default function MapScreen() {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') return;
+      // On first map open, frame the map on the USER's own location once it's
+      // known. The static defaultSettings frame the festival grounds, which —
+      // when a friend is on-site but the user isn't — looks like it "centered on
+      // the friend." One-time only (guard ref), so the user can pan freely and
+      // later position updates don't snap the camera back.
+      const centerOnUserOnce = (coord: [number, number]) => {
+        if (hasCenteredOnUserRef.current || !cameraRef.current) return;
+        hasCenteredOnUserRef.current = true;
+        cameraRef.current.setCamera({
+          centerCoordinate: coord,
+          zoomLevel: DEFAULT_ZOOM,
+          animationDuration: 0,
+        });
+      };
       try {
         const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        setSelfCoords([initial.coords.longitude, initial.coords.latitude]);
+        const coord: [number, number] = [initial.coords.longitude, initial.coords.latitude];
+        setSelfCoords(coord);
+        centerOnUserOnce(coord);
       } catch (err) {
         console.error('[MapScreen] Failed to get initial self location:', err);
       }
       subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, timeInterval: 10000, distanceInterval: 10 },
-        (loc) => setSelfCoords([loc.coords.longitude, loc.coords.latitude])
+        (loc) => {
+          const coord: [number, number] = [loc.coords.longitude, loc.coords.latitude];
+          setSelfCoords(coord);
+          centerOnUserOnce(coord);
+        }
       );
     })();
     return () => subscription?.remove();
@@ -594,9 +673,14 @@ export default function MapScreen() {
 
   const loadMapData = async () => {
     try {
-      const [zonesSnap, stagesSnap] = await Promise.all([
+      // Zones (polygons) have no backend endpoint yet — still read directly.
+      // Stages + POIs now come from ONE call to the backend's GET /map/pois,
+      // which already merges config/mapStages + mapPOIs and normalizes
+      // categories (see map.service.ts) — replaces the old 2 separate
+      // Firestore reads + duplicated client-side merge/validation logic.
+      const [zonesSnap, mapPois] = await Promise.all([
         getDoc(doc(firestore, 'config', 'mapZones')),
-        getDoc(doc(firestore, 'config', 'mapStages')),
+        fetchMapPois(),
       ]);
 
       if (zonesSnap.exists()) {
@@ -607,16 +691,28 @@ export default function MapScreen() {
         }
       }
 
-      if (stagesSnap.exists()) {
-        const data = stagesSnap.data();
-        if (data?.stages) {
-          const stageList: StageLocation[] = Object.values(data.stages);
-          setStages(stageList);
+      const stageList: StageLocation[] = [];
+      const poiList: MapPOI[] = [];
+      for (const p of mapPois) {
+        if (!Number.isFinite(p.location?.lat) || !Number.isFinite(p.location?.long)) continue;
+        const category = p.category ?? p.type;
+        if (category === 'stage') {
+          stageList.push({ id: p.id, name: p.name, lat: p.location.lat, lng: p.location.long, color: p.color ?? '' });
+        } else {
+          poiList.push({
+            id: p.id,
+            name: p.name,
+            category,
+            color: p.color ?? '',
+            icon: p.icon ?? '',
+            markerAsset: p.markerAsset,
+            lat: p.location.lat,
+            lng: p.location.long,
+            description: p.description,
+          });
         }
       }
-
-      const poisSnap = await getDocs(collection(firestore, 'mapPOIs'));
-      const poiList: MapPOI[] = poisSnap.docs.map(d => ({ id: d.id, ...d.data() } as MapPOI));
+      setStages(stageList);
       setPois(poiList);
     } catch (err) {
       console.error('Failed to load map data:', err);
@@ -629,6 +725,16 @@ export default function MapScreen() {
     type: 'FeatureCollection' as const,
     features: zones.filter(z => z.geometry.type === 'Polygon'),
   };
+
+  // Zones with an admin-uploaded logo/marker positioned within them (e.g.
+  // "The Bayou") — rendered as separate PointAnnotations, same as POIs.
+  const zoneIcons = zones.filter(
+    z =>
+      !!z.properties.iconAsset &&
+      Number.isFinite(z.properties.iconLat) &&
+      Number.isFinite(z.properties.iconLng) &&
+      !failedZoneIcons.has(z.properties.id)
+  );
 
   const handlePOIPress = useCallback((poi: MapPOI | StageLocation) => {
     setSelectedPOI(prev => prev === poi ? null : poi);
@@ -653,12 +759,13 @@ export default function MapScreen() {
   }, [currentZoom]);
 
   const handleZoomOut = useCallback(() => {
-    const newZoom = Math.max(currentZoom - 1, 10);
+    const newZoom = Math.max(currentZoom - 1, 1);
     setCurrentZoom(newZoom);
     cameraRef.current?.setCamera({ zoomLevel: newZoom, animationDuration: 300 });
   }, [currentZoom]);
 
   const handleCenterOnUser = useCallback(async () => {
+    isCenteringRef.current = true;
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
@@ -683,6 +790,10 @@ export default function MapScreen() {
         zoomLevel: DEFAULT_ZOOM,
         animationDuration: 500,
       });
+    } finally {
+      // Release the compass-camera guard once the recenter animation settles,
+      // so heading-driven camera commits can resume.
+      setTimeout(() => { isCenteringRef.current = false; }, 650);
     }
   }, [currentZoom]);
 
@@ -721,6 +832,12 @@ export default function MapScreen() {
           'Location needed',
           'Enable location access so we can route you from where you are.'
         );
+        return;
+      }
+      // Off festival grounds — the in-app walking route is scoped to short
+      // on-site distances, so hand off to the user's own map app instead.
+      if (haversineMeters(origin, dest) > EXTERNAL_MAPS_THRESHOLD_METERS) {
+        await openExternalDirections(dest, label);
         return;
       }
       const route = await getWalkingRoute(origin, dest);
@@ -939,20 +1056,26 @@ export default function MapScreen() {
         attributionPosition={{ bottom: 80, left: 8 }}
         logoPosition={{ bottom: 80, left: 8 }}
         onCameraChanged={(state) => {
-          if (state?.properties?.zoom != null) {
-            setCurrentZoom(state.properties.zoom);
+          // Bail on no-op state updates so a continuous camera move (compass
+          // mode) doesn't churn re-renders into a "Maximum update depth" loop.
+          const z = state?.properties?.zoom;
+          if (z != null) {
+            setCurrentZoom(prev => (Math.abs(prev - z) > 0.01 ? z : prev));
           }
-          if (state?.properties?.heading != null) {
-            setCurrentBearing(state.properties.heading);
+          const h = state?.properties?.heading;
+          if (h != null) {
+            setCurrentBearing(prev => (Math.abs(prev - h) > 0.5 ? h : prev));
           }
-          // Refresh visible bounds on every camera move so the radar HUD
-          // knows which friends are already on-screen. getVisibleBounds()
-          // is async; fire-and-forget is fine here, it just updates state
-          // whenever it resolves (camera changes fire frequently enough
-          // that a slight lag doesn't matter for this UI purpose).
-          mapViewRef.current?.getVisibleBounds()
-            .then(bounds => setVisibleBounds(bounds as [[number, number], [number, number]]))
-            .catch(() => undefined);
+          // Throttle visible-bounds refresh (was firing on every camera frame —
+          // the main driver of the compass-mode re-render storm). ~500ms is
+          // plenty for the radar's "already on-screen" suppression.
+          const now = Date.now();
+          if (now - lastBoundsRefreshRef.current > 500) {
+            lastBoundsRefreshRef.current = now;
+            mapViewRef.current?.getVisibleBounds()
+              .then(bounds => setVisibleBounds(bounds as [[number, number], [number, number]]))
+              .catch(() => undefined);
+          }
         }}
       >
         <Mapbox.Camera
@@ -981,11 +1104,12 @@ export default function MapScreen() {
             friend-marker treatment (see friendMarkers below). Falls back to
             initials/icon (never a plain dot) if no profilePictureUrl is set. */}
         {selfCoords && (
-          <Mapbox.PointAnnotation
+          <Mapbox.MarkerView
             key="self-marker"
             id="self-marker"
             coordinate={selfCoords}
             anchor={{ x: 0.5, y: 0.5 }}
+            allowOverlap
           >
             <View style={[styles.friendMarker, styles.friendMarkerLive, styles.selfMarker]}>
               {user?.profilePictureUrl ? (
@@ -1015,7 +1139,7 @@ export default function MapScreen() {
                 </View>
               )}
             </View>
-          </Mapbox.PointAnnotation>
+          </Mapbox.MarkerView>
         )}
 
         {/* Zone polygons */}
@@ -1032,7 +1156,8 @@ export default function MapScreen() {
             <Mapbox.SymbolLayer
               id="zone-labels"
               style={{
-                textField: ['get', 'name'],
+                // Admin's "Show zone title" checkbox — hide the label when false.
+                textField: ['case', ['==', ['get', 'showTitle'], false], '', ['get', 'name']],
                 textSize: 14,
                 textColor: '#ffffff',
                 textHaloColor: '#000000',
@@ -1043,13 +1168,44 @@ export default function MapScreen() {
           </Mapbox.ShapeSource>
         )}
 
+        {/* Zone icons — admin-uploaded logo/marker for a zone (e.g. "The Bayou"),
+            positioned/sized independently of the zone polygon's centroid. */}
+        {zoneIcons.map(zone => {
+          const size = zone.properties.iconSize ?? 40;
+          return (
+            <Mapbox.PointAnnotation
+              key={`zone-icon-${zone.properties.id}`}
+              id={`zone-icon-${zone.properties.id}`}
+              ref={(r) => {
+                if (r) zoneIconAnnotationRefs.current[zone.properties.id] = r as unknown as { refresh: () => void };
+              }}
+              coordinate={[zone.properties.iconLng!, zone.properties.iconLat!]}
+            >
+              {/* expo-image (not RN core Image) — zone icons are compressed to
+                  WebP on upload, which RN's core Image can't reliably decode
+                  on iOS. Not OptimizedImage either — its container always
+                  forces an opaque theme.border background (a loading-state
+                  placeholder) which shows through a transparent PNG/WebP's edges. */}
+              <View style={{ width: size, height: size, backgroundColor: 'transparent' }}>
+                <ExpoImage
+                  source={{ uri: zone.properties.iconAsset! }}
+                  style={{ width: size, height: size, backgroundColor: 'transparent' }}
+                  contentFit="contain"
+                  onLoad={() => zoneIconAnnotationRefs.current[zone.properties.id]?.refresh()}
+                  onError={() => markZoneIconFailed(zone.properties.id)}
+                />
+              </View>
+            </Mapbox.PointAnnotation>
+          );
+        })}
+
         {/* Stage markers */}
         {stagesVisible && stages.map(stage => {
           const cfg = POI_CATEGORIES.stage;
           return (
             <Mapbox.PointAnnotation
-              key={stage.name}
-              id={`stage-${stage.name}`}
+              key={stage.id}
+              id={`stage-${stage.id}`}
               coordinate={[stage.lng, stage.lat]}
               onSelected={() => handlePOIPress(stage)}
             >
@@ -1092,6 +1248,9 @@ export default function MapScreen() {
             <Mapbox.PointAnnotation
               key={poi.id}
               id={`poi-${poi.id}`}
+              ref={(r) => {
+                if (r) poiAnnotationRefs.current[poi.id] = r as unknown as { refresh: () => void };
+              }}
               coordinate={[poi.lng, poi.lat]}
               onSelected={() => handlePOIPress(poi)}
             >
@@ -1104,6 +1263,7 @@ export default function MapScreen() {
                       containerStyle={styles.brandMarkerImageContainer}
                       contentFit="contain"
                       showLoadingIndicator={false}
+                      onLoad={() => poiAnnotationRefs.current[poi.id]?.refresh()}
                       onError={() => markMarkerAssetFailed(poi.id)}
                     />
                   ) : (
@@ -1147,18 +1307,22 @@ export default function MapScreen() {
           const frozen = orientationMode === 'north' ? frozenFriendPositions?.[friend.userId] : undefined;
           const displayCoordinate: [number, number] = frozen ?? [friend.lng, friend.lat];
           return (
-          <Mapbox.PointAnnotation
+          <Mapbox.MarkerView
             key={`friend-${friend.userId}`}
             id={`friend-${friend.userId}`}
             coordinate={displayCoordinate}
             anchor={{ x: 0.5, y: 0.5 }}
-            onSelected={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
+            allowOverlap
           >
-            <View style={[
-              styles.friendMarker,
-              friend.isLive && styles.friendMarkerLive,
-              trackingTarget?.userId === friend.userId && styles.friendMarkerTracking,
-            ]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSelectedFriend(prev => (prev?.userId === friend.userId ? null : friend))}
+              style={[
+                styles.friendMarker,
+                friend.isLive && styles.friendMarkerLive,
+                trackingTarget?.userId === friend.userId && styles.friendMarkerTracking,
+              ]}
+            >
               {friend.profilePictureUrl ? (
                 <OptimizedImage
                   uri={friend.profilePictureUrl}
@@ -1173,9 +1337,8 @@ export default function MapScreen() {
                   {friend.name?.trim()?.charAt(0)?.toUpperCase() || '?'}
                 </Text>
               )}
-            </View>
-            <Mapbox.Callout title={`${friend.name}${friend.isLive ? ' • Live' : ' • Campsite'}`} />
-          </Mapbox.PointAnnotation>
+            </TouchableOpacity>
+          </Mapbox.MarkerView>
           );
         })}
 
@@ -1209,8 +1372,8 @@ export default function MapScreen() {
           visible friend (per #159). This renders regardless of tracking
           state; the gradient border below is an ADDITIVE focus layer for
           whichever single friend is selected, never a replacement.
-          TEMP: gated off via SHOW_FRIEND_RADAR_HUD while tracking lag is
-          debugged (Robert/Quinn, 2026-08) — flip flag back on to restore. */}
+          Gated by SHOW_FRIEND_RADAR_HUD (kill-switch); re-enabled 2026-08-09
+          after the tracking-lag fixes (#201/#202) landed. */}
       {SHOW_FRIEND_RADAR_HUD && (
         <WayfinderHUD
           userCoords={selfCoords}
@@ -1263,7 +1426,7 @@ export default function MapScreen() {
           <Ionicons
             name={orientationMode === 'compass' ? 'compass' : 'compass-outline'}
             size={24}
-            color={orientationMode === 'compass' ? '#F5F5DC' : '#8A8A6E'}
+            color={'#F5F5DC'}
             style={orientationMode === 'compass' ? { transform: [{ rotate: `${-currentBearing}deg` }] } : undefined}
           />
         </TouchableOpacity>

@@ -8,6 +8,7 @@ import { Copy, Download, MousePointer, Save, Loader2, Plus, Trash2, ChevronDown,
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { POIManager, POI } from '@/components/POIManager';
+import { getImageDisplayUrl, uploadZoneIcon, uploadStageIcon, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES } from '@/lib/storage';
 
 // Festival GeoJSON data
 const festivalGeoJSON: GeoJSON.FeatureCollection = {
@@ -36,20 +37,76 @@ const festivalGeoJSON: GeoJSON.FeatureCollection = {
   ],
 };
 
-const CATEGORIES = ['stage', 'camping', 'infrastructure', 'staff', 'vendors'] as const;
+// Zones now have exactly 3 types (per user request to simplify the old
+// 6-value scheme, which had grown confusing: stage/camping/infrastructure/
+// staff/vendors/grounds). Legacy values are normalized to one of these via
+// zoneMetaCategory() below for any data that hasn't been re-saved yet.
+const CATEGORIES = ['camping', 'entertainment', 'staff'] as const;
 const CATEGORY_LABELS: Record<string, string> = {
-  stage: '🎵 Stages',
   camping: '⛺ Camping',
-  infrastructure: '🏗️ Infrastructure',
+  entertainment: '🎉 Entertainment',
   staff: '👥 Staff',
-  vendors: '🛒 Vendors',
 };
+
+/** Normalizes a zone's raw category (current 3-value scheme, or a legacy
+ * pre-migration value) into one of the 3 zone types. */
+function zoneMetaCategory(raw: string | undefined): 'camping' | 'entertainment' | 'staff' {
+  if (raw === 'camping' || raw === 'staff') return raw;
+  return 'entertainment';
+}
 
 function getCentroid(coords: number[][]): [number, number] {
   let x = 0, y = 0;
   const len = coords.length > 1 ? coords.length - 1 : coords.length; // skip closing coord
   for (let i = 0; i < len; i++) { x += coords[i][0]; y += coords[i][1]; }
   return [x / len, y / len];
+}
+
+// Default long-edge pixel size for an uploaded zone icon marker (before the
+// per-zone size slider is touched).
+const DEFAULT_ICON_SIZE = 40;
+
+/** Ray-casting point-in-polygon test — used to keep a dragged zone icon
+ * marker from being dropped outside the zone it belongs to. */
+function isPointInPolygon(point: [number, number], ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersects = yi > point[1] !== yj > point[1] &&
+      point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+// Custom Mapbox control — a pin button stacked in the same top-right corner
+// as the Draw/Navigation controls (Mapbox stacks controls added to the same
+// position in add order). Clicking it arms "drop a pin" mode; the next map
+// click reports its lat/lng back via the callback and the control resets.
+class AddPOIControl implements mapboxgl.IControl {
+  private container: HTMLDivElement;
+  private button: HTMLButtonElement;
+  constructor(onClick: () => void) {
+    this.container = document.createElement('div');
+    this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    this.button = document.createElement('button');
+    this.button.type = 'button';
+    this.button.title = 'Add POI — click, then tap the map to drop a pin';
+    this.button.style.fontSize = '16px';
+    this.button.textContent = '📍';
+    this.button.addEventListener('click', onClick);
+    this.container.appendChild(this.button);
+  }
+  onAdd(): HTMLElement {
+    return this.container;
+  }
+  onRemove(): void {
+    this.container.parentNode?.removeChild(this.container);
+  }
+  setActive(active: boolean): void {
+    this.button.style.backgroundColor = active ? '#6BBF59' : '';
+  }
 }
 
 // Custom Draw styles — low-opacity fills so satellite shows through
@@ -106,6 +163,10 @@ interface Stage {
   lat: number;
   lng: number;
   color: string;
+  // Optional custom logo (Storage download URL) rendered instead of the
+  // plain color square + emoji, same treatment as zone icons.
+  iconAsset?: string;
+  iconSize?: number;
 }
 
 export function MapEditorPage() {
@@ -119,25 +180,79 @@ export function MapEditorPage() {
   const [saved, setSaved] = useState(false);
   const [loadedFromFirestore, setLoadedFromFirestore] = useState(false);
   const [loadedFeatures, setLoadedFeatures] = useState<GeoJSON.Feature[]>([]);
-  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string } | null>(null);
+  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number; showTitle: boolean; iconSize: number } | null>(null);
+  const [uploadingZoneIcon, setUploadingZoneIcon] = useState(false);
+  const zoneIconMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const zoneIconFileInputRef = useRef<HTMLInputElement>(null);
+  // When true, the Draw control is temporarily removed from the map so
+  // dragging the icon marker can't also drag the zone polygon underneath it
+  // (Draw's simple_select mode grabs whatever feature is under the cursor on
+  // mousedown, which was moving the whole zone instead of just the icon).
+  const [iconMoveLocked, setIconMoveLocked] = useState(false);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
   const [newName, setNewName] = useState('');
-  const [newCategory, setNewCategory] = useState('infrastructure');
+  const [newCategory, setNewCategory] = useState('camping');
   const [newColor, setNewColor] = useState('#FF6B35');
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPOIId, setSelectedPOIId] = useState<string | null>(null);
   const poiMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const addPOIControlRef = useRef<AddPOIControl | null>(null);
+  // Set once per pin drop (nonce makes every drop a distinct value even if
+  // the same coordinates are clicked twice in a row) so POIManager can key
+  // an effect off it to open its Add form pre-filled with the location.
+  const [pendingPOIPin, setPendingPOIPin] = useState<{ lat: number; lng: number; nonce: number } | null>(null);
+  // Set on marker dragend so POIManager can persist the new position (and
+  // refresh its edit form's lat/lng if that POI happens to be open). Carries
+  // the pre-drag position too, so POIManager can push it onto an undo stack.
+  const [pendingPOIDrag, setPendingPOIDrag] = useState<{ poiId: string; lat: number; lng: number; prevLat: number; prevLng: number; nonce: number } | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [stagesCollapsed, setStagesCollapsed] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
   const [placingStage, setPlacingStage] = useState(false);
   const stageMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const [uploadingStageIconId, setUploadingStageIconId] = useState<string | null>(null);
   const features = festivalGeoJSON.features;
 
-  const grouped = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = loadedFeatures.filter((f) => f.properties?.category === cat);
+  // Sidebar is organized as two sections: Zones (grouped into camping/
+  // entertainment/staff) with POIs/stages nested under whichever zone
+  // polygon geographically contains them, and a flat list of POIs/stages
+  // that aren't inside any zone. Replaces the old flat category list, which
+  // mixed zones and points under 5-6 categories with no sense of what was
+  // physically inside what.
+  const zonePolygons = loadedFeatures.filter((f) => f.geometry.type === 'Polygon');
+  const groupedZones = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = zonePolygons.filter((f) => zoneMetaCategory(f.properties?.category) === cat);
     return acc;
-  }, {} as Record<string, typeof features>);
+  }, {} as Record<string, GeoJSON.Feature[]>);
+
+  type PoiLikeItem = { key: string; id: string; name: string; lat: number; lng: number; icon: string; kind: 'poi' | 'stage'; zoneId?: string };
+  const poiLikeItems: PoiLikeItem[] = [
+    ...pois.map((p): PoiLikeItem => ({ key: `poi:${p.id}`, id: p.id, name: p.name, lat: p.lat, lng: p.lng, icon: p.icon || '📍', kind: 'poi', zoneId: p.zoneId })),
+    ...stages.map((s): PoiLikeItem => ({ key: `stage:${s.id}`, id: s.id, name: s.name, lat: s.lat, lng: s.lng, icon: '🎵', kind: 'stage' })),
+  ];
+  const nestedKeys = new Set<string>();
+  const zoneContents = new Map<string, PoiLikeItem[]>();
+  for (const zone of zonePolygons) {
+    const zoneId = zone.properties?.id as string;
+    const ring = zone.geometry.type === 'Polygon' ? zone.geometry.coordinates[0] : null;
+    if (!zoneId || !ring) continue;
+    // An explicit zoneId (set via the POI form's "Zone" override dropdown)
+    // wins over geometry — otherwise fall back to point-in-polygon, since
+    // most POIs never set it and should just nest by where they actually are.
+    const contained = poiLikeItems.filter((item) =>
+      item.zoneId ? item.zoneId === zoneId : isPointInPolygon([item.lng, item.lat], ring)
+    );
+    zoneContents.set(zoneId, contained);
+    for (const item of contained) nestedKeys.add(item.key);
+  }
+  const orphanPoiLikeItems = poiLikeItems.filter((item) => !nestedKeys.has(item.key));
+
+  const flyToPoiLike = useCallback((item: PoiLikeItem) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: [item.lng, item.lat], zoom: 17, duration: 800 });
+    if (item.kind === 'poi') setSelectedPOIId(item.id);
+  }, []);
 
   const selectFeature = useCallback((featureId: string) => {
     const draw = drawRef.current;
@@ -197,6 +312,11 @@ export function MapEditorPage() {
           icon: props?.icon,
           color: props?.color,
           description: props?.description,
+          iconAsset: props?.iconAsset,
+          iconLat: props?.iconLat,
+          iconLng: props?.iconLng,
+          showTitle: props?.showTitle !== false,
+          iconSize: typeof props?.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE,
         },
         geometry: f.geometry,
       };
@@ -220,22 +340,24 @@ export function MapEditorPage() {
     if (!map.getSource('labels')) return;
 
     const all = draw.getAll();
-    const labelFeatures: GeoJSON.Feature[] = all.features.map((f: GeoJSON.Feature) => {
-      const props = drawIdToProps[f.id as string] || {};
-      let center: [number, number];
-      if (f.geometry.type === 'Point') {
-        center = f.geometry.coordinates as [number, number];
-      } else if (f.geometry.type === 'Polygon') {
-        center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
-      } else {
-        center = [0, 0];
-      }
-      return {
-        type: 'Feature' as const,
-        properties: { name: (props as Record<string, unknown>)?.name ?? f.id },
-        geometry: { type: 'Point' as const, coordinates: center },
-      };
-    });
+    const labelFeatures: GeoJSON.Feature[] = all.features
+      .filter((f: GeoJSON.Feature) => (drawIdToProps[f.id as string] as Record<string, unknown> | undefined)?.showTitle !== false)
+      .map((f: GeoJSON.Feature) => {
+        const props = drawIdToProps[f.id as string] || {};
+        let center: [number, number];
+        if (f.geometry.type === 'Point') {
+          center = f.geometry.coordinates as [number, number];
+        } else if (f.geometry.type === 'Polygon') {
+          center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
+        } else {
+          center = [0, 0];
+        }
+        return {
+          type: 'Feature' as const,
+          properties: { name: (props as Record<string, unknown>)?.name ?? f.id },
+          geometry: { type: 'Point' as const, coordinates: center },
+        };
+      });
 
     (map.getSource('labels') as mapboxgl.GeoJSONSource).setData({
       type: 'FeatureCollection',
@@ -257,10 +379,15 @@ export function MapEditorPage() {
           properties: {
             id: props?.id || f.id,
             name: props?.name || 'Unnamed',
-            category: props?.category || 'infrastructure',
+            category: props?.category || 'camping',
             icon: props?.icon || '',
             color: props?.color || '#888888',
             description: props?.description || '',
+            iconAsset: props?.iconAsset || '',
+            iconLat: props?.iconLat,
+            iconLng: props?.iconLng,
+            showTitle: props?.showTitle !== false,
+            iconSize: typeof props?.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE,
           },
           geometry: f.geometry,
         };
@@ -291,9 +418,12 @@ export function MapEditorPage() {
   const saveStages = useCallback(async (updatedStages: Stage[]) => {
     setSavingStages(true);
     try {
-      const stagesMap: Record<string, { lat: number; lng: number; name: string; color: string }> = {};
+      const stagesMap: Record<string, { lat: number; lng: number; name: string; color: string; iconAsset: string; iconSize: number }> = {};
       for (const s of updatedStages) {
-        stagesMap[s.id] = { lat: s.lat, lng: s.lng, name: s.name, color: s.color };
+        stagesMap[s.id] = {
+          lat: s.lat, lng: s.lng, name: s.name, color: s.color,
+          iconAsset: s.iconAsset || '', iconSize: s.iconSize || DEFAULT_ICON_SIZE,
+        };
       }
       await setDoc(doc(db, 'config', 'mapStages'), {
         stages: stagesMap,
@@ -318,6 +448,8 @@ export function MapEditorPage() {
             lat: val.lat,
             lng: val.lng,
             color: val.color,
+            iconAsset: val.iconAsset || undefined,
+            iconSize: val.iconSize || DEFAULT_ICON_SIZE,
           }));
           setStages(loaded);
         }
@@ -329,12 +461,11 @@ export function MapEditorPage() {
 
   const addStage = useCallback(() => {
     const map = mapRef.current;
-    const draw = drawRef.current;
     if (!map) return;
     setPlacingStage(true);
-    if (draw) {
-      try { map.removeControl(draw); } catch (_) {}
-    }
+    // Plain click listener — Draw doesn't intercept the map's generic click
+    // event, so no need to remove/re-add it (see onRequestMapClick's comment
+    // for the crash this used to cause on re-add).
     map.getCanvas().style.cursor = 'crosshair';
     map.once('click', (e: mapboxgl.MapMouseEvent) => {
       const id = 'stage-' + Date.now();
@@ -352,13 +483,10 @@ export function MapEditorPage() {
       });
       map.getCanvas().style.cursor = '';
       setPlacingStage(false);
-      if (draw) {
-        map.addControl(draw, 'top-right');
-      }
     });
   }, [saveStages]);
 
-  const updateStage = useCallback((id: string, field: keyof Stage, value: string) => {
+  const updateStage = useCallback((id: string, field: keyof Stage, value: string | number) => {
     setStages(prev => {
       const updated = prev.map(s => s.id === id ? { ...s, [field]: value } : s);
       saveStages(updated);
@@ -366,8 +494,49 @@ export function MapEditorPage() {
     });
   }, [saveStages]);
 
-  const deleteStage = useCallback((id: string) => {
+  const handleStageIconUpload = useCallback(async (stageId: string, file: File) => {
+    const validationErr = validateMarkerFile(file);
+    if (validationErr) { alert(validationErr); return; }
+    setUploadingStageIconId(stageId);
+    try {
+      let uploadFile = file;
+      if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+        uploadFile = await compressMarkerFileIfNeeded(uploadFile);
+        if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+          alert(`Image is still too large after compression (${Math.round(uploadFile.size / 1024)}KB). Try a smaller or simpler image.`);
+          return;
+        }
+      }
+      const url = await uploadStageIcon(uploadFile, stageId);
+      setStages(prev => {
+        const updated = prev.map(s => s.id === stageId ? { ...s, iconAsset: url, iconSize: s.iconSize ?? DEFAULT_ICON_SIZE } : s);
+        saveStages(updated);
+        return updated;
+      });
+    } catch (err) {
+      console.error('Failed to upload stage icon:', err);
+      alert('Failed to upload icon: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setUploadingStageIconId(null);
+    }
+  }, [saveStages]);
+
+  const handleStageIconRemove = useCallback((stageId: string) => {
     setStages(prev => {
+      const updated = prev.map(s => s.id === stageId ? { ...s, iconAsset: undefined } : s);
+      saveStages(updated);
+      return updated;
+    });
+  }, [saveStages]);
+
+  const deleteStage = useCallback((id: string) => {
+    // saveStages() does a full-document overwrite of config/mapStages, so a
+    // stray click here permanently wipes it with no undo — confirm first.
+    setStages(prev => {
+      const target = prev.find(s => s.id === id);
+      if (target && !window.confirm(`Delete stage "${target.name}"? This cannot be undone.`)) {
+        return prev;
+      }
       const updated = prev.filter(s => s.id !== id);
       saveStages(updated);
       return updated;
@@ -405,7 +574,7 @@ export function MapEditorPage() {
       name: newName.trim(),
       category: newCategory,
       color: newColor,
-      icon: newCategory === 'stage' ? 'stage' : '',
+      icon: '',
       description: '',
     };
     // Update the Draw feature color
@@ -420,6 +589,235 @@ export function MapEditorPage() {
     setNewFeatureDialog(null);
     updateLabels();
   }, [newFeatureDialog, newName, newCategory, newColor, updateLabels]);
+
+  // Persist edits made to an already-existing zone/POI feature (name,
+  // category, color, description) — previously the "Selected feature editor"
+  // panel only ever displayed these fields read-only, with no way to correct
+  // a miscategorized feature (e.g. a Point defaulting to 'infrastructure'
+  // when drawn, even if it's really a stage) short of deleting and redrawing.
+  const saveFeatureEdit = useCallback(() => {
+    if (!editingFeature) return;
+    const drawId = Object.keys(drawIdToProps).find(
+      (k) => drawIdToProps[k]?.id === editingFeature.id
+    );
+    if (!drawId) return;
+    drawIdToProps[drawId] = {
+      ...drawIdToProps[drawId],
+      name: editingFeature.name,
+      category: editingFeature.category,
+      color: editingFeature.color,
+      description: editingFeature.description,
+      iconAsset: editingFeature.iconAsset,
+      iconLat: editingFeature.iconLat,
+      iconLng: editingFeature.iconLng,
+      showTitle: editingFeature.showTitle,
+      iconSize: editingFeature.iconSize,
+    };
+    const draw = drawRef.current;
+    if (draw) {
+      const feat = draw.get(drawId);
+      if (feat) {
+        feat.properties = { ...feat.properties, ...drawIdToProps[drawId] };
+        draw.add(feat);
+      }
+    }
+    // The sidebar's category-grouped list reads from loadedFeatures (a
+    // snapshot taken at load time), not drawIdToProps — keep it in sync so
+    // the edit shows up immediately instead of only after a page reload.
+    setLoadedFeatures((prev) =>
+      prev.map((f) =>
+        f.properties?.id === editingFeature.id
+          ? {
+              ...f,
+              properties: {
+                ...f.properties,
+                name: editingFeature.name,
+                category: editingFeature.category,
+                color: editingFeature.color,
+                description: editingFeature.description,
+                iconAsset: editingFeature.iconAsset,
+                iconLat: editingFeature.iconLat,
+                iconLng: editingFeature.iconLng,
+                showTitle: editingFeature.showTitle,
+                iconSize: editingFeature.iconSize,
+              },
+            }
+          : f
+      )
+    );
+    updateLabels();
+  }, [editingFeature, updateLabels]);
+
+  // Uploads an icon image/SVG for the selected zone and, if it doesn't
+  // already have a placed position, defaults it to the polygon's centroid so
+  // it starts somewhere visible inside the shape (draggable afterward).
+  const handleZoneIconUpload = useCallback(async (file: File) => {
+    if (!editingFeature) return;
+    const validationErr = validateMarkerFile(file);
+    if (validationErr) {
+      alert(validationErr);
+      return;
+    }
+    let uploadFile = file;
+    if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+      uploadFile = await compressMarkerFileIfNeeded(uploadFile);
+      if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+        alert(`Image is still too large after compression (${Math.round(uploadFile.size / 1024)}KB). Try a smaller or simpler image.`);
+        return;
+      }
+    }
+    setUploadingZoneIcon(true);
+    try {
+      const url = await uploadZoneIcon(uploadFile, editingFeature.id);
+      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+      const zoneFeature = loadedFeatures.find((lf) => lf.properties?.id === editingFeature.id);
+      const coords = zoneFeature?.geometry?.type === 'Polygon' ? zoneFeature.geometry.coordinates[0] : null;
+      const centroid = coords ? getCentroid(coords) : null;
+      const hasExistingPosition = editingFeature.iconLat !== undefined && editingFeature.iconLng !== undefined;
+      const iconLng = hasExistingPosition ? editingFeature.iconLng : (centroid ? centroid[0] : editingFeature.iconLng);
+      const iconLat = hasExistingPosition ? editingFeature.iconLat : (centroid ? centroid[1] : editingFeature.iconLat);
+
+      // Render on the map immediately (like the drag/title-toggle behavior)
+      // instead of waiting for "Save Changes" -- previously the sidebar
+      // preview showed the uploaded image right away but the actual map
+      // marker only appeared after a separate Save Changes click, which
+      // looked like the upload silently did nothing.
+      if (drawId) {
+        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconAsset: url, iconLat, iconLng, iconSize: editingFeature.iconSize };
+      }
+      setLoadedFeatures((prev) =>
+        prev.map((f) =>
+          f.properties?.id === editingFeature.id
+            ? { ...f, properties: { ...f.properties, iconAsset: url, iconLat, iconLng, iconSize: editingFeature.iconSize } }
+            : f
+        )
+      );
+      setEditingFeature((p) => p && { ...p, iconAsset: url, iconLat, iconLng });
+    } catch (err) {
+      console.error('Failed to upload zone icon:', err);
+      alert('Failed to upload icon: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setUploadingZoneIcon(false);
+      // Reset here (not immediately onChange) so the native input keeps
+      // showing the picked filename while the upload is in flight instead of
+      // reverting to "No file chosen" before anything visibly happened.
+      if (zoneIconFileInputRef.current) zoneIconFileInputRef.current.value = '';
+    }
+  }, [editingFeature, loadedFeatures]);
+
+  // Ref-counted suppress/restore of Draw's own layer hit-testing, shared by
+  // (a) the explicit zone-icon lock toggle below and (b) automatic transient
+  // suppression during any POI/stage marker drag -- Draw's simple_select
+  // mode grabs whatever feature is under the cursor on mousedown regardless
+  // of what's rendered on top of it in the DOM, so dragging a marker sitting
+  // inside a zone polygon was also dragging the zone underneath it. A ref
+  // count (not a boolean) means an explicit lock and a concurrent marker
+  // drag don't step on each other -- restoring only actually happens once
+  // every active reason has released it.
+  //
+  // Originally the lock toggle called map.removeControl(draw)/addControl(draw)
+  // to fully detach Draw, but re-adding it after a removal throws "already a
+  // source with ID mapbox-gl-draw-cold" -- mapbox-gl-draw's onRemove doesn't
+  // fully tear down its internal sources, so a second addControl collides
+  // with the still-present ones. Toggling each Draw layer's visibility
+  // instead keeps Draw fully attached (no re-add needed) while making its
+  // features un-hit-testable -- Mapbox's internal click detection for Draw
+  // is based on queryRenderedFeatures, which skips hidden layers. A plain
+  // non-interactive GeoJSON copy of the zones fills the resulting visual gap
+  // so zone shapes stay visible the whole time.
+  const drawHitTestSuppressCount = useRef(0);
+
+  const suppressDrawHitTesting = useCallback(() => {
+    const map = mapRef.current;
+    const draw = drawRef.current;
+    if (!map || !draw) return;
+    drawHitTestSuppressCount.current += 1;
+    if (drawHitTestSuppressCount.current > 1) return; // already suppressed
+    try {
+      for (const style of drawStyles) {
+        if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', 'none');
+      }
+      if (!map.getSource('zones-lock-preview')) {
+        const snapshot = draw.getAll();
+        map.addSource('zones-lock-preview', { type: 'geojson', data: snapshot });
+        map.addLayer({
+          id: 'zones-lock-preview-fill',
+          type: 'fill',
+          source: 'zones-lock-preview',
+          filter: ['==', '$type', 'Polygon'],
+          paint: { 'fill-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'fill-opacity': 0.15 },
+        });
+        map.addLayer({
+          id: 'zones-lock-preview-line',
+          type: 'line',
+          source: 'zones-lock-preview',
+          filter: ['==', '$type', 'Polygon'],
+          paint: { 'line-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'line-width': 2 },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to suppress Draw hit-testing:', err);
+    }
+  }, []);
+
+  const restoreDrawHitTesting = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    drawHitTestSuppressCount.current = Math.max(0, drawHitTestSuppressCount.current - 1);
+    if (drawHitTestSuppressCount.current > 0) return; // still needed elsewhere
+    try {
+      for (const style of drawStyles) {
+        if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', 'visible');
+      }
+      if (map.getLayer('zones-lock-preview-fill')) map.removeLayer('zones-lock-preview-fill');
+      if (map.getLayer('zones-lock-preview-line')) map.removeLayer('zones-lock-preview-line');
+      if (map.getSource('zones-lock-preview')) map.removeSource('zones-lock-preview');
+    } catch (_) { /* already visible / already removed */ }
+  }, []);
+
+  // Arms suppression on the marker's own native mousedown (bubble-phase
+  // listeners on the actual event target always run before any ancestor's
+  // listener, regardless of registration order) instead of mapboxgl.Marker's
+  // 'dragstart' event -- dragstart only fires on the first mousemove AFTER
+  // mousedown, by which point Draw's own map-level mousedown handler (bound
+  // at map init, well before any marker exists) has ALREADY synchronously
+  // hit-tested and grabbed the polygon underneath. Restoring on the next
+  // window 'mouseup' (not the marker's 'dragend') covers plain clicks too --
+  // dragend never fires for a mousedown+mouseup with no movement, which
+  // would otherwise leave Draw permanently un-hit-testable.
+  const armDrawSuppressOnMousedown = useCallback((el: HTMLElement) => {
+    el.addEventListener('mousedown', () => {
+      suppressDrawHitTesting();
+      const onUp = () => {
+        restoreDrawHitTesting();
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mouseup', onUp);
+    });
+  }, [suppressDrawHitTesting, restoreDrawHitTesting]);
+
+  const toggleIconMoveLock = useCallback(() => {
+    setIconMoveLocked((prev) => {
+      const next = !prev;
+      // Note: deliberately NOT calling draw.changeMode() here -- doing so
+      // fires a selectionchange with an empty feature list, which clears
+      // editingFeature and immediately triggers the safety-net effect below
+      // to auto-unlock. Suppressing hit-testing alone is enough to stop
+      // drags, so the current selection can stay intact.
+      if (next) suppressDrawHitTesting(); else restoreDrawHitTesting();
+      return next;
+    });
+  }, [suppressDrawHitTesting, restoreDrawHitTesting]);
+
+  // Safety net: never leave Draw's layers hidden if the selection is cleared
+  // while locked (e.g. user clicks elsewhere) -- there'd be no way to unlock
+  // via the (now-hidden, no editingFeature) button otherwise.
+  useEffect(() => {
+    if (!editingFeature && iconMoveLocked) {
+      restoreDrawHitTesting();
+      setIconMoveLocked(false);
+    }
+  }, [editingFeature, iconMoveLocked, restoreDrawHitTesting]);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -443,9 +841,19 @@ export function MapEditorPage() {
 
     const draw = new MapboxDraw({
       displayControlsDefault: false,
+      // Required for drawStyles' `['get', 'user_color']` expressions to see
+      // our custom `color` property at all -- without this, Draw never
+      // exposes non-builtin properties to the GL style layer, so every zone
+      // silently rendered with the hardcoded '#3bb2d0' fallback instead of
+      // its real stored color.
+      userProperties: true,
       controls: {
+        // Point marker creation is retired — POIManager (mapPOIs collection)
+        // is now the only path for markers, so they actually reach the
+        // mobile app instead of being invisible zone-doc Points (see
+        // MEMORY known-issues: the POI architecture migration).
         polygon: true,
-        point: true,
+        point: false,
         trash: true,
       },
       styles: drawStyles,
@@ -453,6 +861,17 @@ export function MapEditorPage() {
     drawRef.current = draw;
     map.addControl(draw, 'top-right');
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    const addPOIControl = new AddPOIControl(() => {
+      addPOIControlRef.current?.setActive(true);
+      map.getCanvas().style.cursor = 'crosshair';
+      map.once('click', (e: mapboxgl.MapMouseEvent) => {
+        map.getCanvas().style.cursor = '';
+        addPOIControlRef.current?.setActive(false);
+        setPendingPOIPin({ lat: e.lngLat.lat, lng: e.lngLat.lng, nonce: Date.now() });
+      });
+    });
+    addPOIControlRef.current = addPOIControl;
+    map.addControl(addPOIControl, 'top-right');
 
     map.on('mousemove', (e: mapboxgl.MapMouseEvent) => {
       setCursor({ lng: e.lngLat.lng, lat: e.lngLat.lat });
@@ -472,6 +891,11 @@ export function MapEditorPage() {
             category: props.category as string,
             color: props.color as string,
             description: (props.description as string) || '',
+            iconAsset: (props.iconAsset as string) || undefined,
+            iconLat: props.iconLat as number | undefined,
+            iconLng: props.iconLng as number | undefined,
+            showTitle: props.showTitle !== false,
+            iconSize: typeof props.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE,
           });
         }
       } else {
@@ -485,14 +909,14 @@ export function MapEditorPage() {
     });
 
     map.on('draw.create', (e: { features: GeoJSON.Feature[] }) => {
+      // Only polygon zones can be drawn now (point control is disabled above).
       if (e.features.length > 0) {
         const f = e.features[0];
         const drawId = f.id as string;
-        const geoType = f.geometry.type;
-        setNewFeatureDialog({ drawId, type: geoType });
+        setNewFeatureDialog({ drawId, type: f.geometry.type });
         setNewName('');
-        setNewCategory(geoType === 'Point' ? 'infrastructure' : 'camping');
-        setNewColor(geoType === 'Point' ? '#FF6B35' : '#10B981');
+        setNewCategory('camping');
+        setNewColor('#10B981');
       }
     });
 
@@ -528,22 +952,25 @@ export function MapEditorPage() {
         }
       }
 
-      // Add label layer
-      const labelFeatures: GeoJSON.Feature[] = featuresToLoad.map((f) => {
-        let center: [number, number];
-        if (f.geometry.type === 'Point') {
-          center = f.geometry.coordinates as [number, number];
-        } else if (f.geometry.type === 'Polygon') {
-          center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
-        } else {
-          center = [0, 0];
-        }
-        return {
-          type: 'Feature' as const,
-          properties: { name: f.properties?.name ?? '' },
-          geometry: { type: 'Point' as const, coordinates: center },
-        };
-      });
+      // Add label layer (skips zones with showTitle explicitly set to false —
+      // those show only their icon on the map, per the per-zone toggle).
+      const labelFeatures: GeoJSON.Feature[] = featuresToLoad
+        .filter((f) => f.properties?.showTitle !== false)
+        .map((f) => {
+          let center: [number, number];
+          if (f.geometry.type === 'Point') {
+            center = f.geometry.coordinates as [number, number];
+          } else if (f.geometry.type === 'Polygon') {
+            center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
+          } else {
+            center = [0, 0];
+          }
+          return {
+            type: 'Feature' as const,
+            properties: { name: f.properties?.name ?? '' },
+            geometry: { type: 'Point' as const, coordinates: center },
+          };
+        });
 
       map.addSource('labels', {
         type: 'geojson',
@@ -584,23 +1011,53 @@ export function MapEditorPage() {
     stageMarkersRef.current.forEach(m => m.remove());
     stageMarkersRef.current = [];
     for (const stage of stages) {
-      const el = document.createElement('div');
-      el.style.width = '32px';
-      el.style.height = '32px';
-      el.style.borderRadius = '6px';
-      el.style.backgroundColor = stage.color;
-      el.style.border = '3px solid white';
-      el.style.cursor = 'grab';
-      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
-      el.style.display = 'flex';
-      el.style.alignItems = 'center';
-      el.style.justifyContent = 'center';
-      el.style.fontSize = '16px';
-      el.innerHTML = '🎵';
-      el.title = stage.name;
+      const assetUrl = getImageDisplayUrl(stage.iconAsset);
+      let el: HTMLElement;
+      if (assetUrl) {
+        // Custom logo — raw image at its own aspect ratio (no border/
+        // background box), same treatment as zone icons so transparency and
+        // proportions match the uploaded file exactly.
+        const targetSize = stage.iconSize ?? DEFAULT_ICON_SIZE;
+        const img = document.createElement('img');
+        img.src = assetUrl;
+        img.draggable = false;
+        img.style.display = 'block';
+        img.style.cursor = 'grab';
+        img.style.filter = 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))';
+        img.title = stage.name;
+        img.style.width = `${targetSize}px`;
+        img.style.height = `${targetSize}px`;
+        img.onload = () => {
+          const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+          if (ratio >= 1) {
+            img.style.width = `${targetSize}px`;
+            img.style.height = `${targetSize / ratio}px`;
+          } else {
+            img.style.height = `${targetSize}px`;
+            img.style.width = `${targetSize * ratio}px`;
+          }
+        };
+        el = img;
+      } else {
+        el = document.createElement('div');
+        el.style.width = '32px';
+        el.style.height = '32px';
+        el.style.borderRadius = '6px';
+        el.style.backgroundColor = stage.color;
+        el.style.border = '3px solid white';
+        el.style.cursor = 'grab';
+        el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.fontSize = '16px';
+        el.innerHTML = '🎵';
+        el.title = stage.name;
+      }
       const marker = new mapboxgl.Marker({ element: el, draggable: true })
         .setLngLat([stage.lng, stage.lat])
         .addTo(map);
+      armDrawSuppressOnMousedown(el);
       marker.on('dragend', () => {
         const lngLat = marker.getLngLat();
         setStages(prev => {
@@ -613,7 +1070,7 @@ export function MapEditorPage() {
       });
       stageMarkersRef.current.push(marker);
     }
-  }, [stages, saveStages]);
+  }, [stages, saveStages, armDrawSuppressOnMousedown]);
 
   // Render POI markers on map
   useEffect(() => {
@@ -625,29 +1082,135 @@ export function MapEditorPage() {
     // Add new markers
     for (const poi of pois) {
       const el = document.createElement('div');
-      el.style.width = '20px';
-      el.style.height = '20px';
-      el.style.borderRadius = '50%';
-      el.style.backgroundColor = poi.color;
-      el.style.border = '2px solid white';
-      el.style.cursor = 'pointer';
-      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
-      if (poi.id === selectedPOIId) {
-        el.style.width = '26px';
-        el.style.height = '26px';
-        el.style.border = '3px solid #6BBF59';
+      const isSelected = poi.id === selectedPOIId;
+      const size = isSelected ? 26 : 20;
+      const assetUrl = getImageDisplayUrl(poi.markerAsset);
+      if (assetUrl) {
+        // Custom uploaded icon (image/SVG) replaces the plain color circle —
+        // matches what mobile actually renders, so admin previews the truth.
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.borderRadius = '6px';
+        el.style.border = isSelected ? '3px solid #6BBF59' : '2px solid white';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
+        el.style.backgroundColor = '#1C2B20';
+        el.style.overflow = 'hidden';
+        el.style.cursor = 'pointer';
+        const img = document.createElement('img');
+        img.src = assetUrl;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        el.appendChild(img);
+      } else {
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = poi.color;
+        el.style.border = isSelected ? '3px solid #6BBF59' : '2px solid white';
+        el.style.cursor = 'pointer';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
       }
       el.title = poi.name;
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         setSelectedPOIId(poi.id);
       });
-      const marker = new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el, draggable: true })
         .setLngLat([poi.lng, poi.lat])
         .addTo(map);
+      armDrawSuppressOnMousedown(el);
+      marker.on('dragend', () => {
+        const { lat, lng } = marker.getLngLat();
+        setPendingPOIDrag({ poiId: poi.id, lat, lng, prevLat: poi.lat, prevLng: poi.lng, nonce: Date.now() });
+      });
       poiMarkersRef.current.push(marker);
     }
-  }, [pois, selectedPOIId]);
+  }, [pois, selectedPOIId, armDrawSuppressOnMousedown]);
+
+  // Render draggable icon markers for zones that have an uploaded icon asset.
+  // Position defaults to the polygon centroid (set at upload time in
+  // handleZoneIconUpload) and can be repositioned anywhere within the zone by
+  // dragging. Rendered as the raw image at its own aspect ratio (no border/
+  // background box) so transparency and proportions match the uploaded file
+  // exactly; iconSize controls the long-edge pixel size via the size slider.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    zoneIconMarkersRef.current.forEach(m => m.remove());
+    zoneIconMarkersRef.current = [];
+    for (const f of loadedFeatures) {
+      const props = f.properties as Record<string, unknown> | undefined;
+      const iconAsset = props?.iconAsset as string | undefined;
+      if (!iconAsset) continue;
+      const assetUrl = getImageDisplayUrl(iconAsset);
+      if (!assetUrl) continue;
+      const lat = props?.iconLat as number | undefined;
+      const lng = props?.iconLng as number | undefined;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const targetSize = typeof props?.iconSize === 'number' ? props.iconSize : DEFAULT_ICON_SIZE;
+
+      const img = document.createElement('img');
+      img.src = assetUrl;
+      img.draggable = false;
+      img.style.display = 'block';
+      img.style.cursor = 'grab';
+      img.style.filter = 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))';
+      img.title = `${props?.name ?? ''} icon (drag to reposition)`;
+      // Assume square until onload reports the real ratio, so there's no
+      // flash of a full-resolution image before it gets sized down.
+      img.style.width = `${targetSize}px`;
+      img.style.height = `${targetSize}px`;
+      // Size to the image's own aspect ratio once known, instead of forcing
+      // it into a fixed square box (which either distorted or letterboxed
+      // non-square logos).
+      img.onload = () => {
+        const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+        if (ratio >= 1) {
+          img.style.width = `${targetSize}px`;
+          img.style.height = `${targetSize / ratio}px`;
+        } else {
+          img.style.height = `${targetSize}px`;
+          img.style.width = `${targetSize * ratio}px`;
+        }
+      };
+
+      const zoneId = props?.id as string;
+      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === zoneId);
+      const marker = new mapboxgl.Marker({ element: img, draggable: true })
+        .setLngLat([lng as number, lat as number])
+        .addTo(map);
+      marker.on('dragend', () => {
+        const newLngLat = marker.getLngLat();
+        // Read the polygon ring from React state (loadedFeatures), not
+        // draw.get() -- Draw is detached while the icon-move lock is on
+        // (that's the whole point of the lock), and calling into its API
+        // after removeControl() throws internally instead of just no-op'ing.
+        const zoneFeature = loadedFeatures.find((lf) => lf.properties?.id === zoneId);
+        const ring = zoneFeature?.geometry?.type === 'Polygon' ? zoneFeature.geometry.coordinates[0] : null;
+        if (ring && !isPointInPolygon([newLngLat.lng, newLngLat.lat], ring)) {
+          // Dropped outside the zone -- snap back rather than let the icon
+          // wander off the area it belongs to.
+          marker.setLngLat([lng as number, lat as number]);
+          return;
+        }
+        if (drawId) {
+          drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconLat: newLngLat.lat, iconLng: newLngLat.lng };
+        }
+        setLoadedFeatures((prev) =>
+          prev.map((feat) =>
+            feat.properties?.id === zoneId
+              ? { ...feat, properties: { ...feat.properties, iconLat: newLngLat.lat, iconLng: newLngLat.lng } }
+              : feat
+          )
+        );
+        if (editingFeature?.id === zoneId) {
+          setEditingFeature((p) => p && { ...p, iconLat: newLngLat.lat, iconLng: newLngLat.lng });
+        }
+      });
+      zoneIconMarkersRef.current.push(marker);
+    }
+  }, [loadedFeatures, editingFeature?.id]);
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -661,51 +1224,252 @@ export function MapEditorPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-          {CATEGORIES.map((cat) => {
-            const items = grouped[cat];
-            if (!items?.length) return null;
-            return (
-              <div key={cat}>
-                <div className="text-sm font-bold text-[#F5F5DC]/60 uppercase tracking-wider px-2 py-1 mb-1">
-                  {CATEGORY_LABELS[cat]}
+          {/* Section 1: Zones — grouped by camping/entertainment/staff, with
+              POIs and stages nested under whichever zone geographically
+              contains them. */}
+          <div>
+            <div className="text-sm font-bold text-[#F5F5DC] px-2 py-1 mb-1">🗺️ Zones</div>
+            {CATEGORIES.map((cat) => {
+              const zonesInCat = groupedZones[cat];
+              if (!zonesInCat?.length) return null;
+              return (
+                <div key={cat} className="mb-2">
+                  <div className="text-xs font-bold text-[#F5F5DC]/60 uppercase tracking-wider px-2 py-1">
+                    {CATEGORY_LABELS[cat]}
+                  </div>
+                  {zonesInCat.map((f) => {
+                    const props = f.properties!;
+                    const isSelected = selectedId === props.id;
+                    const contents = zoneContents.get(props.id as string) ?? [];
+                    return (
+                      <div key={props.id}>
+                        <button
+                          onClick={() => flyTo(f)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-left transition-colors ${
+                            isSelected
+                              ? 'bg-[#6BBF59]/25 text-[#6BBF59] ring-1 ring-[#6BBF59]/40'
+                              : 'text-[#F5F5DC]/80 hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="shrink-0 w-4 h-4 rounded-sm" style={{ backgroundColor: props.color }} />
+                          <span className="truncate font-medium">{props.name}</span>
+                        </button>
+                        {contents.length > 0 && (
+                          <div className="pl-6 space-y-0.5 mt-0.5 mb-1">
+                            {contents.map((item) => (
+                              <button
+                                key={item.key}
+                                onClick={() => flyToPoiLike(item)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
+                                  item.kind === 'poi' && selectedPOIId === item.id
+                                    ? 'bg-[#6BBF59]/20 text-[#6BBF59]'
+                                    : 'text-[#F5F5DC]/60 hover:bg-white/5'
+                                }`}
+                              >
+                                <span className="shrink-0">{item.icon}</span>
+                                <span className="truncate">{item.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                {items.map((f) => {
-                  const props = f.properties!;
-                  const isSelected = selectedId === props.id;
-                  return (
-                    <button
-                      key={props.id}
-                      onClick={() => flyTo(f)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-left transition-colors ${
-                        isSelected
-                          ? 'bg-[#6BBF59]/25 text-[#6BBF59] ring-1 ring-[#6BBF59]/40'
-                          : 'text-[#F5F5DC]/80 hover:bg-white/5'
-                      }`}
-                    >
-                      <span
-                        className={`shrink-0 ${f.geometry.type === 'Point' ? 'w-4 h-4 rounded-full border-2 border-white/60' : 'w-4 h-4 rounded-sm'}`}
-                        style={{ backgroundColor: props.color }}
-                      />
-                      <span className="truncate font-medium">{props.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Section 2: POIs/stages outside any zone. */}
+          {orphanPoiLikeItems.length > 0 && (
+            <div>
+              <div className="text-sm font-bold text-[#F5F5DC] px-2 py-1 mb-1">📍 POIs (outside any zone)</div>
+              {orphanPoiLikeItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => flyToPoiLike(item)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-left transition-colors ${
+                    item.kind === 'poi' && selectedPOIId === item.id
+                      ? 'bg-[#6BBF59]/25 text-[#6BBF59] ring-1 ring-[#6BBF59]/40'
+                      : 'text-[#F5F5DC]/80 hover:bg-white/5'
+                  }`}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className="truncate font-medium">{item.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
         {/* Selected feature editor */}
         {editingFeature && (
           <div className="p-3 border-t border-[#F5F5DC]/10 bg-[#2E4031]/50 space-y-2">
-            <div className="text-sm font-bold text-[#F5F5DC]">
-              Editing: {editingFeature.name}
+            <div className="text-sm font-bold text-[#F5F5DC]">Edit selected feature</div>
+            <input
+              type="text"
+              value={editingFeature.name}
+              onChange={(e) => setEditingFeature((p) => p && { ...p, name: e.target.value })}
+              placeholder="Name"
+              className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm placeholder:text-[#F5F5DC]/30 focus:outline-none focus:ring-1 focus:ring-[#6BBF59]/50"
+            />
+            <div className="flex gap-2">
+              <select
+                value={editingFeature.category}
+                onChange={(e) => setEditingFeature((p) => p && { ...p, category: e.target.value })}
+                className="flex-1 px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none"
+              >
+                <option value="camping">⛺ Camping</option>
+                <option value="entertainment">🎉 Entertainment</option>
+                <option value="staff">👥 Staff</option>
+              </select>
+              <input
+                type="color"
+                value={editingFeature.color}
+                onChange={(e) => setEditingFeature((p) => p && { ...p, color: e.target.value })}
+                className="w-10 h-8 rounded border border-[#F5F5DC]/20 bg-[#1C2B20] cursor-pointer"
+              />
             </div>
-            <div className="text-xs text-[#F5F5DC]/50">
-              Category: {editingFeature.category} • Color: {editingFeature.color}
+            <input
+              type="text"
+              value={editingFeature.description}
+              onChange={(e) => setEditingFeature((p) => p && { ...p, description: e.target.value })}
+              placeholder="Description (optional)"
+              className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm placeholder:text-[#F5F5DC]/30 focus:outline-none"
+            />
+            <div className="space-y-1.5">
+              <label className="text-xs text-[#F5F5DC]/50">Icon image/SVG (optional — drag on map to position)</label>
+              <div className="flex items-center gap-2">
+                {editingFeature.iconAsset && (
+                  <img
+                    src={getImageDisplayUrl(editingFeature.iconAsset) || undefined}
+                    alt="zone icon preview"
+                    className="w-9 h-9 rounded border border-[#F5F5DC]/20 bg-[#1C2B20] object-contain"
+                  />
+                )}
+                <input
+                  ref={zoneIconFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleZoneIconUpload(file);
+                  }}
+                  disabled={uploadingZoneIcon}
+                  className="flex-1 text-xs text-[#F5F5DC]/60 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-[#6BBF59]/20 file:text-[#6BBF59] file:text-xs"
+                />
+                {uploadingZoneIcon && (
+                  <span className="flex items-center gap-1 text-xs text-[#6BBF59] shrink-0">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading…
+                  </span>
+                )}
+                {editingFeature.iconAsset && !uploadingZoneIcon && (
+                  <button
+                    onClick={() => {
+                      // Applies immediately, same as the upload path above --
+                      // otherwise the marker would linger on the map until
+                      // Save Changes despite the sidebar preview already
+                      // being cleared.
+                      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+                      if (drawId) {
+                        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true };
+                      }
+                      setLoadedFeatures((prev) =>
+                        prev.map((f) =>
+                          f.properties?.id === editingFeature.id
+                            ? { ...f, properties: { ...f.properties, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true } }
+                            : f
+                        )
+                      );
+                      setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true });
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 shrink-0"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {editingFeature.iconAsset && (
+                <label className="flex items-center gap-2 text-xs text-[#F5F5DC]/60 pt-1">
+                  <input
+                    type="checkbox"
+                    checked={editingFeature.showTitle}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      // Applies immediately (like dragging the icon marker)
+                      // rather than waiting on "Save Changes" -- a visibility
+                      // toggle reads as an instant preview, not a staged edit.
+                      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+                      if (drawId) {
+                        drawIdToProps[drawId] = { ...drawIdToProps[drawId], showTitle: checked };
+                      }
+                      setLoadedFeatures((prev) =>
+                        prev.map((f) =>
+                          f.properties?.id === editingFeature.id
+                            ? { ...f, properties: { ...f.properties, showTitle: checked } }
+                            : f
+                        )
+                      );
+                      setEditingFeature((p) => p && { ...p, showTitle: checked });
+                      updateLabels();
+                    }}
+                    className="accent-[#6BBF59]"
+                  />
+                  Show zone title on map (uncheck to show only the icon)
+                </label>
+              )}
+              {editingFeature.iconAsset && (
+                <div className="pt-1">
+                  <label className="text-xs text-[#F5F5DC]/60 flex justify-between">
+                    <span>Icon size</span>
+                    <span>{editingFeature.iconSize}px</span>
+                  </label>
+                  <input
+                    type="range"
+                    min={16}
+                    max={300}
+                    step={4}
+                    value={editingFeature.iconSize}
+                    onChange={(e) => {
+                      const size = Number(e.target.value);
+                      // Applies immediately, same as the title toggle/drag —
+                      // a size slider is expected to preview live.
+                      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+                      if (drawId) {
+                        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconSize: size };
+                      }
+                      setLoadedFeatures((prev) =>
+                        prev.map((f) =>
+                          f.properties?.id === editingFeature.id
+                            ? { ...f, properties: { ...f.properties, iconSize: size } }
+                            : f
+                        )
+                      );
+                      setEditingFeature((p) => p && { ...p, iconSize: size });
+                    }}
+                    className="w-full accent-[#6BBF59]"
+                  />
+                  <button
+                    onClick={toggleIconMoveLock}
+                    className={`w-full mt-2 px-3 py-1.5 rounded text-xs font-bold transition-colors ${
+                      iconMoveLocked
+                        ? 'bg-[#6BBF59] text-[#1C2B20]'
+                        : 'bg-[#1C2B20] text-[#F5F5DC]/70 border border-[#F5F5DC]/20 hover:bg-white/5'
+                    }`}
+                  >
+                    {iconMoveLocked ? '🔒 Locked — dragging moves the icon only' : '🔓 Lock: drag icon only, not the zone'}
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="text-xs text-[#F5F5DC]/40 mt-1">
-              {editingFeature.description}
+            <button
+              onClick={saveFeatureEdit}
+              className="w-full px-3 py-2 rounded bg-[#6BBF59] text-[#1C2B20] font-bold text-sm hover:bg-[#6BBF59]/90"
+            >
+              Save Changes
+            </button>
+            <div className="text-[10px] text-[#F5F5DC]/40">
+              Click "Save Map" below to persist this change.
             </div>
           </div>
         )}
@@ -748,6 +1512,54 @@ export function MapEditorPage() {
                   <div className="text-[10px] text-[#F5F5DC]/40 font-mono px-1">
                     {stage.lat.toFixed(6)}, {stage.lng.toFixed(6)}
                   </div>
+                  <div className="flex items-center gap-2 px-1">
+                    {stage.iconAsset && (
+                      <img
+                        src={getImageDisplayUrl(stage.iconAsset) || undefined}
+                        alt="stage logo preview"
+                        className="w-8 h-8 rounded border border-[#F5F5DC]/20 bg-[#1C2B20] object-contain shrink-0"
+                      />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleStageIconUpload(stage.id, file);
+                        e.target.value = '';
+                      }}
+                      disabled={uploadingStageIconId === stage.id}
+                      className="flex-1 text-xs text-[#F5F5DC]/60 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-[#6BBF59]/20 file:text-[#6BBF59] file:text-xs"
+                    />
+                    {uploadingStageIconId === stage.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#6BBF59] shrink-0" />
+                    )}
+                    {stage.iconAsset && uploadingStageIconId !== stage.id && (
+                      <button
+                        onClick={() => handleStageIconRemove(stage.id)}
+                        className="text-xs text-red-400 hover:text-red-300 shrink-0"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {stage.iconAsset && (
+                    <div className="px-1">
+                      <label className="text-xs text-[#F5F5DC]/60 flex justify-between">
+                        <span>Logo size</span>
+                        <span>{stage.iconSize ?? DEFAULT_ICON_SIZE}px</span>
+                      </label>
+                      <input
+                        type="range"
+                        min={16}
+                        max={300}
+                        step={4}
+                        value={stage.iconSize ?? DEFAULT_ICON_SIZE}
+                        onChange={e => updateStage(stage.id, 'iconSize', Number(e.target.value))}
+                        className="w-full accent-[#6BBF59]"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
               <button
@@ -769,23 +1581,26 @@ export function MapEditorPage() {
         <POIManager
           onPOIsChanged={useCallback((newPois: POI[]) => { setPois(newPois); }, [])}
           onRequestMapClick={useCallback((cb: (lat: number, lng: number) => void) => {
-            // Remove draw control temporarily so clicks pass through
-            const draw = drawRef.current;
+            // Plain map click listener — Draw's own hit-testing only
+            // intercepts clicks on ITS OWN rendered features/controls, not
+            // the map's general 'click' event, so no need to touch Draw at
+            // all here. (Previously called map.removeControl(draw)/addControl
+            // to "let clicks pass through", which doesn't do anything for
+            // this purpose and crashes on re-add: mapbox-gl-draw's onRemove
+            // doesn't fully tear down its internal sources, so a second
+            // addControl throws "already a source with ID mapbox-gl-draw-cold"
+            // — silently breaking the whole picker.)
             const map = mapRef.current;
             if (!map) return;
-            if (draw) {
-              try { map.removeControl(draw); } catch (_) {}
-            }
             map.getCanvas().style.cursor = 'crosshair';
             map.once('click', (e: mapboxgl.MapMouseEvent) => {
               cb(e.lngLat.lat, e.lngLat.lng);
               map.getCanvas().style.cursor = '';
-              // Re-add draw control
-              if (draw) {
-                map.addControl(draw, 'top-right');
-              }
             });
           }, [])}
+          pendingPin={pendingPOIPin}
+          dragUpdate={pendingPOIDrag}
+          zones={zonePolygons.map((z) => ({ id: z.properties?.id as string, name: z.properties?.name as string }))}
           selectedPOIId={selectedPOIId}
           onSelectPOI={useCallback((id: string | null) => {
             setSelectedPOIId(id);
@@ -795,6 +1610,7 @@ export function MapEditorPage() {
             }
           }, [pois])}
         />
+        </div>
 
         {/* Action buttons */}
         <div className="p-3 border-t border-[#F5F5DC]/10 space-y-2">
@@ -833,14 +1649,14 @@ export function MapEditorPage() {
 
         {/* Instructions overlay */}
         <div className="absolute top-3 left-3 bg-[#1C2B20]/90 text-[#F5F5DC] text-sm px-4 py-2.5 rounded-lg backdrop-blur-sm space-y-1 max-w-xs">
-          <div className="font-bold">✏️ Drawing Tools</div>
+          <div className="font-bold">✏️ Drawing Tools (zones only)</div>
           <div className="text-xs text-[#F5F5DC]/70">
             <strong>✏️ Polygon tool</strong> (top-right) — click points to draw outline, double-click to finish<br/>
-            <strong>📍 Point tool</strong> — click to place a POI marker<br/>
             <strong>🗑️ Trash</strong> — select + delete<br/>
             <strong>Click</strong> existing zone to select & drag<br/>
             <strong>Drag corners</strong> to reshape<br/>
-            <strong>Click midpoints</strong> (orange dots) to add vertices
+            <strong>Click midpoints</strong> (orange dots) to add vertices<br/>
+            <strong>Need a marker?</strong> Use "Add" under POIs below, not the Draw tool
           </div>
         </div>
 
@@ -857,9 +1673,7 @@ export function MapEditorPage() {
       {newFeatureDialog && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1C2B20] border border-[#F5F5DC]/20 rounded-xl p-6 w-[360px] space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#F5F5DC]">
-              {newFeatureDialog.type === 'Point' ? '📍 New POI' : '✏️ New Zone'}
-            </h3>
+            <h3 className="text-lg font-bold text-[#F5F5DC]">✏️ New Zone</h3>
             <div>
               <label className="text-sm text-[#F5F5DC]/60 block mb-1">Name</label>
               <input
@@ -880,11 +1694,9 @@ export function MapEditorPage() {
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-[#2E4031] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none focus:ring-2 focus:ring-[#6BBF59]/50"
                 >
-                  <option value="stage">🎵 Stage</option>
                   <option value="camping">⛺ Camping</option>
-                  <option value="infrastructure">🏗️ Infrastructure</option>
+                  <option value="entertainment">🎉 Entertainment</option>
                   <option value="staff">👥 Staff</option>
-                  <option value="vendors">🛒 Vendors</option>
                 </select>
               </div>
               <div>

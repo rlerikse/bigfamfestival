@@ -4,10 +4,14 @@ import { getIdToken } from './firebaseAuthService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
-// POI interface (Point Of Interest)
+// POI interface (Point Of Interest) — mirrors backend/src/map/interfaces/poi.interface.ts
 export interface POI {
   id: string;
-  type: 'stage' | 'food_vendor' | 'shop_and_service' | 'beverage_vendor' | 'staff_and_medical' | 'friend_campsite' | 'friend_location';
+  type: 'stage' | 'infrastructure' | 'staff' | 'vendors' | 'friend_campsite' | 'friend_location';
+  /** Same value as `type` — backend emits both; MapScreen reads this one.
+   * Optional here since mock data only sets `type`; real API responses
+   * always include it. */
+  category?: 'stage' | 'infrastructure' | 'staff' | 'vendors' | 'friend_campsite' | 'friend_location';
   name: string;
   location: {
     lat: number;
@@ -16,6 +20,12 @@ export interface POI {
   description?: string;
   userId?: string;
   profilePictureUrl?: string;
+  /** Marker color (hex); MapScreen falls back to the category default when unset. */
+  color?: string;
+  /** Emoji icon fallback when no custom marker image is set. */
+  icon?: string;
+  /** Full HTTPS download URL for a custom marker image; empty/unset => emoji fallback. */
+  markerAsset?: string;
 }
 
 /**
@@ -207,35 +217,35 @@ const getMockPOIs = async (): Promise<POI[]> => {
     },
     {
       id: 'food-vendor-1',
-      type: 'food_vendor',
+      type: 'vendors',
       name: 'Food Truck Alley',
       location: { lat: baseLat + 0.001, long: baseLong - 0.001 },
       description: 'Various food options',
     },
     {
       id: 'beverage-vendor-1',
-      type: 'beverage_vendor',
+      type: 'vendors',
       name: 'Beverage Bar',
       location: { lat: baseLat + 0.0018, long: baseLong - 0.0015 },
       description: 'Drinks and beverages',
     },
     {
       id: 'shop-1',
-      type: 'shop_and_service',
+      type: 'vendors',
       name: 'Craft Marketplace',
       location: { lat: baseLat - 0.0015, long: baseLong - 0.002 },
       description: 'Local crafts and festival merchandise',
     },
     {
       id: 'staff-1',
-      type: 'staff_and_medical',
+      type: 'infrastructure',
       name: 'First Aid Tent',
       location: { lat: baseLat + 0.0005, long: baseLong + 0.002 },
       description: 'Medical assistance available 24/7',
     },
     {
       id: 'staff-2',
-      type: 'staff_and_medical',
+      type: 'staff',
       name: 'Staff HQ',
       location: { lat: baseLat - 0.002, long: baseLong + 0.0015 },
       description: 'Festival staff and information',

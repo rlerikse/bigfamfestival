@@ -1,20 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
-import { Accelerometer, Gyroscope, Magnetometer } from 'expo-sensors';
+import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
+import { Accelerometer, Gyroscope } from 'expo-sensors';
 import type { LngLat } from '../services/routingService';
-import { complementaryFilter, tiltCompensatedHeading, type Vec3 } from './compassFusion';
+import {
+  complementaryFilter,
+  createCircularMedianFilter,
+  signedAngularDiff,
+} from './compassFusion';
 
 /**
  * useDirectionalTracking — "hot/cold" per-friend focus mode.
  *
  * Given the user's live position + a target friend's coordinate, this hook:
- *  - Reads accelerometer + magnetometer + gyroscope, fused via a tilt-
- *    compensated compass calc + complementary filter, to derive a stable
- *    compass heading that only changes with yaw (turning left/right) — not
- *    with pitch/roll (tilting the phone up/down), and stays north-referenced
- *    without the gyro-only drift a single-sensor reading would have.
+ *  - Derives a fast, accurate device heading by fusing the high-rate gyroscope
+ *    (~60Hz, responsive but drifts) with the OS's calibrated true-north compass
+ *    (expo-location watchHeadingAsync, accurate but only ~7Hz on Android) as the
+ *    absolute anchor. The gyro yaw rate is projected onto gravity (from the
+ *    accelerometer) so it's correct regardless of how the phone is tilted/held.
  *  - Computes the great-circle bearing from user → target (haversine-based).
- *  - Smooths both with a short moving average to kill jitter.
  *  - Returns the angular delta (0° = dead-on, 180° = facing directly away)
  *    plus a 0..1 "closeness" value for driving the red→green gradient.
  *  - Fires a single haptic pulse the moment the user crosses into the
@@ -27,10 +31,24 @@ import { complementaryFilter, tiltCompensatedHeading, type Vec3 } from './compas
  */
 
 const LOCK_THRESHOLD_DEG = 15;
-const UPDATE_INTERVAL_MS = 100;
+
+// Accel + gyro sample interval. ~60Hz gives the gyro enough resolution to track
+// fast turns smoothly between the OS compass's slow (~7Hz on Android) updates.
+const SENSOR_INTERVAL_MS = 16;
+// Complementary-filter weight on the gyro-integrated estimate. High (0.98) =
+// mostly gyro frame-to-frame (fast, smooth) with the OS heading gently
+// correcting drift; the gyro rest-deadband keeps a still device from creeping.
+const FUSION_ALPHA = 0.98;
+// Cap how often we push a heading update to React (the map camera + HUD
+// re-project on each). The gyro runs at ~60Hz but ~30Hz output is plenty smooth
+// and halves re-renders.
+const OUTPUT_MIN_INTERVAL_MS = 33;
+// Don't emit a heading state update for changes smaller than this — a steadily
+// held heading then stays rock-steady instead of micro-bouncing.
+const HEADING_EMIT_DEADBAND_DEG = 0.75;
 
 export interface DirectionalTrackingState {
-  /** Smoothed device heading in degrees (0-360, 0 = magnetic north). */
+  /** Device compass heading in degrees (0-360, 0 = true north, from the OS). */
   heading: number;
   /** Smoothed bearing from user to target, in degrees. */
   targetBearing: number | null;
@@ -95,78 +113,112 @@ export function useDirectionalTracking(
   const wasLockedRef = useRef(false);
   const hasTarget = targetCoords !== null;
 
-  // Latest raw readings from each sensor, updated independently as they
-  // arrive (accel/mag/gyro don't necessarily fire in lockstep), plus the
-  // fused heading estimate and its last-update timestamp for the
-  // complementary filter's dt calculation.
-  const latestAccelRef = useRef<Vec3>({ x: 0, y: 0, z: 1 });
-  const latestMagRef = useRef<Vec3>({ x: 0, y: 0, z: 0 });
-  const fusedHeadingRef = useRef(0);
-  const lastGyroTimestampRef = useRef<number | null>(null);
+  // Fused heading estimate (gyro-integrated, OS-corrected) and its live inputs.
+  const fusedHeadingRef = useRef<number | null>(null);
+  const latestOsHeadingRef = useRef<number | null>(null);
+  const latestAccelRef = useRef({ x: 0, y: 0, z: 1 });
+  const lastGyroTsRef = useRef<number | null>(null);
+  const lastOutputAtRef = useRef(0);
+  const lastEmittedHeadingRef = useRef<number | null>(null);
+  // Median prefilter to reject isolated OS-compass spikes (a single sample
+  // jumping ~150°+ from magnetic interference) before it anchors the fusion.
+  const osMedianRef = useRef(createCircularMedianFilter(5));
 
-  // Subscribe to Accelerometer + Magnetometer + Gyroscope together while a
-  // target is active, OR when the caller explicitly needs a live heading
-  // regardless (e.g. the friend-radar HUD, but only while there are actually
-  // friends to point at — gated by the caller passing `needsHeading` based on
-  // friend count, so we're not streaming sensor reads at 10Hz for nothing).
-  //
-  // Full accel+mag+gyro sensor fusion (per Robert's #159 follow-up, decided
-  // 2026-07-30 19:2x EDT) replaces both the original raw-Magnetometer reading
-  // (not tilt-compensated — pitch/roll bled into heading) and the interim
-  // DeviceMotion.rotation.alpha fix (fixed the tilt bug but wasn't guaranteed
-  // true-north-referenced on iOS). This pipeline:
-  //  1. Accelerometer → gravity vector → pitch/roll.
-  //  2. Magnetometer → raw field vector, tilt-compensated using that
-  //     pitch/roll → absolute magnetic-north heading, immune to tilt.
-  //  3. Gyroscope → instantaneous yaw rate, integrated and blended with the
-  //     tilt-compensated magnetometer heading via a complementary filter —
-  //     smooths out magnetometer jitter/interference (festival grounds have
-  //     plenty of metal/speakers/generators) without the lag a magnetometer-
-  //     only low-pass filter would introduce.
-  // See compassFusion.ts for the vector math itself.
+  // Gyro-assisted heading fusion. The OS compass (watchHeadingAsync) is accurate
+  // and true-north but slow (~7Hz on Android) and noisy (~13° jitter measured on
+  // device), so filtering it alone is either laggy or jittery. Instead we run
+  // the gyroscope at ~60Hz for instant responsiveness and use the (de-spiked) OS
+  // heading only as a slow absolute anchor to cancel gyro drift. The gyro's yaw
+  // rate is projected onto the gravity vector (from the accelerometer) so it's
+  // the rotation about TRUE vertical regardless of how the phone is held — no
+  // flat-vs-upright assumption. Output is throttled + deadbanded to keep React
+  // re-renders (map camera / HUD) sane.
   useEffect(() => {
     if (!hasTarget && !needsHeading) return;
+    const osMedian = osMedianRef.current;
+    osMedian.reset();
+    fusedHeadingRef.current = null;
+    latestOsHeadingRef.current = null;
+    lastGyroTsRef.current = null;
+    lastOutputAtRef.current = 0;
+    lastEmittedHeadingRef.current = null;
 
-    Accelerometer.setUpdateInterval(UPDATE_INTERVAL_MS);
-    Magnetometer.setUpdateInterval(UPDATE_INTERVAL_MS);
-    Gyroscope.setUpdateInterval(UPDATE_INTERVAL_MS);
+    Accelerometer.setUpdateInterval(SENSOR_INTERVAL_MS);
+    Gyroscope.setUpdateInterval(SENSOR_INTERVAL_MS);
 
-    const accelSub = Accelerometer.addListener(({ x, y, z }) => {
-      latestAccelRef.current = { x, y, z };
+    const accelSub = Accelerometer.addListener((a) => {
+      latestAccelRef.current = a;
     });
-    const magSub = Magnetometer.addListener(({ x, y, z }) => {
-      latestMagRef.current = { x, y, z };
-    });
-    // Gyroscope is the pacing sensor for the fused estimate: each reading
-    // both advances the complementary filter's integrated yaw AND pulls in
-    // whatever the latest accel/mag vectors happen to be, since expo-sensors
-    // fires each listener independently rather than as a synchronized frame.
-    const gyroSub = Gyroscope.addListener(({ z }) => {
+
+    const gyroSub = Gyroscope.addListener(({ x, y, z }) => {
+      const os = latestOsHeadingRef.current;
+      if (os == null) return; // wait for the first OS heading to anchor the fusion
+
       const now = Date.now();
-      const last = lastGyroTimestampRef.current;
-      const dt = last != null ? Math.min((now - last) / 1000, 0.5) : UPDATE_INTERVAL_MS / 1000;
-      lastGyroTimestampRef.current = now;
+      const lastTs = lastGyroTsRef.current;
+      const dt = lastTs != null ? Math.min((now - lastTs) / 1000, 0.1) : SENSOR_INTERVAL_MS / 1000;
+      lastGyroTsRef.current = now;
 
-      // Gyroscope z is rad/s, positive = counter-clockwise about the device's
-      // Z axis; negate + convert to deg/s to match our clockwise-positive
-      // compass heading convention.
-      const yawRateDeg = -(z * 180) / Math.PI;
+      // Yaw rate about world-vertical = gyro · gravity-unit-vector (rad/s).
+      // Negated to match our clockwise-positive compass convention (reduces to
+      // the flat-phone case where gravity ≈ +z and yaw ≈ -gyro.z).
+      const a = latestAccelRef.current;
+      const gMag = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z) || 1;
+      const yawRateDeg = (-(x * a.x + y * a.y + z * a.z) / gMag) * (180 / Math.PI);
 
-      const magHeading = tiltCompensatedHeading(latestAccelRef.current, latestMagRef.current);
-      const fused = complementaryFilter(fusedHeadingRef.current, yawRateDeg, dt, magHeading);
+      const prev = fusedHeadingRef.current ?? os;
+      const fused = complementaryFilter(prev, yawRateDeg, dt, os, FUSION_ALPHA);
       fusedHeadingRef.current = fused;
 
-      // The complementary filter already smooths frame-to-frame; a second
-      // moving-average pass on top just added phase lag and overshoot on fast
-      // turns (Robert's #201 report). Use the fused value directly.
+      // Throttle + deadband the state update to bound re-renders.
+      if (now - lastOutputAtRef.current < OUTPUT_MIN_INTERVAL_MS) return;
+      const lastEmitted = lastEmittedHeadingRef.current;
+      if (
+        lastEmitted !== null &&
+        Math.abs(signedAngularDiff(lastEmitted, fused)) < HEADING_EMIT_DEADBAND_DEG
+      ) {
+        return; // sub-threshold wobble — hold steady
+      }
+      lastOutputAtRef.current = now;
+      lastEmittedHeadingRef.current = fused;
       setHeading(fused);
     });
 
+    // Slow absolute anchor: OS true-north compass, de-spiked. Only updates the
+    // reference the gyro loop corrects toward — it never drives output directly
+    // (except the very first sample, to seed the estimate with no startup lag).
+    let headingSub: { remove: () => void } | null = null;
+    let cancelled = false;
+    (async () => {
+      try {
+        const s = await Location.watchHeadingAsync(({ trueHeading, magHeading }) => {
+          const raw = trueHeading != null && trueHeading >= 0 ? trueHeading : magHeading;
+          if (raw == null || raw < 0) return;
+          const os = osMedian.push(raw);
+          latestOsHeadingRef.current = os;
+          if (fusedHeadingRef.current == null) {
+            fusedHeadingRef.current = os;
+            setHeading(os);
+          }
+        });
+        if (cancelled) s.remove();
+        else headingSub = s;
+      } catch {
+        // OS heading unavailable — gyro loop stays idle (it needs the anchor).
+      }
+    })();
+
     return () => {
+      cancelled = true;
       accelSub.remove();
-      magSub.remove();
       gyroSub.remove();
-      lastGyroTimestampRef.current = null;
+      headingSub?.remove();
+      headingSub = null;
+      osMedian.reset();
+      fusedHeadingRef.current = null;
+      latestOsHeadingRef.current = null;
+      lastGyroTsRef.current = null;
+      lastEmittedHeadingRef.current = null;
     };
   }, [hasTarget, needsHeading]);
 
@@ -174,7 +226,18 @@ export function useDirectionalTracking(
   useEffect(() => {
     if (!targetCoords || !userCoords) {
       wasLockedRef.current = false;
-      setState({ heading, targetBearing: null, angularDelta: null, closeness: 0, isLocked: false });
+      // Bail if already idle so an unstable targetCoords/userCoords reference
+      // (e.g. a caller passing a fresh [lng,lat] array each render) can't spin
+      // this effect into a setState-per-render loop.
+      setState((prev) =>
+        prev.targetBearing === null &&
+        prev.angularDelta === null &&
+        prev.closeness === 0 &&
+        prev.isLocked === false &&
+        prev.heading === heading
+          ? prev
+          : { heading, targetBearing: null, angularDelta: null, closeness: 0, isLocked: false }
+      );
       return;
     }
 
@@ -190,7 +253,19 @@ export function useDirectionalTracking(
     }
     wasLockedRef.current = isLocked;
 
-    setState({ heading, targetBearing: bearing, angularDelta: delta, closeness, isLocked });
+    // Only commit a new state object when a value actually changed. This makes
+    // the effect a no-op re-render when targetCoords is a new-but-equal array
+    // each render (React bails on the returned prev), preventing an infinite
+    // "Maximum update depth exceeded" loop while tracking a friend.
+    setState((prev) =>
+      prev.heading === heading &&
+      prev.targetBearing === bearing &&
+      prev.angularDelta === delta &&
+      prev.closeness === closeness &&
+      prev.isLocked === isLocked
+        ? prev
+        : { heading, targetBearing: bearing, angularDelta: delta, closeness, isLocked }
+    );
   }, [heading, userCoords, targetCoords]);
 
   return state;

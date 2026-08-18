@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { uploadPOIMarker, validateMarkerFile, getImageDisplayUrl } from '../lib/storage';
+import { uploadPOIMarker, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES, getImageDisplayUrl } from '../lib/storage';
 import { db } from '@/lib/firebase';
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, X, Undo2 } from 'lucide-react';
 
 export interface POI {
   id: string;
@@ -17,55 +17,69 @@ export interface POI {
   // Optional custom marker image URL (logo/icon). When set, the mobile app
   // renders this image instead of the emoji `icon` (which stays as fallback).
   markerAsset?: string;
+  // Explicit zone assignment override. The sidebar normally nests a POI under
+  // whichever zone polygon geographically contains its lat/lng; setting this
+  // pins it to a specific zone regardless of geometry (e.g. an entrance POI
+  // that sits just outside the zone boundary it logically belongs to).
+  zoneId?: string;
 }
 
-const POI_CATEGORIES = [
-  'stage', 'food_vendor', 'beverage_vendor', 'shop_and_service', 'staff_and_medical'
-] as const;
+// Canonical 4-bucket taxonomy — replaces the old 5-value scheme (which had
+// separate food/beverage/shop buckets) and the admin zone-editor's separate
+// stage/camping/infrastructure/staff/vendors vocabulary. One taxonomy, used
+// by this form, the backend's GET /map/pois, and mobile's marker rendering.
+const POI_CATEGORIES = ['stage', 'infrastructure', 'staff', 'vendors'] as const;
 
 const CATEGORY_EMOJI: Record<string, string> = {
   stage: '🎵',
-  food_vendor: '🍔',
-  beverage_vendor: '🍺',
-  shop_and_service: '🛒',
-  staff_and_medical: '🏥',
+  infrastructure: 'ℹ️',
+  staff: '👥',
+  vendors: '🛒',
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
   stage: 'Stage',
-  food_vendor: 'Food Vendor',
-  beverage_vendor: 'Beverage Vendor',
-  shop_and_service: 'Shop & Service',
-  staff_and_medical: 'Staff & Medical',
+  infrastructure: 'Infrastructure',
+  staff: 'Staff',
+  vendors: 'Vendors',
 };
 
 const DEFAULT_COLORS: Record<string, string> = {
   stage: '#EF4444',
-  food_vendor: '#F59E0B',
-  beverage_vendor: '#3B82F6',
-  shop_and_service: '#8B5CF6',
-  staff_and_medical: '#DC2626',
+  infrastructure: '#3B82F6',
+  staff: '#6B7280',
+  vendors: '#F59E0B',
 };
 
 interface POIManagerProps {
   onPOIsChanged: (pois: POI[]) => void;
   onRequestMapClick: (callback: (lat: number, lng: number) => void) => void;
+  // Set when the map's standalone pin-drop control (top-right, below the
+  // polygon tool) reports a click — opens the Add form pre-filled with that
+  // location instead of requiring "Add" -> "Pick" -> click map in sequence.
+  pendingPin?: { lat: number; lng: number; nonce: number } | null;
+  // Set when an existing POI's map marker is dragged to a new position —
+  // persists the move directly (same instant-apply pattern as zone icon drag).
+  dragUpdate?: { poiId: string; lat: number; lng: number; prevLat: number; prevLng: number; nonce: number } | null;
+  // Zone polygons available for the explicit "Zone" override dropdown.
+  zones: { id: string; name: string }[];
   selectedPOIId: string | null;
   onSelectPOI: (id: string | null) => void;
 }
 
-export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, onSelectPOI }: POIManagerProps) {
+export function POIManager({ onPOIsChanged, onRequestMapClick, pendingPin, dragUpdate, zones, selectedPOIId, onSelectPOI }: POIManagerProps) {
   const [pois, setPois] = useState<POI[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '', category: 'stage', color: '#EF4444', icon: '🎵',
-    lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '',
+    lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '', zoneId: '',
   });
   const [pickingLocation, setPickingLocation] = useState(false);
   const [markerFile, setMarkerFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchPOIs = useCallback(async () => {
     try {
@@ -73,15 +87,73 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
       const items: POI[] = snap.docs.map(d => ({ id: d.id, ...d.data() } as POI));
       setPois(items);
       onPOIsChanged(items);
+      setLoadError(null);
     } catch (err) {
       console.error('Failed to fetch POIs:', err);
+      setLoadError(err instanceof Error ? err.message : String(err));
     }
   }, [onPOIsChanged]);
 
   useEffect(() => { fetchPOIs(); }, [fetchPOIs]);
 
+  useEffect(() => {
+    if (!pendingPin) return;
+    setFormData({
+      name: '', category: 'stage', color: DEFAULT_COLORS.stage, icon: CATEGORY_EMOJI.stage,
+      lat: pendingPin.lat, lng: pendingPin.lng, description: '', vendorId: '', markerAsset: '', zoneId: '',
+    });
+    setEditingId(null);
+    setMarkerFile(null);
+    setCollapsed(false);
+    setShowForm(true);
+  }, [pendingPin]);
+
+  // Undo stack for accidental marker drags — each entry is the position a
+  // POI had *before* a drag, so undo just re-applies that previous position.
+  const [dragHistory, setDragHistory] = useState<{ poiId: string; lat: number; lng: number }[]>([]);
+
+  const applyPOIPosition = useCallback((poiId: string, lat: number, lng: number) => {
+    updateDoc(doc(db, 'mapPOIs', poiId), { lat, lng })
+      .then(() => {
+        setPois(prev => {
+          const next = prev.map(p => (p.id === poiId ? { ...p, lat, lng } : p));
+          onPOIsChanged(next);
+          return next;
+        });
+        setFormData(p => (editingId === poiId ? { ...p, lat, lng } : p));
+      })
+      .catch(err => console.error('Failed to save POI location:', err));
+  }, [onPOIsChanged, editingId]);
+
+  useEffect(() => {
+    if (!dragUpdate) return;
+    setDragHistory(prev => [...prev, { poiId: dragUpdate.poiId, lat: dragUpdate.prevLat, lng: dragUpdate.prevLng }]);
+    applyPOIPosition(dragUpdate.poiId, dragUpdate.lat, dragUpdate.lng);
+  }, [dragUpdate]);
+
+  const undoLastMove = useCallback(() => {
+    setDragHistory(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      applyPOIPosition(last.poiId, last.lat, last.lng);
+      return prev.slice(0, -1);
+    });
+  }, [applyPOIPosition]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.key === 'z' || e.key === 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      undoLastMove();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoLastMove]);
+
   const resetForm = () => {
-    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '' });
+    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '', zoneId: '' });
     setEditingId(null);
     setShowForm(false);
     setPickingLocation(false);
@@ -90,10 +162,34 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
   };
 
   const handleSave = async () => {
-    if (!formData.name.trim() || !formData.lat || !formData.lng) return;
-    if (markerFile) {
-      const validationErr = validateMarkerFile(markerFile);
+    const name = formData.name.trim();
+    // 0,0 ("null island") is never a real festival POI, so treat the exact
+    // pair as "not yet set" — but don't reject a single 0 component alone
+    // (e.g. lat=0 with a real lng is a legitimate, if unlikely, coordinate).
+    const hasValidLocation = Number.isFinite(formData.lat) && Number.isFinite(formData.lng)
+      && (formData.lat !== 0 || formData.lng !== 0);
+    // Previously used truthy checks (`!formData.lat || !formData.lng`), which
+    // silently blocked saving ANY field — including name-only edits on an
+    // existing POI — whenever lat or lng individually was 0, plus gave zero
+    // feedback (a disabled button) when a brand-new POI's default 0,0 hadn't
+    // been replaced with a picked location yet.
+    if (!name || !hasValidLocation) {
+      alert(!name
+        ? 'Please enter a name for this POI.'
+        : 'Please set a location — click "📍 Pick" and tap the map, or enter Lat/Lng directly.');
+      return;
+    }
+    let uploadFile = markerFile;
+    if (uploadFile) {
+      const validationErr = validateMarkerFile(uploadFile);
       if (validationErr) { alert(validationErr); return; }
+      if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+        uploadFile = await compressMarkerFileIfNeeded(uploadFile);
+        if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+          alert(`Image is still too large after compression (${Math.round(uploadFile.size / 1024)}KB). Try a smaller or simpler image.`);
+          return;
+        }
+      }
     }
     try {
       setUploading(true);
@@ -107,6 +203,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
         description: formData.description || '',
         vendorId: formData.vendorId || '',
         markerAsset: formData.markerAsset || '',
+        zoneId: formData.zoneId || '',
       };
 
       // Determine the POI id up front so the marker upload path is stable.
@@ -118,8 +215,8 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
         poiId = created.id;
       }
 
-      if (markerFile) {
-        const url = await uploadPOIMarker(markerFile, poiId);
+      if (uploadFile) {
+        const url = await uploadPOIMarker(uploadFile, poiId);
         data.markerAsset = url;
       }
 
@@ -130,7 +227,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
       await fetchPOIs();
     } catch (err) {
       console.error('Failed to save POI:', err);
-      alert('Failed to save POI');
+      alert(`Failed to save POI: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setUploading(false);
     }
@@ -151,7 +248,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
     setFormData({
       name: poi.name, category: poi.category, color: poi.color, icon: poi.icon,
       lat: poi.lat, lng: poi.lng, description: poi.description || '', vendorId: poi.vendorId || '',
-      markerAsset: poi.markerAsset || '',
+      markerAsset: poi.markerAsset || '', zoneId: poi.zoneId || '',
     });
     setMarkerFile(null);
     setEditingId(poi.id);
@@ -188,13 +285,29 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
           <MapPin className="h-4 w-4" />
           <span className="text-sm font-bold">POIs ({pois.length})</span>
         </button>
-        <button
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-1 px-2 py-1 rounded bg-[#6BBF59]/20 text-[#6BBF59] text-xs font-medium hover:bg-[#6BBF59]/30"
-        >
-          <Plus className="h-3 w-3" /> Add
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={undoLastMove}
+            disabled={dragHistory.length === 0}
+            title="Undo last marker move (Ctrl/Cmd+Z)"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[#2E4031] text-[#F5F5DC]/70 text-xs font-medium hover:bg-[#2E4031]/80 border border-[#F5F5DC]/10 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="h-3 w-3" /> Undo
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[#6BBF59]/20 text-[#6BBF59] text-xs font-medium hover:bg-[#6BBF59]/30"
+          >
+            <Plus className="h-3 w-3" /> Add
+          </button>
+        </div>
       </div>
+
+      {loadError && (
+        <div className="px-3 py-2 text-xs text-red-300 bg-red-950/30 border-b border-red-900/40">
+          Couldn't load POIs: {loadError}
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (
@@ -248,6 +361,19 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
               {pickingLocation ? '📍 Click map...' : '📍 Pick'}
             </button>
           </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-[#F5F5DC]/50">
+              Zone (optional — overrides auto-detection by location)
+            </label>
+            <select
+              value={formData.zoneId}
+              onChange={e => setFormData(p => ({ ...p, zoneId: e.target.value }))}
+              className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none"
+            >
+              <option value="">Auto (by location on map)</option>
+              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
+          </div>
           <input
             type="text" placeholder="Description (optional)" value={formData.description}
             onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
@@ -284,7 +410,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
           </div>
           <button
             onClick={handleSave}
-            disabled={!formData.name.trim() || !formData.lat || !formData.lng || uploading}
+            disabled={uploading}
             className="w-full px-3 py-2 rounded bg-[#6BBF59] text-[#1C2B20] font-bold text-sm hover:bg-[#6BBF59]/90 disabled:opacity-40"
           >
             {uploading ? 'Saving…' : editingId ? 'Update POI' : 'Add POI'}

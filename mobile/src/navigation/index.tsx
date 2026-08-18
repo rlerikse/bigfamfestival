@@ -22,6 +22,7 @@ import { AdminEventEditScreen } from '../screens/admin/AdminEventEditScreen';
 import { AdminShiftsScreen } from '../screens/admin/AdminShiftsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import CompassCalibrationScreen from '../screens/CompassCalibrationScreen';
 import FriendsScreen from '../screens/FriendsScreen';
 import type { FriendEntry } from '../services/friendService';
 import DebugScreen from '../screens/DebugScreen';
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Profile: undefined;
   Settings: undefined;
+  CompassCalibration: undefined;
   Debug: undefined;
   // Admin panel
   AdminNotifications: undefined;
@@ -269,6 +271,16 @@ export default function Navigation() {
             options={{
               headerShown: true,
               title: 'Settings',
+              presentation: 'modal',
+              contentStyle: { backgroundColor },
+            }}
+          />
+          <Stack.Screen
+            name="CompassCalibration"
+            component={CompassCalibrationScreen}
+            options={{
+              headerShown: true,
+              title: 'Calibrate Compass',
               presentation: 'modal',
               contentStyle: { backgroundColor },
             }}

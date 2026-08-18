@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image as ExpoImage } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OptimizedImage from './OptimizedImage';
 import { ScheduleEvent } from '../types/event';
 import { isEventLive, resolveScheduleDayScrollTarget, clampVerticalOffset, SCHEDULE_ROW_HEIGHT } from '../utils/scheduleUtils';
@@ -39,9 +40,24 @@ export { clampVerticalOffset };
 // Zoomed out so ~3 hours reads comfortably across the viewport (was 2.6 =
 // ~1 hour visible). Lower density → wider time span left→right per screen.
 const PX_PER_MINUTE = 6.0; // zoomed in — final shipping value; Android gets a touch more breathing room than 6.5
+// Zoom bounds/step for the in-grid zoom controls — PX_PER_MINUTE above is just the
+// initial value now; the grid's actual horizontal density is the pxPerMinute state.
+const MIN_PX_PER_MINUTE = 3.0; // zoomed out — roughly doubles the visible time span
+// Capped at the original PX_PER_MINUTE — the two tighter steps beyond it (7.5, 9.0)
+// were removed as redundant.
+const MAX_PX_PER_MINUTE = PX_PER_MINUTE;
+const ZOOM_STEP = 1.5;
 const ROW_HEIGHT = SCHEDULE_ROW_HEIGHT; // taller rows so the full-height photo has room to breathe
+// Rows shrink toward this as the user zooms out below the default density
+// (see rowHeight below), converging on a shorter, Shambhala-style compact
+// grid at MIN_PX_PER_MINUTE. Default zoom and above keep the full ROW_HEIGHT.
+const MIN_ROW_HEIGHT = 72;
 const STAGE_LABEL_WIDTH = 96;
 const HOUR_WIDTH = 60 * PX_PER_MINUTE;
+// Shared with eventBlock's borderRadius below and the thumbnail's left-corner
+// radius, so the thumbnail's corners match the card's rounded shape instead
+// of overflowing past it as square corners.
+const EVENT_BLOCK_RADIUS = 12;
 const CUTOFF_MINUTES = 6 * 60 + 30; // 6:30am — day boundary, matches ScheduleScreen logic
 const GRID_START_MINUTES = CUTOFF_MINUTES; // grid starts at 6:30am
 const GRID_END_MINUTES = CUTOFF_MINUTES + 24 * 60; // full 24h span from cutoff to cutoff next day
@@ -148,6 +164,17 @@ const HorizontalScheduleView: React.FC<Props> = ({
   const verticalScrollRef = useRef<ScrollView>(null);
   const bodyScrollRef = useRef<ScrollView>(null);
   const previousDayRef = useRef<string | null>(null);
+  // The custom GrassBottomTabBar renders absolutely-positioned over screen
+  // content (see ScheduleScreen's FlatList paddingBottom for the same
+  // convention), so an in-flow footer row needs this same clearance or it
+  // renders hidden underneath the tab bar.
+  const insets = useSafeAreaInsets();
+  const tabBarClearance = Math.max(160, insets.bottom + 80);
+  // Horizontal zoom density (px per minute), adjustable via the zoom in/out
+  // controls. Defaults to fully zoomed out (MIN_PX_PER_MINUTE) for the denser,
+  // Shambhala-style compact grid; everything below that used to reference the
+  // module-level PX_PER_MINUTE constant directly now reads this instead.
+  const [pxPerMinute, setPxPerMinute] = useState(MIN_PX_PER_MINUTE);
   // Pending horizontal auto-scroll target (px) queued on day change, consumed
   // once the remounted body ScrollView lays out its content (onContentSizeChange).
   const pendingScrollXRef = useRef<number | null>(null);
@@ -254,6 +281,58 @@ const HorizontalScheduleView: React.FC<Props> = ({
     onScrollPositionChange?.({ x: currentOffsetRef.current.x, y: currentOffsetRef.current.y });
   }, [onScrollPositionChange]);
 
+  // Zoom in/out: adjusts pxPerMinute, then re-anchors the horizontal scroll so
+  // the time currently at the left edge of the viewport stays there instead of
+  // the grid jumping around (grid width changes with zoom, so a fixed pixel
+  // offset would land on a different time after a density change). Re-uses the
+  // existing pendingScrollXRef/instant-flush plumbing above — changing gridWidth
+  // triggers the body ScrollView's onContentSizeChange, which calls
+  // applyPendingScroll, so no extra remount/effect is needed here.
+  const handleZoomIn = useCallback(() => {
+    setPxPerMinute(prev => {
+      const next = Math.min(prev + ZOOM_STEP, MAX_PX_PER_MINUTE);
+      if (next === prev) return prev;
+      const minutesFromGridStart = currentOffsetRef.current.x / prev;
+      pendingScrollXRef.current = Math.max(minutesFromGridStart * next, 0);
+      pendingScrollInstantRef.current = true;
+      return next;
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setPxPerMinute(prev => {
+      const next = Math.max(prev - ZOOM_STEP, MIN_PX_PER_MINUTE);
+      if (next === prev) return prev;
+      const minutesFromGridStart = currentOffsetRef.current.x / prev;
+      pendingScrollXRef.current = Math.max(minutesFromGridStart * next, 0);
+      pendingScrollInstantRef.current = true;
+      return next;
+    });
+  }, []);
+
+  // Stage-row height shrinks as the user zooms out below the default density,
+  // converging on MIN_ROW_HEIGHT at MIN_PX_PER_MINUTE — a shorter, denser grid
+  // that better resembles the reference Shambhala-style layout when fully
+  // zoomed out. Zooming at/above the default keeps the original ROW_HEIGHT.
+  const rowHeight = useMemo(() => {
+    if (pxPerMinute >= PX_PER_MINUTE) return ROW_HEIGHT;
+    const t = (pxPerMinute - MIN_PX_PER_MINUTE) / (PX_PER_MINUTE - MIN_PX_PER_MINUTE);
+    return Math.round(MIN_ROW_HEIGHT + t * (ROW_HEIGHT - MIN_ROW_HEIGHT));
+  }, [pxPerMinute]);
+
+  // Event thumbnail is square-ish, filling the full (zoom-dependent) block
+  // height — was a static StyleSheet entry keyed off the fixed ROW_HEIGHT.
+  // Left corners are rounded to match eventBlock's radius since the thumbnail
+  // sits flush against the card's left edge (overflow:hidden on the card
+  // alone doesn't reliably clip a nested Image's own square corners).
+  const eventThumbnailStyle = useMemo(() => ({
+    width: rowHeight - 12,
+    height: '100%' as const,
+    marginRight: 8,
+    borderTopLeftRadius: EVENT_BLOCK_RADIUS,
+    borderBottomLeftRadius: EVENT_BLOCK_RADIUS,
+  }), [rowHeight]);
+
   const stages = useMemo(() => {
     const set = new Set<string>();
     events.forEach(ev => {
@@ -274,7 +353,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
   }, [events, stages]);
 
   const totalGridMinutes = GRID_END_MINUTES - GRID_START_MINUTES;
-  const gridWidth = totalGridMinutes * PX_PER_MINUTE;
+  const gridWidth = totalGridMinutes * pxPerMinute;
 
   // Hour markers for the time ruler header.
   const hourMarkers = useMemo(() => {
@@ -285,10 +364,10 @@ const HorizontalScheduleView: React.FC<Props> = ({
       const ampm = hourOfDay >= 12 ? 'PM' : 'AM';
       const hour12 = hourOfDay % 12 || 12;
       const suffix = `${hour12} ${ampm}`;
-      markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * PX_PER_MINUTE });
+      markers.push({ label: suffix, offset: (m - GRID_START_MINUTES) * pxPerMinute });
     }
     return markers;
-  }, []);
+  }, [pxPerMinute]);
 
   // "Now" indicator line — only shown when viewing today.
   const nowOffset = useMemo(() => {
@@ -304,8 +383,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
     const isSameCalendarDay = nowDateStr === selectedDay && nowMinutesRaw >= CUTOFF_MINUTES;
     if (!isSameCalendarDay) return null;
 
-    return (nowMinutesAdjusted - GRID_START_MINUTES) * PX_PER_MINUTE;
-  }, [currentTime, selectedDay]);
+    return (nowMinutesAdjusted - GRID_START_MINUTES) * pxPerMinute;
+  }, [currentTime, selectedDay, pxPerMinute]);
 
   // On Stage/Genre filter changes, `events` gets a new (shorter/reshaped) array
   // from ScheduleScreen while `selectedDay` stays the same. That shrinks the
@@ -360,7 +439,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       // (#5: "favorite tap jumps to a random scroll position" — the reset itself
       // was the jump.) currentOffsetRef holds the last native offset from onScroll.
       const preservedX = Math.max(0, currentOffsetRef.current.x);
-      const clampedY = clampVerticalOffset(currentOffsetRef.current.y, stages.length, viewportHeightRef.current);
+      const clampedY = clampVerticalOffset(currentOffsetRef.current.y, stages.length, viewportHeightRef.current, rowHeight);
       pendingScrollXRef.current = preservedX;
       pendingScrollYRef.current = clampedY;
       pendingScrollInstantRef.current = true;
@@ -368,7 +447,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       setScrollResetKey(k => k + 1);
     }
     previousEventsSignatureRef.current = eventsSignature;
-  }, [eventsSignature, selectedDay, stages.length]);
+  }, [eventsSignature, selectedDay, stages.length, rowHeight]);
 
 
   // On day change, auto-scroll horizontally per resolveScheduleDayScrollTarget:
@@ -404,8 +483,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
       }
     }
     if (targetMin === null) return null;
-    return Math.max((targetMin - GRID_START_MINUTES) * PX_PER_MINUTE - 40, 0);
-  }, [events]);
+    return Math.max((targetMin - GRID_START_MINUTES) * pxPerMinute - 40, 0);
+  }, [events, pxPerMinute]);
 
   useEffect(() => {
     if (!selectedDay) return;
@@ -426,7 +505,7 @@ const HorizontalScheduleView: React.FC<Props> = ({
       ? initialScrollX
       : computeDefaultScrollX(currentTime);
     pendingScrollYRef.current = initialScrollY != null
-      ? clampVerticalOffset(initialScrollY, stages.length, viewportHeightRef.current)
+      ? clampVerticalOffset(initialScrollY, stages.length, viewportHeightRef.current, rowHeight)
       : 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -505,11 +584,11 @@ const HorizontalScheduleView: React.FC<Props> = ({
             {stages.map((stage, idx) => {
               const logoSource = stageLogoSource(stage);
               return (
-                <View key={stage} style={[styles.stageLabelCell, { height: ROW_HEIGHT, borderLeftColor: stageColor(stage, idx), borderLeftWidth: 4 }]}>
+                <View key={stage} style={[styles.stageLabelCell, { height: rowHeight, borderLeftColor: stageColor(stage, idx), borderLeftWidth: 4 }]}>
                   {logoSource ? (
                     <ExpoImage
                       source={logoSource}
-                      style={styles.stageLabelLogo}
+                      style={[styles.stageLabelLogo, { height: rowHeight - 24 }]}
                       contentFit="contain"
                       cachePolicy="memory-disk"
                     />
@@ -535,12 +614,12 @@ const HorizontalScheduleView: React.FC<Props> = ({
             <View style={{ width: gridWidth }}>
               {/* "Now" indicator line */}
               {nowOffset !== null && nowOffset >= 0 && nowOffset <= gridWidth && (
-                <View style={[styles.nowLine, { left: nowOffset, height: ROW_HEIGHT * stages.length }]} />
+                <View style={[styles.nowLine, { left: nowOffset, height: rowHeight * stages.length }]} />
               )}
               {stages.map((stage, rowIdx) => {
                 const stageEvents = eventsByStage.get(stage) || [];
                 return (
-                  <View key={stage} style={[styles.stageRow, { height: ROW_HEIGHT }]}>
+                  <View key={stage} style={[styles.stageRow, { height: rowHeight }]}>
                     {/* Hour gridlines for this row */}
                     {hourMarkers.map((marker, idx) => (
                       <View key={idx} style={[styles.gridLine, { left: marker.offset }]} />
@@ -551,8 +630,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
                         ? adjustedStartMinutes(ev.endTime)
                         : startMin + 60;
                       if (endMin <= startMin) endMin += 24 * 60; // crosses midnight
-                      const left = (startMin - GRID_START_MINUTES) * PX_PER_MINUTE;
-                      const width = Math.max((endMin - startMin) * PX_PER_MINUTE, 44);
+                      const left = (startMin - GRID_START_MINUTES) * pxPerMinute;
+                      const width = Math.max((endMin - startMin) * pxPerMinute, 44);
                       const isInSchedule = Boolean(userSchedule[ev.id]);
                       const timeUntil = formatTimeUntil(ev, currentTime);
                       const showThumbnail = width >= MIN_WIDTH_FOR_THUMBNAIL;
@@ -605,8 +684,8 @@ const HorizontalScheduleView: React.FC<Props> = ({
                             {showThumbnail && (
                               <OptimizedImage
                                 uri={ev.imageUrl}
-                                style={styles.eventBlockImage}
-                                containerStyle={styles.eventBlockImage}
+                                style={eventThumbnailStyle}
+                                containerStyle={eventThumbnailStyle}
                                 contentFit="cover"
                                 showLoadingIndicator={false}
                                 fallbackImage={require('../assets/images/logo.png')}
@@ -654,6 +733,33 @@ const HorizontalScheduleView: React.FC<Props> = ({
               })}
             </View>
           </Animated.ScrollView>
+        </View>
+
+        {/* Zoom controls — inside the vertical ScrollView's content, directly
+            under the last stage row (not after the ScrollView's flex-filled
+            viewport, which left a large empty gap when there are only a few
+            stages). marginBottom clears the absolutely-positioned
+            GrassBottomTabBar (see tabBarClearance above) if content is long
+            enough to scroll all the way down. */}
+        <View style={[styles.zoomControls, { marginBottom: tabBarClearance }]}>
+          <TouchableOpacity
+            style={[styles.zoomButton, pxPerMinute <= MIN_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+            onPress={handleZoomOut}
+            disabled={pxPerMinute <= MIN_PX_PER_MINUTE}
+            activeOpacity={0.7}
+            accessibilityLabel="Zoom out"
+          >
+            <Ionicons name="remove" size={18} color="#F5F5DC" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.zoomButton, pxPerMinute >= MAX_PX_PER_MINUTE && styles.zoomButtonDisabled]}
+            onPress={handleZoomIn}
+            disabled={pxPerMinute >= MAX_PX_PER_MINUTE}
+            activeOpacity={0.7}
+            accessibilityLabel="Zoom in"
+          >
+            <Ionicons name="add" size={18} color="#F5F5DC" />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -715,7 +821,6 @@ const styles = StyleSheet.create({
   },
   stageLabelLogo: {
     width: STAGE_LABEL_WIDTH - 16,
-    height: ROW_HEIGHT - 24,
   },
   stageLabelText: {
     color: '#F5F5DC',
@@ -745,7 +850,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     bottom: 6,
-    borderRadius: 12,
+    borderRadius: EVENT_BLOCK_RADIUS,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     overflow: 'hidden',
   },
@@ -753,11 +858,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'stretch',
     flex: 1,
-  },
-  eventBlockImage: {
-    width: ROW_HEIGHT - 12, // square-ish, fills the full block height
-    height: '100%',
-    marginRight: 8,
   },
   eventBlockInfo: {
     flex: 1,
@@ -839,6 +939,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: 16,
     color: '#fff',
+  },
+  zoomControls: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  zoomButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(28, 43, 32, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 245, 220, 0.2)',
+  },
+  zoomButtonDisabled: {
+    opacity: 0.35,
   },
 });
 

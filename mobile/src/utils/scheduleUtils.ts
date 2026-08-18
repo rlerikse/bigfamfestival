@@ -45,6 +45,26 @@ export function getEventEndMs(ev: ScheduleEvent): number | null {
   return endTs;
 }
 
+/** Tri-state display status of an event relative to a given clock reading. */
+export type EventDisplayState = 'upcoming' | 'live' | 'completed';
+
+/**
+ * Derive an event's display state (upcoming/live/completed) for a given
+ * clock reading, without duplicating any start/end/midnight-crossing/2h-
+ * fallback date math — this is computed entirely in terms of the existing
+ * `isEventLive` and `getEventEndMs` exports above, so it stays in lockstep
+ * with their semantics by construction (see plan.md DR-4).
+ *
+ * Used by ScheduleScreen.tsx to derive a stable, memo-friendly prop for
+ * EventCard instead of passing the raw clock epoch on every tick.
+ */
+export function getEventDisplayState(ev: ScheduleEvent, nowMs: number): EventDisplayState {
+  if (isEventLive(ev, nowMs)) return 'live';
+  const endMs = getEventEndMs(ev);
+  if (endMs !== null && nowMs >= endMs) return 'completed';
+  return 'upcoming';
+}
+
 export type ScheduleDayScrollTarget = 'live' | 'first' | 'last' | 'none';
 
 /**
@@ -85,14 +105,68 @@ export const SCHEDULE_ROW_HEIGHT = 108;
  * can't leave a stale, out-of-bounds offset restored after a remount.
  * Pure and exported so it can be unit-tested directly with plain Jest (no
  * `@testing-library/react-native` `render()` — see plan.md DR-5).
+ *
+ * `rowHeight` defaults to SCHEDULE_ROW_HEIGHT but accepts the grid's current
+ * (zoom-dependent) row height so the clamp stays accurate when rows have
+ * shrunk from the default (see HorizontalScheduleView's rowHeight).
  */
 export function clampVerticalOffset(
   savedY: number | null | undefined,
   stageCount: number,
-  viewportHeight: number
+  viewportHeight: number,
+  rowHeight: number = SCHEDULE_ROW_HEIGHT
 ): number {
   if (savedY == null || !Number.isFinite(savedY) || stageCount <= 0) return 0;
-  const contentHeight = SCHEDULE_ROW_HEIGHT * stageCount;
+  const contentHeight = rowHeight * stageCount;
   const maxScrollY = Math.max(0, contentHeight - viewportHeight);
   return Math.min(Math.max(savedY, 0), maxScrollY);
+}
+
+/** A selectable option in the Schedule screen's genre filter dropdown. */
+export interface GenreOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+/**
+ * Derive the Schedule screen's selectable genre filter options from the
+ * full, already artist-enriched, loaded current-year `events` lineup —
+ * per BFF-128 (#185), replacing the prior independent Firestore `genres`
+ * collection / hardcoded fallback as the filter's source of truth.
+ *
+ * Mirrors the exact field precedence used by the existing genre-matching
+ * filter logic in ScheduleScreen.tsx (DR-5): when an event's `genres` is a
+ * present array, it is used exclusively for that event (even if empty);
+ * `genre` is only used as a fallback when `genres` is absent. This keeps
+ * every offered option matchable by at least one lineup event (FR-005).
+ *
+ * Pure and side-effect-free — callers pass the FULL loaded `events` array
+ * (not a day-filtered subset) so the result stays day-independent across
+ * pull-to-refresh and day changes (FR-008, DR-3). Reads only the
+ * already-enriched `events` state; performs no Firestore/artist lookups
+ * of its own (DR-4).
+ */
+export function deriveGenreOptions(events: ScheduleEvent[]): GenreOption[] {
+  const genreSet = new Set<string>();
+  events.forEach(event => {
+    if (event.genres && Array.isArray(event.genres)) {
+      event.genres.forEach(genre => {
+        if (genre && genre.trim()) genreSet.add(genre);
+      });
+    } else if (event.genre && event.genre.trim()) {
+      genreSet.add(event.genre);
+    }
+  });
+
+  const sortedGenres = Array.from(genreSet).sort((a, b) => a.localeCompare(b));
+
+  return [
+    { id: 'all', label: 'All Genres', value: 'all' },
+    ...sortedGenres.map(genre => ({
+      id: genre,
+      label: genre,
+      value: genre,
+    })),
+  ];
 }

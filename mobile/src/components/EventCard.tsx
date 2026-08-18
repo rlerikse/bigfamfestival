@@ -76,6 +76,16 @@ export interface EventCardProps {
   };
   showStatusBadge?: boolean; // When true, shows LIVE/UPCOMING at top-right
   currentTime?: number; // Optional epoch ms used to recompute countdown/live
+  /**
+   * Optional precomputed display state ('upcoming' | 'live' | 'completed').
+   * When supplied, `isLive`/`isPast` are derived directly from it instead of
+   * recomputing start/end/midnight/2h-fallback date math internally — this
+   * lets callers (ScheduleScreen.tsx) pass a stable, memo-friendly value
+   * derived from `getEventDisplayState()` in scheduleUtils.ts. When absent,
+   * the existing `currentTime`-driven Date-math fallback below is used
+   * unchanged (preserves LiveUpcomingEvents.tsx's existing call site).
+   */
+  displayState?: 'upcoming' | 'live' | 'completed';
   /** Optional: duration (ms) for each half of the blink cycle; defaults to 700ms (slower blink). Full cycle = 2x */
   blinkDurationMs?: number;
   /** Optional: maximum border width during live strobe (px). Defaults to 3. */
@@ -86,7 +96,7 @@ export interface EventCardProps {
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
-const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress, showStatusBadge = false, currentTime, blinkDurationMs = 1200, liveBorderMaxWidth = 2, liveGlowMaxOpacity = 0.35 }) => {
+const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, onToggleSchedule, onEventPress, showStatusBadge = false, currentTime, displayState, blinkDurationMs = 1200, liveBorderMaxWidth = 2, liveGlowMaxOpacity = 0.35 }) => {
   const formattedTime = useMemo(() => {
     // Guard against missing/malformed startTime (e.g. non-string, no ':'),
     // matching the parseStartMinutes() guard in ScheduleScreen.tsx that was
@@ -100,9 +110,13 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
     return `${hour12}:${minutes} ${ampm}`;
   }, [item.startTime]);
 
-  // Determine if event is LIVE or UPCOMING based on startTime only
-  // Determine if event is LIVE or UPCOMING based on startTime only
+  // Determine if event is LIVE or UPCOMING based on startTime only.
+  // When `displayState` is supplied (ScheduleScreen.tsx), derive directly
+  // from it instead of recomputing date math — skips the Date-math useMemo
+  // below entirely. When absent (LiveUpcomingEvents.tsx), preserve the
+  // existing currentTime-driven Date-math fallback exactly.
   const isLive = useMemo(() => {
+    if (displayState !== undefined) return displayState === 'live';
     if (!item.date || !item.startTime) return false;
     const startTs = new Date(`${item.date}T${item.startTime}`).getTime();
     let endTs: number;
@@ -116,10 +130,11 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
     }
     const nowMs = typeof currentTime === 'number' ? currentTime : Date.now();
     return nowMs >= startTs && nowMs < endTs;
-  }, [item.date, item.startTime, item.endTime, currentTime]);
+  }, [displayState, item.date, item.startTime, item.endTime, currentTime]);
 
-  // Determine if event has ended
+  // Determine if event has ended. Same displayState-first derivation as isLive above.
   const isPast = useMemo(() => {
+    if (displayState !== undefined) return displayState === 'completed';
     if (!item.date || !item.startTime) return false;
     const startTs = new Date(`${item.date}T${item.startTime}`).getTime();
     let endTs: number;
@@ -131,7 +146,7 @@ const EventCard = React.memo<EventCardProps>(({ item, isInUserSchedule, theme, o
     }
     const nowMs = typeof currentTime === 'number' ? currentTime : Date.now();
     return nowMs >= endTs;
-  }, [item.date, item.startTime, item.endTime, currentTime]);
+  }, [displayState, item.date, item.startTime, item.endTime, currentTime]);
 
   // Pulsing glow for LIVE events — native-driven (opacity only) so the
   // animation runs on the UI thread instead of competing with FlatList

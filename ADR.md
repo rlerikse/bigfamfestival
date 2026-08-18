@@ -2,8 +2,8 @@
 
 **Project**: 🎪 Big Fam Festival
 **Repository**: `rlerikse/bigfamfestival`
-**Coverage**: 2025-03-03 (repo inception) → 2026-07-31
-**Last Updated**: 2026-08-09
+**Coverage**: 2025-03-03 (repo inception) → 2026-08-17
+**Last Updated**: 2026-08-17
 
 This document is the index and running log of architecture decisions for the Big Fam Festival platform — a monorepo with a NestJS backend (Cloud Run), a React Native/Expo mobile app, a React + Vite admin panel (Firebase Hosting), Firebase Cloud Functions, and Terraform/GCP infrastructure. Each entry captures the **context**, the **decision**, and the **consequences** so future contributors understand *why* the system is built the way it is.
 
@@ -31,6 +31,9 @@ This document is the index and running log of architecture decisions for the Big
 | [ADR-015](#adr-015-live-wayfinder-hud-with-compass-sensor-fusion) | Live Wayfinder HUD with Compass Sensor Fusion | 2026-07-27 | ✅ Accepted |
 | [ADR-016](#adr-016-release-please-for-unified-semantic-versioning) | release-please for Unified Semantic Versioning | 2026-07-29 | ✅ Accepted |
 | [ADR-002](#adr-002-realtime-friend-locations-via-server-sent-events) | Realtime Friend Locations via Server-Sent Events | 2026-07-31 | ✅ Accepted |
+| [ADR-017](#adr-017-pure-logic-helpers-for-jest-testability-under-expo-sdk-54) | Pure Logic Helpers for Jest Testability Under Expo SDK 54 | 2026-08-09 | ✅ Accepted |
+| [ADR-018](#adr-018-gyro-assisted-os-compass-heading-fusion) | Gyro-Assisted OS-Compass Heading Fusion (supersedes ADR-015 sensor approach) | 2026-08-12 | ✅ Accepted |
+| [ADR-019](#adr-019-distance-threshold-handoff-to-external-map-apps) | Distance-Threshold Handoff to External Map Apps | 2026-08-17 | ✅ Accepted |
 
 ---
 
@@ -226,7 +229,7 @@ This document is the index and running log of architecture decisions for the Big
 
 ### ADR-015: Live Wayfinder HUD with Compass Sensor Fusion
 
-**Status**: ✅ Accepted · **Date**: 2026-07-27 · _reconstructed from git history_
+**Status**: ✅ Accepted · heading approach **superseded by [ADR-018](#adr-018-gyro-assisted-os-compass-heading-fusion)** · **Date**: 2026-07-27 · _reconstructed from git history_
 
 **Context**: Static friend markers on a large map are disorienting. Users need heading-relative guidance to friends, including those off-screen, with a stable compass that doesn't drift or spin as the phone rotates.
 
@@ -268,9 +271,55 @@ This document is the index and running log of architecture decisions for the Big
 
 ---
 
+## 2026-08 — Testing Architecture
+
+### ADR-017: Pure Logic Helpers for Jest Testability Under Expo SDK 54
+
+**Status**: ✅ Accepted · **Date**: 2026-08-09 · **Source**: [`docs/adr/017-pure-helpers-for-jest-under-expo-sdk54.md`](docs/adr/017-pure-helpers-for-jest-under-expo-sdk54.md)
+
+**Context**: Under Expo SDK 54, importing any module that transitively pulls in `@expo/vector-icons` or `expo-image` into a Jest test fails on import alone (before any render) — Jest's transform can't parse the `.ttf` font asset those packages require (`SyntaxError: Invalid or unexpected token`). This blocks unit-testing logic that lives inside RN components like `ScheduleScreen.tsx` and `HorizontalScheduleView.tsx`, and is the same root cause behind `SafeText.test.tsx`'s `describe.skip`.
+
+**Decision**: Extract logic that needs unit coverage into pure, side-effect-free modules under `mobile/src/utils/` (e.g. `scheduleUtils.ts`) with **zero** react-native/expo imports; tests import only those pure modules, never the component. Re-export the helper from the component when a caller/spec expects the symbol to originate there. Applied in BFF-124 (`clampVerticalOffset`) and BFF-128 (`deriveGenreOptions`), each with a companion `*.test.ts` importing only the util.
+
+**Consequences**: Logic becomes unit-testable without fighting the Expo/Jest transform, and separating pure logic from presentation improves testability. Trade-off: component render/integration coverage stays gapped for icon-bearing components (documented via `describe.skip`), and some helpers live in `utils/` rather than beside their component. Revisit if the Expo SDK 54 Jest transform issue is resolved (e.g. a `jest-expo` preset upgrade or a font-asset transformer).
+
+**Evidence**: BFF-124 (`489ab6f`), BFF-128 (`df05bcb`); precedent `SafeText.test.tsx` skip.
+
+---
+
+## 2026-08 — Map Heading & Rendering
+
+### ADR-018: Gyro-Assisted OS-Compass Heading Fusion
+
+**Status**: ✅ Accepted · **Date**: 2026-08-12 · supersedes the sensor-fusion approach in [ADR-015](#adr-015-live-wayfinder-hud-with-compass-sensor-fusion)
+
+**Context**: ADR-015's hand-rolled tilt-compensated accel+mag+gyro fusion read "way off," delayed, and jittery on real Android hardware — raw-magnetometer axis and hard-iron calibration are fragile and device-specific. On-device diagnostics (added as a calibration screen) showed the underlying OS compass updating at only ~7 Hz and carrying ~13° of jitter with occasional 150°+ spikes, so no fixed low-pass or adaptive (1€) filter on that source alone could be both responsive and steady.
+
+**Decision**: Replace the fusion. Take the OS's calibrated **true-north** heading (`expo-location watchHeadingAsync`) as a slow absolute **anchor**, and drive responsiveness from the **gyroscope at ~60 Hz** via a complementary filter. The gyro yaw rate is projected onto gravity (from the accelerometer) so it is rotation about **true vertical regardless of how the phone is held**. A circular **median prefilter** rejects isolated magnetometer spikes; output is throttled (~30 Hz) and dead-banded to bound re-renders. Add a **Settings → Calibrate Compass** screen (guided figure-8, live OS accuracy 0–3, on-device diagnostics). Switch on-map self/friend avatars from `PointAnnotation` (Android snapshots children to a bitmap before the remote image loads → blank placeholder) to **`MarkerView`** (live views); center the map on the user on first open; resolve the walking-directions Mapbox token the same way the map renderer does; and retry idempotent API requests through Cloud Run cold starts. Because the rework is still stabilizing (paused per issue #246), it is **flag-gated**: `SHOW_FRIEND_RADAR_HUD` re-enables the border radar, but `orientationMode` defaults to `'north'` so the map does not auto-rotate or run the heading pipeline by default until a hardening pass restores the `'compass'` default.
+
+**Consequences**: Fast, accurate, orientation-independent heading that matches `computeBearing()`'s geographic bearing (no magnetic-declination mismatch), while sidestepping per-device magnetometer axis bugs. The `compassFusion.ts` helpers (`unwrap`/`quantize`/`median`/`complementaryFilter`) are retained and reused. The iOS simulator has no magnetometer, so heading is only meaningful on physical devices. The full experience is gated off by default pending #246 hardening; a memoized `trackingCoords` + equality-bailing state update fixed an infinite-render loop when routing to a friend.
+
+**Evidence**: `0bb6170` (gyro fusion + calibration + avatar/centering), `aa802d6` (routing token), `889ffce` (render-loop fix), `e62a737`/`00f7cab` (flag gating).
+
+---
+
+### ADR-019: Distance-Threshold Handoff to External Map Apps
+
+**Status**: ✅ Accepted · **Date**: 2026-08-17
+
+**Context**: The in-app walking route (Mapbox Directions, walking profile) is scoped to short, on-site festival-grounds distances — routing a user from off-site (e.g. home, before arriving) to a POI or friend could span many miles, which the walking profile can't (and shouldn't) draw, and previously surfaced a raw Mapbox 422 error straight to the user.
+
+**Decision**: Before fetching an in-app walking route, `routeToDestination` (`MapScreen.tsx`) computes the haversine distance from the user to the destination. Within `EXTERNAL_MAPS_THRESHOLD_METERS` (1 mile) it behaves as before. Beyond that, it calls the new `openExternalDirections()` (`routingService.ts`), which detects installed navigation apps via `Linking.canOpenURL` (Google Maps, Waze), prompts the user to choose when more than one is available, and falls back to the platform's native Maps (or a Google Maps web link) otherwise. iOS requires `LSApplicationQueriesSchemes` (`comgooglemaps`, `waze`) and Android requires a `<queries>` package-visibility declaration for `canOpenURL` to detect those apps — both added to `app.json`.
+
+**Consequences**: Off-site directions requests hand off to whichever app the user actually has installed and prefers, rather than failing or drawing a nonsensical multi-hundred-mile walking line. The native config change requires a fresh native build to take effect; until then, detection silently falls back to the native Maps/`geo:` path (which needs no declaration), so the feature degrades gracefully rather than breaking. The analogous 4xx-bailout log in `routingService.ts` was also downgraded from `console.error` to `console.warn` since it's a gracefully-handled, expected path — it no longer triggers React Native's disruptive full-screen dev redbox.
+
+**Evidence**: `c3c83f1` (external directions handoff + threshold check), `37f9c0a` (downgraded the 4xx bail-out log).
+
+---
+
 ## Conventions
 
-- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001 and ADR-002 have full source files; ADR-003–016 are summarized here from git history.
+- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016, ADR-018, and ADR-019 are summarized here from git history.
 - **Format**: each ADR captures `Status`, `Date`, `Context`, `Decision`, and `Consequences`.
 - **Statuses**: `Proposed` (under discussion) → `✅ Accepted` (in effect) → `Superseded` (replaced by a later ADR, which it links) → `Deprecated` (no longer applies).
 - **Numbering**: identifiers are assigned in documentation order, not by date. Sort the index by **Date** for the timeline.
