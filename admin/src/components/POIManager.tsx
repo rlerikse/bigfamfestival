@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
-import { uploadPOIMarker, validateMarkerFile, getImageDisplayUrl } from '../lib/storage';
+import { uploadPOIMarker, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES, getImageDisplayUrl } from '../lib/storage';
 import { db } from '@/lib/firebase';
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, X } from 'lucide-react';
 
@@ -109,9 +109,17 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
         : 'Please set a location — click "📍 Pick" and tap the map, or enter Lat/Lng directly.');
       return;
     }
-    if (markerFile) {
-      const validationErr = validateMarkerFile(markerFile);
+    let uploadFile = markerFile;
+    if (uploadFile) {
+      const validationErr = validateMarkerFile(uploadFile);
       if (validationErr) { alert(validationErr); return; }
+      if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+        uploadFile = await compressMarkerFileIfNeeded(uploadFile);
+        if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+          alert(`Image is still too large after compression (${Math.round(uploadFile.size / 1024)}KB). Try a smaller or simpler image.`);
+          return;
+        }
+      }
     }
     try {
       setUploading(true);
@@ -136,8 +144,8 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
         poiId = created.id;
       }
 
-      if (markerFile) {
-        const url = await uploadPOIMarker(markerFile, poiId);
+      if (uploadFile) {
+        const url = await uploadPOIMarker(uploadFile, poiId);
         data.markerAsset = url;
       }
 

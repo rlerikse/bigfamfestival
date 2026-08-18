@@ -8,7 +8,7 @@ import { Copy, Download, MousePointer, Save, Loader2, Plus, Trash2, ChevronDown,
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { POIManager, POI } from '@/components/POIManager';
-import { getImageDisplayUrl, uploadZoneIcon, validateMarkerFile } from '@/lib/storage';
+import { getImageDisplayUrl, uploadZoneIcon, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES } from '@/lib/storage';
 
 // Festival GeoJSON data
 const festivalGeoJSON: GeoJSON.FeatureCollection = {
@@ -507,9 +507,17 @@ export function MapEditorPage() {
       alert(validationErr);
       return;
     }
+    let uploadFile = file;
+    if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+      uploadFile = await compressMarkerFileIfNeeded(uploadFile);
+      if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+        alert(`Image is still too large after compression (${Math.round(uploadFile.size / 1024)}KB). Try a smaller or simpler image.`);
+        return;
+      }
+    }
     setUploadingZoneIcon(true);
     try {
-      const url = await uploadZoneIcon(file, editingFeature.id);
+      const url = await uploadZoneIcon(uploadFile, editingFeature.id);
       setEditingFeature((p) => {
         if (!p) return p;
         if (p.iconLat !== undefined && p.iconLng !== undefined) {
