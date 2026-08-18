@@ -519,22 +519,30 @@ export function MapEditorPage() {
     setUploadingZoneIcon(true);
     try {
       const url = await uploadZoneIcon(uploadFile, editingFeature.id);
-      setEditingFeature((p) => {
-        if (!p) return p;
-        if (p.iconLat !== undefined && p.iconLng !== undefined) {
-          return { ...p, iconAsset: url };
-        }
-        const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === p.id);
-        const feat = drawId ? drawRef.current?.get(drawId) : null;
-        const coords = feat?.geometry?.type === 'Polygon' ? feat.geometry.coordinates[0] : null;
-        const centroid = coords ? getCentroid(coords) : null;
-        return {
-          ...p,
-          iconAsset: url,
-          iconLng: centroid ? centroid[0] : p.iconLng,
-          iconLat: centroid ? centroid[1] : p.iconLat,
-        };
-      });
+      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+      const feat = drawId ? drawRef.current?.get(drawId) : null;
+      const coords = feat?.geometry?.type === 'Polygon' ? feat.geometry.coordinates[0] : null;
+      const centroid = coords ? getCentroid(coords) : null;
+      const hasExistingPosition = editingFeature.iconLat !== undefined && editingFeature.iconLng !== undefined;
+      const iconLng = hasExistingPosition ? editingFeature.iconLng : (centroid ? centroid[0] : editingFeature.iconLng);
+      const iconLat = hasExistingPosition ? editingFeature.iconLat : (centroid ? centroid[1] : editingFeature.iconLat);
+
+      // Render on the map immediately (like the drag/title-toggle behavior)
+      // instead of waiting for "Save Changes" -- previously the sidebar
+      // preview showed the uploaded image right away but the actual map
+      // marker only appeared after a separate Save Changes click, which
+      // looked like the upload silently did nothing.
+      if (drawId) {
+        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconAsset: url, iconLat, iconLng };
+      }
+      setLoadedFeatures((prev) =>
+        prev.map((f) =>
+          f.properties?.id === editingFeature.id
+            ? { ...f, properties: { ...f.properties, iconAsset: url, iconLat, iconLng } }
+            : f
+        )
+      );
+      setEditingFeature((p) => p && { ...p, iconAsset: url, iconLat, iconLng });
     } catch (err) {
       console.error('Failed to upload zone icon:', err);
       alert('Failed to upload icon: ' + (err instanceof Error ? err.message : 'Unknown error'));
@@ -982,7 +990,24 @@ export function MapEditorPage() {
                 )}
                 {editingFeature.iconAsset && !uploadingZoneIcon && (
                   <button
-                    onClick={() => setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true })}
+                    onClick={() => {
+                      // Applies immediately, same as the upload path above --
+                      // otherwise the marker would linger on the map until
+                      // Save Changes despite the sidebar preview already
+                      // being cleared.
+                      const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === editingFeature.id);
+                      if (drawId) {
+                        drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true };
+                      }
+                      setLoadedFeatures((prev) =>
+                        prev.map((f) =>
+                          f.properties?.id === editingFeature.id
+                            ? { ...f, properties: { ...f.properties, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true } }
+                            : f
+                        )
+                      );
+                      setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true });
+                    }}
                     className="text-xs text-red-400 hover:text-red-300 shrink-0"
                   >
                     Remove
