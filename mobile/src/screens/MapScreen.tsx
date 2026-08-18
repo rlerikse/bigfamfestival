@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, Platform, Image } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import Mapbox from '@rnmapbox/maps';
 import TopNavBar from '../components/TopNavBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -169,6 +170,13 @@ interface MapZone {
     color: string;
     icon?: string;
     description?: string;
+    // Admin-uploaded zone logo/marker (Storage download URL) plus its own
+    // position/size, independent of the zone polygon's centroid/label.
+    iconAsset?: string;
+    iconLat?: number;
+    iconLng?: number;
+    iconSize?: number;
+    showTitle?: boolean;
   };
   geometry: {
     type: 'Polygon' | 'Point';
@@ -222,6 +230,25 @@ export default function MapScreen() {
   // emoji marker instead of rendering blank. Persists for the session; a
   // fresh screen mount will retry the URL.
   const [failedMarkerAssets, setFailedMarkerAssets] = useState<Set<string>>(new Set());
+  // Same failure-tracking pattern as failedMarkerAssets, scoped to zone icons
+  // (front-gate/Bayou-style logos) so a broken upload just omits the marker
+  // rather than showing a blank/broken image.
+  const [failedZoneIcons, setFailedZoneIcons] = useState<Set<string>>(new Set());
+  // PointAnnotation snapshots its child view into a static marker image once,
+  // at mount — it never re-snapshots on its own when an async image (like a
+  // remote zone icon) finishes loading later. refresh() forces a re-snapshot;
+  // call it from the image's onLoad, keyed by zone id via this ref map.
+  const zoneIconAnnotationRefs = useRef<Record<string, { refresh: () => void }>>({});
+  // Same snapshot-refresh need for POI custom marker images (markerAsset).
+  const poiAnnotationRefs = useRef<Record<string, { refresh: () => void }>>({});
+  const markZoneIconFailed = useCallback((zoneId: string) => {
+    setFailedZoneIcons(prev => {
+      if (prev.has(zoneId)) return prev;
+      const next = new Set(prev);
+      next.add(zoneId);
+      return next;
+    });
+  }, []);
   const markMarkerAssetFailed = useCallback((poiId: string) => {
     setFailedMarkerAssets(prev => {
       if (prev.has(poiId)) return prev;
@@ -699,6 +726,16 @@ export default function MapScreen() {
     features: zones.filter(z => z.geometry.type === 'Polygon'),
   };
 
+  // Zones with an admin-uploaded logo/marker positioned within them (e.g.
+  // "The Bayou") — rendered as separate PointAnnotations, same as POIs.
+  const zoneIcons = zones.filter(
+    z =>
+      !!z.properties.iconAsset &&
+      Number.isFinite(z.properties.iconLat) &&
+      Number.isFinite(z.properties.iconLng) &&
+      !failedZoneIcons.has(z.properties.id)
+  );
+
   const handlePOIPress = useCallback((poi: MapPOI | StageLocation) => {
     setSelectedPOI(prev => prev === poi ? null : poi);
   }, []);
@@ -1119,7 +1156,8 @@ export default function MapScreen() {
             <Mapbox.SymbolLayer
               id="zone-labels"
               style={{
-                textField: ['get', 'name'],
+                // Admin's "Show zone title" checkbox — hide the label when false.
+                textField: ['case', ['==', ['get', 'showTitle'], false], '', ['get', 'name']],
                 textSize: 14,
                 textColor: '#ffffff',
                 textHaloColor: '#000000',
@@ -1129,6 +1167,37 @@ export default function MapScreen() {
             />
           </Mapbox.ShapeSource>
         )}
+
+        {/* Zone icons — admin-uploaded logo/marker for a zone (e.g. "The Bayou"),
+            positioned/sized independently of the zone polygon's centroid. */}
+        {zoneIcons.map(zone => {
+          const size = zone.properties.iconSize ?? 40;
+          return (
+            <Mapbox.PointAnnotation
+              key={`zone-icon-${zone.properties.id}`}
+              id={`zone-icon-${zone.properties.id}`}
+              ref={(r) => {
+                if (r) zoneIconAnnotationRefs.current[zone.properties.id] = r as unknown as { refresh: () => void };
+              }}
+              coordinate={[zone.properties.iconLng!, zone.properties.iconLat!]}
+            >
+              {/* expo-image (not RN core Image) — zone icons are compressed to
+                  WebP on upload, which RN's core Image can't reliably decode
+                  on iOS. Not OptimizedImage either — its container always
+                  forces an opaque theme.border background (a loading-state
+                  placeholder) which shows through a transparent PNG/WebP's edges. */}
+              <View style={{ width: size, height: size, backgroundColor: 'transparent' }}>
+                <ExpoImage
+                  source={{ uri: zone.properties.iconAsset! }}
+                  style={{ width: size, height: size, backgroundColor: 'transparent' }}
+                  contentFit="contain"
+                  onLoad={() => zoneIconAnnotationRefs.current[zone.properties.id]?.refresh()}
+                  onError={() => markZoneIconFailed(zone.properties.id)}
+                />
+              </View>
+            </Mapbox.PointAnnotation>
+          );
+        })}
 
         {/* Stage markers */}
         {stagesVisible && stages.map(stage => {
@@ -1179,6 +1248,9 @@ export default function MapScreen() {
             <Mapbox.PointAnnotation
               key={poi.id}
               id={`poi-${poi.id}`}
+              ref={(r) => {
+                if (r) poiAnnotationRefs.current[poi.id] = r as unknown as { refresh: () => void };
+              }}
               coordinate={[poi.lng, poi.lat]}
               onSelected={() => handlePOIPress(poi)}
             >
@@ -1191,6 +1263,7 @@ export default function MapScreen() {
                       containerStyle={styles.brandMarkerImageContainer}
                       contentFit="contain"
                       showLoadingIndicator={false}
+                      onLoad={() => poiAnnotationRefs.current[poi.id]?.refresh()}
                       onError={() => markMarkerAssetFailed(poi.id)}
                     />
                   ) : (
