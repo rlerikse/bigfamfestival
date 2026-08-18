@@ -7,10 +7,9 @@
  */
 export type PoiType =
   | 'stage'
-  | 'food_vendor'
-  | 'shop_and_service'
-  | 'beverage_vendor'
-  | 'staff_and_medical'
+  | 'infrastructure'
+  | 'staff'
+  | 'vendors'
   | 'friend_campsite'
   | 'friend_location';
 

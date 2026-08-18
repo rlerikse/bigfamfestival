@@ -19,32 +19,31 @@ export interface POI {
   markerAsset?: string;
 }
 
-const POI_CATEGORIES = [
-  'stage', 'food_vendor', 'beverage_vendor', 'shop_and_service', 'staff_and_medical'
-] as const;
+// Canonical 4-bucket taxonomy — replaces the old 5-value scheme (which had
+// separate food/beverage/shop buckets) and the admin zone-editor's separate
+// stage/camping/infrastructure/staff/vendors vocabulary. One taxonomy, used
+// by this form, the backend's GET /map/pois, and mobile's marker rendering.
+const POI_CATEGORIES = ['stage', 'infrastructure', 'staff', 'vendors'] as const;
 
 const CATEGORY_EMOJI: Record<string, string> = {
   stage: '🎵',
-  food_vendor: '🍔',
-  beverage_vendor: '🍺',
-  shop_and_service: '🛒',
-  staff_and_medical: '🏥',
+  infrastructure: 'ℹ️',
+  staff: '👥',
+  vendors: '🛒',
 };
 
 const CATEGORY_LABEL: Record<string, string> = {
   stage: 'Stage',
-  food_vendor: 'Food Vendor',
-  beverage_vendor: 'Beverage Vendor',
-  shop_and_service: 'Shop & Service',
-  staff_and_medical: 'Staff & Medical',
+  infrastructure: 'Infrastructure',
+  staff: 'Staff',
+  vendors: 'Vendors',
 };
 
 const DEFAULT_COLORS: Record<string, string> = {
   stage: '#EF4444',
-  food_vendor: '#F59E0B',
-  beverage_vendor: '#3B82F6',
-  shop_and_service: '#8B5CF6',
-  staff_and_medical: '#DC2626',
+  infrastructure: '#3B82F6',
+  staff: '#6B7280',
+  vendors: '#F59E0B',
 };
 
 interface POIManagerProps {

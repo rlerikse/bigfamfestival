@@ -498,8 +498,12 @@ export function MapEditorPage() {
     const draw = new MapboxDraw({
       displayControlsDefault: false,
       controls: {
+        // Point marker creation is retired — POIManager (mapPOIs collection)
+        // is now the only path for markers, so they actually reach the
+        // mobile app instead of being invisible zone-doc Points (see
+        // MEMORY known-issues: the POI architecture migration).
         polygon: true,
-        point: true,
+        point: false,
         trash: true,
       },
       styles: drawStyles,
@@ -539,14 +543,14 @@ export function MapEditorPage() {
     });
 
     map.on('draw.create', (e: { features: GeoJSON.Feature[] }) => {
+      // Only polygon zones can be drawn now (point control is disabled above).
       if (e.features.length > 0) {
         const f = e.features[0];
         const drawId = f.id as string;
-        const geoType = f.geometry.type;
-        setNewFeatureDialog({ drawId, type: geoType });
+        setNewFeatureDialog({ drawId, type: f.geometry.type });
         setNewName('');
-        setNewCategory(geoType === 'Point' ? 'infrastructure' : 'camping');
-        setNewColor(geoType === 'Point' ? '#FF6B35' : '#10B981');
+        setNewCategory('camping');
+        setNewColor('#10B981');
       }
     });
 
@@ -921,14 +925,14 @@ export function MapEditorPage() {
 
         {/* Instructions overlay */}
         <div className="absolute top-3 left-3 bg-[#1C2B20]/90 text-[#F5F5DC] text-sm px-4 py-2.5 rounded-lg backdrop-blur-sm space-y-1 max-w-xs">
-          <div className="font-bold">✏️ Drawing Tools</div>
+          <div className="font-bold">✏️ Drawing Tools (zones only)</div>
           <div className="text-xs text-[#F5F5DC]/70">
             <strong>✏️ Polygon tool</strong> (top-right) — click points to draw outline, double-click to finish<br/>
-            <strong>📍 Point tool</strong> — click to place a POI marker<br/>
             <strong>🗑️ Trash</strong> — select + delete<br/>
             <strong>Click</strong> existing zone to select & drag<br/>
             <strong>Drag corners</strong> to reshape<br/>
-            <strong>Click midpoints</strong> (orange dots) to add vertices
+            <strong>Click midpoints</strong> (orange dots) to add vertices<br/>
+            <strong>Need a marker?</strong> Use "Add" under POIs below, not the Draw tool
           </div>
         </div>
 
@@ -945,9 +949,7 @@ export function MapEditorPage() {
       {newFeatureDialog && (
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1C2B20] border border-[#F5F5DC]/20 rounded-xl p-6 w-[360px] space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#F5F5DC]">
-              {newFeatureDialog.type === 'Point' ? '📍 New POI' : '✏️ New Zone'}
-            </h3>
+            <h3 className="text-lg font-bold text-[#F5F5DC]">✏️ New Zone</h3>
             <div>
               <label className="text-sm text-[#F5F5DC]/60 block mb-1">Name</label>
               <input
@@ -968,7 +970,6 @@ export function MapEditorPage() {
                   onChange={(e) => setNewCategory(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg bg-[#2E4031] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none focus:ring-2 focus:ring-[#6BBF59]/50"
                 >
-                  <option value="stage">🎵 Stage</option>
                   <option value="camping">⛺ Camping</option>
                   <option value="infrastructure">🏗️ Infrastructure</option>
                   <option value="staff">👥 Staff</option>

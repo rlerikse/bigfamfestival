@@ -67,10 +67,9 @@ function formatDistance(meters: number, unit: 'mi' | 'km'): string {
 
 export type POICategory =
   | 'stage'
-  | 'food'
-  | 'shop'
-  | 'beverage'
-  | 'staff';
+  | 'infrastructure'
+  | 'staff'
+  | 'vendors';
 
 interface CategoryConfig {
   label: string;
@@ -111,49 +110,51 @@ export const POI_CATEGORIES: Record<POICategory, CategoryConfig> = {
     borderWidth: 3,
     borderColor: '#fff',
   },
-  food: {
-    label: 'Food Vendors',
-    emoji: '🍔',
-    color: '#E8A838',
-    markerSize: 30,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  shop: {
-    label: 'Shops & Services',
-    emoji: '🛍️',
-    color: '#A78BFA',
-    markerSize: 30,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  beverage: {
-    label: 'Beverage Vendors',
-    emoji: '🍺',
-    color: '#F59E0B',
+  infrastructure: {
+    label: 'Infrastructure',
+    emoji: 'ℹ️',
+    color: '#3B82F6',
     markerSize: 30,
     borderWidth: 2,
     borderColor: '#fff',
   },
   staff: {
-    label: 'Staff & Medical',
-    emoji: '🏥',
-    color: '#EF4444',
-    markerSize: 38,
+    label: 'Staff',
+    emoji: '👥',
+    color: '#6B7280',
+    markerSize: 34,
     borderWidth: 3,
+    borderColor: '#fff',
+  },
+  vendors: {
+    label: 'Vendors',
+    emoji: '🛒',
+    color: '#E8A838',
+    markerSize: 30,
+    borderWidth: 2,
     borderColor: '#fff',
   },
 };
 
-/** Normalise a raw category string from Firestore to a POICategory key. */
+/**
+ * Normalise a raw category string from Firestore to a POICategory key.
+ * Handles both the canonical taxonomy (stage/infrastructure/staff/vendors)
+ * and legacy pre-migration values (info/medical/food/food_vendor/etc.) so
+ * older documents that haven't been re-saved through the admin form yet
+ * still render correctly.
+ */
 function resolveCategory(raw: string): POICategory {
   const s = (raw ?? '').toLowerCase().trim();
   if (s === 'stage' || s === 'stages') return 'stage';
-  if (s === 'food' || s === 'food vendor' || s === 'food vendors' || s === 'food_vendor') return 'food';
-  if (s === 'shop' || s === 'shops' || s === 'services' || s === 'shops & services' || s === 'shop_and_service') return 'shop';
-  if (s === 'beverage' || s === 'beverages' || s === 'beverage vendor' || s === 'beverage vendors' || s === 'beverage_vendor') return 'beverage';
-  if (s === 'staff' || s === 'medical' || s === 'staff & medical' || s === 'first aid' || s === 'staff_and_medical') return 'staff';
-  return 'food'; // safe default
+  if (s === 'infrastructure' || s === 'info' || s === 'medical' || s === 'first aid' || s === 'camping') return 'infrastructure';
+  if (s === 'staff' || s === 'staff & medical' || s === 'staff_and_medical') return 'staff';
+  if (
+    s === 'vendors' || s === 'vendor' ||
+    s === 'food' || s === 'food vendor' || s === 'food vendors' || s === 'food_vendor' ||
+    s === 'shop' || s === 'shops' || s === 'services' || s === 'shops & services' || s === 'shop_and_service' ||
+    s === 'beverage' || s === 'beverages' || s === 'beverage vendor' || s === 'beverage vendors' || s === 'beverage_vendor'
+  ) return 'vendors';
+  return 'vendors'; // safe default
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
