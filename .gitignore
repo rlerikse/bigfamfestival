@@ -43,3 +43,7 @@ admin/.env*.local
 functions/node_modules
 *.apk
 mobile/dist
+
+# OS cruft / build artifacts — never useful to track
+.DS_Store
+*.tsbuildinfo
