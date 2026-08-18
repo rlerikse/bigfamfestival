@@ -65,3 +65,14 @@ export async function uploadPOIMarker(file: File, poiId: string): Promise<string
   await uploadBytes(storageRef, file);
   return await getDownloadURL(storageRef);
 }
+
+// Uploads a zone/area icon image and returns its download URL. Separate path
+// from poi_markers so zone icons and POI marker logos never collide even if
+// a zone and a POI happen to share an id.
+export async function uploadZoneIcon(file: File, zoneId: string): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+  const safeId = zoneId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const storageRef = ref(storage, `zone_icons/${safeId}.${ext}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+}

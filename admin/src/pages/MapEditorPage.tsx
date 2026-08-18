@@ -8,6 +8,7 @@ import { Copy, Download, MousePointer, Save, Loader2, Plus, Trash2, ChevronDown,
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { POIManager, POI } from '@/components/POIManager';
+import { getImageDisplayUrl, uploadZoneIcon, validateMarkerFile } from '@/lib/storage';
 
 // Festival GeoJSON data
 const festivalGeoJSON: GeoJSON.FeatureCollection = {
@@ -120,7 +121,9 @@ export function MapEditorPage() {
   const [saved, setSaved] = useState(false);
   const [loadedFromFirestore, setLoadedFromFirestore] = useState(false);
   const [loadedFeatures, setLoadedFeatures] = useState<GeoJSON.Feature[]>([]);
-  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string } | null>(null);
+  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number } | null>(null);
+  const [uploadingZoneIcon, setUploadingZoneIcon] = useState(false);
+  const zoneIconMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('infrastructure');
@@ -198,6 +201,9 @@ export function MapEditorPage() {
           icon: props?.icon,
           color: props?.color,
           description: props?.description,
+          iconAsset: props?.iconAsset,
+          iconLat: props?.iconLat,
+          iconLng: props?.iconLng,
         },
         geometry: f.geometry,
       };
@@ -262,6 +268,9 @@ export function MapEditorPage() {
             icon: props?.icon || '',
             color: props?.color || '#888888',
             description: props?.description || '',
+            iconAsset: props?.iconAsset || '',
+            iconLat: props?.iconLat,
+            iconLng: props?.iconLng,
           },
           geometry: f.geometry,
         };
@@ -445,6 +454,9 @@ export function MapEditorPage() {
       category: editingFeature.category,
       color: editingFeature.color,
       description: editingFeature.description,
+      iconAsset: editingFeature.iconAsset,
+      iconLat: editingFeature.iconLat,
+      iconLng: editingFeature.iconLng,
     };
     const draw = drawRef.current;
     if (draw) {
@@ -468,6 +480,9 @@ export function MapEditorPage() {
                 category: editingFeature.category,
                 color: editingFeature.color,
                 description: editingFeature.description,
+                iconAsset: editingFeature.iconAsset,
+                iconLat: editingFeature.iconLat,
+                iconLng: editingFeature.iconLng,
               },
             }
           : f
@@ -475,6 +490,43 @@ export function MapEditorPage() {
     );
     updateLabels();
   }, [editingFeature, updateLabels]);
+
+  // Uploads an icon image/SVG for the selected zone and, if it doesn't
+  // already have a placed position, defaults it to the polygon's centroid so
+  // it starts somewhere visible inside the shape (draggable afterward).
+  const handleZoneIconUpload = useCallback(async (file: File) => {
+    if (!editingFeature) return;
+    const validationErr = validateMarkerFile(file);
+    if (validationErr) {
+      alert(validationErr);
+      return;
+    }
+    setUploadingZoneIcon(true);
+    try {
+      const url = await uploadZoneIcon(file, editingFeature.id);
+      setEditingFeature((p) => {
+        if (!p) return p;
+        if (p.iconLat !== undefined && p.iconLng !== undefined) {
+          return { ...p, iconAsset: url };
+        }
+        const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === p.id);
+        const feat = drawId ? drawRef.current?.get(drawId) : null;
+        const coords = feat?.geometry?.type === 'Polygon' ? feat.geometry.coordinates[0] : null;
+        const centroid = coords ? getCentroid(coords) : null;
+        return {
+          ...p,
+          iconAsset: url,
+          iconLng: centroid ? centroid[0] : p.iconLng,
+          iconLat: centroid ? centroid[1] : p.iconLat,
+        };
+      });
+    } catch (err) {
+      console.error('Failed to upload zone icon:', err);
+      alert('Failed to upload icon: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setUploadingZoneIcon(false);
+    }
+  }, [editingFeature]);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -537,6 +589,9 @@ export function MapEditorPage() {
             category: props.category as string,
             color: props.color as string,
             description: (props.description as string) || '',
+            iconAsset: (props.iconAsset as string) || undefined,
+            iconLat: props.iconLat as number | undefined,
+            iconLng: props.iconLng as number | undefined,
           });
         }
       } else {
@@ -690,17 +745,34 @@ export function MapEditorPage() {
     // Add new markers
     for (const poi of pois) {
       const el = document.createElement('div');
-      el.style.width = '20px';
-      el.style.height = '20px';
-      el.style.borderRadius = '50%';
-      el.style.backgroundColor = poi.color;
-      el.style.border = '2px solid white';
-      el.style.cursor = 'pointer';
-      el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
-      if (poi.id === selectedPOIId) {
-        el.style.width = '26px';
-        el.style.height = '26px';
-        el.style.border = '3px solid #6BBF59';
+      const isSelected = poi.id === selectedPOIId;
+      const size = isSelected ? 26 : 20;
+      const assetUrl = getImageDisplayUrl(poi.markerAsset);
+      if (assetUrl) {
+        // Custom uploaded icon (image/SVG) replaces the plain color circle —
+        // matches what mobile actually renders, so admin previews the truth.
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.borderRadius = '6px';
+        el.style.border = isSelected ? '3px solid #6BBF59' : '2px solid white';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
+        el.style.backgroundColor = '#1C2B20';
+        el.style.overflow = 'hidden';
+        el.style.cursor = 'pointer';
+        const img = document.createElement('img');
+        img.src = assetUrl;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        el.appendChild(img);
+      } else {
+        el.style.width = `${size}px`;
+        el.style.height = `${size}px`;
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = poi.color;
+        el.style.border = isSelected ? '3px solid #6BBF59' : '2px solid white';
+        el.style.cursor = 'pointer';
+        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.4)';
       }
       el.title = poi.name;
       el.addEventListener('click', (e) => {
@@ -713,6 +785,66 @@ export function MapEditorPage() {
       poiMarkersRef.current.push(marker);
     }
   }, [pois, selectedPOIId]);
+
+  // Render draggable icon markers for zones that have an uploaded icon asset.
+  // Position defaults to the polygon centroid (set at upload time in
+  // handleZoneIconUpload) and can be repositioned anywhere by dragging.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    zoneIconMarkersRef.current.forEach(m => m.remove());
+    zoneIconMarkersRef.current = [];
+    for (const f of loadedFeatures) {
+      const props = f.properties as Record<string, unknown> | undefined;
+      const iconAsset = props?.iconAsset as string | undefined;
+      if (!iconAsset) continue;
+      const assetUrl = getImageDisplayUrl(iconAsset);
+      if (!assetUrl) continue;
+      const lat = props?.iconLat as number | undefined;
+      const lng = props?.iconLng as number | undefined;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const el = document.createElement('div');
+      el.style.width = '32px';
+      el.style.height = '32px';
+      el.style.borderRadius = '6px';
+      el.style.border = '2px solid white';
+      el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
+      el.style.backgroundColor = '#1C2B20';
+      el.style.overflow = 'hidden';
+      el.style.cursor = 'grab';
+      const img = document.createElement('img');
+      img.src = assetUrl;
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      el.appendChild(img);
+      el.title = `${props?.name ?? ''} icon (drag to reposition)`;
+
+      const zoneId = props?.id as string;
+      const marker = new mapboxgl.Marker({ element: el, draggable: true })
+        .setLngLat([lng as number, lat as number])
+        .addTo(map);
+      marker.on('dragend', () => {
+        const newLngLat = marker.getLngLat();
+        const drawId = Object.keys(drawIdToProps).find((k) => drawIdToProps[k]?.id === zoneId);
+        if (drawId) {
+          drawIdToProps[drawId] = { ...drawIdToProps[drawId], iconLat: newLngLat.lat, iconLng: newLngLat.lng };
+        }
+        setLoadedFeatures((prev) =>
+          prev.map((feat) =>
+            feat.properties?.id === zoneId
+              ? { ...feat, properties: { ...feat.properties, iconLat: newLngLat.lat, iconLng: newLngLat.lng } }
+              : feat
+          )
+        );
+        if (editingFeature?.id === zoneId) {
+          setEditingFeature((p) => p && { ...p, iconLat: newLngLat.lat, iconLng: newLngLat.lng });
+        }
+      });
+      zoneIconMarkersRef.current.push(marker);
+    }
+  }, [loadedFeatures, editingFeature?.id]);
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -798,6 +930,38 @@ export function MapEditorPage() {
               placeholder="Description (optional)"
               className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm placeholder:text-[#F5F5DC]/30 focus:outline-none"
             />
+            <div className="space-y-1.5">
+              <label className="text-xs text-[#F5F5DC]/50">Icon image/SVG (optional — drag on map to position)</label>
+              <div className="flex items-center gap-2">
+                {editingFeature.iconAsset && (
+                  <img
+                    src={getImageDisplayUrl(editingFeature.iconAsset) || undefined}
+                    alt="zone icon preview"
+                    className="w-9 h-9 rounded border border-[#F5F5DC]/20 bg-[#1C2B20] object-contain"
+                  />
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleZoneIconUpload(file);
+                    e.target.value = '';
+                  }}
+                  disabled={uploadingZoneIcon}
+                  className="flex-1 text-xs text-[#F5F5DC]/60 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-[#6BBF59]/20 file:text-[#6BBF59] file:text-xs"
+                />
+                {uploadingZoneIcon && <Loader2 className="h-4 w-4 animate-spin text-[#6BBF59]" />}
+                {editingFeature.iconAsset && !uploadingZoneIcon && (
+                  <button
+                    onClick={() => setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined })}
+                    className="text-xs text-red-400 hover:text-red-300 shrink-0"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
             <button
               onClick={saveFeatureEdit}
               className="w-full px-3 py-2 rounded bg-[#6BBF59] text-[#1C2B20] font-bold text-sm hover:bg-[#6BBF59]/90"
