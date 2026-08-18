@@ -1187,8 +1187,8 @@ export function MapEditorPage() {
                   <input
                     type="range"
                     min={16}
-                    max={96}
-                    step={2}
+                    max={300}
+                    step={4}
                     value={editingFeature.iconSize}
                     onChange={(e) => {
                       const size = Number(e.target.value);
