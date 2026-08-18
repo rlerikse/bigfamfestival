@@ -20,6 +20,62 @@
 - **Home screen stage cards (#238):** resized so they no longer dominate the full phone width.
 - **Artist photo loading:** artist modal photos now load as fast as their thumbnails (switched to the same cached image component used elsewhere).
 
+## [1.5.0](https://github.com/rlerikse/bigfamfestival/compare/v1.4.2...v1.5.0) (2026-08-18)
+
+
+### Features
+
+* **admin:** add Grounds zone category ([b9e4241](https://github.com/rlerikse/bigfamfestival/commit/b9e4241f19ea624b6af51a21047742790eaf3775))
+* **admin:** auto-compress oversized marker/icon uploads ([f52280f](https://github.com/rlerikse/bigfamfestival/commit/f52280f963a6fb44bc0e730c7b3e2285baf7603b))
+* **admin:** custom icon upload for POIs and zones ([e8b696d](https://github.com/rlerikse/bigfamfestival/commit/e8b696d19e17273196a0747ef3b34f2446469a00))
+* **admin:** POI pin tool, drag-anywhere + undo, stage logos, zone override ([253d608](https://github.com/rlerikse/bigfamfestival/commit/253d608dfa6b2be228bfb3691f4c64b6ad251c76))
+* **admin:** raise zone icon size slider max to 300px ([e41c105](https://github.com/rlerikse/bigfamfestival/commit/e41c10554dd8258d9fe66a9fcc537c0d8a5c86df))
+* **admin:** redesign Map Editor sidebar into Zones/POIs sections ([a8dd515](https://github.com/rlerikse/bigfamfestival/commit/a8dd515bdeddd582b8d5fafda971e79652099234))
+* **admin:** show zone title toggle, verified icon clear/remove ([47c42b9](https://github.com/rlerikse/bigfamfestival/commit/47c42b923365e0b59fc802084ea696390d344159))
+* **admin:** true-to-source icon rendering, size slider, icon-only drag lock ([61c709c](https://github.com/rlerikse/bigfamfestival/commit/61c709c3b89a5fd282ad338151460f052687ed5a))
+* **BFF-127:** schedule list mount + scroll performance fix ([6679b19](https://github.com/rlerikse/bigfamfestival/commit/6679b19a32cb7af7e9eb7409883b6006ee0ed3bd))
+* **BFF-128:** derive schedule genre filter options from current lineup ([df05bcb](https://github.com/rlerikse/bigfamfestival/commit/df05bcbdbb09cd3d39fbf3cac634ea3dd8f11b30))
+* **map:** gyro-fused friend-finder heading, compass calibration, avatar & centering fixes ([0bb6170](https://github.com/rlerikse/bigfamfestival/commit/0bb617011acdf33de3a73919f34528d3282c90d7))
+* **map:** hand off to external map app beyond 1 mile ([c3c83f1](https://github.com/rlerikse/bigfamfestival/commit/c3c83f177aebf4908f0d55354d0e70cae1cb4fe7))
+* **schedule:** add zoom in/out controls to horizontal grid view ([517f81b](https://github.com/rlerikse/bigfamfestival/commit/517f81bf09dcfcaf36aca212ad578af8531bfd71))
+* **schedule:** default horizontal grid to fully zoomed out ([a0e41e3](https://github.com/rlerikse/bigfamfestival/commit/a0e41e3bd09c06fae4651de64a9cf375d2272557))
+* **schedule:** shrink stage-row height when zoomed out ([1f7c9fb](https://github.com/rlerikse/bigfamfestival/commit/1f7c9fba5fad620aa8ee2426e11bc1ade70e5088))
+
+
+### Bug Fixes
+
+* **admin:** confirm before deleting a stage ([aab9d02](https://github.com/rlerikse/bigfamfestival/commit/aab9d02ed5b8ef36090858ac347f8632864ec19d))
+* **admin:** map editor had no Mapbox token, tighten POI location check ([34d8d1e](https://github.com/rlerikse/bigfamfestival/commit/34d8d1e6c442ec56fdcdc280b60d353ec22c2ff1))
+* **admin:** surface POI save/load errors, fix 0-coordinate validation bug ([cf45f20](https://github.com/rlerikse/bigfamfestival/commit/cf45f20875d9c537c26323c130338e9030991576))
+* **admin:** zone colors on canvas now match stored/sidebar colors ([df51c1e](https://github.com/rlerikse/bigfamfestival/commit/df51c1ed8fb88a9f390bc8737e2b430e9314d795))
+* **admin:** zone icon file input label and instant title toggle ([5c05fe5](https://github.com/rlerikse/bigfamfestival/commit/5c05fe5ec5d4a65b1a182298f17577868fbb5d82))
+* **admin:** zone icon marker renders instantly on upload/remove ([bee526c](https://github.com/rlerikse/bigfamfestival/commit/bee526ccbd4c6c6d713bb8bcf8caa3a6bbfa8125))
+* **home:** reduce stage card size on Home screen ([e85b805](https://github.com/rlerikse/bigfamfestival/commit/e85b8054b8d0291bf9507142b61d40ea7acaf76d))
+* **map:** resolve Mapbox token for walking directions ([aa802d6](https://github.com/rlerikse/bigfamfestival/commit/aa802d601900cd351021c000b9d747cfc56e831c))
+* **map:** stable stage marker ids, editable zone feature category ([8af0236](https://github.com/rlerikse/bigfamfestival/commit/8af02361bb9af820a1a026840c679aef7c4ade91))
+* **map:** stop infinite render loop when routing to a friend ([889ffce](https://github.com/rlerikse/bigfamfestival/commit/889ffce64f8b8549cd28173b5ea5c47735350e93))
+* **mobile:** render zone icon and POI marker logos on the map ([7b18c43](https://github.com/rlerikse/bigfamfestival/commit/7b18c436227854bbb85d6cd36e9d518049442545))
+* **routing:** downgrade 4xx bail-out log to warn, not error ([37f9c0a](https://github.com/rlerikse/bigfamfestival/commit/37f9c0ad62fc5a5380a6b17d75e2b467cc3220df))
+* **schedule:** BFF-128 genre filter uses the current lineup ([#185](https://github.com/rlerikse/bigfamfestival/issues/185)) ([a00e3a4](https://github.com/rlerikse/bigfamfestival/commit/a00e3a45e27cc29ba7d29394ca54ca3331fa9ec8))
+* **schedule:** clear the bottom tab bar under the zoom controls row ([ea054fe](https://github.com/rlerikse/bigfamfestival/commit/ea054feca5d12144bc80f36ee7fdfb58594e4886))
+* **schedule:** drop the two most-zoomed-in options ([d984a5e](https://github.com/rlerikse/bigfamfestival/commit/d984a5e873c9bd760444daf428d60e9556f1d0b3))
+* **schedule:** move zoom controls below the stage rows ([5cbd7e2](https://github.com/rlerikse/bigfamfestival/commit/5cbd7e2c4f60aad8f7411f40b6b54323d6075695))
+* **schedule:** move zoom controls into a row under the ruler header ([fb18df9](https://github.com/rlerikse/bigfamfestival/commit/fb18df96ccd6f9a0e9337f6fae6bd96edab3d7a8))
+* **schedule:** move zoom controls right under the last stage row ([7e888ca](https://github.com/rlerikse/bigfamfestival/commit/7e888ca2b00d27fe6a7afba9e2ef61cda4e00b11))
+* **schedule:** pin zoom controls to bottom of schedule area ([251f4c3](https://github.com/rlerikse/bigfamfestival/commit/251f4c3481a0e9a5b00958e6a2ae7f09750f297e))
+* **schedule:** round thumbnail's left corners to match event card ([1dbaaed](https://github.com/rlerikse/bigfamfestival/commit/1dbaaed0d5974003d0b2d5e4295668d6815ec37f))
+* **schedule:** use OptimizedImage for artist modal photo ([de2e97e](https://github.com/rlerikse/bigfamfestival/commit/de2e97e98537b027628a6f18b48ae1c346be5eaf))
+
+
+### Performance Improvements
+
+* **schedule:** BFF-127 fix list mount + scroll lag ([#186](https://github.com/rlerikse/bigfamfestival/issues/186)) ([740f0f6](https://github.com/rlerikse/bigfamfestival/commit/740f0f68fda8c5c43e58d302ec17b48f24c07b13))
+
+
+### Reverts
+
+* **schedule:** zoom controls back to in-flow, not pinned/absolute ([e394a4e](https://github.com/rlerikse/bigfamfestival/commit/e394a4ef6c5cbc9038e7fb8f487518c5f01c99b3))
+
 ## [1.4.2](https://github.com/rlerikse/bigfamfestival/compare/v1.4.1...v1.4.2) (2026-08-09)
 
 
