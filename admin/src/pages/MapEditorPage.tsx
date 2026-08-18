@@ -121,7 +121,7 @@ export function MapEditorPage() {
   const [saved, setSaved] = useState(false);
   const [loadedFromFirestore, setLoadedFromFirestore] = useState(false);
   const [loadedFeatures, setLoadedFeatures] = useState<GeoJSON.Feature[]>([]);
-  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number } | null>(null);
+  const [editingFeature, setEditingFeature] = useState<{ id: string; name: string; category: string; color: string; description: string; iconAsset?: string; iconLat?: number; iconLng?: number; showTitle: boolean } | null>(null);
   const [uploadingZoneIcon, setUploadingZoneIcon] = useState(false);
   const zoneIconMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
@@ -204,6 +204,7 @@ export function MapEditorPage() {
           iconAsset: props?.iconAsset,
           iconLat: props?.iconLat,
           iconLng: props?.iconLng,
+          showTitle: props?.showTitle !== false,
         },
         geometry: f.geometry,
       };
@@ -227,22 +228,24 @@ export function MapEditorPage() {
     if (!map.getSource('labels')) return;
 
     const all = draw.getAll();
-    const labelFeatures: GeoJSON.Feature[] = all.features.map((f: GeoJSON.Feature) => {
-      const props = drawIdToProps[f.id as string] || {};
-      let center: [number, number];
-      if (f.geometry.type === 'Point') {
-        center = f.geometry.coordinates as [number, number];
-      } else if (f.geometry.type === 'Polygon') {
-        center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
-      } else {
-        center = [0, 0];
-      }
-      return {
-        type: 'Feature' as const,
-        properties: { name: (props as Record<string, unknown>)?.name ?? f.id },
-        geometry: { type: 'Point' as const, coordinates: center },
-      };
-    });
+    const labelFeatures: GeoJSON.Feature[] = all.features
+      .filter((f: GeoJSON.Feature) => (drawIdToProps[f.id as string] as Record<string, unknown> | undefined)?.showTitle !== false)
+      .map((f: GeoJSON.Feature) => {
+        const props = drawIdToProps[f.id as string] || {};
+        let center: [number, number];
+        if (f.geometry.type === 'Point') {
+          center = f.geometry.coordinates as [number, number];
+        } else if (f.geometry.type === 'Polygon') {
+          center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
+        } else {
+          center = [0, 0];
+        }
+        return {
+          type: 'Feature' as const,
+          properties: { name: (props as Record<string, unknown>)?.name ?? f.id },
+          geometry: { type: 'Point' as const, coordinates: center },
+        };
+      });
 
     (map.getSource('labels') as mapboxgl.GeoJSONSource).setData({
       type: 'FeatureCollection',
@@ -271,6 +274,7 @@ export function MapEditorPage() {
             iconAsset: props?.iconAsset || '',
             iconLat: props?.iconLat,
             iconLng: props?.iconLng,
+            showTitle: props?.showTitle !== false,
           },
           geometry: f.geometry,
         };
@@ -457,6 +461,7 @@ export function MapEditorPage() {
       iconAsset: editingFeature.iconAsset,
       iconLat: editingFeature.iconLat,
       iconLng: editingFeature.iconLng,
+      showTitle: editingFeature.showTitle,
     };
     const draw = drawRef.current;
     if (draw) {
@@ -483,6 +488,7 @@ export function MapEditorPage() {
                 iconAsset: editingFeature.iconAsset,
                 iconLat: editingFeature.iconLat,
                 iconLng: editingFeature.iconLng,
+                showTitle: editingFeature.showTitle,
               },
             }
           : f
@@ -592,6 +598,7 @@ export function MapEditorPage() {
             iconAsset: (props.iconAsset as string) || undefined,
             iconLat: props.iconLat as number | undefined,
             iconLng: props.iconLng as number | undefined,
+            showTitle: props.showTitle !== false,
           });
         }
       } else {
@@ -648,22 +655,25 @@ export function MapEditorPage() {
         }
       }
 
-      // Add label layer
-      const labelFeatures: GeoJSON.Feature[] = featuresToLoad.map((f) => {
-        let center: [number, number];
-        if (f.geometry.type === 'Point') {
-          center = f.geometry.coordinates as [number, number];
-        } else if (f.geometry.type === 'Polygon') {
-          center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
-        } else {
-          center = [0, 0];
-        }
-        return {
-          type: 'Feature' as const,
-          properties: { name: f.properties?.name ?? '' },
-          geometry: { type: 'Point' as const, coordinates: center },
-        };
-      });
+      // Add label layer (skips zones with showTitle explicitly set to false —
+      // those show only their icon on the map, per the per-zone toggle).
+      const labelFeatures: GeoJSON.Feature[] = featuresToLoad
+        .filter((f) => f.properties?.showTitle !== false)
+        .map((f) => {
+          let center: [number, number];
+          if (f.geometry.type === 'Point') {
+            center = f.geometry.coordinates as [number, number];
+          } else if (f.geometry.type === 'Polygon') {
+            center = getCentroid((f.geometry as GeoJSON.Polygon).coordinates[0]);
+          } else {
+            center = [0, 0];
+          }
+          return {
+            type: 'Feature' as const,
+            properties: { name: f.properties?.name ?? '' },
+            geometry: { type: 'Point' as const, coordinates: center },
+          };
+        });
 
       map.addSource('labels', {
         type: 'geojson',
@@ -954,13 +964,24 @@ export function MapEditorPage() {
                 {uploadingZoneIcon && <Loader2 className="h-4 w-4 animate-spin text-[#6BBF59]" />}
                 {editingFeature.iconAsset && !uploadingZoneIcon && (
                   <button
-                    onClick={() => setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined })}
+                    onClick={() => setEditingFeature((p) => p && { ...p, iconAsset: undefined, iconLat: undefined, iconLng: undefined, showTitle: true })}
                     className="text-xs text-red-400 hover:text-red-300 shrink-0"
                   >
                     Remove
                   </button>
                 )}
               </div>
+              {editingFeature.iconAsset && (
+                <label className="flex items-center gap-2 text-xs text-[#F5F5DC]/60 pt-1">
+                  <input
+                    type="checkbox"
+                    checked={editingFeature.showTitle}
+                    onChange={(e) => setEditingFeature((p) => p && { ...p, showTitle: e.target.checked })}
+                    className="accent-[#6BBF59]"
+                  />
+                  Show zone title on map (uncheck to show only the icon)
+                </label>
+              )}
             </div>
             <button
               onClick={saveFeatureEdit}
