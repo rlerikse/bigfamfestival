@@ -498,6 +498,12 @@ export function MapEditorPage() {
 
     const draw = new MapboxDraw({
       displayControlsDefault: false,
+      // Required for drawStyles' `['get', 'user_color']` expressions to see
+      // our custom `color` property at all -- without this, Draw never
+      // exposes non-builtin properties to the GL style layer, so every zone
+      // silently rendered with the hardcoded '#3bb2d0' fallback instead of
+      // its real stored color.
+      userProperties: true,
       controls: {
         // Point marker creation is retired — POIManager (mapPOIs collection)
         // is now the only path for markers, so they actually reach the
@@ -776,6 +782,7 @@ export function MapEditorPage() {
                 <option value="infrastructure">🏗️ Infrastructure</option>
                 <option value="staff">👥 Staff</option>
                 <option value="vendors">🛒 Vendors</option>
+                <option value="grounds">🌳 Grounds</option>
               </select>
               <input
                 type="color"
