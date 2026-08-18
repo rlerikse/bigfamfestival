@@ -37,15 +37,23 @@ const festivalGeoJSON: GeoJSON.FeatureCollection = {
   ],
 };
 
-const CATEGORIES = ['stage', 'camping', 'infrastructure', 'staff', 'vendors', 'grounds'] as const;
+// Zones now have exactly 3 types (per user request to simplify the old
+// 6-value scheme, which had grown confusing: stage/camping/infrastructure/
+// staff/vendors/grounds). Legacy values are normalized to one of these via
+// zoneMetaCategory() below for any data that hasn't been re-saved yet.
+const CATEGORIES = ['camping', 'entertainment', 'staff'] as const;
 const CATEGORY_LABELS: Record<string, string> = {
-  stage: '🎵 Stages',
   camping: '⛺ Camping',
-  infrastructure: '🏗️ Infrastructure',
+  entertainment: '🎉 Entertainment',
   staff: '👥 Staff',
-  vendors: '🛒 Vendors',
-  grounds: '🌳 Grounds',
 };
+
+/** Normalizes a zone's raw category (current 3-value scheme, or a legacy
+ * pre-migration value) into one of the 3 zone types. */
+function zoneMetaCategory(raw: string | undefined): 'camping' | 'entertainment' | 'staff' {
+  if (raw === 'camping' || raw === 'staff') return raw;
+  return 'entertainment';
+}
 
 function getCentroid(coords: number[][]): [number, number] {
   let x = 0, y = 0;
@@ -150,7 +158,7 @@ export function MapEditorPage() {
   const [iconMoveLocked, setIconMoveLocked] = useState(false);
   const [newFeatureDialog, setNewFeatureDialog] = useState<{ drawId: string; type: string } | null>(null);
   const [newName, setNewName] = useState('');
-  const [newCategory, setNewCategory] = useState('infrastructure');
+  const [newCategory, setNewCategory] = useState('camping');
   const [newColor, setNewColor] = useState('#FF6B35');
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPOIId, setSelectedPOIId] = useState<string | null>(null);
@@ -162,10 +170,41 @@ export function MapEditorPage() {
   const stageMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const features = festivalGeoJSON.features;
 
-  const grouped = CATEGORIES.reduce((acc, cat) => {
-    acc[cat] = loadedFeatures.filter((f) => f.properties?.category === cat);
+  // Sidebar is organized as two sections: Zones (grouped into camping/
+  // entertainment/staff) with POIs/stages nested under whichever zone
+  // polygon geographically contains them, and a flat list of POIs/stages
+  // that aren't inside any zone. Replaces the old flat category list, which
+  // mixed zones and points under 5-6 categories with no sense of what was
+  // physically inside what.
+  const zonePolygons = loadedFeatures.filter((f) => f.geometry.type === 'Polygon');
+  const groupedZones = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = zonePolygons.filter((f) => zoneMetaCategory(f.properties?.category) === cat);
     return acc;
-  }, {} as Record<string, typeof features>);
+  }, {} as Record<string, GeoJSON.Feature[]>);
+
+  type PoiLikeItem = { key: string; id: string; name: string; lat: number; lng: number; icon: string; kind: 'poi' | 'stage' };
+  const poiLikeItems: PoiLikeItem[] = [
+    ...pois.map((p): PoiLikeItem => ({ key: `poi:${p.id}`, id: p.id, name: p.name, lat: p.lat, lng: p.lng, icon: p.icon || '📍', kind: 'poi' })),
+    ...stages.map((s): PoiLikeItem => ({ key: `stage:${s.id}`, id: s.id, name: s.name, lat: s.lat, lng: s.lng, icon: '🎵', kind: 'stage' })),
+  ];
+  const nestedKeys = new Set<string>();
+  const zoneContents = new Map<string, PoiLikeItem[]>();
+  for (const zone of zonePolygons) {
+    const zoneId = zone.properties?.id as string;
+    const ring = zone.geometry.type === 'Polygon' ? zone.geometry.coordinates[0] : null;
+    if (!zoneId || !ring) continue;
+    const contained = poiLikeItems.filter((item) => isPointInPolygon([item.lng, item.lat], ring));
+    zoneContents.set(zoneId, contained);
+    for (const item of contained) nestedKeys.add(item.key);
+  }
+  const orphanPoiLikeItems = poiLikeItems.filter((item) => !nestedKeys.has(item.key));
+
+  const flyToPoiLike = useCallback((item: PoiLikeItem) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.flyTo({ center: [item.lng, item.lat], zoom: 17, duration: 800 });
+    if (item.kind === 'poi') setSelectedPOIId(item.id);
+  }, []);
 
   const selectFeature = useCallback((featureId: string) => {
     const draw = drawRef.current;
@@ -292,7 +331,7 @@ export function MapEditorPage() {
           properties: {
             id: props?.id || f.id,
             name: props?.name || 'Unnamed',
-            category: props?.category || 'infrastructure',
+            category: props?.category || 'camping',
             icon: props?.icon || '',
             color: props?.color || '#888888',
             description: props?.description || '',
@@ -451,7 +490,7 @@ export function MapEditorPage() {
       name: newName.trim(),
       category: newCategory,
       color: newColor,
-      icon: newCategory === 'stage' ? 'stage' : '',
+      icon: '',
       description: '',
     };
     // Update the Draw feature color
@@ -1024,38 +1063,82 @@ export function MapEditorPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-          {CATEGORIES.map((cat) => {
-            const items = grouped[cat];
-            if (!items?.length) return null;
-            return (
-              <div key={cat}>
-                <div className="text-sm font-bold text-[#F5F5DC]/60 uppercase tracking-wider px-2 py-1 mb-1">
-                  {CATEGORY_LABELS[cat]}
+          {/* Section 1: Zones — grouped by camping/entertainment/staff, with
+              POIs and stages nested under whichever zone geographically
+              contains them. */}
+          <div>
+            <div className="text-sm font-bold text-[#F5F5DC] px-2 py-1 mb-1">🗺️ Zones</div>
+            {CATEGORIES.map((cat) => {
+              const zonesInCat = groupedZones[cat];
+              if (!zonesInCat?.length) return null;
+              return (
+                <div key={cat} className="mb-2">
+                  <div className="text-xs font-bold text-[#F5F5DC]/60 uppercase tracking-wider px-2 py-1">
+                    {CATEGORY_LABELS[cat]}
+                  </div>
+                  {zonesInCat.map((f) => {
+                    const props = f.properties!;
+                    const isSelected = selectedId === props.id;
+                    const contents = zoneContents.get(props.id as string) ?? [];
+                    return (
+                      <div key={props.id}>
+                        <button
+                          onClick={() => flyTo(f)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-left transition-colors ${
+                            isSelected
+                              ? 'bg-[#6BBF59]/25 text-[#6BBF59] ring-1 ring-[#6BBF59]/40'
+                              : 'text-[#F5F5DC]/80 hover:bg-white/5'
+                          }`}
+                        >
+                          <span className="shrink-0 w-4 h-4 rounded-sm" style={{ backgroundColor: props.color }} />
+                          <span className="truncate font-medium">{props.name}</span>
+                        </button>
+                        {contents.length > 0 && (
+                          <div className="pl-6 space-y-0.5 mt-0.5 mb-1">
+                            {contents.map((item) => (
+                              <button
+                                key={item.key}
+                                onClick={() => flyToPoiLike(item)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left transition-colors ${
+                                  item.kind === 'poi' && selectedPOIId === item.id
+                                    ? 'bg-[#6BBF59]/20 text-[#6BBF59]'
+                                    : 'text-[#F5F5DC]/60 hover:bg-white/5'
+                                }`}
+                              >
+                                <span className="shrink-0">{item.icon}</span>
+                                <span className="truncate">{item.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                {items.map((f) => {
-                  const props = f.properties!;
-                  const isSelected = selectedId === props.id;
-                  return (
-                    <button
-                      key={props.id}
-                      onClick={() => flyTo(f)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-left transition-colors ${
-                        isSelected
-                          ? 'bg-[#6BBF59]/25 text-[#6BBF59] ring-1 ring-[#6BBF59]/40'
-                          : 'text-[#F5F5DC]/80 hover:bg-white/5'
-                      }`}
-                    >
-                      <span
-                        className={`shrink-0 ${f.geometry.type === 'Point' ? 'w-4 h-4 rounded-full border-2 border-white/60' : 'w-4 h-4 rounded-sm'}`}
-                        style={{ backgroundColor: props.color }}
-                      />
-                      <span className="truncate font-medium">{props.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Section 2: POIs/stages outside any zone. */}
+          {orphanPoiLikeItems.length > 0 && (
+            <div>
+              <div className="text-sm font-bold text-[#F5F5DC] px-2 py-1 mb-1">📍 POIs (outside any zone)</div>
+              {orphanPoiLikeItems.map((item) => (
+                <button
+                  key={item.key}
+                  onClick={() => flyToPoiLike(item)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base text-left transition-colors ${
+                    item.kind === 'poi' && selectedPOIId === item.id
+                      ? 'bg-[#6BBF59]/25 text-[#6BBF59] ring-1 ring-[#6BBF59]/40'
+                      : 'text-[#F5F5DC]/80 hover:bg-white/5'
+                  }`}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className="truncate font-medium">{item.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Selected feature editor */}
@@ -1075,12 +1158,9 @@ export function MapEditorPage() {
                 onChange={(e) => setEditingFeature((p) => p && { ...p, category: e.target.value })}
                 className="flex-1 px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none"
               >
-                <option value="stage">🎵 Stage</option>
                 <option value="camping">⛺ Camping</option>
-                <option value="infrastructure">🏗️ Infrastructure</option>
+                <option value="entertainment">🎉 Entertainment</option>
                 <option value="staff">👥 Staff</option>
-                <option value="vendors">🛒 Vendors</option>
-                <option value="grounds">🌳 Grounds</option>
               </select>
               <input
                 type="color"
@@ -1403,10 +1483,8 @@ export function MapEditorPage() {
                   className="w-full px-3 py-2 rounded-lg bg-[#2E4031] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none focus:ring-2 focus:ring-[#6BBF59]/50"
                 >
                   <option value="camping">⛺ Camping</option>
-                  <option value="infrastructure">🏗️ Infrastructure</option>
+                  <option value="entertainment">🎉 Entertainment</option>
                   <option value="staff">👥 Staff</option>
-                  <option value="vendors">🛒 Vendors</option>
-                  <option value="grounds">🌳 Grounds</option>
                 </select>
               </div>
               <div>
