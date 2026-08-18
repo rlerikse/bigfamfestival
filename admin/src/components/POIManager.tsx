@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { uploadPOIMarker, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES, getImageDisplayUrl } from '../lib/storage';
 import { db } from '@/lib/firebase';
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, MapPin, X, Undo2 } from 'lucide-react';
 
 export interface POI {
   id: string;
@@ -17,6 +17,11 @@ export interface POI {
   // Optional custom marker image URL (logo/icon). When set, the mobile app
   // renders this image instead of the emoji `icon` (which stays as fallback).
   markerAsset?: string;
+  // Explicit zone assignment override. The sidebar normally nests a POI under
+  // whichever zone polygon geographically contains its lat/lng; setting this
+  // pins it to a specific zone regardless of geometry (e.g. an entrance POI
+  // that sits just outside the zone boundary it logically belongs to).
+  zoneId?: string;
 }
 
 // Canonical 4-bucket taxonomy — replaces the old 5-value scheme (which had
@@ -49,18 +54,27 @@ const DEFAULT_COLORS: Record<string, string> = {
 interface POIManagerProps {
   onPOIsChanged: (pois: POI[]) => void;
   onRequestMapClick: (callback: (lat: number, lng: number) => void) => void;
+  // Set when the map's standalone pin-drop control (top-right, below the
+  // polygon tool) reports a click — opens the Add form pre-filled with that
+  // location instead of requiring "Add" -> "Pick" -> click map in sequence.
+  pendingPin?: { lat: number; lng: number; nonce: number } | null;
+  // Set when an existing POI's map marker is dragged to a new position —
+  // persists the move directly (same instant-apply pattern as zone icon drag).
+  dragUpdate?: { poiId: string; lat: number; lng: number; prevLat: number; prevLng: number; nonce: number } | null;
+  // Zone polygons available for the explicit "Zone" override dropdown.
+  zones: { id: string; name: string }[];
   selectedPOIId: string | null;
   onSelectPOI: (id: string | null) => void;
 }
 
-export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, onSelectPOI }: POIManagerProps) {
+export function POIManager({ onPOIsChanged, onRequestMapClick, pendingPin, dragUpdate, zones, selectedPOIId, onSelectPOI }: POIManagerProps) {
   const [pois, setPois] = useState<POI[]>([]);
   const [collapsed, setCollapsed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '', category: 'stage', color: '#EF4444', icon: '🎵',
-    lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '',
+    lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '', zoneId: '',
   });
   const [pickingLocation, setPickingLocation] = useState(false);
   const [markerFile, setMarkerFile] = useState<File | null>(null);
@@ -82,8 +96,64 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
 
   useEffect(() => { fetchPOIs(); }, [fetchPOIs]);
 
+  useEffect(() => {
+    if (!pendingPin) return;
+    setFormData({
+      name: '', category: 'stage', color: DEFAULT_COLORS.stage, icon: CATEGORY_EMOJI.stage,
+      lat: pendingPin.lat, lng: pendingPin.lng, description: '', vendorId: '', markerAsset: '', zoneId: '',
+    });
+    setEditingId(null);
+    setMarkerFile(null);
+    setCollapsed(false);
+    setShowForm(true);
+  }, [pendingPin]);
+
+  // Undo stack for accidental marker drags — each entry is the position a
+  // POI had *before* a drag, so undo just re-applies that previous position.
+  const [dragHistory, setDragHistory] = useState<{ poiId: string; lat: number; lng: number }[]>([]);
+
+  const applyPOIPosition = useCallback((poiId: string, lat: number, lng: number) => {
+    updateDoc(doc(db, 'mapPOIs', poiId), { lat, lng })
+      .then(() => {
+        setPois(prev => {
+          const next = prev.map(p => (p.id === poiId ? { ...p, lat, lng } : p));
+          onPOIsChanged(next);
+          return next;
+        });
+        setFormData(p => (editingId === poiId ? { ...p, lat, lng } : p));
+      })
+      .catch(err => console.error('Failed to save POI location:', err));
+  }, [onPOIsChanged, editingId]);
+
+  useEffect(() => {
+    if (!dragUpdate) return;
+    setDragHistory(prev => [...prev, { poiId: dragUpdate.poiId, lat: dragUpdate.prevLat, lng: dragUpdate.prevLng }]);
+    applyPOIPosition(dragUpdate.poiId, dragUpdate.lat, dragUpdate.lng);
+  }, [dragUpdate]);
+
+  const undoLastMove = useCallback(() => {
+    setDragHistory(prev => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1];
+      applyPOIPosition(last.poiId, last.lat, last.lng);
+      return prev.slice(0, -1);
+    });
+  }, [applyPOIPosition]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.key === 'z' || e.key === 'Z') || !(e.metaKey || e.ctrlKey) || e.shiftKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      undoLastMove();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoLastMove]);
+
   const resetForm = () => {
-    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '' });
+    setFormData({ name: '', category: 'stage', color: '#EF4444', icon: '🎵', lat: 0, lng: 0, description: '', vendorId: '', markerAsset: '', zoneId: '' });
     setEditingId(null);
     setShowForm(false);
     setPickingLocation(false);
@@ -133,6 +203,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
         description: formData.description || '',
         vendorId: formData.vendorId || '',
         markerAsset: formData.markerAsset || '',
+        zoneId: formData.zoneId || '',
       };
 
       // Determine the POI id up front so the marker upload path is stable.
@@ -177,7 +248,7 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
     setFormData({
       name: poi.name, category: poi.category, color: poi.color, icon: poi.icon,
       lat: poi.lat, lng: poi.lng, description: poi.description || '', vendorId: poi.vendorId || '',
-      markerAsset: poi.markerAsset || '',
+      markerAsset: poi.markerAsset || '', zoneId: poi.zoneId || '',
     });
     setMarkerFile(null);
     setEditingId(poi.id);
@@ -214,12 +285,22 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
           <MapPin className="h-4 w-4" />
           <span className="text-sm font-bold">POIs ({pois.length})</span>
         </button>
-        <button
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="flex items-center gap-1 px-2 py-1 rounded bg-[#6BBF59]/20 text-[#6BBF59] text-xs font-medium hover:bg-[#6BBF59]/30"
-        >
-          <Plus className="h-3 w-3" /> Add
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={undoLastMove}
+            disabled={dragHistory.length === 0}
+            title="Undo last marker move (Ctrl/Cmd+Z)"
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[#2E4031] text-[#F5F5DC]/70 text-xs font-medium hover:bg-[#2E4031]/80 border border-[#F5F5DC]/10 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <Undo2 className="h-3 w-3" /> Undo
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="flex items-center gap-1 px-2 py-1 rounded bg-[#6BBF59]/20 text-[#6BBF59] text-xs font-medium hover:bg-[#6BBF59]/30"
+          >
+            <Plus className="h-3 w-3" /> Add
+          </button>
+        </div>
       </div>
 
       {loadError && (
@@ -279,6 +360,19 @@ export function POIManager({ onPOIsChanged, onRequestMapClick, selectedPOIId, on
             >
               {pickingLocation ? '📍 Click map...' : '📍 Pick'}
             </button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-[#F5F5DC]/50">
+              Zone (optional — overrides auto-detection by location)
+            </label>
+            <select
+              value={formData.zoneId}
+              onChange={e => setFormData(p => ({ ...p, zoneId: e.target.value }))}
+              className="w-full px-2 py-1.5 rounded bg-[#1C2B20] border border-[#F5F5DC]/20 text-[#F5F5DC] text-sm focus:outline-none"
+            >
+              <option value="">Auto (by location on map)</option>
+              {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+            </select>
           </div>
           <input
             type="text" placeholder="Description (optional)" value={formData.description}

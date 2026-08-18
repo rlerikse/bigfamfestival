@@ -143,3 +143,13 @@ export async function uploadZoneIcon(file: File, zoneId: string): Promise<string
   await uploadBytes(storageRef, file);
   return await getDownloadURL(storageRef);
 }
+
+// Uploads a stage logo/icon image and returns its download URL. Separate path
+// from poi_markers/zone_icons so stage logos never collide with either.
+export async function uploadStageIcon(file: File, stageId: string): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+  const safeId = stageId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const storageRef = ref(storage, `stage_icons/${safeId}.${ext}`);
+  await uploadBytes(storageRef, file);
+  return await getDownloadURL(storageRef);
+}

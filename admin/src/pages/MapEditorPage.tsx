@@ -8,7 +8,7 @@ import { Copy, Download, MousePointer, Save, Loader2, Plus, Trash2, ChevronDown,
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { POIManager, POI } from '@/components/POIManager';
-import { getImageDisplayUrl, uploadZoneIcon, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES } from '@/lib/storage';
+import { getImageDisplayUrl, uploadZoneIcon, uploadStageIcon, validateMarkerFile, compressMarkerFileIfNeeded, MAX_MARKER_SIZE_BYTES } from '@/lib/storage';
 
 // Festival GeoJSON data
 const festivalGeoJSON: GeoJSON.FeatureCollection = {
@@ -80,6 +80,35 @@ function isPointInPolygon(point: [number, number], ring: number[][]): boolean {
   return inside;
 }
 
+// Custom Mapbox control — a pin button stacked in the same top-right corner
+// as the Draw/Navigation controls (Mapbox stacks controls added to the same
+// position in add order). Clicking it arms "drop a pin" mode; the next map
+// click reports its lat/lng back via the callback and the control resets.
+class AddPOIControl implements mapboxgl.IControl {
+  private container: HTMLDivElement;
+  private button: HTMLButtonElement;
+  constructor(onClick: () => void) {
+    this.container = document.createElement('div');
+    this.container.className = 'mapboxgl-ctrl mapboxgl-ctrl-group';
+    this.button = document.createElement('button');
+    this.button.type = 'button';
+    this.button.title = 'Add POI — click, then tap the map to drop a pin';
+    this.button.style.fontSize = '16px';
+    this.button.textContent = '📍';
+    this.button.addEventListener('click', onClick);
+    this.container.appendChild(this.button);
+  }
+  onAdd(): HTMLElement {
+    return this.container;
+  }
+  onRemove(): void {
+    this.container.parentNode?.removeChild(this.container);
+  }
+  setActive(active: boolean): void {
+    this.button.style.backgroundColor = active ? '#6BBF59' : '';
+  }
+}
+
 // Custom Draw styles — low-opacity fills so satellite shows through
 const drawStyles = [
   // Polygon fill — inactive
@@ -134,6 +163,10 @@ interface Stage {
   lat: number;
   lng: number;
   color: string;
+  // Optional custom logo (Storage download URL) rendered instead of the
+  // plain color square + emoji, same treatment as zone icons.
+  iconAsset?: string;
+  iconSize?: number;
 }
 
 export function MapEditorPage() {
@@ -163,11 +196,21 @@ export function MapEditorPage() {
   const [pois, setPois] = useState<POI[]>([]);
   const [selectedPOIId, setSelectedPOIId] = useState<string | null>(null);
   const poiMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const addPOIControlRef = useRef<AddPOIControl | null>(null);
+  // Set once per pin drop (nonce makes every drop a distinct value even if
+  // the same coordinates are clicked twice in a row) so POIManager can key
+  // an effect off it to open its Add form pre-filled with the location.
+  const [pendingPOIPin, setPendingPOIPin] = useState<{ lat: number; lng: number; nonce: number } | null>(null);
+  // Set on marker dragend so POIManager can persist the new position (and
+  // refresh its edit form's lat/lng if that POI happens to be open). Carries
+  // the pre-drag position too, so POIManager can push it onto an undo stack.
+  const [pendingPOIDrag, setPendingPOIDrag] = useState<{ poiId: string; lat: number; lng: number; prevLat: number; prevLng: number; nonce: number } | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [stagesCollapsed, setStagesCollapsed] = useState(false);
   const [savingStages, setSavingStages] = useState(false);
   const [placingStage, setPlacingStage] = useState(false);
   const stageMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const [uploadingStageIconId, setUploadingStageIconId] = useState<string | null>(null);
   const features = festivalGeoJSON.features;
 
   // Sidebar is organized as two sections: Zones (grouped into camping/
@@ -182,9 +225,9 @@ export function MapEditorPage() {
     return acc;
   }, {} as Record<string, GeoJSON.Feature[]>);
 
-  type PoiLikeItem = { key: string; id: string; name: string; lat: number; lng: number; icon: string; kind: 'poi' | 'stage' };
+  type PoiLikeItem = { key: string; id: string; name: string; lat: number; lng: number; icon: string; kind: 'poi' | 'stage'; zoneId?: string };
   const poiLikeItems: PoiLikeItem[] = [
-    ...pois.map((p): PoiLikeItem => ({ key: `poi:${p.id}`, id: p.id, name: p.name, lat: p.lat, lng: p.lng, icon: p.icon || '📍', kind: 'poi' })),
+    ...pois.map((p): PoiLikeItem => ({ key: `poi:${p.id}`, id: p.id, name: p.name, lat: p.lat, lng: p.lng, icon: p.icon || '📍', kind: 'poi', zoneId: p.zoneId })),
     ...stages.map((s): PoiLikeItem => ({ key: `stage:${s.id}`, id: s.id, name: s.name, lat: s.lat, lng: s.lng, icon: '🎵', kind: 'stage' })),
   ];
   const nestedKeys = new Set<string>();
@@ -193,7 +236,12 @@ export function MapEditorPage() {
     const zoneId = zone.properties?.id as string;
     const ring = zone.geometry.type === 'Polygon' ? zone.geometry.coordinates[0] : null;
     if (!zoneId || !ring) continue;
-    const contained = poiLikeItems.filter((item) => isPointInPolygon([item.lng, item.lat], ring));
+    // An explicit zoneId (set via the POI form's "Zone" override dropdown)
+    // wins over geometry — otherwise fall back to point-in-polygon, since
+    // most POIs never set it and should just nest by where they actually are.
+    const contained = poiLikeItems.filter((item) =>
+      item.zoneId ? item.zoneId === zoneId : isPointInPolygon([item.lng, item.lat], ring)
+    );
     zoneContents.set(zoneId, contained);
     for (const item of contained) nestedKeys.add(item.key);
   }
@@ -370,9 +418,12 @@ export function MapEditorPage() {
   const saveStages = useCallback(async (updatedStages: Stage[]) => {
     setSavingStages(true);
     try {
-      const stagesMap: Record<string, { lat: number; lng: number; name: string; color: string }> = {};
+      const stagesMap: Record<string, { lat: number; lng: number; name: string; color: string; iconAsset: string; iconSize: number }> = {};
       for (const s of updatedStages) {
-        stagesMap[s.id] = { lat: s.lat, lng: s.lng, name: s.name, color: s.color };
+        stagesMap[s.id] = {
+          lat: s.lat, lng: s.lng, name: s.name, color: s.color,
+          iconAsset: s.iconAsset || '', iconSize: s.iconSize || DEFAULT_ICON_SIZE,
+        };
       }
       await setDoc(doc(db, 'config', 'mapStages'), {
         stages: stagesMap,
@@ -397,6 +448,8 @@ export function MapEditorPage() {
             lat: val.lat,
             lng: val.lng,
             color: val.color,
+            iconAsset: val.iconAsset || undefined,
+            iconSize: val.iconSize || DEFAULT_ICON_SIZE,
           }));
           setStages(loaded);
         }
@@ -408,12 +461,11 @@ export function MapEditorPage() {
 
   const addStage = useCallback(() => {
     const map = mapRef.current;
-    const draw = drawRef.current;
     if (!map) return;
     setPlacingStage(true);
-    if (draw) {
-      try { map.removeControl(draw); } catch (_) {}
-    }
+    // Plain click listener — Draw doesn't intercept the map's generic click
+    // event, so no need to remove/re-add it (see onRequestMapClick's comment
+    // for the crash this used to cause on re-add).
     map.getCanvas().style.cursor = 'crosshair';
     map.once('click', (e: mapboxgl.MapMouseEvent) => {
       const id = 'stage-' + Date.now();
@@ -431,15 +483,47 @@ export function MapEditorPage() {
       });
       map.getCanvas().style.cursor = '';
       setPlacingStage(false);
-      if (draw) {
-        map.addControl(draw, 'top-right');
-      }
     });
   }, [saveStages]);
 
-  const updateStage = useCallback((id: string, field: keyof Stage, value: string) => {
+  const updateStage = useCallback((id: string, field: keyof Stage, value: string | number) => {
     setStages(prev => {
       const updated = prev.map(s => s.id === id ? { ...s, [field]: value } : s);
+      saveStages(updated);
+      return updated;
+    });
+  }, [saveStages]);
+
+  const handleStageIconUpload = useCallback(async (stageId: string, file: File) => {
+    const validationErr = validateMarkerFile(file);
+    if (validationErr) { alert(validationErr); return; }
+    setUploadingStageIconId(stageId);
+    try {
+      let uploadFile = file;
+      if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+        uploadFile = await compressMarkerFileIfNeeded(uploadFile);
+        if (uploadFile.size > MAX_MARKER_SIZE_BYTES) {
+          alert(`Image is still too large after compression (${Math.round(uploadFile.size / 1024)}KB). Try a smaller or simpler image.`);
+          return;
+        }
+      }
+      const url = await uploadStageIcon(uploadFile, stageId);
+      setStages(prev => {
+        const updated = prev.map(s => s.id === stageId ? { ...s, iconAsset: url, iconSize: s.iconSize ?? DEFAULT_ICON_SIZE } : s);
+        saveStages(updated);
+        return updated;
+      });
+    } catch (err) {
+      console.error('Failed to upload stage icon:', err);
+      alert('Failed to upload icon: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    } finally {
+      setUploadingStageIconId(null);
+    }
+  }, [saveStages]);
+
+  const handleStageIconRemove = useCallback((stageId: string) => {
+    setStages(prev => {
+      const updated = prev.map(s => s.id === stageId ? { ...s, iconAsset: undefined } : s);
       saveStages(updated);
       return updated;
     });
@@ -621,88 +705,119 @@ export function MapEditorPage() {
     }
   }, [editingFeature, loadedFeatures]);
 
-  // Toggles whether dragging on the map moves the zone polygon (normal Draw
-  // behavior) or only the icon marker on top of it. Draw's simple_select
+  // Ref-counted suppress/restore of Draw's own layer hit-testing, shared by
+  // (a) the explicit zone-icon lock toggle below and (b) automatic transient
+  // suppression during any POI/stage marker drag -- Draw's simple_select
   // mode grabs whatever feature is under the cursor on mousedown regardless
-  // of what's rendered on top of it in the DOM (marker included), so a click
-  // starting on the icon was also dragging the zone underneath it.
+  // of what's rendered on top of it in the DOM, so dragging a marker sitting
+  // inside a zone polygon was also dragging the zone underneath it. A ref
+  // count (not a boolean) means an explicit lock and a concurrent marker
+  // drag don't step on each other -- restoring only actually happens once
+  // every active reason has released it.
   //
-  // Originally this called map.removeControl(draw)/addControl(draw) to fully
-  // detach Draw, but re-adding it after a removal throws "already a source
-  // with ID mapbox-gl-draw-cold" -- mapbox-gl-draw's onRemove doesn't fully
-  // tear down its internal sources, so a second addControl collides with the
-  // still-present ones. Toggling each Draw layer's visibility instead keeps
-  // Draw fully attached (sources/lifecycle untouched, no re-add needed) while
-  // making its features un-hit-testable -- Mapbox's internal click detection
-  // for Draw is based on queryRenderedFeatures, which skips hidden layers.
-  // A plain non-interactive GeoJSON copy of the zones fills the resulting
-  // visual gap so zone shapes stay visible the whole time.
-  const toggleIconMoveLock = useCallback(() => {
+  // Originally the lock toggle called map.removeControl(draw)/addControl(draw)
+  // to fully detach Draw, but re-adding it after a removal throws "already a
+  // source with ID mapbox-gl-draw-cold" -- mapbox-gl-draw's onRemove doesn't
+  // fully tear down its internal sources, so a second addControl collides
+  // with the still-present ones. Toggling each Draw layer's visibility
+  // instead keeps Draw fully attached (no re-add needed) while making its
+  // features un-hit-testable -- Mapbox's internal click detection for Draw
+  // is based on queryRenderedFeatures, which skips hidden layers. A plain
+  // non-interactive GeoJSON copy of the zones fills the resulting visual gap
+  // so zone shapes stay visible the whole time.
+  const drawHitTestSuppressCount = useRef(0);
+
+  const suppressDrawHitTesting = useCallback(() => {
     const map = mapRef.current;
     const draw = drawRef.current;
     if (!map || !draw) return;
+    drawHitTestSuppressCount.current += 1;
+    if (drawHitTestSuppressCount.current > 1) return; // already suppressed
+    try {
+      for (const style of drawStyles) {
+        if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', 'none');
+      }
+      if (!map.getSource('zones-lock-preview')) {
+        const snapshot = draw.getAll();
+        map.addSource('zones-lock-preview', { type: 'geojson', data: snapshot });
+        map.addLayer({
+          id: 'zones-lock-preview-fill',
+          type: 'fill',
+          source: 'zones-lock-preview',
+          filter: ['==', '$type', 'Polygon'],
+          paint: { 'fill-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'fill-opacity': 0.15 },
+        });
+        map.addLayer({
+          id: 'zones-lock-preview-line',
+          type: 'line',
+          source: 'zones-lock-preview',
+          filter: ['==', '$type', 'Polygon'],
+          paint: { 'line-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'line-width': 2 },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to suppress Draw hit-testing:', err);
+    }
+  }, []);
+
+  const restoreDrawHitTesting = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    drawHitTestSuppressCount.current = Math.max(0, drawHitTestSuppressCount.current - 1);
+    if (drawHitTestSuppressCount.current > 0) return; // still needed elsewhere
+    try {
+      for (const style of drawStyles) {
+        if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', 'visible');
+      }
+      if (map.getLayer('zones-lock-preview-fill')) map.removeLayer('zones-lock-preview-fill');
+      if (map.getLayer('zones-lock-preview-line')) map.removeLayer('zones-lock-preview-line');
+      if (map.getSource('zones-lock-preview')) map.removeSource('zones-lock-preview');
+    } catch (_) { /* already visible / already removed */ }
+  }, []);
+
+  // Arms suppression on the marker's own native mousedown (bubble-phase
+  // listeners on the actual event target always run before any ancestor's
+  // listener, regardless of registration order) instead of mapboxgl.Marker's
+  // 'dragstart' event -- dragstart only fires on the first mousemove AFTER
+  // mousedown, by which point Draw's own map-level mousedown handler (bound
+  // at map init, well before any marker exists) has ALREADY synchronously
+  // hit-tested and grabbed the polygon underneath. Restoring on the next
+  // window 'mouseup' (not the marker's 'dragend') covers plain clicks too --
+  // dragend never fires for a mousedown+mouseup with no movement, which
+  // would otherwise leave Draw permanently un-hit-testable.
+  const armDrawSuppressOnMousedown = useCallback((el: HTMLElement) => {
+    el.addEventListener('mousedown', () => {
+      suppressDrawHitTesting();
+      const onUp = () => {
+        restoreDrawHitTesting();
+        window.removeEventListener('mouseup', onUp);
+      };
+      window.addEventListener('mouseup', onUp);
+    });
+  }, [suppressDrawHitTesting, restoreDrawHitTesting]);
+
+  const toggleIconMoveLock = useCallback(() => {
     setIconMoveLocked((prev) => {
       const next = !prev;
-      try {
-        const visibility = next ? 'none' : 'visible';
-        for (const style of drawStyles) {
-          if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', visibility);
-        }
-        if (next) {
-          // Note: deliberately NOT calling draw.changeMode() here -- doing
-          // so fires a selectionchange with an empty feature list, which
-          // clears editingFeature and immediately triggers the safety-net
-          // effect below to auto-unlock. Hiding the layers alone is enough
-          // to stop hit-testing, so the current selection can stay intact.
-          if (!map.getSource('zones-lock-preview')) {
-            const snapshot = draw.getAll();
-            map.addSource('zones-lock-preview', { type: 'geojson', data: snapshot });
-            map.addLayer({
-              id: 'zones-lock-preview-fill',
-              type: 'fill',
-              source: 'zones-lock-preview',
-              filter: ['==', '$type', 'Polygon'],
-              paint: { 'fill-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'fill-opacity': 0.15 },
-            });
-            map.addLayer({
-              id: 'zones-lock-preview-line',
-              type: 'line',
-              source: 'zones-lock-preview',
-              filter: ['==', '$type', 'Polygon'],
-              paint: { 'line-color': ['coalesce', ['get', 'color'], '#3bb2d0'], 'line-width': 2 },
-            });
-          }
-        } else {
-          if (map.getLayer('zones-lock-preview-fill')) map.removeLayer('zones-lock-preview-fill');
-          if (map.getLayer('zones-lock-preview-line')) map.removeLayer('zones-lock-preview-line');
-          if (map.getSource('zones-lock-preview')) map.removeSource('zones-lock-preview');
-        }
-      } catch (err) {
-        console.error('Failed to toggle icon-move lock:', err);
-      }
+      // Note: deliberately NOT calling draw.changeMode() here -- doing so
+      // fires a selectionchange with an empty feature list, which clears
+      // editingFeature and immediately triggers the safety-net effect below
+      // to auto-unlock. Suppressing hit-testing alone is enough to stop
+      // drags, so the current selection can stay intact.
+      if (next) suppressDrawHitTesting(); else restoreDrawHitTesting();
       return next;
     });
-  }, []);
+  }, [suppressDrawHitTesting, restoreDrawHitTesting]);
 
   // Safety net: never leave Draw's layers hidden if the selection is cleared
   // while locked (e.g. user clicks elsewhere) -- there'd be no way to unlock
   // via the (now-hidden, no editingFeature) button otherwise.
   useEffect(() => {
     if (!editingFeature && iconMoveLocked) {
-      const map = mapRef.current;
-      if (map) {
-        try {
-          for (const style of drawStyles) {
-            if (map.getLayer(style.id)) map.setLayoutProperty(style.id, 'visibility', 'visible');
-          }
-          if (map.getLayer('zones-lock-preview-fill')) map.removeLayer('zones-lock-preview-fill');
-          if (map.getLayer('zones-lock-preview-line')) map.removeLayer('zones-lock-preview-line');
-          if (map.getSource('zones-lock-preview')) map.removeSource('zones-lock-preview');
-        } catch (_) { /* already visible / already removed */ }
-      }
+      restoreDrawHitTesting();
       setIconMoveLocked(false);
     }
-  }, [editingFeature, iconMoveLocked]);
+  }, [editingFeature, iconMoveLocked, restoreDrawHitTesting]);
 
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
@@ -746,6 +861,17 @@ export function MapEditorPage() {
     drawRef.current = draw;
     map.addControl(draw, 'top-right');
     map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    const addPOIControl = new AddPOIControl(() => {
+      addPOIControlRef.current?.setActive(true);
+      map.getCanvas().style.cursor = 'crosshair';
+      map.once('click', (e: mapboxgl.MapMouseEvent) => {
+        map.getCanvas().style.cursor = '';
+        addPOIControlRef.current?.setActive(false);
+        setPendingPOIPin({ lat: e.lngLat.lat, lng: e.lngLat.lng, nonce: Date.now() });
+      });
+    });
+    addPOIControlRef.current = addPOIControl;
+    map.addControl(addPOIControl, 'top-right');
 
     map.on('mousemove', (e: mapboxgl.MapMouseEvent) => {
       setCursor({ lng: e.lngLat.lng, lat: e.lngLat.lat });
@@ -885,23 +1011,53 @@ export function MapEditorPage() {
     stageMarkersRef.current.forEach(m => m.remove());
     stageMarkersRef.current = [];
     for (const stage of stages) {
-      const el = document.createElement('div');
-      el.style.width = '32px';
-      el.style.height = '32px';
-      el.style.borderRadius = '6px';
-      el.style.backgroundColor = stage.color;
-      el.style.border = '3px solid white';
-      el.style.cursor = 'grab';
-      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
-      el.style.display = 'flex';
-      el.style.alignItems = 'center';
-      el.style.justifyContent = 'center';
-      el.style.fontSize = '16px';
-      el.innerHTML = '🎵';
-      el.title = stage.name;
+      const assetUrl = getImageDisplayUrl(stage.iconAsset);
+      let el: HTMLElement;
+      if (assetUrl) {
+        // Custom logo — raw image at its own aspect ratio (no border/
+        // background box), same treatment as zone icons so transparency and
+        // proportions match the uploaded file exactly.
+        const targetSize = stage.iconSize ?? DEFAULT_ICON_SIZE;
+        const img = document.createElement('img');
+        img.src = assetUrl;
+        img.draggable = false;
+        img.style.display = 'block';
+        img.style.cursor = 'grab';
+        img.style.filter = 'drop-shadow(0 1px 3px rgba(0,0,0,0.6))';
+        img.title = stage.name;
+        img.style.width = `${targetSize}px`;
+        img.style.height = `${targetSize}px`;
+        img.onload = () => {
+          const ratio = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+          if (ratio >= 1) {
+            img.style.width = `${targetSize}px`;
+            img.style.height = `${targetSize / ratio}px`;
+          } else {
+            img.style.height = `${targetSize}px`;
+            img.style.width = `${targetSize * ratio}px`;
+          }
+        };
+        el = img;
+      } else {
+        el = document.createElement('div');
+        el.style.width = '32px';
+        el.style.height = '32px';
+        el.style.borderRadius = '6px';
+        el.style.backgroundColor = stage.color;
+        el.style.border = '3px solid white';
+        el.style.cursor = 'grab';
+        el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.5)';
+        el.style.display = 'flex';
+        el.style.alignItems = 'center';
+        el.style.justifyContent = 'center';
+        el.style.fontSize = '16px';
+        el.innerHTML = '🎵';
+        el.title = stage.name;
+      }
       const marker = new mapboxgl.Marker({ element: el, draggable: true })
         .setLngLat([stage.lng, stage.lat])
         .addTo(map);
+      armDrawSuppressOnMousedown(el);
       marker.on('dragend', () => {
         const lngLat = marker.getLngLat();
         setStages(prev => {
@@ -914,7 +1070,7 @@ export function MapEditorPage() {
       });
       stageMarkersRef.current.push(marker);
     }
-  }, [stages, saveStages]);
+  }, [stages, saveStages, armDrawSuppressOnMousedown]);
 
   // Render POI markers on map
   useEffect(() => {
@@ -960,12 +1116,17 @@ export function MapEditorPage() {
         e.stopPropagation();
         setSelectedPOIId(poi.id);
       });
-      const marker = new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el, draggable: true })
         .setLngLat([poi.lng, poi.lat])
         .addTo(map);
+      armDrawSuppressOnMousedown(el);
+      marker.on('dragend', () => {
+        const { lat, lng } = marker.getLngLat();
+        setPendingPOIDrag({ poiId: poi.id, lat, lng, prevLat: poi.lat, prevLng: poi.lng, nonce: Date.now() });
+      });
       poiMarkersRef.current.push(marker);
     }
-  }, [pois, selectedPOIId]);
+  }, [pois, selectedPOIId, armDrawSuppressOnMousedown]);
 
   // Render draggable icon markers for zones that have an uploaded icon asset.
   // Position defaults to the polygon centroid (set at upload time in
@@ -1139,7 +1300,6 @@ export function MapEditorPage() {
               ))}
             </div>
           )}
-        </div>
 
         {/* Selected feature editor */}
         {editingFeature && (
@@ -1352,6 +1512,54 @@ export function MapEditorPage() {
                   <div className="text-[10px] text-[#F5F5DC]/40 font-mono px-1">
                     {stage.lat.toFixed(6)}, {stage.lng.toFixed(6)}
                   </div>
+                  <div className="flex items-center gap-2 px-1">
+                    {stage.iconAsset && (
+                      <img
+                        src={getImageDisplayUrl(stage.iconAsset) || undefined}
+                        alt="stage logo preview"
+                        className="w-8 h-8 rounded border border-[#F5F5DC]/20 bg-[#1C2B20] object-contain shrink-0"
+                      />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleStageIconUpload(stage.id, file);
+                        e.target.value = '';
+                      }}
+                      disabled={uploadingStageIconId === stage.id}
+                      className="flex-1 text-xs text-[#F5F5DC]/60 file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-[#6BBF59]/20 file:text-[#6BBF59] file:text-xs"
+                    />
+                    {uploadingStageIconId === stage.id && (
+                      <Loader2 className="h-4 w-4 animate-spin text-[#6BBF59] shrink-0" />
+                    )}
+                    {stage.iconAsset && uploadingStageIconId !== stage.id && (
+                      <button
+                        onClick={() => handleStageIconRemove(stage.id)}
+                        className="text-xs text-red-400 hover:text-red-300 shrink-0"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {stage.iconAsset && (
+                    <div className="px-1">
+                      <label className="text-xs text-[#F5F5DC]/60 flex justify-between">
+                        <span>Logo size</span>
+                        <span>{stage.iconSize ?? DEFAULT_ICON_SIZE}px</span>
+                      </label>
+                      <input
+                        type="range"
+                        min={16}
+                        max={300}
+                        step={4}
+                        value={stage.iconSize ?? DEFAULT_ICON_SIZE}
+                        onChange={e => updateStage(stage.id, 'iconSize', Number(e.target.value))}
+                        className="w-full accent-[#6BBF59]"
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
               <button
@@ -1373,23 +1581,26 @@ export function MapEditorPage() {
         <POIManager
           onPOIsChanged={useCallback((newPois: POI[]) => { setPois(newPois); }, [])}
           onRequestMapClick={useCallback((cb: (lat: number, lng: number) => void) => {
-            // Remove draw control temporarily so clicks pass through
-            const draw = drawRef.current;
+            // Plain map click listener — Draw's own hit-testing only
+            // intercepts clicks on ITS OWN rendered features/controls, not
+            // the map's general 'click' event, so no need to touch Draw at
+            // all here. (Previously called map.removeControl(draw)/addControl
+            // to "let clicks pass through", which doesn't do anything for
+            // this purpose and crashes on re-add: mapbox-gl-draw's onRemove
+            // doesn't fully tear down its internal sources, so a second
+            // addControl throws "already a source with ID mapbox-gl-draw-cold"
+            // — silently breaking the whole picker.)
             const map = mapRef.current;
             if (!map) return;
-            if (draw) {
-              try { map.removeControl(draw); } catch (_) {}
-            }
             map.getCanvas().style.cursor = 'crosshair';
             map.once('click', (e: mapboxgl.MapMouseEvent) => {
               cb(e.lngLat.lat, e.lngLat.lng);
               map.getCanvas().style.cursor = '';
-              // Re-add draw control
-              if (draw) {
-                map.addControl(draw, 'top-right');
-              }
             });
           }, [])}
+          pendingPin={pendingPOIPin}
+          dragUpdate={pendingPOIDrag}
+          zones={zonePolygons.map((z) => ({ id: z.properties?.id as string, name: z.properties?.name as string }))}
           selectedPOIId={selectedPOIId}
           onSelectPOI={useCallback((id: string | null) => {
             setSelectedPOIId(id);
@@ -1399,6 +1610,7 @@ export function MapEditorPage() {
             }
           }, [pois])}
         />
+        </div>
 
         {/* Action buttons */}
         <div className="p-3 border-t border-[#F5F5DC]/10 space-y-2">
