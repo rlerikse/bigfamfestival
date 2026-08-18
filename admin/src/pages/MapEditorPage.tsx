@@ -36,13 +36,14 @@ const festivalGeoJSON: GeoJSON.FeatureCollection = {
   ],
 };
 
-const CATEGORIES = ['stage', 'camping', 'infrastructure', 'staff', 'vendors'] as const;
+const CATEGORIES = ['stage', 'camping', 'infrastructure', 'staff', 'vendors', 'grounds'] as const;
 const CATEGORY_LABELS: Record<string, string> = {
   stage: '🎵 Stages',
   camping: '⛺ Camping',
   infrastructure: '🏗️ Infrastructure',
   staff: '👥 Staff',
   vendors: '🛒 Vendors',
+  grounds: '🌳 Grounds',
 };
 
 function getCentroid(coords: number[][]): [number, number] {
@@ -974,6 +975,7 @@ export function MapEditorPage() {
                   <option value="infrastructure">🏗️ Infrastructure</option>
                   <option value="staff">👥 Staff</option>
                   <option value="vendors">🛒 Vendors</option>
+                  <option value="grounds">🌳 Grounds</option>
                 </select>
               </div>
               <div>
