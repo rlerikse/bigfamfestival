@@ -930,7 +930,10 @@ export function MapEditorPage() {
         setLoadedFromFirestore(true);
         setLoadedFeatures(firestoreData.features);
         console.log('[MapEditor] Loaded', firestoreData.features.length, 'features from Firestore');
-        console.log('[MapEditor] First feature coords:', JSON.stringify(firestoreData.features[0]?.geometry?.coordinates?.[0]?.[0] || firestoreData.features[0]?.geometry?.coordinates));
+        const firstGeometry = firestoreData.features[0]?.geometry;
+        const firstCoords =
+          firstGeometry && 'coordinates' in firstGeometry ? firstGeometry.coordinates : undefined;
+        console.log('[MapEditor] First feature coords:', JSON.stringify((firstCoords as number[][][] | undefined)?.[0]?.[0] ?? firstCoords));
       } else {
         console.log('[MapEditor] Using hardcoded defaults');
         setLoadedFeatures(features);

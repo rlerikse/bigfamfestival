@@ -36,6 +36,7 @@ export function UserSearch({ value, displayValue, onChange }: UserSearchProps) {
   const { data } = useApiQuery<UsersResponse>(
     ['admin-users-search', debouncedInput],
     `/admin/users?search=${encodeURIComponent(debouncedInput)}&limit=8`,
+    undefined,
     { enabled: debouncedInput.length >= 2 }
   );
 

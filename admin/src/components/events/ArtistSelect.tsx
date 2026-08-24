@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, X, Plus } from 'lucide-react';
+import { X, Plus } from 'lucide-react';
 import { useApiQuery, useCreateArtist } from '@/hooks/useApi';
 import type { Artist } from '@/types';
 import { QuickCreateArtistModal } from '@/components/events/QuickCreateArtistModal';

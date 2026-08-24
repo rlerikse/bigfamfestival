@@ -8,22 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { usePaginatedQuery, useOptimisticPatch } from '@/hooks/useApi';
 import type { User } from '@/types';
-import { USER_ROLES } from '@/lib/constants';
-import { Pencil, Ban, CheckCircle } from 'lucide-react';
+import { USER_ROLES } from '@/lib/constants';import { Pencil, Ban, CheckCircle } from 'lucide-react';
 import { getRoleBadgeColor } from '@/lib/role-colors';
-
-// Mock data for when backend isn't available
-const mockUsers: User[] = Array.from({ length: 50 }, (_, i) => ({
-  id: `user-${i + 1}`,
-  email: `user${i + 1}@example.com`,
-  name: `User ${i + 1}`,
-  displayName: `User ${i + 1}`,
-  role: USER_ROLES[i % USER_ROLES.length],
-  phone: i % 3 === 0 ? `+1555${String(i).padStart(4, '0')}` : undefined,
-  createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-  updatedAt: new Date(Date.now() - i * 43200000).toISOString(),
-  disabled: i % 10 === 0,
-}));
 
 export function UsersPage() {
   const [page, setPage] = useState(1);
