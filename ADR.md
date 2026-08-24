@@ -2,8 +2,8 @@
 
 **Project**: 🎪 Big Fam Festival
 **Repository**: `rlerikse/bigfamfestival`
-**Coverage**: 2025-03-03 (repo inception) → 2026-08-17
-**Last Updated**: 2026-08-17
+**Coverage**: 2025-03-03 (repo inception) → 2026-08-18
+**Last Updated**: 2026-08-24
 
 This document is the index and running log of architecture decisions for the Big Fam Festival platform — a monorepo with a NestJS backend (Cloud Run), a React Native/Expo mobile app, a React + Vite admin panel (Firebase Hosting), Firebase Cloud Functions, and Terraform/GCP infrastructure. Each entry captures the **context**, the **decision**, and the **consequences** so future contributors understand *why* the system is built the way it is.
 
@@ -34,6 +34,8 @@ This document is the index and running log of architecture decisions for the Big
 | [ADR-017](#adr-017-pure-logic-helpers-for-jest-testability-under-expo-sdk-54) | Pure Logic Helpers for Jest Testability Under Expo SDK 54 | 2026-08-09 | ✅ Accepted |
 | [ADR-018](#adr-018-gyro-assisted-os-compass-heading-fusion) | Gyro-Assisted OS-Compass Heading Fusion (supersedes ADR-015 sensor approach) | 2026-08-12 | ✅ Accepted |
 | [ADR-019](#adr-019-distance-threshold-handoff-to-external-map-apps) | Distance-Threshold Handoff to External Map Apps | 2026-08-17 | ✅ Accepted |
+| [ADR-020](#adr-020-custom-marker--zone-icon-rendering-on-the-mobile-map) | Custom Marker & Zone Icon Rendering on the Mobile Map | 2026-08-18 | ✅ Accepted |
+| [ADR-021](#adr-021-dom-level-mousedown-suppression-for-marker-vs-polygon-drag-conflict) | DOM-Level mousedown Suppression for Marker-vs-Polygon Drag Conflict | 2026-08-18 | ✅ Accepted |
 
 ---
 
@@ -317,9 +319,39 @@ This document is the index and running log of architecture decisions for the Big
 
 ---
 
+## 2026-08 — Map Editor & custom map icons
+
+### ADR-020: Custom Marker & Zone Icon Rendering on the Mobile Map
+
+**Status**: ✅ Accepted · **Date**: 2026-08-18
+
+**Context**: Admins can upload custom logos for zones and POIs, but on the mobile map these never rendered — the marker showed a blank/beige placeholder. Root cause: `@rnmapbox/maps` `PointAnnotation` snapshots its child view into a static bitmap **once at mount** and never re-snapshots when an async remote image finishes loading later. Two secondary issues compounded it: the shared `OptimizedImage` component forces an opaque loading-state background that bleeds through a transparent icon's edges, and React Native's core `Image` can't decode the WebP these uploads are compressed to.
+
+**Decision**: For zone-icon and POI-marker logos, keep a ref to each `PointAnnotation` (`zoneIconAnnotationRefs`/`poiAnnotationRefs`) and call `.refresh()` from the image's `onLoad` handler so the annotation re-snapshots once the image is actually present; render the image with `expo-image`'s `Image` (WebP-capable) inside a transparent `View`, not the shared `OptimizedImage` wrapper. The zone-label `textField` also gained a `showTitle` case expression so a zone can render its icon without its name.
+
+**Consequences**: Admin-uploaded custom icons now render correctly on the map. The `.refresh()`-on-`onLoad` pattern is specific to static-snapshot `PointAnnotation`s; the live self/friend avatars instead use `MarkerView` (live views) because they update continuously — the two rendering paths are intentionally different. Trade-off: an extra ref + `onLoad` wiring per marker.
+
+**Evidence**: `7b18c43` (render zone icon and POI marker logos on the map).
+
+---
+
+### ADR-021: DOM-Level mousedown Suppression for Marker-vs-Polygon Drag Conflict
+
+**Status**: ✅ Accepted · **Date**: 2026-08-18
+
+**Context**: In the admin Map Editor, dragging a POI/stage marker that sits inside a zone polygon also dragged the underlying zone polygon — regardless of the icon-move lock. `mapboxgl.Marker` arms its drag via `map.on('mousedown', …)`, the **same** internal event Mapbox GL Draw's hit-test listens on. Draw's listener, registered earlier at map init, ran first and grabbed the polygon synchronously on `mousedown`, before `Marker`'s `dragstart` (which only fires on the first `mousemove` after `mousedown`) could ever suppress anything. An earlier fix that suppressed on `Marker`'s `dragstart` therefore did not work.
+
+**Decision**: Attach a native `'mousedown'` listener directly to the marker's own DOM element (`armDrawSuppressOnMousedown`) — a bubble-phase listener on the actual event target always runs before any ancestor/container listener, regardless of JS registration order — and ref-count-suppress Draw hit-testing immediately (toggle Draw's own layer visibility off + a temporary `zones-lock-preview` source for visual continuity), restoring on the next native `window` `'mouseup'` (**not** `Marker`'s `dragend`, which never fires for a click with no movement). The same ref-counted `suppressDrawHitTesting()`/`restoreDrawHitTesting()` helpers back both automatic marker-drag suppression and the explicit icon-move lock toggle.
+
+**Consequences**: Marker drags no longer disturb the zone polygon underneath — verified via byte-for-byte Firestore polygon-ring comparison across two consecutive drags. Restoring on global `mouseup` (not `dragend`) prevents permanently leaving Draw un-hit-testable after a no-move click. This is the canonical fix for any Mapbox `Marker`/Draw hit-test timing conflict in this codebase.
+
+**Evidence**: `253d608` (POI pin tool, drag-anywhere + undo, stage logos, zone override).
+
+---
+
 ## Conventions
 
-- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016, ADR-018, and ADR-019 are summarized here from git history.
+- **Where they live**: numbered Markdown files in [`docs/adr/`](docs/adr/) (e.g. `003-my-decision.md`); this `ADR.md` is the human-readable index and log. ADR-001, ADR-002, and ADR-017 have full source files; ADR-003–016, ADR-018, and ADR-019–021 are summarized here from git history.
 - **Format**: each ADR captures `Status`, `Date`, `Context`, `Decision`, and `Consequences`.
 - **Statuses**: `Proposed` (under discussion) → `✅ Accepted` (in effect) → `Superseded` (replaced by a later ADR, which it links) → `Deprecated` (no longer applies).
 - **Numbering**: identifiers are assigned in documentation order, not by date. Sort the index by **Date** for the timeline.
