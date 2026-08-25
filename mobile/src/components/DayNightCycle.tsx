@@ -559,11 +559,11 @@ const DayNightCycle: React.FC<DayNightCycleProps> = ({ height, debugMode = false
 
   return (
     <View style={{ 
-      height, 
-      width, 
       position: 'absolute', 
       top: 0, 
       left: 0, 
+      right: 0,
+      bottom: 0,
       overflow: 'hidden', 
       pointerEvents: 'none',
       zIndex: -1 // Ensure this container is behind everything else if needed
