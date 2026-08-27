@@ -68,9 +68,20 @@ export function ArtistsPage() {
   };
 
   const handleSubmit = async (formData: { name: string; slug: string; genres: string[]; bio: string; imageUrl: string; userId: string | null; soundcloudUrl: string; spotifyUrl: string; facebookUrl: string; instagramUrl: string }) => {
-    // Strip null/undefined/empty-string values before sending to API (class-validator rejects null on @IsString, empty on @IsUrl)
+    // Fields where saving an empty string should CLEAR the stored value. The
+    // backend accepts '' for these @IsString fields; imageUrl is @IsUrl so ''
+    // is still stripped (it would fail validation).
+    const clearableOnEdit = new Set(['bio', 'soundcloudUrl', 'spotifyUrl', 'facebookUrl', 'instagramUrl', 'websiteUrl']);
+    const isEdit = Boolean(editingArtist);
+
+    // Never send null/undefined (class-validator rejects null on @IsString). On
+    // edit, keep '' for clearable fields so the user can remove a value.
     const cleanData = Object.fromEntries(
-      Object.entries(formData).filter(([, v]) => v != null && v !== '')
+      Object.entries(formData).filter(([k, v]) => {
+        if (v == null) return false;
+        if (v !== '') return true;
+        return isEdit && clearableOnEdit.has(k);
+      })
     ) as Record<string, unknown>;
     // Keep empty genres array (valid)
     if (formData.genres !== undefined) cleanData.genres = formData.genres;
