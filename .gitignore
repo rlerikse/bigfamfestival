@@ -50,3 +50,7 @@ mobile/dist
 
 # Local operational backups (Firestore field snapshots before bulk edits)
 data/backups/
+
+# Admin build output & firebase deploy cache (never commit build artifacts)
+admin/dist/
+.firebase/
