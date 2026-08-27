@@ -36,6 +36,8 @@ export interface Event {
   imageUrl?: string;
   blockType?: EventBlockType; // drives color-coding; default 'artist_set'
   festivalDay?: string;       // YYYY-MM-DD computed field: date if startTime>=06:00, else previous calendar date
+  year?: number;              // festival year; public API shows current-year only
+  hidden?: boolean;           // when true, hidden from the public (admin-only)
 }
 
 export interface Artist {

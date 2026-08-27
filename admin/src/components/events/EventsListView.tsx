@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, type ChangeEvent } from 'react';
 import { type ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/shared/DataTable';
 import { EditModal } from '@/components/shared/EditModal';
@@ -13,6 +13,34 @@ function EventImageCell({ imageUrl }: { imageUrl?: string }) {
   const resolved = useStorageUrl(imageUrl);
   if (!resolved) return <span className="text-muted-foreground text-xs">—</span>;
   return <img src={resolved} alt="" className="h-8 w-8 min-w-8 rounded-full object-cover aspect-square" />;
+}
+
+// Checkbox that publishes/unpublishes an event by toggling its `hidden` field.
+// Checked = published (visible to everyone); unchecked = hidden from the public.
+function PublishedCell({ event }: { event: Event }) {
+  const updateMutation = useUpdateEvent();
+  const [checked, setChecked] = useState(event.hidden !== true);
+  useEffect(() => { setChecked(event.hidden !== true); }, [event.hidden]);
+
+  const onToggle = (e: ChangeEvent<HTMLInputElement>) => {
+    const next = e.target.checked;
+    setChecked(next); // optimistic
+    updateMutation.mutate(
+      { id: event.id, data: { hidden: !next } },
+      { onError: () => setChecked(!next) },
+    );
+  };
+
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={updateMutation.isPending}
+      onChange={onToggle}
+      title={checked ? 'Visible to everyone — uncheck to hide from the public' : 'Hidden from the public — check to publish'}
+      className="h-4 w-4 cursor-pointer accent-green-600 disabled:opacity-50"
+    />
+  );
 }
 
 interface Props {
@@ -129,6 +157,12 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
         if (!desc) return <span className="text-muted-foreground text-xs">—</span>;
         return <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">{desc}</span>;
       },
+    },
+    {
+      id: 'published',
+      header: 'Published',
+      cell: ({ row }) => <PublishedCell event={row.original} />,
+      size: 90,
     },
     {
       id: 'actions',
