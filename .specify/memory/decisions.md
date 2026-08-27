@@ -1,5 +1,9 @@
 # Decisions — Big Fam Festival (repo memory)
 
+### [2026-08-27] Event public visibility is controlled by the `year` field
+The public API (`backend/src/events/events.service.ts` `findAll`) returns an event only when `!year || year === 2026`. To hide events from the public, set `year` to a non-2026 sentinel (the event stays in Firestore but is filtered out). Production sentinels: **2025** = old archive (113 docs); **2023** = the 2026 lineup hidden on 2026-08-27 (75 docs), tagged 2023 so it can be located and reverted independently of the 2025 archive. Tooling: `scripts/flip-event-years.js` — dry-run by default, `--apply` to write, `--to <year>` / `--from <year>` flags; it uses the Firebase CLI login token + Firestore REST `updateMask.fieldPaths=year` so ONLY the `year` field changes (never a full-doc overwrite), and writes a backup JSON to `data/backups/` before applying. Revert this batch with `--from 2023 --to 2026 --apply`. Rule: never run a full `setDoc` overwrite against production (a prior coordinate-click test wiped `config/mapStages`).
+— performed when hiding the 2026 lineup from the public app
+
 ### [2026-08-09] Jira space closed — specs are the system of record
 The original Atlassian Jira space (`eriksensolutions.atlassian.net`) is **closed**. Every `**Jira**` link in `specs/BFF-*/spec.md` is **broken** and kept for reference only. The spec files themselves are now the last surviving point of reference for all BFF stories. When updating specs, **annotate (add verification banners), never delete** original content.
 — discovered during spec status verification pass
