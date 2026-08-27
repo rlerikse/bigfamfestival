@@ -97,6 +97,21 @@ export class AdminController {
 
   // ── Event Management ───────────────────────────────────────────────
 
+  @Get('events')
+  @ApiOperation({
+    summary:
+      'List all current-year events including hidden/unpublished (admin)',
+  })
+  @ApiQuery({ name: 'stage', required: false })
+  @ApiQuery({ name: 'date', required: false })
+  @ApiResponse({ status: 200, description: 'All events visible to admin' })
+  async listEvents(
+    @Query('stage') stage?: string,
+    @Query('date') date?: string,
+  ) {
+    return this.adminService.listEvents(stage, date);
+  }
+
   @Post('events')
   @ApiOperation({ summary: 'Create event (admin)' })
   @ApiResponse({ status: 201, description: 'Event created' })

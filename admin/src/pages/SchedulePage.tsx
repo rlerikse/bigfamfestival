@@ -8,7 +8,7 @@ const EVENTS_QUERY_KEY = ['events', 'schedule-editor'];
 
 export function SchedulePage() {
   const queryClient = useQueryClient();
-  const { data: events, isLoading, error } = useApiQuery<Event[]>(EVENTS_QUERY_KEY, '/events');
+  const { data: events, isLoading, error } = useApiQuery<Event[]>(EVENTS_QUERY_KEY, '/admin/events');
 
   async function handleUpdateEvent(id: string, patch: Partial<Event>) {
     await apiPatch<Event>(`/events/${id}`, patch as Record<string, unknown>);

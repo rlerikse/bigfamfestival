@@ -84,7 +84,7 @@ export function EventsScheduleView({ search, stage }: Props) {
   // Fetch all events from API
   const { data: rawData } = useApiQuery<unknown>(
     ['events-schedule', search, stage],
-    '/events',
+    '/admin/events',
     { search, stage }
   );
 

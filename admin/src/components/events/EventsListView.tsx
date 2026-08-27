@@ -30,7 +30,7 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
 
   const { data, isLoading } = usePaginatedQuery<Event>(
     ['events', search, stage, String(page)],
-    '/events',
+    '/admin/events',
     { search, stage, page, limit: 20 }
   );
 

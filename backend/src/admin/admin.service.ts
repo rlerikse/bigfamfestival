@@ -106,6 +106,11 @@ export class AdminService {
 
   // ── Event Management ───────────────────────────────────────────────
 
+  async listEvents(stage?: string, date?: string) {
+    // Admin sees all current-year events, including hidden/unpublished ones.
+    return this.eventsService.findAll(stage, date, { includeHidden: true });
+  }
+
   async createEvent(dto: CreateEventDto) {
     return this.eventsService.create(dto);
   }

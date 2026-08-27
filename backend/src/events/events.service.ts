@@ -164,7 +164,11 @@ export class EventsService {
   /**
    * Find all events with optional filtering
    */
-  async findAll(stage?: string, date?: string): Promise<Event[]> {
+  async findAll(
+    stage?: string,
+    date?: string,
+    opts?: { includeHidden?: boolean },
+  ): Promise<Event[]> {
     let events: Event[];
 
     if (stage && date) {
@@ -196,6 +200,12 @@ export class EventsService {
 
     // Only return current year (2026) events — 2025 events are archived
     events = events.filter((e) => !e.year || e.year === 2026);
+
+    // Hide unpublished events from the public. Admin callers pass
+    // includeHidden to see them for editing.
+    if (!opts?.includeHidden) {
+      events = events.filter((e) => e.hidden !== true);
+    }
 
     // Sort events by date and start time with error handling
     return events.sort((a, b) => {
