@@ -39,10 +39,12 @@ const os = require('os');
 const PUBLIC_YEAR = 2026; // events.service.ts treats this (or missing) as public
 
 function parseArgs(argv) {
-  const args = { to: 2023, from: null, project: 'bigfamfestival', apply: false };
+  const args = { to: 2023, from: null, project: 'bigfamfestival', apply: false, hide: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--apply') args.apply = true;
+    else if (a === '--hide') args.hide = true;
+    else if (a === '--show') args.hide = false;
     else if (a === '--to') args.to = parseInt(argv[++i], 10);
     else if (a === '--from') args.from = parseInt(argv[++i], 10);
     else if (a === '--project') args.project = argv[++i];
@@ -145,13 +147,19 @@ function readStr(doc, field) {
 
 function shortId(name) { return name.split('/').pop(); }
 
-async function patchYear(projectId, token, docName, toYear) {
+async function patchDoc(projectId, token, docName, toYear, hide) {
+  const fields = { year: { integerValue: String(toYear) } };
+  const masks = ['updateMask.fieldPaths=year'];
+  if (hide !== null) {
+    fields.hidden = { booleanValue: hide };
+    masks.push('updateMask.fieldPaths=hidden');
+  }
   const res = await httpsRequest({
     hostname: 'firestore.googleapis.com',
-    path: `/v1/projects/${projectId}/databases/(default)/documents/events/${shortId(docName)}?updateMask.fieldPaths=year`,
+    path: `/v1/projects/${projectId}/databases/(default)/documents/events/${shortId(docName)}?${masks.join('&')}`,
     method: 'PATCH',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-  }, { fields: { year: { integerValue: String(toYear) } } });
+  }, { fields });
   if (res.body.error) throw new Error(`Patch error on ${shortId(docName)}: ${JSON.stringify(res.body.error)}`);
   return res.body;
 }
@@ -200,7 +208,7 @@ async function main() {
   for (const [y, arr] of [...byBucket.other.entries()].sort((a, b) => a[0] - b[0])) {
     console.log(`   Already hidden (year=${y}): ${arr.length}`);
   }
-  console.log(`\n   Target set${args.from != null ? ` (from year ${args.from})` : ' (all currently-public)'} → set year=${args.to}: ${targets.length} events`);
+  console.log(`\n   Target set${args.from != null ? ` (from year ${args.from})` : ' (all currently-public)'} → set year=${args.to}${args.hide === true ? ' + hidden=true' : args.hide === false ? ' + hidden=false' : ''}: ${targets.length} events`);
 
   if (targets.length === 0) { console.log('\n   Nothing to change. Done.'); return; }
 
@@ -224,10 +232,10 @@ async function main() {
   })), null, 2));
   console.log(`\n   💾 Backup written: ${backupPath}`);
 
-  console.log(`\n   Applying: setting year=${args.to} on ${targets.length} events…`);
+  console.log(`\n   Applying: setting year=${args.to}${args.hide !== null ? ` + hidden=${args.hide}` : ''} on ${targets.length} events…`);
   let ok = 0, fail = 0;
   for (const d of targets) {
-    try { await patchYear(args.project, token, d.name, args.to); ok++; if (ok % 25 === 0) console.log(`     …${ok}/${targets.length}`); }
+    try { await patchDoc(args.project, token, d.name, args.to, args.hide); ok++; if (ok % 25 === 0) console.log(`     …${ok}/${targets.length}`); }
     catch (e) { fail++; console.error(`     ✗ ${shortId(d.name)}: ${e.message}`); }
   }
   console.log(`\n   ✅ Done. Updated ${ok}, failed ${fail}. Backup: ${backupPath}`);
