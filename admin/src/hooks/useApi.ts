@@ -159,3 +159,12 @@ export function useUpdateEvent() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
   });
 }
+
+// Delete event by id
+export function useDeleteEvent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/events/${id}`),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
+  });
+}

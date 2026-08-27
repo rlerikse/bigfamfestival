@@ -4,8 +4,8 @@ import { DataTable } from '@/components/shared/DataTable';
 import { EditModal } from '@/components/shared/EditModal';
 import { EventForm } from '@/components/events/EventForm';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil } from 'lucide-react';
-import { usePaginatedQuery, useCreateEvent, useUpdateEvent } from '@/hooks/useApi';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { usePaginatedQuery, useCreateEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useApi';
 import { useStorageUrl } from '@/hooks/useStorageUrl';
 import type { Event } from '@/types';
 
@@ -40,6 +40,26 @@ function PublishedCell({ event }: { event: Event }) {
       title={checked ? 'Visible to everyone — uncheck to hide from the public' : 'Hidden from the public — check to publish'}
       className="h-4 w-4 cursor-pointer accent-green-600 disabled:opacity-50"
     />
+  );
+}
+
+// Red trash button that deletes an event after a confirmation prompt.
+function DeleteEventButton({ event }: { event: Event }) {
+  const deleteMutation = useDeleteEvent();
+  const onDelete = () => {
+    if (!window.confirm(`Delete "${event.name}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(event.id);
+  };
+  return (
+    <button
+      type="button"
+      className="p-1.5 rounded text-red-600 hover:text-red-700 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+      onClick={onDelete}
+      disabled={deleteMutation.isPending}
+      title="Delete event"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
   );
 }
 
@@ -168,13 +188,17 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <button
-          type="button"
-          className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-          onClick={() => openEdit(row.original)}
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            className="p-1.5 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+            onClick={() => openEdit(row.original)}
+            title="Edit event"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <DeleteEventButton event={row.original} />
+        </div>
       ),
     },
   ], []);
