@@ -113,7 +113,8 @@ export class UpdateEventDto {
 
   @ApiProperty({
     example: 2026,
-    description: 'Festival year. The public API shows current-year events only.',
+    description:
+      'Festival year. The public API shows current-year events only.',
     required: false,
   })
   @IsInt()
