@@ -144,6 +144,8 @@ export class ArtistsService {
       payload.facebookUrl = updateData.facebookUrl;
     if (updateData.instagramUrl !== undefined)
       payload.instagramUrl = updateData.instagramUrl;
+    if (updateData.websiteUrl !== undefined)
+      payload.websiteUrl = updateData.websiteUrl;
 
     if (newSlug) {
       // Slug rename: create new doc, update event refs, delete old doc
