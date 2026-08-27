@@ -20,6 +20,20 @@
 - **Home screen stage cards (#238):** resized so they no longer dominate the full phone width.
 - **Artist photo loading:** artist modal photos now load as fast as their thumbnails (switched to the same cached image component used elsewhere).
 
+## [1.6.0](https://github.com/rlerikse/bigfamfestival/compare/v1.5.0...v1.6.0) (2026-08-27)
+
+
+### Features
+
+* admin-only event visibility (hidden flag) + iPad map fix + profile cleanup ([1e66bcc](https://github.com/rlerikse/bigfamfestival/commit/1e66bcc5f5a1b99655020e8f123ddea5f1372a5b))
+* **events:** add hidden flag for admin-only event visibility ([f672050](https://github.com/rlerikse/bigfamfestival/commit/f672050aa28ddb54de9bb9169d05533a7c4c6c8e))
+* **memory:** add event visibility control and backup script for year tagging ([c40b8fa](https://github.com/rlerikse/bigfamfestival/commit/c40b8faa37032edd8dea0b2840ff9a5b8018169f))
+
+
+### Bug Fixes
+
+* **mobile:** anchor DayNightCycle background by edges to prevent iPad width clip ([f4046a3](https://github.com/rlerikse/bigfamfestival/commit/f4046a3efe55337ba82f91cb31a04e13996129b6))
+
 ## [1.5.0](https://github.com/rlerikse/bigfamfestival/compare/v1.4.2...v1.5.0) (2026-08-18)
 
 
