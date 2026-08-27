@@ -232,18 +232,6 @@ const ProfileScreen = () => {
                 <Text style={[styles.fieldValue, { color: textColor }]}>{user?.phone || 'Not set'}</Text>
               )}
             </View>
-            
-            <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: labelColor }]}>Ticket Type</Text>
-              <Text style={[styles.fieldValue, { color: textColor }]}>{user?.ticketType || 'Need Ticket'}</Text>
-            </View>
-            
-            <View style={styles.field}>
-              <Text style={[styles.fieldLabel, { color: labelColor }]}>Role</Text>
-              <Text style={[styles.fieldValue, { color: textColor }]}>
-                {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Attendee'}
-              </Text>
-            </View>
           </View>
 
           <View style={[styles.infoSection, { borderColor: cardBorder, backgroundColor: cardBg }]}>

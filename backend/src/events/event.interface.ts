@@ -34,6 +34,8 @@ export interface Event {
   description?: string;
   imageUrl?: string;
   year?: number;
+  // When true, the event is hidden from the public API (admin-only visibility).
+  hidden?: boolean;
   createdBy: string; // Admin user ID
   createdAt?: Date;
   updatedAt?: Date;

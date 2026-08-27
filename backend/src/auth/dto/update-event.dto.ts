@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
-  IsDateString,
+  IsBoolean,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   Matches,
@@ -109,4 +110,24 @@ export class UpdateEventDto {
   })
   @IsOptional()
   blockType?: EventBlockType;
+
+  @ApiProperty({
+    example: 2026,
+    description:
+      'Festival year. The public API shows current-year events only.',
+    required: false,
+  })
+  @IsInt()
+  @IsOptional()
+  year?: number;
+
+  @ApiProperty({
+    example: true,
+    description:
+      'When true, the event is hidden from the public (admin-only visibility).',
+    required: false,
+  })
+  @IsBoolean()
+  @IsOptional()
+  hidden?: boolean;
 }

@@ -3,7 +3,6 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/components/shared/DataTable';
 import { EditModal } from '@/components/shared/EditModal';
 import { EventForm } from '@/components/events/EventForm';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil } from 'lucide-react';
 import { usePaginatedQuery, useCreateEvent, useUpdateEvent } from '@/hooks/useApi';
@@ -31,7 +30,7 @@ export function EventsListView({ search, stage, upcomingOnly }: Props) {
 
   const { data, isLoading } = usePaginatedQuery<Event>(
     ['events', search, stage, String(page)],
-    '/events',
+    '/admin/events',
     { search, stage, page, limit: 20 }
   );
 

@@ -1,0 +1,35 @@
+[debug] [2026-08-19T14:07:20.764Z] ----------------------------------------------------------------------
+[debug] [2026-08-19T14:07:20.766Z] Command:       /Users/rerikse3/.nvm/versions/node/v22.22.1/bin/node /Users/rerikse3/.nvm/versions/node/v22.22.1/bin/firebase login:ci --no-localhost
+[debug] [2026-08-19T14:07:20.766Z] CLI Version:   15.11.0
+[debug] [2026-08-19T14:07:20.766Z] Platform:      darwin
+[debug] [2026-08-19T14:07:20.766Z] Node Version:  v22.22.1
+[debug] [2026-08-19T14:07:20.766Z] Time:          Wed Aug 19 2026 10:07:20 GMT-0400 (Eastern Daylight Time)
+[debug] [2026-08-19T14:07:20.766Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-19T14:07:20.845Z] Object "" in "firebase.json" has unknown property: {"additionalProperty":"react-native"}
+[warn] ⚠  Authenticating with a `login:ci` token is deprecated and will be removed in a future major version of `firebase-tools`. Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started 
+[debug] [2026-08-19T14:07:20.847Z] >>> [apiv2][query] POST https://auth.firebase.tools/attest [none]
+[debug] [2026-08-19T14:07:20.847Z] >>> [apiv2][body] POST https://auth.firebase.tools/attest {"session_id":"d1799e57-bc2c-48e7-943e-90cd08eee857"}
+[debug] [2026-08-19T14:07:21.374Z] <<< [apiv2][status] POST https://auth.firebase.tools/attest 200
+[debug] [2026-08-19T14:07:21.374Z] <<< [apiv2][body] POST https://auth.firebase.tools/attest {"token":"Acp9gCA-RlrBjyM_-eQxJufi4RkYZxo7_qLYApMi-44"}
+[info] 
+[info] To sign in to the Firebase CLI:
+[info] 
+[info] 1. Take note of your session ID:
+[info] 
+[info]    D1799
+[info] 
+[info] 2. Visit the URL below on any device and follow the instructions to get your code:
+[info] 
+[info]    https://auth.firebase.tools/login?code_challenge=tr_b2Yoag9bJzs5YUVsc1q7x56zXjPMdT8_lsraKcfc&session=d1799e57-bc2c-48e7-943e-90cd08eee857&attest=Acp9gCA-RlrBjyM_-eQxJufi4RkYZxo7_qLYApMi-44
+[info] 
+[info] 3. Paste or enter the authorization code below once you have it:
+[info] 
+[debug] [2026-08-19T14:12:26.061Z] Error: setRawMode EBADF
+    at ReadStream.setRawMode (node:tty:81:24)
+    at [_setRawMode] [as _setRawMode] (node:internal/readline/interface:377:18)
+    at Interface.close (node:internal/readline/interface:527:24)
+    at ReadStream.ontermend (node:internal/readline/interface:267:10)
+    at ReadStream.emit (node:events:531:35)
+    at endReadableNT (node:internal/streams/readable:1698:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21)

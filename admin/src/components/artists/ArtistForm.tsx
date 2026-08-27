@@ -217,7 +217,7 @@ export function ArtistForm({ artist, onSubmit, onCancel }: ArtistFormProps) {
       {/* Linked User */}
       <UserSearch
         value={userId}
-        displayValue={userDisplayName}
+        displayValue={userDisplayName ?? undefined}
         onChange={(id, name) => { setUserId(id); setUserDisplayName(name); }}
       />
 
